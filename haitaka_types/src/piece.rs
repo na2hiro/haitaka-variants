@@ -155,7 +155,8 @@ impl Piece {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.must_promote(Color::Black, Square::A3));
     /// assert!(Piece::Lance.must_promote(Color::Black, Square::A3));
@@ -175,21 +176,31 @@ impl Piece {
     /// ```
     #[inline(always)]
     pub const fn must_promote(self, color: Color, square: Square) -> bool {
-        let rank = square.rank() as usize;
-        if 1 < rank && rank < 7 {
-            return false;
+        #[cfg(feature = "annan")]
+        {
+            // In Annan Shogi, pieces can gain any movement via backing,
+            // so there are no "stuck piece" restrictions.
+            let _ = (color, square);
+            false
         }
-        match color {
-            Color::White => match self {
-                Self::Pawn | Self::Lance => rank == 8,
-                Self::Knight => rank >= 7,
-                _ => false,
-            },
-            Color::Black => match self {
-                Self::Pawn | Self::Lance => rank == 0,
-                Self::Knight => rank <= 1,
-                _ => false,
-            },
+        #[cfg(not(feature = "annan"))]
+        {
+            let rank = square.rank() as usize;
+            if 1 < rank && rank < 7 {
+                return false;
+            }
+            match color {
+                Color::White => match self {
+                    Self::Pawn | Self::Lance => rank == 8,
+                    Self::Knight => rank >= 7,
+                    _ => false,
+                },
+                Color::Black => match self {
+                    Self::Pawn | Self::Lance => rank == 0,
+                    Self::Knight => rank <= 1,
+                    _ => false,
+                },
+            }
         }
     }
 

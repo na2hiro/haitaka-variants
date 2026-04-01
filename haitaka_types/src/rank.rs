@@ -93,22 +93,30 @@ const SOUTH_A: BitBoard = SOUTH_B.bitor(RANK_B);
 ///
 #[inline(always)]
 pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
-    match piece {
-        Piece::Pawn | Piece::Lance => {
-            if color as usize == Color::White as usize {
-                RANK_I
-            } else {
-                RANK_A
+    #[cfg(feature = "annan")]
+    {
+        let _ = (color, piece);
+        BitBoard::EMPTY
+    }
+    #[cfg(not(feature = "annan"))]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance => {
+                if color as usize == Color::White as usize {
+                    RANK_I
+                } else {
+                    RANK_A
+                }
             }
-        }
-        Piece::Knight => {
-            if color as usize == Color::White as usize {
-                RANK_I.bitor(RANK_H)
-            } else {
-                RANK_A.bitor(RANK_B)
+            Piece::Knight => {
+                if color as usize == Color::White as usize {
+                    RANK_I.bitor(RANK_H)
+                } else {
+                    RANK_A.bitor(RANK_B)
+                }
             }
+            _ => BitBoard::EMPTY,
         }
-        _ => BitBoard::EMPTY,
     }
 }
 
@@ -116,22 +124,30 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
 /// be dropped. This is the inverse of `no_fly_zone`.
 #[inline(always)]
 pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
-    match piece {
-        Piece::Pawn | Piece::Lance => {
-            if color as usize == Color::White as usize {
-                NORTH_I
-            } else {
-                SOUTH_A
+    #[cfg(feature = "annan")]
+    {
+        let _ = (color, piece);
+        BitBoard::FULL
+    }
+    #[cfg(not(feature = "annan"))]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance => {
+                if color as usize == Color::White as usize {
+                    NORTH_I
+                } else {
+                    SOUTH_A
+                }
             }
-        }
-        Piece::Knight => {
-            if color as usize == Color::White as usize {
-                NORTH_H
-            } else {
-                SOUTH_B
+            Piece::Knight => {
+                if color as usize == Color::White as usize {
+                    NORTH_H
+                } else {
+                    SOUTH_B
+                }
             }
+            _ => BitBoard::FULL,
         }
-        _ => BitBoard::FULL,
     }
 }
 
@@ -163,16 +179,24 @@ pub const fn prom_zone(color: Color) -> BitBoard {
 /// ```
 #[inline(always)]
 pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
-    match piece {
-        Piece::Pawn | Piece::Lance => match color {
-            Color::White => RANK_I,
-            Color::Black => RANK_A,
-        },
-        Piece::Knight => match color {
-            Color::White => SOUTH_G,
-            Color::Black => NORTH_C,
-        },
-        _ => BitBoard::EMPTY,
+    #[cfg(feature = "annan")]
+    {
+        let _ = (color, piece);
+        BitBoard::EMPTY
+    }
+    #[cfg(not(feature = "annan"))]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance => match color {
+                Color::White => RANK_I,
+                Color::Black => RANK_A,
+            },
+            Piece::Knight => match color {
+                Color::White => SOUTH_G,
+                Color::Black => NORTH_C,
+            },
+            _ => BitBoard::EMPTY,
+        }
     }
 }
 

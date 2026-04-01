@@ -1,5 +1,5 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "annan"), doc = include_str!("../README.md"))]
 
 //! # Examples
 //!
@@ -28,6 +28,8 @@ pub use sliders::*;
 pub use square::*;
 
 pub mod attacks;
+#[cfg(feature = "annan")]
+pub mod annan;
 pub mod board;
 pub mod slider_moves;
 

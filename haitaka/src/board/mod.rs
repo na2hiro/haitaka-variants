@@ -352,7 +352,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -373,7 +374,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -787,6 +789,7 @@ impl Board {
         self.inner.toggle_side_to_move();
     }
 
+    #[cfg(not(feature = "annan"))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
         self.pinned = BitBoard::EMPTY;
@@ -842,6 +845,19 @@ impl Board {
         }
     }
 
+    /// Under Annan, a single move can change backing relationships for multiple pieces,
+    /// so we fall back to a full recalculation.
+    ///
+    /// Note: called BEFORE toggle_side_to_move, so `color` is the mover.
+    /// Checkers/pins are from the opponent's (the new side-to-move's) perspective.
+    #[cfg(feature = "annan")]
+    fn update_checkers_and_pins(&mut self, color: Color, _piece: Piece, _to: Square) {
+        let them = !color;
+        let (checkers, pinned) = self.calculate_checkers_and_pins(them);
+        self.checkers = checkers;
+        self.pinned = pinned;
+    }
+
     /// Attempt to play a [null move](https://www.chessprogramming.org/Null_Move).
     /// Returns a new board if successful. Returns None if side-to-move is in check.
     ///
@@ -877,21 +893,33 @@ impl Board {
             board.move_number += 1;
             board.inner.toggle_side_to_move();
 
-            // we only need to update pinned
-            board.pinned = BitBoard::EMPTY;
-            let our_king = board.king(color);
-            let them = board.colors(color);
-            let their_attackers = them
-                & (
-                    bishop_pseudo_attacks(our_king) | rook_pseudo_attacks(our_king)
-                    // already includes Lance attacks
-                );
-            let occ = board.occupied();
-            for square in their_attackers {
-                let between = get_between_rays(our_king, square) & occ;
-                if between.len() == 1 {
-                    board.pinned |= between;
+            #[cfg(not(feature = "annan"))]
+            {
+                // we only need to update pinned
+                board.pinned = BitBoard::EMPTY;
+                let our_king = board.king(color);
+                let them = board.colors(color);
+                let their_attackers = them
+                    & (
+                        bishop_pseudo_attacks(our_king) | rook_pseudo_attacks(our_king)
+                        // already includes Lance attacks
+                    );
+                let occ = board.occupied();
+                for square in their_attackers {
+                    let between = get_between_rays(our_king, square) & occ;
+                    if between.len() == 1 {
+                        board.pinned |= between;
+                    }
                 }
+            }
+
+            #[cfg(feature = "annan")]
+            {
+                // Under Annan, non-sliders backed by sliders can also pin,
+                // so use full recalculation.
+                let (checkers, pinned) = board.calculate_checkers_and_pins(color);
+                board.checkers = checkers;
+                board.pinned = pinned;
             }
 
             Some(board)

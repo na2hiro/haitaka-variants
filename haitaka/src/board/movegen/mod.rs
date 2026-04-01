@@ -238,6 +238,7 @@ impl Board {
     // safety by efficient caching since this would require more work in
     // maintaining some cached data struct of 'attacks'. However...
 
+    #[cfg(not(feature = "annan"))]
     #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
         macro_rules! lazy_and {
@@ -290,6 +291,66 @@ impl Board {
         }
     }
 
+    /// Annan-aware king safety check.
+    ///
+    /// Checks if any opponent piece (using its effective Annan movement) can
+    /// attack the given square.
+    #[cfg(feature = "annan")]
+    fn annan_king_safe_on(&self, square: Square) -> bool {
+        use crate::annan::{AnnanBacking, pseudo_legals_for, is_slider_movement, slider_pseudo_attacks};
+
+        let color = self.side_to_move();
+        let their_color = !color;
+        let their_pieces = self.colors(their_color);
+
+        // Simulate moving the King to the square
+        let blockers =
+            (self.occupied() ^ self.colored_pieces(color, Piece::King)) | square.bitboard();
+
+        let backing = AnnanBacking::compute(self, their_color);
+
+        for &eff_piece in &Piece::ALL {
+            let unbacked_of_type = self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
+            let backed_by_type = backing.backed_by[eff_piece as usize];
+            let movers = (unbacked_of_type | backed_by_type) & their_pieces;
+
+            if movers.is_empty() {
+                continue;
+            }
+
+            if is_slider_movement(eff_piece) {
+                // Check if any mover can reach the square via sliding rays
+                let pseudo = slider_pseudo_attacks(eff_piece, color, square);
+                let candidates = pseudo & movers;
+                if !candidates.is_empty() {
+                    // Verify actual reachability (no blockers in between)
+                    let actual = pseudo_legals_for(eff_piece, color, square, blockers);
+                    if !(actual & movers).is_empty() {
+                        return false;
+                    }
+                }
+
+                // PRook/PBishop also have short-range components
+                if eff_piece == Piece::PRook {
+                    if !(silver_attacks(color, square) & movers).is_empty() {
+                        return false;
+                    }
+                } else if eff_piece == Piece::PBishop {
+                    if !(gold_attacks(color, square) & movers).is_empty() {
+                        return false;
+                    }
+                }
+            } else {
+                // Non-slider: reverse-attack
+                let reverse = pseudo_legals_for(eff_piece, color, square, blockers);
+                if !(reverse & movers).is_empty() {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {
         debug_assert!(self.checkers.is_empty());
 
@@ -298,13 +359,17 @@ impl Board {
             return false;
         }
 
-        let our_pawn_rank = to.rank() as usize;
-        let their_king_rank = self.king(them).rank() as usize;
-
-        if (them == Color::White && their_king_rank != our_pawn_rank - 1)
-            || (them == Color::Black && their_king_rank != our_pawn_rank + 1)
+        #[cfg(not(feature = "annan"))]
         {
-            return false;
+            // Quick rank check: a normal pawn only attacks one square ahead
+            let our_pawn_rank = to.rank() as usize;
+            let their_king_rank = self.king(them).rank() as usize;
+
+            if (them == Color::White && their_king_rank != our_pawn_rank - 1)
+                || (them == Color::Black && their_king_rank != our_pawn_rank + 1)
+            {
+                return false;
+            }
         }
 
         // We know that our Pawn on `to` square attacks their King.
@@ -336,8 +401,6 @@ impl Board {
         mask: BitBoard,
         listener: &mut F,
     ) -> bool {
-        const PIECE: Piece = Piece::King;
-
         let color = self.side_to_move();
         if !self.has(color, Piece::King) {
             return false;
@@ -348,18 +411,33 @@ impl Board {
         if !mask.has(our_king) {
             return false;
         }
+
+        #[cfg(feature = "annan")]
+        let mut moves = {
+            use crate::annan::{effective_piece, pseudo_legals_for};
+            let eff = effective_piece(self, color, our_king);
+            pseudo_legals_for(eff, color, our_king, self.occupied()) & !our_pieces
+        };
+
+        #[cfg(not(feature = "annan"))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
+
         for to in moves {
             // removing unsafe squares should generally be more efficient than
             // adding safe squares since (until the endgame) most squares are safe
-            if !self.king_safe_on(to) {
+            #[cfg(not(feature = "annan"))]
+            let safe = self.king_safe_on(to);
+            #[cfg(feature = "annan")]
+            let safe = self.annan_king_safe_on(to);
+
+            if !safe {
                 moves ^= to.bitboard();
             }
         }
         if !moves.is_empty() {
             abort_if!(listener(PieceMoves::BoardMoves {
                 color,
-                piece: PIECE,
+                piece: Piece::King,
                 from: our_king,
                 to: moves,
                 prom_status: PromotionStatus::CannotPromote,
@@ -368,6 +446,7 @@ impl Board {
         false
     }
 
+    #[cfg(not(feature = "annan"))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
         mask: BitBoard,
@@ -393,6 +472,94 @@ impl Board {
             self.add_common_legals::<commoner::PRook, _, IN_CHECK>(mask, PromotionStatus::CannotPromote, listener),
             self.add_king_legals::<_, IN_CHECK>(mask, listener)
         }
+        false
+    }
+
+    /// Annan-aware move generation for all pieces.
+    ///
+    /// Splits each piece type into unbacked (normal movement) and backed (backer's movement).
+    /// King also follows Annan rules (handled by add_king_legals which detects effective piece).
+    #[cfg(feature = "annan")]
+    fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
+        &self,
+        mask: BitBoard,
+        listener: &mut F,
+    ) -> bool {
+        use crate::annan::{AnnanBacking, pseudo_legals_for};
+
+        let color = self.side_to_move();
+        let backing = AnnanBacking::compute(self, color);
+
+        // Generate moves for unbacked non-king pieces (normal movement)
+        let unbacked_mask = mask & !backing.has_backer;
+        abort_if! {
+            self.add_common_legals::<commoner::Pawn, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Lance, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Knight, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Silver, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Gold, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::Tokin, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PLance, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PKnight, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PSilver, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::Bishop, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Rook, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::PBishop, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PRook, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener)
+        }
+
+        // Generate moves for backed non-king pieces: each piece uses its backer's movement
+        let target_squares = self.target_squares::<IN_CHECK>();
+        if !(IN_CHECK && target_squares.is_empty()) {
+            let pinned = self.pinned;
+            let blockers = self.occupied();
+            let has_king = self.has(color, Piece::King);
+
+            for &backing_piece in &Piece::ALL {
+                let backed_squares = backing.backed_by[backing_piece as usize] & mask;
+                if backed_squares.is_empty() {
+                    continue;
+                }
+
+                for from in backed_squares {
+                    let actual_piece = self.piece_on(from).unwrap();
+
+                    // King is handled separately (needs king_safe_on filtering)
+                    if actual_piece == Piece::King {
+                        continue;
+                    }
+
+                    let mut to = pseudo_legals_for(backing_piece, color, from, blockers) & target_squares;
+
+                    // Handle pins
+                    if pinned.has(from) {
+                        if IN_CHECK || !has_king {
+                            continue;
+                        }
+                        to &= line_ray(self.king(color), from);
+                    }
+
+                    if !to.is_empty() {
+                        let prom_status = if actual_piece.is_promotable() {
+                            PromotionStatus::Undecided
+                        } else {
+                            PromotionStatus::CannotPromote
+                        };
+                        abort_if!(listener(PieceMoves::BoardMoves {
+                            color,
+                            piece: actual_piece,
+                            from,
+                            to,
+                            prom_status,
+                        }));
+                    }
+                }
+            }
+        }
+
+        // King moves (add_king_legals handles Annan effective movement internally)
+        abort_if!(self.add_king_legals::<_, IN_CHECK>(mask, listener));
+
         false
     }
 
@@ -492,6 +659,7 @@ impl Board {
     }
 
     /// Is this move a legal board move?
+    #[cfg(not(feature = "annan"))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
             from,
@@ -590,6 +758,71 @@ impl Board {
         false
     }
 
+    /// Annan-aware legality check for a board move.
+    #[cfg(feature = "annan")]
+    pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        use crate::annan::{effective_piece, pseudo_legals_for};
+
+        if let Move::BoardMove {
+            from,
+            to,
+            promotion,
+        } = mv
+        {
+            let color = self.side_to_move();
+            let our_pieces = self.colors(color);
+
+            if our_pieces.has(to) || !our_pieces.has(from) {
+                return false;
+            }
+
+            let piece = match self.piece_on(from) {
+                Some(piece) => piece,
+                None => return false,
+            };
+
+            // Get effective movement type (the backer's type, or own type if unbacked)
+            let eff = effective_piece(self, color, from);
+
+            if piece == Piece::King {
+                if promotion {
+                    return false;
+                }
+                // King uses effective movement, but must still be safe
+                let candidate = pseudo_legals_for(eff, color, from, self.occupied()) & !our_pieces;
+                if !candidate.has(to) {
+                    return false;
+                }
+                return self.annan_king_safe_on(to);
+            }
+
+            if promotion {
+                let zone = prom_zone(color);
+                if !(zone.has(to) || zone.has(from)) {
+                    return false;
+                }
+            }
+            // No must_promote check under Annan
+
+            // pinned piece restriction
+            if self.pinned.has(from) && !line_ray(self.king(color), from).has(to) {
+                return false;
+            }
+
+            let target_squares: BitBoard = match self.checkers.len() {
+                0 => self.target_squares::<false>(),
+                1 => self.target_squares::<true>(),
+                _ => return false,
+            };
+
+            // Use effective movement type for move validation
+            let moves = pseudo_legals_for(eff, color, from, self.occupied());
+            return (target_squares & moves).has(to);
+        }
+        false
+    }
+
+    #[cfg(not(feature = "annan"))]
     fn king_is_legal(&self, color: Color, from: Square, to: Square) -> bool {
         if !(king_attacks(color, from) & !self.colors(color)).has(to) {
             false
@@ -624,7 +857,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let mut total_moves = 0;
@@ -658,7 +892,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let pawns = board.pieces(Piece::Pawn);
@@ -769,6 +1004,7 @@ impl Board {
     /// This function will call the `listener` callback multiple times. The listener can interrupt
     /// further processing by returning true. Otherwise, the function will generate all remaining
     /// checks and eventually return false.
+    #[cfg(not(feature = "annan"))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let color = self.side_to_move();
         let their_color = !color;
@@ -912,6 +1148,7 @@ impl Board {
     }
 
     // Helper function to handle all PromotionStatus variants
+    #[cfg(not(feature = "annan"))]
     fn filter_checks_by_promotion_status(
         color: Color,
         piece: Piece,
@@ -983,5 +1220,88 @@ impl Board {
             }
         }
         false
+    }
+
+    /// Annan-aware check generation.
+    ///
+    /// Uses a generate-and-filter approach: generates all legal moves, then plays
+    /// each one to see if it results in check. Less optimized than the normal version
+    /// but correct under Annan rules where effective movement types are dynamic.
+    #[cfg(feature = "annan")]
+    pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        let their_color = !self.side_to_move();
+        if !self.has(their_color, Piece::King) {
+            return false;
+        }
+
+        self.generate_moves(|mvs| {
+            match mvs {
+                PieceMoves::BoardMoves { color, piece, from, .. } => {
+                    let mut check_tos = BitBoard::EMPTY;
+                    let mut check_prom_tos = BitBoard::EMPTY;
+
+                    for mv in mvs {
+                        let mut board = self.clone();
+                        board.play_unchecked(mv);
+                        if !board.checkers.is_empty() {
+                            if let Move::BoardMove { to, promotion, .. } = mv {
+                                if promotion {
+                                    check_prom_tos |= to.bitboard();
+                                } else {
+                                    check_tos |= to.bitboard();
+                                }
+                            }
+                        }
+                    }
+
+                    // Emit non-promotion checks
+                    if !check_tos.is_empty()
+                        && listener(PieceMoves::BoardMoves {
+                            color,
+                            piece,
+                            from,
+                            to: check_tos,
+                            prom_status: PromotionStatus::CannotPromote,
+                        })
+                    {
+                        return true;
+                    }
+                    // Emit promotion checks
+                    if !check_prom_tos.is_empty()
+                        && listener(PieceMoves::BoardMoves {
+                            color,
+                            piece,
+                            from,
+                            to: check_prom_tos,
+                            prom_status: PromotionStatus::MustPromote,
+                        })
+                    {
+                        return true;
+                    }
+                }
+                PieceMoves::Drops { color, piece, .. } => {
+                    let mut check_tos = BitBoard::EMPTY;
+                    for mv in mvs {
+                        let mut board = self.clone();
+                        board.play_unchecked(mv);
+                        if !board.checkers.is_empty() {
+                            if let Move::Drop { to, .. } = mv {
+                                check_tos |= to.bitboard();
+                            }
+                        }
+                    }
+                    if !check_tos.is_empty()
+                        && listener(PieceMoves::Drops {
+                            color,
+                            piece,
+                            to: check_tos,
+                        })
+                    {
+                        return true;
+                    }
+                }
+            }
+            false
+        })
     }
 }

@@ -143,6 +143,7 @@ fn legality_simple() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
         .parse()
@@ -191,6 +192,7 @@ fn pawn_push_mate_is_valid() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -328,6 +330,7 @@ fn tsume() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -368,6 +371,7 @@ fn generate_checks() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -422,6 +426,7 @@ fn invalid_tsume() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -485,6 +490,7 @@ fn pinners() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -585,6 +591,7 @@ fn discovered_checks2() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .
