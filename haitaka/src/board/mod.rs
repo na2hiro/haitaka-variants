@@ -28,7 +28,16 @@ helpers::simple_error! {
 }
 
 /// SFEN string representing the start position
+#[cfg(not(feature = "annan"))]
 pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+
+/// SFEN string representing the Annan Shogi start position.
+///
+/// Pawns in front of the bishop and rook are moved one step forward
+/// to avoid them being too powerful from the start (they would otherwise
+/// move like bishop/rook due to Annan backing).
+#[cfg(feature = "annan")]
+pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 
 // TODO: In handicap games is white's first move numbered 1 or 2? For now, to be consistent, I label it '2'.
 
@@ -86,8 +95,7 @@ impl Board {
     /// # Examples
     /// ```
     /// # use haitaka::*;
-    /// let sfen: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-    /// assert_eq!(Board::startpos(), sfen.parse().unwrap());
+    /// assert_eq!(Board::startpos(), SFEN_STARTPOS.parse().unwrap());
     /// ```
     pub fn startpos() -> Self {
         Self::from_sfen(SFEN_STARTPOS).unwrap()
@@ -197,7 +205,8 @@ impl Board {
     /// Shorthand for `board.colors(color) & board.pieces(piece)`.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let white_pawns = board.colored_pieces(Color::White, Piece::Pawn);
@@ -284,7 +293,8 @@ impl Board {
 
     /// Get a [`BitBoard`] of all the pieces on the board.
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.occupied(), bitboard! {
@@ -307,7 +317,8 @@ impl Board {
     /// Get the current side to move.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.side_to_move(), Color::Black);
@@ -326,7 +337,8 @@ impl Board {
     /// Does not include the move number.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play("2g2f".parse().unwrap());
@@ -402,7 +414,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.move_number(), 1);
@@ -661,7 +674,8 @@ impl Board {
     ///
     /// # Examples
     /// ## Legal moves
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let sfen: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5";
     /// let mut board = Board::startpos();
@@ -701,7 +715,8 @@ impl Board {
     /// See [`Board::play`] for a variant _guaranteed_ to panic immediately on illegal moves.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play_unchecked("2g2f".parse().unwrap());

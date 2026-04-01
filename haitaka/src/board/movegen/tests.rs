@@ -698,7 +698,7 @@ fn board_hash_trait_works() {
     let board1 = Board::startpos();
     let board2 = Board::startpos();
     let mut board3 = Board::startpos();
-    board3.play_unchecked("2g2f".parse().unwrap());
+    board3.play_unchecked("7g7f".parse().unwrap());
 
     let mut hasher1 = DefaultHasher::new();
     Hash::hash(&board1, &mut hasher1);
@@ -714,4 +714,149 @@ fn board_hash_trait_works() {
 
     assert_eq!(hash1, hash2, "Hashes of identical boards should match");
     assert_ne!(hash1, hash3, "Hashes of different boards should differ");
+}
+
+// ========================
+// Annan-specific tests
+// ========================
+
+/// Capturing the backer resolves check when the checker only attacks via backing.
+///
+/// Position: Black King on 5i, White King on 1a, White Pawn on 5g backed by
+/// White Rook on 5f. The Pawn moves like a Rook and checks the King along the file.
+/// Black Rook on 5a can capture the backer on 5f, removing the check.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_capture_backer_resolves_check() {
+    // rank a: Black Rook on 5a
+    // rank c: White King on 9c (safe from Black Rook — different file)
+    // rank f: White Rook on 5f (backer)
+    // rank g: White Pawn on 5g (checker, moves like Rook due to backing)
+    // rank i: Black King on 5i
+    let board: Board = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1"
+        .parse()
+        .unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from backed Pawn"
+    );
+
+    // Capturing the backer (White Rook on 5f) with Black Rook from 5a
+    let capture_backer = Move::BoardMove {
+        from: Square::A5,  // 5a
+        to: Square::F5,    // 5f
+        promotion: false,
+    };
+    assert!(
+        board.is_legal(capture_backer),
+        "Capturing the backer should be legal to resolve check"
+    );
+
+    // Verify: after capturing backer, Black is no longer in check
+    let mut after = board.clone();
+    after.play_unchecked(capture_backer);
+    assert!(
+        after.checkers().is_empty(),
+        "After capturing backer, check should be resolved"
+    );
+}
+
+/// Capturing the backer does NOT resolve check when the checker natively attacks the king.
+///
+/// Position: White Gold on 5h backed by White Rook on 5g.
+/// The Gold moves like a Rook due to backing, but natively also attacks 5i.
+/// Capturing the Rook (backer on 5g) doesn't help — Gold still checks natively.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_capture_backer_does_not_help_native_check() {
+    // rank b: White King on 9b (safe)
+    // rank g: White Rook on 5g (backer)
+    // rank h: White Gold on 5h (checker — natively attacks 5i as Gold)
+    // rank i: Black King on 5i
+    // Black has a Rook on 5a to have a piece that could capture 5g
+    let board: Board = "4R4/k8/9/9/9/9/4r4/4g4/4K4 b - 1"
+        .parse()
+        .unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from Gold"
+    );
+
+    // Capturing the backer (Rook on 5g) should NOT resolve check
+    // because the Gold on 5h natively attacks 5i.
+    let capture_backer = Move::BoardMove {
+        from: Square::A5,  // 5a
+        to: Square::G5,    // 5g
+        promotion: false,
+    };
+    assert!(
+        !board.is_legal(capture_backer),
+        "Capturing backer should NOT be legal when checker natively attacks king"
+    );
+}
+
+/// Drops can interpose against a non-slider that is effectively a slider due to backing.
+///
+/// Position: White Pawn on 5g backed by White Rook on 5f → Pawn checks like Rook.
+/// Black should be able to drop a piece on 5h to interpose.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_drop_interpose_backed_slider() {
+    // rank b: White King on 9b (safe)
+    // rank f: White Rook on 5f (backer)
+    // rank g: White Pawn on 5g (checker, moves like Rook)
+    // rank i: Black King on 5i
+    let board: Board = "9/k8/9/9/9/4r4/4p4/9/4K4 b G 1"
+        .parse()
+        .unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check"
+    );
+
+    // Drop Gold on 5h to interpose
+    let drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::H5,  // 5h
+    };
+    assert!(
+        board.is_legal(drop),
+        "Dropping on interposition square should be legal against backed-slider check"
+    );
+}
+
+/// Drops cannot interpose against an unbacked non-slider check.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_drop_no_interpose_non_slider() {
+    // White Pawn on 5h (no backer) gives check to Black King on 5i
+    // Black has a Gold in hand — but cannot interpose (no ray to block)
+    // rank b: White King on 9b (safe)
+    // rank h: White Pawn on 5h (no backer, checks King on 5i)
+    // rank i: Black King on 5i
+    let board: Board = "9/k8/9/9/9/9/9/4p4/4K4 b G 1"
+        .parse()
+        .unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from Pawn"
+    );
+
+    // No valid drop should resolve check (non-slider, nothing to interpose)
+    let mut any_legal_drop = false;
+    board.generate_drops(|moves| {
+        for _mv in moves {
+            any_legal_drop = true;
+            return true;
+        }
+        false
+    });
+    assert!(
+        !any_legal_drop,
+        "No drop should resolve a non-slider check"
+    );
 }

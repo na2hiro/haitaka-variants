@@ -275,6 +275,7 @@ mod tests {
     // TODO: Test some more edge cases
 
     #[test]
+    #[cfg(not(feature = "annan"))]
     fn zobrist_transpositions() {
         let board = Board::startpos();
 

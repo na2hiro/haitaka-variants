@@ -70,20 +70,24 @@ impl AnnanBacking {
     }
 }
 
+/// Returns the square directly behind `square` for the given color (toward own camp).
+///
+/// Returns `None` if `square` is on the back rank.
+#[inline]
+pub fn backer_square(color: Color, square: Square) -> Option<Square> {
+    match color {
+        Color::Black => square.try_offset(0, 1),
+        Color::White => square.try_offset(0, -1),
+    }
+}
+
 /// Returns the effective piece type for a piece at `square` under Annan rules.
 ///
 /// If a friendly piece is directly behind `square`, the piece moves like that backer.
 /// Otherwise it moves as its own type.
 #[inline]
 pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
-    // "Behind" means toward own camp:
-    //   Black (moves north, rank decreasing): behind = south = rank +1
-    //   White (moves south, rank increasing): behind = north = rank -1
-    let behind_sq = match color {
-        Color::Black => square.try_offset(0, 1),
-        Color::White => square.try_offset(0, -1),
-    };
-    if let Some(behind) = behind_sq {
+    if let Some(behind) = backer_square(color, square) {
         if board.colors(color).has(behind) {
             if let Some(backer) = board.piece_on(behind) {
                 return backer;

@@ -68,6 +68,7 @@ impl Board {
     // King is in check (and to prevent illegal capture of one's own pieces
     // ...which actually sometimes is observed in amateur tournaments...).
     //
+    #[cfg(not(feature = "annan"))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let targets = if IN_CHECK {
@@ -83,11 +84,43 @@ impl Board {
         targets & !self.colors(color)
     }
 
+    #[cfg(feature = "annan")]
+    fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
+        let color = self.side_to_move();
+        let targets = if IN_CHECK {
+            debug_assert!(self.checkers.len() == 1);
+            let checker = self.checkers.next_square().unwrap();
+            let our_king = self.king(color);
+            let mut targets = get_between_rays(checker, our_king) | checker.bitboard();
+
+            // Under Annan: if the checker is backed, capturing the backer
+            // may also resolve check — but only if the checker's NATIVE
+            // piece type doesn't also attack the king from checker's square.
+            let them = !color;
+            if let Some(behind) = crate::annan::backer_square(them, checker) {
+                if self.colors(them).has(behind) {
+                    let native_piece = self.piece_on(checker).unwrap();
+                    let native_attacks = crate::annan::pseudo_legals_for(
+                        native_piece, them, checker, self.occupied(),
+                    );
+                    if !native_attacks.has(our_king) {
+                        targets |= behind.bitboard();
+                    }
+                }
+            }
+            targets
+        } else {
+            BitBoard::FULL
+        };
+        targets & !self.colors(color)
+    }
+
     // Similar to target_squares but for drop moves.
     //
     // In check, a drop can only be used to interpose. Otherwise, any empty square is ok.
     // Note that this doesn't exclude the forbidden drop ranks of Pawn, Lance and Knight.
     //
+    #[cfg(not(feature = "annan"))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();
@@ -102,6 +135,29 @@ impl Board {
                 get_between_rays(checker, our_king) & open_squares
             } else {
                 // check is not by a sliding piece, all drops are illegal!
+                BitBoard::EMPTY
+            }
+        } else {
+            open_squares
+        }
+    }
+
+    #[cfg(feature = "annan")]
+    fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
+        let color = self.side_to_move();
+        let open_squares = !self.occupied();
+
+        if IN_CHECK {
+            debug_assert!(self.checkers.len() == 1);
+            let checker = self.checkers.next_square().unwrap();
+            let them = !color;
+            // Use effective piece type to determine if interposition is possible
+            let eff = crate::annan::effective_piece(self, them, checker);
+            if crate::annan::is_slider_movement(eff) {
+                let our_king = self.king(color);
+                get_between_rays(checker, our_king) & open_squares
+            } else {
+                // Non-slider check — no interposition possible via drops
                 BitBoard::EMPTY
             }
         } else {
