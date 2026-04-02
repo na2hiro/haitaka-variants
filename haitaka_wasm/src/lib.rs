@@ -1,11 +1,10 @@
-#[allow(dead_code)]
 mod nnue;
 
 use std::cmp::Reverse;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, Move, Piece};
-use nnue::NnueModel;
+pub use nnue::{NnueModel, NnuePositionState};
 use wasm_bindgen::prelude::*;
 
 const INF_SCORE: i32 = 1_000_000;
@@ -23,18 +22,36 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 
+#[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
-struct SearchSummary {
-    best_move: Option<String>,
-    elapsed_ms: f64,
-    states: u64,
-    nps: f64,
+pub struct SearchSummary {
+    pub best_move: Option<String>,
+    pub best_score: Option<i32>,
+    pub elapsed_ms: f64,
+    pub states: u64,
+    pub nps: f64,
 }
 
-#[derive(Debug, Default)]
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchEvalMode {
+    FullRefresh,
+    Incremental,
+}
+
+#[derive(Debug, Clone)]
+enum EvaluationStrategy {
+    Handcrafted,
+    Nnue {
+        model: Arc<NnueModel>,
+        mode: SearchEvalMode,
+    },
+}
+
+#[derive(Debug)]
 struct SearchContext {
     states: u64,
-    nnue_model: Option<Arc<NnueModel>>,
+    evaluation: EvaluationStrategy,
 }
 
 impl SearchContext {
@@ -139,15 +156,39 @@ fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
 }
 
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
+    let evaluation = match current_nnue_model() {
+        Some(model) => EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::Incremental,
+        },
+        None => EvaluationStrategy::Handcrafted,
+    };
+    search_impl_with_strategy(sfen, depth, evaluation)
+}
+
+fn search_impl_with_strategy(
+    sfen: &str,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+) -> Result<SearchSummary, String> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| format!("failed to parse SFEN: {err}"))?;
     let depth = depth.max(1);
     let started_at_ms = now_ms();
+    let root_state = match &evaluation {
+        EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::Incremental,
+        } => Some(model.build_position_state_full(&board)),
+        _ => None,
+    };
     let mut ctx = SearchContext {
         states: 0,
-        nnue_model: current_nnue_model(),
+        evaluation,
     };
-    let best_move = search_best_move(&board, depth, &mut ctx).map(|mv| mv.to_string());
+    let (best_move, best_score) = search_best_move(&board, depth, &mut ctx, root_state)
+        .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
+        .unwrap_or((None, None));
     let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
     let nps = if elapsed_ms > 0.0 {
         ctx.states as f64 / (elapsed_ms / 1_000.0)
@@ -157,10 +198,22 @@ fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
 
     Ok(SearchSummary {
         best_move,
+        best_score,
         elapsed_ms,
         states: ctx.states,
         nps,
     })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_impl_with_eval_mode(
+    sfen: &str,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<SearchSummary, String> {
+    search_impl_with_strategy(sfen, depth, EvaluationStrategy::Nnue { model, mode })
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
@@ -208,7 +261,12 @@ pub fn perft(sfen: &str, depth: u8) -> Result<PerftResult, JsValue> {
     perft_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
 }
 
-fn search_best_move(board: &Board, depth: u8, ctx: &mut SearchContext) -> Option<Move> {
+fn search_best_move(
+    board: &Board,
+    depth: u8,
+    ctx: &mut SearchContext,
+    nnue_state: Option<NnuePositionState>,
+) -> Option<(Move, i32)> {
     ctx.record_state();
     let moves = legal_moves(board);
     if moves.is_empty() {
@@ -223,7 +281,16 @@ fn search_best_move(board: &Board, depth: u8, ctx: &mut SearchContext) -> Option
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = -negamax(&child, depth.saturating_sub(1), -beta, -alpha, 1, ctx);
+        let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+        let score = -negamax(
+            &child,
+            depth.saturating_sub(1),
+            -beta,
+            -alpha,
+            1,
+            ctx,
+            child_state,
+        );
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -231,13 +298,21 @@ fn search_best_move(board: &Board, depth: u8, ctx: &mut SearchContext) -> Option
         alpha = alpha.max(score);
     }
 
-    best_move
+    best_move.map(|mv| (mv, best_score))
 }
 
-fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &mut SearchContext) -> i32 {
+fn negamax(
+    board: &Board,
+    depth: u8,
+    mut alpha: i32,
+    beta: i32,
+    ply: i32,
+    ctx: &mut SearchContext,
+    nnue_state: Option<NnuePositionState>,
+) -> i32 {
     ctx.record_state();
     if depth == 0 {
-        return evaluate_or_mate(board, ply, ctx.nnue_model.as_deref());
+        return evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
     }
 
     let moves = legal_moves(board);
@@ -249,7 +324,8 @@ fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx);
+        let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state);
         if score > best_score {
             best_score = score;
         }
@@ -264,20 +340,57 @@ fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &
     best_score
 }
 
-fn evaluate_or_mate(board: &Board, ply: i32, nnue_model: Option<&NnueModel>) -> i32 {
+fn child_nnue_state(
+    ctx: &SearchContext,
+    parent_board: &Board,
+    child_board: &Board,
+    parent_state: Option<&NnuePositionState>,
+    mv: Move,
+) -> Option<NnuePositionState> {
+    match &ctx.evaluation {
+        EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::Incremental,
+        } => Some(model.apply_move(
+            parent_board,
+            child_board,
+            parent_state.expect("incremental search should have NNUE state"),
+            mv,
+        )),
+        _ => None,
+    }
+}
+
+fn evaluate_or_mate(
+    board: &Board,
+    ply: i32,
+    ctx: &SearchContext,
+    nnue_state: Option<&NnuePositionState>,
+) -> i32 {
     let us = board.side_to_move();
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
         return -MATE_SCORE + ply;
     }
 
-    if let Some(model) = nnue_model {
-        model.evaluate(board)
-    } else {
-        let them = !us;
-        material_score(board, us)
-            - material_score(board, them)
-            + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+    match &ctx.evaluation {
+        EvaluationStrategy::Handcrafted => {
+            let them = !us;
+            material_score(board, us)
+                - material_score(board, them)
+                + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+        }
+        EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::FullRefresh,
+        } => model.evaluate_full_refresh(board),
+        EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::Incremental,
+        } => model.evaluate_from_state(
+            board,
+            nnue_state.expect("incremental evaluation should receive NNUE state"),
+        ),
     }
 }
 
@@ -428,6 +541,8 @@ mod tests {
     use super::*;
     #[cfg(not(feature = "annan"))]
     use std::path::PathBuf;
+    #[cfg(not(feature = "annan"))]
+    use std::sync::Arc;
 
     #[cfg(not(feature = "annan"))]
     fn load_test_nnue() -> Option<NnueModel> {
@@ -492,6 +607,49 @@ mod tests {
         assert!(summary.elapsed_ms >= 0.0);
         assert!(summary.nps >= 0.0);
         assert!(summary.best_move.is_some());
+    }
+
+    #[cfg(not(feature = "annan"))]
+    fn assert_search_modes_match(sfen: &str, depth: u8) {
+        let Some(model) = load_test_nnue() else {
+            return;
+        };
+        let model = Arc::new(model);
+        let full_refresh = search_impl_with_eval_mode(
+            sfen,
+            depth,
+            model.clone(),
+            SearchEvalMode::FullRefresh,
+        )
+        .unwrap();
+        let incremental = search_impl_with_eval_mode(
+            sfen,
+            depth,
+            model,
+            SearchEvalMode::Incremental,
+        )
+        .unwrap();
+
+        assert_eq!(incremental.best_move, full_refresh.best_move);
+        assert_eq!(incremental.best_score, full_refresh.best_score);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn nnue_search_modes_match_on_start_position() {
+        assert_search_modes_match(haitaka::SFEN_STARTPOS, 3);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn nnue_search_modes_match_on_handicap_position() {
+        assert_search_modes_match(haitaka::SFEN_6PIECE_HANDICAP, 3);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn nnue_search_modes_match_on_tactical_position() {
+        assert_search_modes_match("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", 3);
     }
 
     #[test]
