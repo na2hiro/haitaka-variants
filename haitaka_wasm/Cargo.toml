@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 haitaka = { path = "../haitaka", default-features = false }
 wasm-bindgen = "0.2.100"
+js-sys = "0.3.90"
 
 [features]
 annan = ["haitaka/annan"]

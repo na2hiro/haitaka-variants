@@ -16,12 +16,142 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
     Piece::Gold,
 ];
 
+#[derive(Debug, Clone, PartialEq)]
+struct SearchSummary {
+    best_move: Option<String>,
+    elapsed_ms: f64,
+    states: u64,
+    nps: f64,
+}
+
+#[derive(Debug, Default)]
+struct SearchContext {
+    states: u64,
+}
+
+impl SearchContext {
+    fn record_state(&mut self) {
+        self.states += 1;
+    }
+}
+
+#[wasm_bindgen]
+pub struct SearchResult {
+    best_move: Option<String>,
+    elapsed_ms: f64,
+    states: u64,
+    nps: f64,
+}
+
+#[wasm_bindgen]
+impl SearchResult {
+    #[wasm_bindgen(getter, js_name = bestMove)]
+    pub fn best_move(&self) -> Option<String> {
+        self.best_move.clone()
+    }
+
+    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    pub fn elapsed_ms(&self) -> f64 {
+        self.elapsed_ms
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn states(&self) -> f64 {
+        self.states as f64
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nps(&self) -> f64 {
+        self.nps
+    }
+}
+
+#[wasm_bindgen]
+pub struct PerftResult {
+    elapsed_ms: f64,
+    nodes: u64,
+    nps: f64,
+}
+
+#[wasm_bindgen]
+impl PerftResult {
+    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    pub fn elapsed_ms(&self) -> f64 {
+        self.elapsed_ms
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nodes(&self) -> f64 {
+        self.nodes as f64
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nps(&self) -> f64 {
+        self.nps
+    }
+}
+
+fn now_ms() -> f64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_secs_f64()
+            * 1_000.0
+    }
+}
+
 fn best_move_impl(sfen: &str, depth: u8) -> Result<Option<String>, String> {
+    Ok(search_impl(sfen, depth)?.best_move)
+}
+
+fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| format!("failed to parse SFEN: {err}"))?;
     let depth = depth.max(1);
+    let started_at_ms = now_ms();
+    let mut ctx = SearchContext::default();
+    let best_move = search_best_move(&board, depth, &mut ctx).map(|mv| mv.to_string());
+    let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
+    let nps = if elapsed_ms > 0.0 {
+        ctx.states as f64 / (elapsed_ms / 1_000.0)
+    } else {
+        0.0
+    };
 
-    Ok(search_best_move(&board, depth).map(|mv| mv.to_string()))
+    Ok(SearchSummary {
+        best_move,
+        elapsed_ms,
+        states: ctx.states,
+        nps,
+    })
+}
+
+fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
+    let board = Board::from_sfen(sfen)
+        .map_err(|err| format!("failed to parse SFEN: {err}"))?;
+    let started_at_ms = now_ms();
+    let nodes = perft_bulk(&board, depth);
+    let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
+    let nps = if elapsed_ms > 0.0 {
+        nodes as f64 / (elapsed_ms / 1_000.0)
+    } else {
+        0.0
+    };
+
+    Ok(PerftResult {
+        elapsed_ms,
+        nodes,
+        nps,
+    })
 }
 
 #[wasm_bindgen(js_name = best_move)]
@@ -29,7 +159,24 @@ pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
     best_move_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
 }
 
-fn search_best_move(board: &Board, depth: u8) -> Option<Move> {
+#[wasm_bindgen]
+pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
+    let summary = search_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))?;
+    Ok(SearchResult {
+        best_move: summary.best_move,
+        elapsed_ms: summary.elapsed_ms,
+        states: summary.states,
+        nps: summary.nps,
+    })
+}
+
+#[wasm_bindgen]
+pub fn perft(sfen: &str, depth: u8) -> Result<PerftResult, JsValue> {
+    perft_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
+}
+
+fn search_best_move(board: &Board, depth: u8, ctx: &mut SearchContext) -> Option<Move> {
+    ctx.record_state();
     let moves = legal_moves(board);
     if moves.is_empty() {
         return None;
@@ -43,7 +190,7 @@ fn search_best_move(board: &Board, depth: u8) -> Option<Move> {
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = -negamax(&child, depth.saturating_sub(1), -beta, -alpha, 1);
+        let score = -negamax(&child, depth.saturating_sub(1), -beta, -alpha, 1, ctx);
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -54,20 +201,22 @@ fn search_best_move(board: &Board, depth: u8) -> Option<Move> {
     best_move
 }
 
-fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32) -> i32 {
+fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &mut SearchContext) -> i32 {
+    ctx.record_state();
+    if depth == 0 {
+        return evaluate_or_mate(board, ply);
+    }
+
     let moves = legal_moves(board);
     if moves.is_empty() {
         return -MATE_SCORE + ply;
-    }
-    if depth == 0 {
-        return evaluate(board);
     }
 
     let mut best_score = -INF_SCORE;
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1);
+        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx);
         if score > best_score {
             best_score = score;
         }
@@ -82,12 +231,17 @@ fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32) -> i32
     best_score
 }
 
-fn evaluate(board: &Board) -> i32 {
+fn evaluate_or_mate(board: &Board, ply: i32) -> i32 {
     let us = board.side_to_move();
     let them = !us;
+    let our_mobility = count_legal_moves(board) as i32;
+    if our_mobility == 0 {
+        return -MATE_SCORE + ply;
+    }
+
     material_score(board, us)
         - material_score(board, them)
-        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32)
+        + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -125,16 +279,39 @@ fn legal_moves(board: &Board) -> Vec<Move> {
         moves.extend(piece_moves);
         false
     });
-    moves.sort_by_key(|mv| move_order_key(board, *mv));
+    if moves.len() > 1 {
+        moves.sort_unstable_by_key(|mv| move_order_key(board, *mv));
+    }
     moves
 }
 
-fn move_order_key(board: &Board, mv: Move) -> (Reverse<i32>, Reverse<u8>, String) {
+fn move_order_key(board: &Board, mv: Move) -> (Reverse<i32>, Reverse<u8>, u8, u8, u8, u8) {
     (
         Reverse(capture_value(board, mv)),
         Reverse(u8::from(mv.is_promotion())),
-        mv.to_string(),
+        u8::from(mv.is_drop()),
+        move_to_index(mv),
+        move_from_or_piece_index(mv),
+        move_piece_kind_index(mv),
     )
+}
+
+fn move_to_index(mv: Move) -> u8 {
+    mv.to() as u8
+}
+
+fn move_from_or_piece_index(mv: Move) -> u8 {
+    match mv {
+        Move::BoardMove { from, .. } => from as u8,
+        Move::Drop { piece, .. } => piece as u8,
+    }
+}
+
+fn move_piece_kind_index(mv: Move) -> u8 {
+    match mv {
+        Move::Drop { piece, .. } => piece as u8,
+        Move::BoardMove { .. } => u8::MAX,
+    }
 }
 
 fn capture_value(board: &Board, mv: Move) -> i32 {
@@ -147,6 +324,42 @@ fn capture_value(board: &Board, mv: Move) -> i32 {
             .unwrap_or(0),
         Move::Drop { .. } => 0,
     }
+}
+
+fn perft_bulk(board: &Board, depth: u8) -> u64 {
+    let mut nodes = 0;
+    match depth {
+        0 => nodes += 1,
+        1 => {
+            board.generate_board_moves(|moves| {
+                nodes += moves.into_iter().len() as u64;
+                false
+            });
+            board.generate_drops(|moves| {
+                nodes += moves.into_iter().len() as u64;
+                false
+            });
+        }
+        _ => {
+            board.generate_board_moves(|moves| {
+                for mv in moves {
+                    let mut child = board.clone();
+                    child.play_unchecked(mv);
+                    nodes += perft_bulk(&child, depth - 1);
+                }
+                false
+            });
+            board.generate_drops(|moves| {
+                for mv in moves {
+                    let mut child = board.clone();
+                    child.play_unchecked(mv);
+                    nodes += perft_bulk(&child, depth - 1);
+                }
+                false
+            });
+        }
+    }
+    nodes
 }
 
 fn piece_value(piece: Piece) -> i32 {
@@ -171,8 +384,9 @@ mod tests {
 
     fn assert_legal_best_move(sfen: &str, depth: u8) {
         let board = Board::from_sfen(sfen).unwrap();
-        let best = best_move_impl(sfen, depth)
+        let best = search_impl(sfen, depth)
             .unwrap()
+            .best_move
             .expect("expected a legal move");
         let mv: Move = best.parse().unwrap();
         assert!(
@@ -215,5 +429,20 @@ mod tests {
     fn prefers_capturing_a_hanging_rook_in_a_simple_tactical_position() {
         let sfen = "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1";
         assert_eq!(best_move_impl(sfen, 1).unwrap().as_deref(), Some("5e4e"));
+    }
+
+    #[test]
+    fn reports_search_statistics() {
+        let summary = search_impl(haitaka::SFEN_STARTPOS, 1).unwrap();
+        assert!(summary.states > 0);
+        assert!(summary.elapsed_ms >= 0.0);
+        assert!(summary.nps >= 0.0);
+        assert!(summary.best_move.is_some());
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn perft_matches_annan_start_position_depth_four() {
+        assert_eq!(perft_bulk(&Board::startpos(), 4), 605_424);
     }
 }
