@@ -188,7 +188,18 @@ impl Board {
     /// and then check each effective movement type.
     #[cfg(feature = "annan")]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
-        use crate::annan::{AnnanBacking, slider_pseudo_attacks, is_slider_movement, pseudo_legals_for};
+        self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
+    }
+
+    #[cfg(feature = "annan")]
+    pub(super) fn calculate_checkers_and_pins_excluding(
+        &self,
+        color: Color,
+        excluded_attackers: BitBoard,
+    ) -> (BitBoard, BitBoard) {
+        use crate::annan::{
+            AnnanBacking, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
+        };
 
         let mut checkers = BitBoard::EMPTY;
         let mut pinned = BitBoard::EMPTY;
@@ -210,9 +221,10 @@ impl Board {
             // Collect all opponent pieces effectively moving as `eff_piece`:
             //   - pieces of type `eff_piece` that are NOT backed (move as themselves)
             //   - any piece backed by `eff_piece`
-            let unbacked_of_type = self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
+            let unbacked_of_type =
+                self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
             let backed_by_type = backing.backed_by[eff_piece as usize];
-            let movers = (unbacked_of_type | backed_by_type) & their_pieces;
+            let movers = ((unbacked_of_type | backed_by_type) & their_pieces) & !excluded_attackers;
 
             if movers.is_empty() {
                 continue;

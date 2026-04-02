@@ -733,9 +733,7 @@ fn annan_capture_backer_resolves_check() {
     // rank f: White Rook on 5f (backer)
     // rank g: White Pawn on 5g (checker, moves like Rook due to backing)
     // rank i: Black King on 5i
-    let board: Board = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1"
-        .parse()
-        .unwrap();
+    let board: Board = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1".parse().unwrap();
 
     assert!(
         !board.checkers().is_empty(),
@@ -744,8 +742,8 @@ fn annan_capture_backer_resolves_check() {
 
     // Capturing the backer (White Rook on 5f) with Black Rook from 5a
     let capture_backer = Move::BoardMove {
-        from: Square::A5,  // 5a
-        to: Square::F5,    // 5f
+        from: Square::A5, // 5a
+        to: Square::F5,   // 5f
         promotion: false,
     };
     assert!(
@@ -775,9 +773,7 @@ fn annan_capture_backer_does_not_help_native_check() {
     // rank h: White Gold on 5h (checker — natively attacks 5i as Gold)
     // rank i: Black King on 5i
     // Black has a Rook on 5a to have a piece that could capture 5g
-    let board: Board = "4R4/k8/9/9/9/9/4r4/4g4/4K4 b - 1"
-        .parse()
-        .unwrap();
+    let board: Board = "4R4/k8/9/9/9/9/4r4/4g4/4K4 b - 1".parse().unwrap();
 
     assert!(
         !board.checkers().is_empty(),
@@ -787,8 +783,8 @@ fn annan_capture_backer_does_not_help_native_check() {
     // Capturing the backer (Rook on 5g) should NOT resolve check
     // because the Gold on 5h natively attacks 5i.
     let capture_backer = Move::BoardMove {
-        from: Square::A5,  // 5a
-        to: Square::G5,    // 5g
+        from: Square::A5, // 5a
+        to: Square::G5,   // 5g
         promotion: false,
     };
     assert!(
@@ -808,9 +804,7 @@ fn annan_drop_interpose_backed_slider() {
     // rank f: White Rook on 5f (backer)
     // rank g: White Pawn on 5g (checker, moves like Rook)
     // rank i: Black King on 5i
-    let board: Board = "9/k8/9/9/9/4r4/4p4/9/4K4 b G 1"
-        .parse()
-        .unwrap();
+    let board: Board = "9/k8/9/9/9/4r4/4p4/9/4K4 b G 1".parse().unwrap();
 
     assert!(
         !board.checkers().is_empty(),
@@ -820,7 +814,7 @@ fn annan_drop_interpose_backed_slider() {
     // Drop Gold on 5h to interpose
     let drop = Move::Drop {
         piece: Piece::Gold,
-        to: Square::H5,  // 5h
+        to: Square::H5, // 5h
     };
     assert!(
         board.is_legal(drop),
@@ -837,9 +831,7 @@ fn annan_drop_no_interpose_non_slider() {
     // rank b: White King on 9b (safe)
     // rank h: White Pawn on 5h (no backer, checks King on 5i)
     // rank i: Black King on 5i
-    let board: Board = "9/k8/9/9/9/9/9/4p4/4K4 b G 1"
-        .parse()
-        .unwrap();
+    let board: Board = "9/k8/9/9/9/9/9/4p4/4K4 b G 1".parse().unwrap();
 
     assert!(
         !board.checkers().is_empty(),
@@ -855,8 +847,124 @@ fn annan_drop_no_interpose_non_slider() {
         }
         false
     });
+    assert!(!any_legal_drop, "No drop should resolve a non-slider check");
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_sideways_pawn_move_creating_nifu_is_illegal() {
+    let board: Board = "8k/9/4P4/9/9/9/3P5/3G5/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(mv));
+    assert!(!board.is_legal(mv));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(mv);
+        generated
+    });
     assert!(
-        !any_legal_drop,
-        "No drop should resolve a non-slider check"
+        !generated,
+        "A pawn move that creates nifu should not be generated"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_nifu_pawn_move_is_legal_only_with_promotion() {
+    let board: Board = "8k/9/3P5/3GG4/9/9/4P4/9/K8 b - 1".parse().unwrap();
+
+    let non_promo = Move::BoardMove {
+        from: Square::C6, // 6c
+        to: Square::C5,   // 5c
+        promotion: false,
+    };
+    let promo = Move::BoardMove {
+        from: Square::C6, // 6c
+        to: Square::C5,   // 5c
+        promotion: true,
+    };
+
+    assert!(!board.is_legal_board_move(non_promo));
+    assert!(board.is_legal_board_move(promo));
+
+    let mut generated_non_promo = false;
+    let mut generated_promo = false;
+    board.generate_board_moves(|mvs| {
+        generated_non_promo |= mvs.has(non_promo);
+        generated_promo |= mvs.has(promo);
+        false
+    });
+
+    assert!(
+        !generated_non_promo,
+        "The non-promotion nifu move should not be generated"
+    );
+    assert!(
+        generated_promo,
+        "The promotion move should still be generated"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_sideways_pawn_move_updates_pawnless_files() {
+    let board: Board = "8k/9/9/9/9/9/3P5/3G5/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(mv));
+
+    let mut after = board.clone();
+    after.play_unchecked(mv);
+
+    assert!(
+        after.pawn_drop_ok(Color::Black, Square::E6),
+        "The source file should become pawnless after the pawn moves away"
+    );
+    assert!(
+        !after.pawn_drop_ok(Color::Black, Square::E5),
+        "The destination file should stop being pawnless after the pawn moves in"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_nifu_pawn_move_does_not_count_as_check() {
+    let board: Board = "9/9/4P4/9/9/5k3/3P5/3GG4/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(mv));
+
+    let mut generated = false;
+    board.generate_checks(|mvs| {
+        generated |= mvs.has(mv);
+        generated
+    });
+    assert!(
+        !generated,
+        "A pawn move that becomes nifu should not be treated as a checking move"
+    );
+
+    let mut after = board.clone();
+    after.play_unchecked(mv);
+    assert!(
+        after.checkers().is_empty(),
+        "The moved nifu pawn itself should not be counted as a checker"
     );
 }

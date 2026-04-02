@@ -37,7 +37,8 @@ pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1
 /// to avoid them being too powerful from the start (they would otherwise
 /// move like bishop/rook due to Annan backing).
 #[cfg(feature = "annan")]
-pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
+pub const SFEN_STARTPOS: &str =
+    "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 
 // TODO: In handicap games is white's first move numbered 1 or 2? For now, to be consistent, I label it '2'.
 
@@ -142,8 +143,33 @@ impl Board {
     pub fn unchecked_put(&mut self, color: Color, piece: Piece, square: Square) {
         self.inner.xor_square(piece, color, square);
         if piece == Piece::Pawn {
-            self.pawnless_files[color as usize] &= !square.file().bitboard();
+            self.refresh_pawnless_file(color, square.file());
         }
+    }
+
+    #[inline(always)]
+    fn refresh_pawnless_file(&mut self, color: Color, file: File) {
+        let file_bb = file.bitboard();
+        if (self.colored_pieces(color, Piece::Pawn) & file_bb).is_empty() {
+            self.pawnless_files[color as usize] |= file_bb;
+        } else {
+            self.pawnless_files[color as usize] &= !file_bb;
+        }
+    }
+
+    #[cfg(feature = "annan")]
+    #[inline(always)]
+    fn pawn_move_would_be_nifu(
+        &self,
+        color: Color,
+        from: Square,
+        to: Square,
+        promotion: bool,
+    ) -> bool {
+        !promotion
+            && !((self.colored_pieces(color, Piece::Pawn) & !from.bitboard())
+                & to.file().bitboard())
+            .is_empty()
     }
 
     /// Get a [`BitBoard`] of all the pieces of the given piece type.
@@ -647,7 +673,7 @@ impl Board {
     /// indicates that whoever is side-to-to-move has the advantage of the first move.
     ///
     /// # Examples
-    /// 
+    ///
     /// # use haitaka::*;
     /// let sfen1 = "9/7k1/9/7S1/9/9/9/7L1/9 b -";
     /// let board1 = Board::tsume(sfen1).unwrap();
@@ -660,7 +686,7 @@ impl Board {
     /// assert_eq!(board2.dominates(board1), Dominance::DominatedBy);
     /// assert_eq!(board2.dominates(board3), Dominance::Incomparable);
     /// assert_eq!(board3.dominates(board2), Dominance::Incomparable);
-    /// 
+    ///
     pub fn dominates(&self, other: &Self) -> Dominance {
         self.inner.dominates(&other.inner)
     }
@@ -738,7 +764,7 @@ impl Board {
 
             // update pawn_on_file
             if piece == Piece::Pawn {
-                self.pawnless_files[color as usize] &= !to.file().bitboard();
+                self.refresh_pawnless_file(color, to.file());
             }
 
             // update checkers and pins
@@ -770,7 +796,7 @@ impl Board {
 
                 // update pawn_on_file
                 if capture == Piece::Pawn {
-                    self.pawnless_files[!color as usize] |= to.file().bitboard();
+                    self.refresh_pawnless_file(!color, to.file());
                 }
             }
 
@@ -782,8 +808,11 @@ impl Board {
             self.inner.xor_square(final_piece, color, to);
 
             // update pawn_on_file
-            if piece == Piece::Pawn && promotion {
-                self.pawnless_files[color as usize] |= to.file().bitboard();
+            if piece == Piece::Pawn {
+                self.refresh_pawnless_file(color, from.file());
+                if from.file() != to.file() || promotion {
+                    self.refresh_pawnless_file(color, to.file());
+                }
             }
 
             // update checkers and pins (if the other side has a King)
@@ -866,9 +895,17 @@ impl Board {
     /// Note: called BEFORE toggle_side_to_move, so `color` is the mover.
     /// Checkers/pins are from the opponent's (the new side-to-move's) perspective.
     #[cfg(feature = "annan")]
-    fn update_checkers_and_pins(&mut self, color: Color, _piece: Piece, _to: Square) {
+    fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         let them = !color;
-        let (checkers, pinned) = self.calculate_checkers_and_pins(them);
+        let ignored_nifu_pawn = if piece == Piece::Pawn
+            && (self.colored_pieces(color, Piece::Pawn) & to.file().bitboard()).len() > 1
+        {
+            to.bitboard()
+        } else {
+            BitBoard::EMPTY
+        };
+        let (checkers, pinned) =
+            self.calculate_checkers_and_pins_excluding(them, ignored_nifu_pawn);
         self.checkers = checkers;
         self.pinned = pinned;
     }

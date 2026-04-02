@@ -27,9 +27,9 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
-pub mod attacks;
 #[cfg(feature = "annan")]
 pub mod annan;
+pub mod attacks;
 pub mod board;
 pub mod slider_moves;
 

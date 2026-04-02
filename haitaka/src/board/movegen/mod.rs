@@ -101,7 +101,10 @@ impl Board {
                 if self.colors(them).has(behind) {
                     let native_piece = self.piece_on(checker).unwrap();
                     let native_attacks = crate::annan::pseudo_legals_for(
-                        native_piece, them, checker, self.occupied(),
+                        native_piece,
+                        them,
+                        checker,
+                        self.occupied(),
                     );
                     if !native_attacks.has(our_king) {
                         targets |= behind.bitboard();
@@ -165,6 +168,74 @@ impl Board {
         }
     }
 
+    fn emit_board_moves<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        color: Color,
+        piece: Piece,
+        from: Square,
+        to: BitBoard,
+        prom_status: PromotionStatus,
+        listener: &mut F,
+    ) -> bool {
+        if to.is_empty() {
+            return false;
+        }
+
+        #[cfg(feature = "annan")]
+        if piece == Piece::Pawn {
+            return self.emit_annan_pawn_moves(color, from, to, listener);
+        }
+
+        listener(PieceMoves::BoardMoves {
+            color,
+            piece,
+            from,
+            to,
+            prom_status,
+        })
+    }
+
+    #[cfg(feature = "annan")]
+    fn emit_annan_pawn_moves<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        color: Color,
+        from: Square,
+        to: BitBoard,
+        listener: &mut F,
+    ) -> bool {
+        let zone = prom_zone(color);
+        let can_promote_from = zone.has(from);
+        let mut standard = to;
+        let mut promo_only = BitBoard::EMPTY;
+
+        for square in to {
+            if self.pawn_move_would_be_nifu(color, from, square, false) {
+                standard ^= square.bitboard();
+                if can_promote_from || zone.has(square) {
+                    promo_only |= square.bitboard();
+                }
+            }
+        }
+
+        abort_if! {
+            !standard.is_empty() && listener(PieceMoves::BoardMoves {
+                color,
+                piece: Piece::Pawn,
+                from,
+                to: standard,
+                prom_status: PromotionStatus::Undecided,
+            }),
+            !promo_only.is_empty() && listener(PieceMoves::BoardMoves {
+                color,
+                piece: Piece::Pawn,
+                from,
+                to: promo_only,
+                prom_status: PromotionStatus::MustPromote,
+            })
+        }
+        false
+    }
+
     // Board moves
 
     // Generate legal moves for all the "commoners" (all pieces except King).
@@ -192,15 +263,7 @@ impl Board {
 
         for from in pieces & !pinned {
             let to = P::pseudo_legals(color, from, blockers) & target_squares;
-            if !to.is_empty() {
-                abort_if!(listener(PieceMoves::BoardMoves {
-                    color,
-                    piece: P::PIECE,
-                    from,
-                    to,
-                    prom_status,
-                }));
-            }
+            abort_if!(self.emit_board_moves(color, P::PIECE, from, to, prom_status, listener));
         }
 
         if !IN_CHECK && P::PIECE != Piece::Knight && self.has(color, Piece::King) {
@@ -212,15 +275,7 @@ impl Board {
                     & line_ray(our_king, from)
                     & target_squares;
 
-                if !to.is_empty() {
-                    abort_if!(listener(PieceMoves::BoardMoves {
-                        color,
-                        piece: P::PIECE,
-                        from,
-                        to,
-                        prom_status,
-                    }));
-                }
+                abort_if!(self.emit_board_moves(color, P::PIECE, from, to, prom_status, listener));
             }
         }
         false
@@ -353,7 +408,9 @@ impl Board {
     /// attack the given square.
     #[cfg(feature = "annan")]
     fn annan_king_safe_on(&self, square: Square) -> bool {
-        use crate::annan::{AnnanBacking, pseudo_legals_for, is_slider_movement, slider_pseudo_attacks};
+        use crate::annan::{
+            AnnanBacking, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
+        };
 
         let color = self.side_to_move();
         let their_color = !color;
@@ -366,7 +423,8 @@ impl Board {
         let backing = AnnanBacking::compute(self, their_color);
 
         for &eff_piece in &Piece::ALL {
-            let unbacked_of_type = self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
+            let unbacked_of_type =
+                self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
             let backed_by_type = backing.backed_by[eff_piece as usize];
             let movers = (unbacked_of_type | backed_by_type) & their_pieces;
 
@@ -585,7 +643,8 @@ impl Board {
                         continue;
                     }
 
-                    let mut to = pseudo_legals_for(backing_piece, color, from, blockers) & target_squares;
+                    let mut to =
+                        pseudo_legals_for(backing_piece, color, from, blockers) & target_squares;
 
                     // Handle pins
                     if pinned.has(from) {
@@ -601,13 +660,14 @@ impl Board {
                         } else {
                             PromotionStatus::CannotPromote
                         };
-                        abort_if!(listener(PieceMoves::BoardMoves {
+                        abort_if!(self.emit_board_moves(
                             color,
-                            piece: actual_piece,
+                            actual_piece,
                             from,
                             to,
                             prom_status,
-                        }));
+                            listener,
+                        ));
                     }
                 }
             }
@@ -859,6 +919,10 @@ impl Board {
                 }
             }
             // No must_promote check under Annan
+
+            if piece == Piece::Pawn && self.pawn_move_would_be_nifu(color, from, to, promotion) {
+                return false;
+            }
 
             // pinned piece restriction
             if self.pinned.has(from) && !line_ray(self.king(color), from).has(to) {
@@ -1292,7 +1356,9 @@ impl Board {
 
         self.generate_moves(|mvs| {
             match mvs {
-                PieceMoves::BoardMoves { color, piece, from, .. } => {
+                PieceMoves::BoardMoves {
+                    color, piece, from, ..
+                } => {
                     let mut check_tos = BitBoard::EMPTY;
                     let mut check_prom_tos = BitBoard::EMPTY;
 

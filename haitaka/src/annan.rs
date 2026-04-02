@@ -11,7 +11,12 @@ use crate::*;
 /// This is a runtime dispatch version of the compile-time `Commoner::pseudo_legals`,
 /// needed because under Annan rules the effective piece type is only known at runtime.
 #[inline]
-pub fn pseudo_legals_for(piece: Piece, color: Color, square: Square, blockers: BitBoard) -> BitBoard {
+pub fn pseudo_legals_for(
+    piece: Piece,
+    color: Color,
+    square: Square,
+    blockers: BitBoard,
+) -> BitBoard {
     match piece {
         Piece::Pawn => pawn_attacks(color, square),
         Piece::Lance => get_lance_moves(color, square, blockers),
@@ -66,7 +71,10 @@ impl AnnanBacking {
             has_backer |= backed;
         }
 
-        Self { backed_by, has_backer }
+        Self {
+            backed_by,
+            has_backer,
+        }
     }
 }
 
