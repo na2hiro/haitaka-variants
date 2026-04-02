@@ -1,6 +1,11 @@
+#[allow(dead_code)]
+mod nnue;
+
 use std::cmp::Reverse;
+use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, Move, Piece};
+use nnue::NnueModel;
 use wasm_bindgen::prelude::*;
 
 const INF_SCORE: i32 = 1_000_000;
@@ -16,6 +21,8 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
     Piece::Gold,
 ];
 
+static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
+
 #[derive(Debug, Clone, PartialEq)]
 struct SearchSummary {
     best_move: Option<String>,
@@ -27,6 +34,7 @@ struct SearchSummary {
 #[derive(Debug, Default)]
 struct SearchContext {
     states: u64,
+    nnue_model: Option<Arc<NnueModel>>,
 }
 
 impl SearchContext {
@@ -113,12 +121,32 @@ fn best_move_impl(sfen: &str, depth: u8) -> Result<Option<String>, String> {
     Ok(search_impl(sfen, depth)?.best_move)
 }
 
+fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
+    #[cfg(feature = "annan")]
+    {
+        let _ = bytes;
+        Err("NNUE is currently only supported for standard shogi rules.".to_string())
+    }
+
+    #[cfg(not(feature = "annan"))]
+    {
+        let model =
+            NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
+        let description = model.description().to_string();
+        *nnue_model_slot().write().unwrap() = Some(Arc::new(model));
+        Ok(description)
+    }
+}
+
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| format!("failed to parse SFEN: {err}"))?;
     let depth = depth.max(1);
     let started_at_ms = now_ms();
-    let mut ctx = SearchContext::default();
+    let mut ctx = SearchContext {
+        states: 0,
+        nnue_model: current_nnue_model(),
+    };
     let best_move = search_best_move(&board, depth, &mut ctx).map(|mv| mv.to_string());
     let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
     let nps = if elapsed_ms > 0.0 {
@@ -157,6 +185,11 @@ fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
 #[wasm_bindgen(js_name = best_move)]
 pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
     best_move_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
+}
+
+#[wasm_bindgen(js_name = load_nnue)]
+pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
+    load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
 }
 
 #[wasm_bindgen]
@@ -204,7 +237,7 @@ fn search_best_move(board: &Board, depth: u8, ctx: &mut SearchContext) -> Option
 fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &mut SearchContext) -> i32 {
     ctx.record_state();
     if depth == 0 {
-        return evaluate_or_mate(board, ply);
+        return evaluate_or_mate(board, ply, ctx.nnue_model.as_deref());
     }
 
     let moves = legal_moves(board);
@@ -231,17 +264,21 @@ fn negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32, ctx: &
     best_score
 }
 
-fn evaluate_or_mate(board: &Board, ply: i32) -> i32 {
+fn evaluate_or_mate(board: &Board, ply: i32, nnue_model: Option<&NnueModel>) -> i32 {
     let us = board.side_to_move();
-    let them = !us;
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
         return -MATE_SCORE + ply;
     }
 
-    material_score(board, us)
-        - material_score(board, them)
-        + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+    if let Some(model) = nnue_model {
+        model.evaluate(board)
+    } else {
+        let them = !us;
+        material_score(board, us)
+            - material_score(board, them)
+            + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+    }
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -378,9 +415,26 @@ fn piece_value(piece: Piece) -> i32 {
     }
 }
 
+fn nnue_model_slot() -> &'static RwLock<Option<Arc<NnueModel>>> {
+    NNUE_MODEL.get_or_init(|| RwLock::new(None))
+}
+
+fn current_nnue_model() -> Option<Arc<NnueModel>> {
+    nnue_model_slot().read().unwrap().clone()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "annan"))]
+    use std::path::PathBuf;
+
+    #[cfg(not(feature = "annan"))]
+    fn load_test_nnue() -> Option<NnueModel> {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
+        let bytes = std::fs::read(path).ok()?;
+        NnueModel::from_bytes(&bytes).ok()
+    }
 
     fn assert_legal_best_move(sfen: &str, depth: u8) {
         let board = Board::from_sfen(sfen).unwrap();
@@ -438,6 +492,17 @@ mod tests {
         assert!(summary.elapsed_ms >= 0.0);
         assert!(summary.nps >= 0.0);
         assert!(summary.best_move.is_some());
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn loads_test_nnue_when_available() {
+        let Some(model) = load_test_nnue() else {
+            return;
+        };
+        assert!(!model.description().is_empty());
+        let score = model.evaluate(&Board::startpos());
+        assert!(score.abs() < INF_SCORE);
     }
 
     #[test]
