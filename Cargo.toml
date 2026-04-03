@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "haitaka",
+    "haitaka_learn",
     "haitaka_types",
     "haitaka_wasm"
 ]

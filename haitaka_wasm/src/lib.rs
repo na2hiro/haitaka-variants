@@ -216,6 +216,12 @@ pub fn search_impl_with_eval_mode(
     search_impl_with_strategy(sfen, depth, EvaluationStrategy::Nnue { model, mode })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
+    search_impl_with_strategy(sfen, depth, EvaluationStrategy::Handcrafted)
+}
+
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| format!("failed to parse SFEN: {err}"))?;
