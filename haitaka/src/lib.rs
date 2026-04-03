@@ -20,6 +20,7 @@ use haitaka_types::*;
 
 pub use bitboard::*;
 pub use color::*;
+pub use dfpn::*;
 pub use file::*;
 pub use piece::*;
 pub use rank::*;
@@ -31,6 +32,7 @@ pub use square::*;
 pub mod annan;
 pub mod attacks;
 pub mod board;
+pub mod dfpn;
 pub mod slider_moves;
 
 pub use attacks::*;

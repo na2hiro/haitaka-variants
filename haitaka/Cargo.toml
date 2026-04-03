@@ -14,6 +14,7 @@ categories = ["games", "no-std"]
 
 [dependencies]
 haitaka-types = { path = "../haitaka_types", version = "0.1.3" }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [build-dependencies]
 haitaka-types = { path = "../haitaka_types", version = "0.1.3" }
@@ -32,6 +33,10 @@ harness = false
 
 [[bench]]
 name = "perft"
+harness = false
+
+[[bench]]
+name = "dfpn"
 harness = false
 
 [features]

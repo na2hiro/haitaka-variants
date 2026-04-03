@@ -3,7 +3,7 @@ mod nnue;
 use std::cmp::Reverse;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use haitaka::{Board, Color, Move, Piece};
+use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, Move, Piece};
 pub use nnue::{NnueModel, NnuePositionState};
 use wasm_bindgen::prelude::*;
 
@@ -113,6 +113,59 @@ impl PerftResult {
     #[wasm_bindgen(getter)]
     pub fn nps(&self) -> f64 {
         self.nps
+    }
+}
+
+#[wasm_bindgen]
+pub struct DfpnResult {
+    status: String,
+    pv: Vec<String>,
+    elapsed_ms: f64,
+    nodes: u64,
+    tt_hits: u64,
+    tt_stores: u64,
+    tt_collisions: u64,
+}
+
+#[wasm_bindgen]
+impl DfpnResult {
+    #[wasm_bindgen(getter)]
+    pub fn status(&self) -> String {
+        self.status.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn pv(&self) -> js_sys::Array {
+        let array = js_sys::Array::new();
+        for mv in &self.pv {
+            array.push(&JsValue::from_str(mv));
+        }
+        array
+    }
+
+    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    pub fn elapsed_ms(&self) -> f64 {
+        self.elapsed_ms
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nodes(&self) -> f64 {
+        self.nodes as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttHits)]
+    pub fn tt_hits(&self) -> f64 {
+        self.tt_hits as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttStores)]
+    pub fn tt_stores(&self) -> f64 {
+        self.tt_stores as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    pub fn tt_collisions(&self) -> f64 {
+        self.tt_collisions as f64
     }
 }
 
@@ -241,6 +294,40 @@ fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
     })
 }
 
+fn parse_dfpn_board(sfen: &str) -> Result<Board, String> {
+    Board::from_sfen(sfen)
+        .or_else(|_| Board::tsume(sfen))
+        .map_err(|err| format!("failed to parse SFEN: {err}"))
+}
+
+#[doc(hidden)]
+pub fn dfpn_impl(
+    sfen: &str,
+    max_nodes: Option<u64>,
+    max_time_ms: Option<u64>,
+    tt_megabytes: usize,
+    max_pv_moves: usize,
+) -> Result<CoreDfpnResult, String> {
+    let board = parse_dfpn_board(sfen)?;
+    let options = DfpnOptions {
+        max_nodes,
+        max_time_ms,
+        tt_megabytes,
+        max_pv_moves,
+    };
+    Ok(board.dfpn(&options))
+}
+
+fn optional_u64_from_f64(name: &str, value: Option<f64>) -> Result<Option<u64>, String> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 {
+        return Err(format!("{name} must be a non-negative integer"));
+    }
+    Ok(Some(value as u64))
+}
+
 #[wasm_bindgen(js_name = best_move)]
 pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
     best_move_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
@@ -265,6 +352,38 @@ pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
 #[wasm_bindgen]
 pub fn perft(sfen: &str, depth: u8) -> Result<PerftResult, JsValue> {
     perft_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
+}
+
+#[wasm_bindgen]
+pub fn dfpn(
+    sfen: &str,
+    max_nodes: Option<f64>,
+    max_time_ms: Option<f64>,
+    tt_megabytes: Option<u32>,
+    max_pv_moves: Option<u32>,
+) -> Result<DfpnResult, JsValue> {
+    let max_nodes = optional_u64_from_f64("max_nodes", max_nodes)
+        .map_err(|err| JsValue::from_str(&err))?;
+    let max_time_ms = optional_u64_from_f64("max_time_ms", max_time_ms)
+        .map_err(|err| JsValue::from_str(&err))?;
+    let core = dfpn_impl(
+        sfen,
+        max_nodes,
+        max_time_ms,
+        tt_megabytes.map(|value| value as usize).unwrap_or(16),
+        max_pv_moves.map(|value| value as usize).unwrap_or(256),
+    )
+    .map_err(|err| JsValue::from_str(&err))?;
+
+    Ok(DfpnResult {
+        status: core.status.as_str().to_string(),
+        pv: core.pv.iter().map(ToString::to_string).collect(),
+        elapsed_ms: core.stats.elapsed_ms,
+        nodes: core.stats.nodes,
+        tt_hits: core.stats.tt_hits,
+        tt_stores: core.stats.tt_stores,
+        tt_collisions: core.stats.tt_collisions,
+    })
 }
 
 fn search_best_move(
@@ -550,6 +669,17 @@ mod tests {
     #[cfg(not(feature = "annan"))]
     use std::sync::Arc;
 
+    const DFPN_MATE_SFEN: &str = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
+    const DFPN_NO_MATE_SFEN: &str = "4k4/9/9/9/9/9/9/9/4K4 b - 1";
+    #[cfg(feature = "annan")]
+    const DFPN_ANNAN_PROBLEM_SFEN: &str = "7p1/8k/5+R3/6P2/7G1/9/9/9/9 b N 1";
+
+    fn parse_dfpn_test_board(sfen: &str) -> Board {
+        Board::from_sfen(sfen)
+            .or_else(|_| Board::tsume(sfen))
+            .unwrap()
+    }
+
     #[cfg(not(feature = "annan"))]
     fn load_test_nnue() -> Option<NnueModel> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
@@ -613,6 +743,54 @@ mod tests {
         assert!(summary.elapsed_ms >= 0.0);
         assert!(summary.nps >= 0.0);
         assert!(summary.best_move.is_some());
+    }
+
+    #[test]
+    fn dfpn_matches_core_mate_result() {
+        let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
+        let expected = board.dfpn(&DfpnOptions::default());
+        let actual = dfpn_impl(DFPN_MATE_SFEN, None, None, 16, 256).unwrap();
+        assert_eq!(actual.status, expected.status);
+        assert_eq!(actual.pv.first(), expected.pv.first());
+    }
+
+    #[test]
+    fn dfpn_matches_core_no_mate_result() {
+        let board = Board::from_sfen(DFPN_NO_MATE_SFEN).unwrap();
+        let expected = board.dfpn(&DfpnOptions::default());
+        let actual = dfpn_impl(DFPN_NO_MATE_SFEN, None, None, 16, 256).unwrap();
+        assert_eq!(actual.status, expected.status);
+        assert_eq!(actual.pv, expected.pv);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn dfpn_parses_tsume_sfens() {
+        let result = dfpn_impl(
+            "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",
+            None,
+            None,
+            16,
+            256,
+        )
+        .unwrap();
+        assert_eq!(result.status.as_str(), "mate");
+    }
+
+    #[test]
+    fn dfpn_rejects_invalid_sfen() {
+        let err = dfpn_impl("invalid", None, None, 16, 256).unwrap_err();
+        assert!(err.contains("failed to parse SFEN"));
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn dfpn_matches_core_on_specific_annan_problem() {
+        let board = parse_dfpn_test_board(DFPN_ANNAN_PROBLEM_SFEN);
+        let expected = board.dfpn(&DfpnOptions::default());
+        let actual = dfpn_impl(DFPN_ANNAN_PROBLEM_SFEN, None, None, 16, 256).unwrap();
+        assert_eq!(actual.status, expected.status);
+        assert_eq!(actual.pv.first(), expected.pv.first());
     }
 
     #[cfg(not(feature = "annan"))]
