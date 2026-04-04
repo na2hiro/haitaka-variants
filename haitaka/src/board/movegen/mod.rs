@@ -61,6 +61,73 @@ macro_rules! abort_if {
 }
 
 impl Board {
+    #[cfg(feature = "annan")]
+    fn annan_move_resolves_check(&self, mv: Move) -> bool {
+        let color = self.side_to_move();
+        let mut board = self.clone();
+        board.play_unchecked(mv);
+        let (checkers, _) = board.calculate_checkers_and_pins(color);
+        checkers.is_empty()
+    }
+
+    #[cfg(feature = "annan")]
+    fn annan_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
+        match mv {
+            Move::BoardMove {
+                from,
+                to,
+                promotion,
+            } => PieceMoves::BoardMoves {
+                color,
+                piece,
+                from,
+                to: to.bitboard(),
+                prom_status: if promotion {
+                    PromotionStatus::MustPromote
+                } else {
+                    PromotionStatus::CannotPromote
+                },
+            },
+            Move::Drop { piece, to } => PieceMoves::Drops {
+                color,
+                piece,
+                to: to.bitboard(),
+            },
+        }
+    }
+
+    #[cfg(feature = "annan")]
+    fn generate_annan_evasions<F: FnMut(PieceMoves) -> bool>(&self, listener: &mut F) -> bool {
+        debug_assert!(!self.checkers.is_empty());
+
+        let mut filter = |mvs: PieceMoves| {
+            for mv in mvs {
+                if self.annan_move_resolves_check(mv) {
+                    let singleton = match mv {
+                        Move::BoardMove { from, .. } => Self::annan_singleton_piece_moves(
+                            mv,
+                            self.side_to_move(),
+                            self.piece_on(from).unwrap(),
+                        ),
+                        Move::Drop { piece, .. } => {
+                            Self::annan_singleton_piece_moves(mv, self.side_to_move(), piece)
+                        }
+                    };
+                    if listener(singleton) {
+                        return true;
+                    }
+                }
+            }
+            false
+        };
+
+        abort_if! {
+            self.add_all_drops::<_, true>(&mut filter, !self.occupied()),
+            self.add_all_legals::<_, false>(BitBoard::FULL, &mut filter)
+        }
+        false
+    }
+
     // Target destination squares of board moves (other than by King).
     //
     // This function is only called when there is _at most one_ checker.
@@ -765,10 +832,21 @@ impl Board {
                 return false;
             }
 
-            match self.checkers.len() {
-                0 => return true,
-                1 => return self.target_drops::<true>().has(to),
-                _ => return false,
+            #[cfg(feature = "annan")]
+            {
+                if self.checkers.is_empty() {
+                    return true;
+                }
+                return self.annan_move_resolves_check(mv);
+            }
+
+            #[cfg(not(feature = "annan"))]
+            {
+                match self.checkers.len() {
+                    0 => return true,
+                    1 => return self.target_drops::<true>().has(to),
+                    _ => return false,
+                }
             }
         }
         false
@@ -929,15 +1007,17 @@ impl Board {
                 return false;
             }
 
-            let target_squares: BitBoard = match self.checkers.len() {
-                0 => self.target_squares::<false>(),
-                1 => self.target_squares::<true>(),
-                _ => return false,
-            };
-
             // Use effective movement type for move validation
             let moves = pseudo_legals_for(eff, color, from, self.occupied());
-            return (target_squares & moves).has(to);
+            if !moves.has(to) {
+                return false;
+            }
+
+            if self.checkers.is_empty() {
+                return true;
+            }
+
+            return self.annan_move_resolves_check(mv);
         }
         false
     }
@@ -992,7 +1072,21 @@ impl Board {
     /// });
     /// assert_eq!(total_moves, 30);
     /// ```
+    #[cfg(not(feature = "annan"))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        abort_if! {
+            self.generate_drops(&mut listener),
+            self.generate_board_moves(&mut listener)
+        }
+        false
+    }
+
+    #[cfg(feature = "annan")]
+    pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if !self.checkers.is_empty() {
+            return self.generate_annan_evasions(&mut listener);
+        }
+
         abort_if! {
             self.generate_drops(&mut listener),
             self.generate_board_moves(&mut listener)

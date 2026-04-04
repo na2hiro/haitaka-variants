@@ -1192,7 +1192,7 @@ mod tests {
 
     #[test]
     fn iterative_search_uses_dfpn_for_standard_mate() {
-        let summary = search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 5_000, true)
+        let summary = search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true)
             .unwrap();
 
         assert_eq!(summary.completed_depth, 0);
@@ -1285,14 +1285,29 @@ mod tests {
     #[test]
     #[cfg(feature = "annan")]
     fn iterative_search_uses_dfpn_for_annan_mate() {
-        let summary =
-            search_iterative_deepening_impl(DFPN_ANNAN_PROBLEM_SFEN, 4, 5_000).unwrap();
+        let summary = search_iterative_deepening_impl(DFPN_ANNAN_PROBLEM_SFEN, 4, 0).unwrap();
 
         assert_eq!(summary.completed_depth, 0);
         assert!(!summary.timed_out);
         assert_eq!(summary.best_move.as_deref(), Some("4c1c"));
         assert_eq!(summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()), Some("mate"));
         assert!(summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn iterative_search_does_not_false_mate_shared_backer_double_check_position() {
+        let summary = search_iterative_deepening_impl(
+            "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1",
+            6,
+            5_000,
+        )
+        .unwrap();
+
+        assert!(
+            !summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected),
+            "DFPN should not short-circuit this position as mate"
+        );
     }
 
     #[cfg(not(feature = "annan"))]

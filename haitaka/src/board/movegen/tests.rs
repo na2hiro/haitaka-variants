@@ -968,3 +968,43 @@ fn annan_nifu_pawn_move_does_not_count_as_check() {
         "The moved nifu pawn itself should not be counted as a checker"
     );
 }
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
+    let board: Board =
+        "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1"
+            .parse()
+            .unwrap();
+    let mating_try: Move = "6i5h".parse().unwrap();
+    assert!(board.is_legal(mating_try));
+
+    let mut after = board.clone();
+    after.play_unchecked(mating_try);
+
+    assert_eq!(
+        after.checkers().len(),
+        2,
+        "the mating try currently creates a double check"
+    );
+
+    let defense: Move = "4i5h".parse().unwrap();
+    assert!(
+        after.is_legal(defense),
+        "capturing the shared checker/backer should resolve both checks"
+    );
+
+    let mut generated = false;
+    after.generate_moves(|mvs| {
+        generated |= mvs.has(defense);
+        generated
+    });
+    assert!(generated, "the legal defense should be generated");
+
+    let mut resolved = after.clone();
+    resolved.play_unchecked(defense);
+    assert!(
+        resolved.checkers().is_empty(),
+        "after the capture, Black should no longer be in check"
+    );
+}

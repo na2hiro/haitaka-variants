@@ -158,7 +158,7 @@ impl DfpnSolver {
         let evaluation = self.search(board, INF_PN, INF_PN, &mut path);
         self.stats.elapsed_ms = self.started_at.elapsed().as_secs_f64() * 1_000.0;
 
-        let status = if evaluation.numbers.pn == 0 {
+        let mut status = if evaluation.numbers.pn == 0 {
             DfpnStatus::Mate
         } else if evaluation.numbers.dn == 0 {
             DfpnStatus::NoMate
@@ -167,7 +167,13 @@ impl DfpnSolver {
         };
 
         let pv = if status == DfpnStatus::Mate {
-            self.reconstruct_pv(board)
+            let pv = self.reconstruct_pv(board);
+            if verify_mating_line(board, self.attacker, &pv) {
+                pv
+            } else {
+                status = DfpnStatus::Unknown;
+                Vec::new()
+            }
         } else {
             Vec::new()
         };
@@ -383,7 +389,7 @@ fn collect_candidate_moves(board: &Board, kind: NodeKind, tt_move: Option<Move>)
     let mut moves = Vec::new();
     match kind {
         NodeKind::Attacker => board.generate_checks(|piece_moves| {
-            moves.extend(piece_moves);
+            moves.extend(piece_moves.into_iter().filter(|mv| board.is_legal(*mv)));
             false
         }),
         NodeKind::Defender => board.generate_moves(|piece_moves| {
@@ -403,9 +409,36 @@ fn collect_candidate_moves(board: &Board, kind: NodeKind, tt_move: Option<Move>)
 
 fn has_candidates(board: &Board, kind: NodeKind) -> bool {
     match kind {
-        NodeKind::Attacker => board.generate_checks(|_| true),
+        NodeKind::Attacker => {
+            let mut found = false;
+            board.generate_checks(|moves| {
+                found = moves.into_iter().any(|mv| board.is_legal(mv));
+                found
+            });
+            found
+        }
         NodeKind::Defender => board.generate_moves(|_| true),
     }
+}
+
+fn verify_mating_line(board: &Board, attacker: Color, pv: &[Move]) -> bool {
+    if pv.is_empty() {
+        return false;
+    }
+
+    let mut board = board.clone();
+    for &mv in pv {
+        if !board.is_legal(mv) {
+            return false;
+        }
+        let is_attacker_turn = board.side_to_move() == attacker;
+        board.play_unchecked(mv);
+        if is_attacker_turn && board.checkers().is_empty() {
+            return false;
+        }
+    }
+
+    board.side_to_move() != attacker && !board.generate_moves(|_| true)
 }
 
 const fn terminal_numbers(kind: NodeKind) -> ProofNumbers {
@@ -573,6 +606,11 @@ mod tests {
     const ANNAN_PROBLEM_SFEN: &str = "7p1/8k/5+R3/6P2/7G1/9/9/9/9 b N 1";
 
     fn assert_mating_line(board: &Board, pv: &[Move]) {
+        assert!(
+            verify_mating_line(board, board.side_to_move(), pv),
+            "PV should be a legal mating line"
+        );
+
         let attacker = board.side_to_move();
         let mut board = board.clone();
         for &mv in pv {
@@ -594,6 +632,24 @@ mod tests {
             !board.generate_moves(|_| true),
             "defender should have no legal replies at the end of the PV"
         );
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn generated_checks_are_legal_on_sample_positions() {
+        for sfen in [
+            ONE_PLY_MATE_SFEN,
+            "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+            TSUME_SFEN,
+        ] {
+            let board = parse_problem_board(sfen);
+            board.generate_checks(|moves| {
+                for mv in moves {
+                    assert!(board.is_legal(mv), "{mv} should be legal for {sfen}");
+                }
+                false
+            });
+        }
     }
 
     fn parse_problem_board(sfen: &str) -> Board {
@@ -692,5 +748,20 @@ mod tests {
         };
         let result = board.dfpn(&options);
         assert_eq!(result.status, DfpnStatus::Unknown);
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn does_not_false_mate_shared_backer_double_check_position() {
+        let board = parse_problem_board(
+            "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1",
+        );
+        let result = board.dfpn(&DfpnOptions {
+            max_nodes: Some(10_000),
+            max_time_ms: Some(25),
+            tt_megabytes: 4,
+            max_pv_moves: 64,
+        });
+        assert_ne!(result.status, DfpnStatus::Mate);
     }
 }
