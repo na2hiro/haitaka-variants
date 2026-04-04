@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use haitaka::Board;
-use haitaka_wasm::{NnueModel, SearchEvalMode, search_impl_with_eval_mode};
+use haitaka_wasm::{
+    NnueModel, SearchEvalMode, search_impl_handcrafted, search_impl_with_eval_mode,
+    search_iterative_deepening_impl, search_iterative_deepening_impl_with_dfpn_mode,
+};
 
 fn load_test_nnue() -> Option<Arc<NnueModel>> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
@@ -115,6 +118,70 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         });
     }
     search_group.finish();
+
+    let mut iterative_group = criterion.benchmark_group("iterative_search");
+    for &(name, sfen, depth) in &[
+        ("startpos_d4", haitaka::SFEN_STARTPOS, 4u8),
+        ("tactical_d3", "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", 3u8),
+    ] {
+        let fixed = search_impl_handcrafted(sfen, depth).unwrap();
+        let iterative = search_iterative_deepening_impl(sfen, depth, 5_000).unwrap();
+        assert_eq!(iterative.best_move, fixed.best_move, "iterative parity for {name}");
+        assert_eq!(iterative.completed_depth, depth, "completed depth for {name}");
+
+        iterative_group.bench_function(format!("{name}_fixed"), |b| {
+            b.iter(|| {
+                black_box(search_impl_handcrafted(black_box(sfen), black_box(depth)).unwrap());
+            });
+        });
+        iterative_group.bench_function(format!("{name}_iterative"), |b| {
+            b.iter(|| {
+                black_box(
+                    search_iterative_deepening_impl(black_box(sfen), black_box(depth), 5_000)
+                        .unwrap(),
+                );
+            });
+        });
+    }
+
+    let mate_sfen = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
+    let dfpn_enabled = search_iterative_deepening_impl_with_dfpn_mode(mate_sfen, 4, 5_000, true)
+        .unwrap();
+    let dfpn_disabled =
+        search_iterative_deepening_impl_with_dfpn_mode(mate_sfen, 4, 5_000, false).unwrap();
+    assert_eq!(dfpn_enabled.completed_depth, 0);
+    assert!(dfpn_enabled.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
+    assert!(dfpn_disabled.dfpn.is_none());
+    assert!(dfpn_enabled.best_move.is_some());
+    assert!(dfpn_disabled.best_move.is_some());
+
+    iterative_group.bench_function("mate_dfpn_enabled", |b| {
+        b.iter(|| {
+            black_box(
+                search_iterative_deepening_impl_with_dfpn_mode(
+                    black_box(mate_sfen),
+                    4,
+                    5_000,
+                    true,
+                )
+                .unwrap(),
+            );
+        });
+    });
+    iterative_group.bench_function("mate_dfpn_disabled", |b| {
+        b.iter(|| {
+            black_box(
+                search_iterative_deepening_impl_with_dfpn_mode(
+                    black_box(mate_sfen),
+                    4,
+                    5_000,
+                    false,
+                )
+                .unwrap(),
+            );
+        });
+    });
+    iterative_group.finish();
 }
 
 criterion_group!(benches, criterion_benchmark);

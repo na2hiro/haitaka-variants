@@ -3,7 +3,10 @@ mod nnue;
 use std::cmp::Reverse;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, Move, Piece};
+use haitaka::{
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece,
+};
+use instant::Instant;
 pub use nnue::{NnueModel, NnuePositionState};
 use wasm_bindgen::prelude::*;
 
@@ -21,6 +24,7 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 ];
 
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
+const DEADLINE_CHECK_INTERVAL: u64 = 256;
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
@@ -33,10 +37,60 @@ pub struct SearchSummary {
 }
 
 #[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct IterativeIterationSummary {
+    pub depth: u8,
+    pub best_move: Option<String>,
+    pub elapsed_ms: f64,
+    pub states: u64,
+    pub nps: f64,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct DfpnSummary {
+    pub status: String,
+    pub selected: bool,
+    pub best_move: Option<String>,
+    pub elapsed_ms: f64,
+    pub nodes: u64,
+    pub tt_hits: u64,
+    pub tt_stores: u64,
+    pub tt_collisions: u64,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct IterativeSearchSummary {
+    pub best_move: Option<String>,
+    pub completed_depth: u8,
+    pub timed_out: bool,
+    pub elapsed_ms: f64,
+    pub states: u64,
+    pub nps: f64,
+    pub iterations: Vec<IterativeIterationSummary>,
+    pub dfpn: Option<DfpnSummary>,
+}
+
+#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SearchEvalMode {
     FullRefresh,
     Incremental,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SearchInterrupted;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct IterativeSearchConfig {
+    run_dfpn: bool,
+}
+
+impl Default for IterativeSearchConfig {
+    fn default() -> Self {
+        Self { run_dfpn: true }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,11 +106,26 @@ enum EvaluationStrategy {
 struct SearchContext {
     states: u64,
     evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
 }
 
 impl SearchContext {
-    fn record_state(&mut self) {
+    fn record_state(&mut self) -> Result<(), SearchInterrupted> {
         self.states += 1;
+        if self.deadline.is_some() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
+            self.check_deadline()?;
+        }
+        Ok(())
+    }
+
+    fn check_deadline(&self) -> Result<(), SearchInterrupted> {
+        if self
+            .deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+        {
+            return Err(SearchInterrupted);
+        }
+        Ok(())
     }
 }
 
@@ -92,10 +161,110 @@ impl SearchResult {
 }
 
 #[wasm_bindgen]
+pub struct IterativeSearchResult {
+    best_move: Option<String>,
+    completed_depth: u8,
+    timed_out: bool,
+    elapsed_ms: f64,
+    states: u64,
+    nps: f64,
+    iterations: Vec<IterativeIterationSummary>,
+    dfpn: Option<DfpnSummary>,
+}
+
+#[wasm_bindgen]
+impl IterativeSearchResult {
+    #[wasm_bindgen(getter, js_name = bestMove)]
+    pub fn best_move(&self) -> Option<String> {
+        self.best_move.clone()
+    }
+
+    #[wasm_bindgen(getter, js_name = completedDepth)]
+    pub fn completed_depth(&self) -> u32 {
+        u32::from(self.completed_depth)
+    }
+
+    #[wasm_bindgen(getter, js_name = timedOut)]
+    pub fn timed_out(&self) -> bool {
+        self.timed_out
+    }
+
+    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    pub fn elapsed_ms(&self) -> f64 {
+        self.elapsed_ms
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn states(&self) -> f64 {
+        self.states as f64
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn nps(&self) -> f64 {
+        self.nps
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn iterations(&self) -> js_sys::Array {
+        let array = js_sys::Array::new();
+        for iteration in &self.iterations {
+            array.push(&iterative_iteration_to_js_value(iteration));
+        }
+        array
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn dfpn(&self) -> JsValue {
+        self.dfpn
+            .as_ref()
+            .map(dfpn_summary_to_js_value)
+            .unwrap_or(JsValue::undefined())
+    }
+}
+
+#[wasm_bindgen]
 pub struct PerftResult {
     elapsed_ms: f64,
     nodes: u64,
     nps: f64,
+}
+
+fn set_js_property(target: &js_sys::Object, key: &str, value: JsValue) {
+    js_sys::Reflect::set(target.as_ref(), &JsValue::from_str(key), &value)
+        .expect("setting JS property should succeed");
+}
+
+fn option_string_to_js_value(value: &Option<String>) -> JsValue {
+    value.as_ref()
+        .map(|value| JsValue::from_str(value))
+        .unwrap_or(JsValue::NULL)
+}
+
+fn iterative_iteration_to_js_value(iteration: &IterativeIterationSummary) -> JsValue {
+    let object = js_sys::Object::new();
+    set_js_property(&object, "depth", JsValue::from_f64(f64::from(iteration.depth)));
+    set_js_property(&object, "bestMove", option_string_to_js_value(&iteration.best_move));
+    set_js_property(&object, "elapsedMs", JsValue::from_f64(iteration.elapsed_ms));
+    set_js_property(&object, "states", JsValue::from_f64(iteration.states as f64));
+    set_js_property(&object, "nps", JsValue::from_f64(iteration.nps));
+    object.into()
+}
+
+fn dfpn_summary_to_js_value(summary: &DfpnSummary) -> JsValue {
+    let object = js_sys::Object::new();
+    set_js_property(&object, "status", JsValue::from_str(&summary.status));
+    set_js_property(&object, "selected", JsValue::from_bool(summary.selected));
+    set_js_property(&object, "bestMove", option_string_to_js_value(&summary.best_move));
+    set_js_property(&object, "elapsedMs", JsValue::from_f64(summary.elapsed_ms));
+    set_js_property(&object, "nodes", JsValue::from_f64(summary.nodes as f64));
+    set_js_property(&object, "ttHits", JsValue::from_f64(summary.tt_hits as f64));
+    set_js_property(&object, "ttStores", JsValue::from_f64(summary.tt_stores as f64));
+    set_js_property(
+        &object,
+        "ttCollisions",
+        JsValue::from_f64(summary.tt_collisions as f64),
+    );
+    object.into()
 }
 
 #[wasm_bindgen]
@@ -169,21 +338,17 @@ impl DfpnResult {
     }
 }
 
-fn now_ms() -> f64 {
-    #[cfg(target_arch = "wasm32")]
-    {
-        js_sys::Date::now()
-    }
+fn elapsed_ms_since(started_at: Instant) -> f64 {
+    started_at.elapsed().as_secs_f64() * 1_000.0
+}
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock should be after unix epoch")
-            .as_secs_f64()
-            * 1_000.0
+fn current_evaluation_strategy() -> EvaluationStrategy {
+    match current_nnue_model() {
+        Some(model) => EvaluationStrategy::Nnue {
+            model,
+            mode: SearchEvalMode::Incremental,
+        },
+        None => EvaluationStrategy::Handcrafted,
     }
 }
 
@@ -209,14 +374,7 @@ fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
 }
 
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
-    let evaluation = match current_nnue_model() {
-        Some(model) => EvaluationStrategy::Nnue {
-            model,
-            mode: SearchEvalMode::Incremental,
-        },
-        None => EvaluationStrategy::Handcrafted,
-    };
-    search_impl_with_strategy(sfen, depth, evaluation)
+    search_impl_with_strategy(sfen, depth, current_evaluation_strategy())
 }
 
 fn search_impl_with_strategy(
@@ -224,10 +382,18 @@ fn search_impl_with_strategy(
     depth: u8,
     evaluation: EvaluationStrategy,
 ) -> Result<SearchSummary, String> {
-    let board = Board::from_sfen(sfen)
-        .map_err(|err| format!("failed to parse SFEN: {err}"))?;
-    let depth = depth.max(1);
-    let started_at_ms = now_ms();
+    let board = Board::from_sfen(sfen).map_err(|err| format!("failed to parse SFEN: {err}"))?;
+    search_board_with_strategy(&board, depth.max(1), evaluation, None)
+        .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+fn search_board_with_strategy(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+) -> Result<SearchSummary, SearchInterrupted> {
+    let started_at = Instant::now();
     let root_state = match &evaluation {
         EvaluationStrategy::Nnue {
             model,
@@ -238,11 +404,12 @@ fn search_impl_with_strategy(
     let mut ctx = SearchContext {
         states: 0,
         evaluation,
+        deadline,
     };
-    let (best_move, best_score) = search_best_move(&board, depth, &mut ctx, root_state)
+    let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
         .unwrap_or((None, None));
-    let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
+    let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
     let nps = if elapsed_ms > 0.0 {
         ctx.states as f64 / (elapsed_ms / 1_000.0)
     } else {
@@ -256,6 +423,229 @@ fn search_impl_with_strategy(
         states: ctx.states,
         nps,
     })
+}
+
+fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
+    let max_time_ms = if timeout_ms == 0 {
+        None
+    } else {
+        Some(u64::from((timeout_ms / 4).min(25).max(1)))
+    };
+
+    DfpnOptions {
+        max_nodes: Some(10_000),
+        max_time_ms,
+        tt_megabytes: 4,
+        max_pv_moves: 64,
+    }
+}
+
+fn to_dfpn_summary(core: CoreDfpnResult) -> DfpnSummary {
+    let best_move = core.pv.first().map(ToString::to_string);
+    let selected = core.status == DfpnStatus::Mate && best_move.is_some();
+    DfpnSummary {
+        status: core.status.as_str().to_string(),
+        selected,
+        best_move,
+        elapsed_ms: core.stats.elapsed_ms,
+        nodes: core.stats.nodes,
+        tt_hits: core.stats.tt_hits,
+        tt_stores: core.stats.tt_stores,
+        tt_collisions: core.stats.tt_collisions,
+    }
+}
+
+fn has_checking_move(board: &Board) -> bool {
+    board.generate_checks(|_| true)
+}
+
+fn strict_parse_error(err: impl std::fmt::Display) -> String {
+    format!("failed to parse SFEN: {err}")
+}
+
+fn search_iterative_deepening_with_strategy(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+    config: IterativeSearchConfig,
+) -> Result<IterativeSearchSummary, String> {
+    let deadline = if timeout_ms == 0 {
+        None
+    } else {
+        Some(Instant::now() + std::time::Duration::from_millis(u64::from(timeout_ms)))
+    };
+    search_iterative_deepening_with_strategy_and_deadline(
+        sfen,
+        max_depth,
+        timeout_ms,
+        evaluation,
+        config,
+        deadline,
+    )
+}
+
+fn search_iterative_deepening_with_strategy_and_deadline(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+    config: IterativeSearchConfig,
+    deadline: Option<Instant>,
+) -> Result<IterativeSearchSummary, String> {
+    let max_depth = max_depth.max(1);
+    let started_at = Instant::now();
+    let mut dfpn = None;
+
+    let board = match Board::from_sfen(sfen) {
+        Ok(board) => board,
+        Err(strict_err) => {
+            if config.run_dfpn {
+                let options = root_dfpn_options(timeout_ms);
+                let root_dfpn = dfpn_impl(
+                    sfen,
+                    options.max_nodes,
+                    options.max_time_ms,
+                    options.tt_megabytes,
+                    options.max_pv_moves,
+                )?;
+                let dfpn_summary = to_dfpn_summary(root_dfpn);
+                if dfpn_summary.selected {
+                    let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
+                    let best_move = dfpn_summary.best_move.clone();
+                    return Ok(IterativeSearchSummary {
+                        best_move,
+                        completed_depth: 0,
+                        timed_out: false,
+                        elapsed_ms,
+                        states: 0,
+                        nps: 0.0,
+                        iterations: Vec::new(),
+                        dfpn: Some(dfpn_summary),
+                    });
+                }
+            }
+            return Err(strict_parse_error(strict_err));
+        }
+    };
+
+    if config.run_dfpn && has_checking_move(&board) {
+        let dfpn_summary = to_dfpn_summary(board.dfpn(&root_dfpn_options(timeout_ms)));
+        if dfpn_summary.selected {
+            let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
+            let best_move = dfpn_summary.best_move.clone();
+            return Ok(IterativeSearchSummary {
+                best_move,
+                completed_depth: 0,
+                timed_out: false,
+                elapsed_ms,
+                states: 0,
+                nps: 0.0,
+                iterations: Vec::new(),
+                dfpn: Some(dfpn_summary),
+            });
+        }
+        dfpn = Some(dfpn_summary);
+    }
+
+    let mut iterations = Vec::with_capacity(max_depth as usize);
+    let mut completed_depth = 0;
+    let mut total_states = 0;
+    let mut latest_best_move = None;
+    let mut timed_out = false;
+
+    for depth in 1..=max_depth {
+        if deadline.is_some_and(|limit| Instant::now() >= limit) {
+            timed_out = true;
+            break;
+        }
+
+        match search_board_with_strategy(&board, depth, evaluation.clone(), deadline) {
+            Ok(summary) => {
+                total_states += summary.states;
+                completed_depth = depth;
+                latest_best_move = summary.best_move.clone();
+                iterations.push(IterativeIterationSummary {
+                    depth,
+                    best_move: summary.best_move,
+                    elapsed_ms: summary.elapsed_ms,
+                    states: summary.states,
+                    nps: summary.nps,
+                });
+            }
+            Err(SearchInterrupted) => {
+                timed_out = true;
+                break;
+            }
+        }
+    }
+
+    let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
+    let nps = if elapsed_ms > 0.0 {
+        total_states as f64 / (elapsed_ms / 1_000.0)
+    } else {
+        0.0
+    };
+
+    Ok(IterativeSearchSummary {
+        best_move: latest_best_move,
+        completed_depth,
+        timed_out,
+        elapsed_ms,
+        states: total_states,
+        nps,
+        iterations,
+        dfpn,
+    })
+}
+
+#[doc(hidden)]
+pub fn search_iterative_deepening_impl(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_with_strategy(
+        sfen,
+        max_depth,
+        timeout_ms,
+        current_evaluation_strategy(),
+        IterativeSearchConfig::default(),
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_iterative_deepening_impl_with_dfpn_mode(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    run_dfpn: bool,
+) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_with_strategy(
+        sfen,
+        max_depth,
+        timeout_ms,
+        current_evaluation_strategy(),
+        IterativeSearchConfig { run_dfpn },
+    )
+}
+
+#[cfg(test)]
+fn search_iterative_deepening_impl_with_deadline(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    deadline: Instant,
+) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_with_strategy_and_deadline(
+        sfen,
+        max_depth,
+        timeout_ms,
+        current_evaluation_strategy(),
+        IterativeSearchConfig::default(),
+        Some(deadline),
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -278,9 +668,9 @@ pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, S
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| format!("failed to parse SFEN: {err}"))?;
-    let started_at_ms = now_ms();
+    let started_at = Instant::now();
     let nodes = perft_bulk(&board, depth);
-    let elapsed_ms = (now_ms() - started_at_ms).max(0.0);
+    let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
     let nps = if elapsed_ms > 0.0 {
         nodes as f64 / (elapsed_ms / 1_000.0)
     } else {
@@ -349,6 +739,26 @@ pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
     })
 }
 
+#[wasm_bindgen(js_name = search_iterative_deepening)]
+pub fn search_iterative_deepening(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchResult, JsValue> {
+    let summary = search_iterative_deepening_impl(sfen, max_depth, timeout_ms)
+        .map_err(|err| JsValue::from_str(&err))?;
+    Ok(IterativeSearchResult {
+        best_move: summary.best_move,
+        completed_depth: summary.completed_depth,
+        timed_out: summary.timed_out,
+        elapsed_ms: summary.elapsed_ms,
+        states: summary.states,
+        nps: summary.nps,
+        iterations: summary.iterations,
+        dfpn: summary.dfpn,
+    })
+}
+
 #[wasm_bindgen]
 pub fn perft(sfen: &str, depth: u8) -> Result<PerftResult, JsValue> {
     perft_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
@@ -391,11 +801,12 @@ fn search_best_move(
     depth: u8,
     ctx: &mut SearchContext,
     nnue_state: Option<NnuePositionState>,
-) -> Option<(Move, i32)> {
-    ctx.record_state();
+) -> Result<Option<(Move, i32)>, SearchInterrupted> {
+    ctx.record_state()?;
+    ctx.check_deadline()?;
     let moves = legal_moves(board);
     if moves.is_empty() {
-        return None;
+        return Ok(None);
     }
 
     let mut alpha = -INF_SCORE;
@@ -404,6 +815,7 @@ fn search_best_move(
     let mut best_move = None;
 
     for mv in moves {
+        ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
         let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -415,7 +827,7 @@ fn search_best_move(
             1,
             ctx,
             child_state,
-        );
+        )?;
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -423,7 +835,7 @@ fn search_best_move(
         alpha = alpha.max(score);
     }
 
-    best_move.map(|mv| (mv, best_score))
+    Ok(best_move.map(|mv| (mv, best_score)))
 }
 
 fn negamax(
@@ -434,23 +846,25 @@ fn negamax(
     ply: i32,
     ctx: &mut SearchContext,
     nnue_state: Option<NnuePositionState>,
-) -> i32 {
-    ctx.record_state();
+) -> Result<i32, SearchInterrupted> {
+    ctx.record_state()?;
+    ctx.check_deadline()?;
     if depth == 0 {
-        return evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
     }
 
     let moves = legal_moves(board);
     if moves.is_empty() {
-        return -MATE_SCORE + ply;
+        return Ok(-MATE_SCORE + ply);
     }
 
     let mut best_score = -INF_SCORE;
     for mv in moves {
+        ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
         let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state);
+        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state)?;
         if score > best_score {
             best_score = score;
         }
@@ -462,7 +876,7 @@ fn negamax(
         }
     }
 
-    best_score
+    Ok(best_score)
 }
 
 fn child_nnue_state(
@@ -674,6 +1088,7 @@ mod tests {
     #[cfg(feature = "annan")]
     const DFPN_ANNAN_PROBLEM_SFEN: &str = "7p1/8k/5+R3/6P2/7G1/9/9/9/9 b N 1";
 
+    #[cfg(feature = "annan")]
     fn parse_dfpn_test_board(sfen: &str) -> Board {
         Board::from_sfen(sfen)
             .or_else(|_| Board::tsume(sfen))
@@ -746,6 +1161,80 @@ mod tests {
     }
 
     #[test]
+    fn iterative_search_reaches_requested_depth_when_time_allows() {
+        let summary = search_iterative_deepening_impl(haitaka::SFEN_STARTPOS, 3, 5_000).unwrap();
+        assert_eq!(summary.completed_depth, 3);
+        assert!(!summary.timed_out);
+        assert_eq!(summary.iterations.len(), 3);
+        assert_eq!(summary.best_move, summary.iterations.last().and_then(|it| it.best_move.clone()));
+        assert!(summary.states > 0);
+        assert!(summary.nps >= 0.0);
+        assert!(summary.dfpn.is_none());
+    }
+
+    #[test]
+    fn iterative_search_times_out_before_any_completed_iteration() {
+        let summary = search_iterative_deepening_impl_with_deadline(
+            haitaka::SFEN_STARTPOS,
+            3,
+            1,
+            Instant::now(),
+        )
+        .unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert!(summary.timed_out);
+        assert!(summary.best_move.is_none());
+        assert!(summary.iterations.is_empty());
+        assert_eq!(summary.states, 0);
+        assert_eq!(summary.nps, 0.0);
+    }
+
+    #[test]
+    fn iterative_search_uses_dfpn_for_standard_mate() {
+        let summary = search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 5_000, true)
+            .unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert!(!summary.timed_out);
+        assert!(summary.iterations.is_empty());
+        assert_eq!(summary.best_move.as_deref(), Some("R*1b"));
+        let dfpn = summary.dfpn.expect("expected DFPN telemetry");
+        assert_eq!(dfpn.status, "mate");
+        assert!(dfpn.selected);
+        assert_eq!(dfpn.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    fn iterative_search_can_disable_dfpn_short_circuiting() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 2, 5_000, false)
+                .unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert!(!summary.timed_out);
+        assert!(summary.dfpn.is_none());
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
+        let summary =
+            search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert_eq!(summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()), Some("mate"));
+        assert!(summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
+        assert_eq!(summary.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    fn iterative_search_preserves_parse_error_when_dfpn_cannot_help() {
+        let err = search_iterative_deepening_impl("invalid", 4, 5_000).unwrap_err();
+        assert!(err.contains("failed to parse SFEN"));
+    }
+
+    #[test]
     fn dfpn_matches_core_mate_result() {
         let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
         let expected = board.dfpn(&DfpnOptions::default());
@@ -791,6 +1280,19 @@ mod tests {
         let actual = dfpn_impl(DFPN_ANNAN_PROBLEM_SFEN, None, None, 16, 256).unwrap();
         assert_eq!(actual.status, expected.status);
         assert_eq!(actual.pv.first(), expected.pv.first());
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn iterative_search_uses_dfpn_for_annan_mate() {
+        let summary =
+            search_iterative_deepening_impl(DFPN_ANNAN_PROBLEM_SFEN, 4, 5_000).unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert!(!summary.timed_out);
+        assert_eq!(summary.best_move.as_deref(), Some("4c1c"));
+        assert_eq!(summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()), Some("mate"));
+        assert!(summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
     }
 
     #[cfg(not(feature = "annan"))]
