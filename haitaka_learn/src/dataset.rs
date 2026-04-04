@@ -8,7 +8,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, SearchSummary, search_impl_handcrafted, search_impl_with_eval_mode,
+    NnueModel, SearchEvalMode, SearchSummary, search_board_impl_handcrafted,
+    search_board_impl_with_eval_mode,
 };
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -93,12 +94,12 @@ impl Teacher {
         }
     }
 
-    fn search(&self, sfen: &str, depth: u8) -> Result<SearchSummary> {
+    fn search(&self, board: &Board, depth: u8) -> Result<SearchSummary> {
         match self {
-            Self::Handcrafted => search_impl_handcrafted(sfen, depth)
+            Self::Handcrafted => search_board_impl_handcrafted(board, depth)
                 .map_err(|err| anyhow!("handcrafted teacher search failed: {err}")),
-            Self::Nnue(model) => search_impl_with_eval_mode(
-                sfen,
+            Self::Nnue(model) => search_board_impl_with_eval_mode(
+                board,
                 depth,
                 model.clone(),
                 SearchEvalMode::Incremental,
@@ -184,6 +185,9 @@ fn generate_split(
         let mut played_plies = 0u16;
 
         while played_plies < loaded.config.data.max_plies {
+            if !has_both_kings(&board) {
+                break;
+            }
             let legal_moves = collect_legal_moves(&board);
             if legal_moves.is_empty() {
                 break;
@@ -194,15 +198,9 @@ fn generate_split(
                     % loaded.config.data.sample_every_ply
                     == 0
                 && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
-            let needs_teacher = should_sample
-                || played_plies >= loaded.config.data.opening_random_plies;
-            let sfen = if needs_teacher {
-                Some(board.to_string())
-            } else {
-                None
-            };
-            let teacher_summary = if let Some(ref sfen) = sfen {
-                Some(teacher.search(sfen, loaded.config.data.search_depth)?)
+            let needs_teacher = should_sample || played_plies >= loaded.config.data.opening_random_plies;
+            let teacher_summary = if needs_teacher {
+                Some(teacher.search(&board, loaded.config.data.search_depth)?)
             } else {
                 None
             };
@@ -245,6 +243,10 @@ fn generate_split(
 
         let outcome = if played_plies >= loaded.config.data.max_plies {
             GameOutcome::Draw
+        } else if !board.has(Color::Black, Piece::King) {
+            GameOutcome::Winner(Color::White)
+        } else if !board.has(Color::White, Piece::King) {
+            GameOutcome::Winner(Color::Black)
         } else {
             match board.status() {
                 haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
@@ -322,12 +324,14 @@ fn collect_legal_moves(board: &Board) -> Vec<Move> {
     moves
 }
 
+fn has_both_kings(board: &Board) -> bool {
+    board.has(Color::Black, Piece::King) && board.has(Color::White, Piece::King)
+}
+
 fn detect_git_revision(loaded: &LoadedConfig) -> Result<Option<String>> {
-    let repo_root = loaded
-        .path
-        .parent()
-        .and_then(Path::parent)
-        .ok_or_else(|| anyhow!("failed to find haitaka workspace root from {}", loaded.path.display()))?;
+    let Some(repo_root) = find_haitaka_workspace_root(&loaded.path) else {
+        return Ok(None);
+    };
     let output = Command::new("git")
         .arg("-C")
         .arg(repo_root)
@@ -337,6 +341,14 @@ fn detect_git_revision(loaded: &LoadedConfig) -> Result<Option<String>> {
     Ok(output
         .filter(|result| result.status.success())
         .map(|result| String::from_utf8_lossy(&result.stdout).trim().to_string()))
+}
+
+fn find_haitaka_workspace_root(config_path: &Path) -> Option<&Path> {
+    config_path
+        .parent()
+        .into_iter()
+        .flat_map(Path::ancestors)
+        .find(|candidate| candidate.join("Cargo.toml").is_file() && candidate.join("haitaka_learn").is_dir())
 }
 
 fn write_training_entry(
@@ -522,6 +534,7 @@ impl BitWriter {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
 
     use super::*;
     use crate::config::LoadedConfig;
@@ -627,6 +640,119 @@ sample_every_ply = 1
 max_positions_per_game = 4
 seed = 9
 "#,
+        )
+        .unwrap();
+
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let output = generate_data(&loaded).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
+    }
+
+    #[test]
+    fn finds_workspace_root_from_root_config_path() {
+        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root = manifest_dir.parent().unwrap();
+        let config_path = workspace_root.join("haitaka_learn.toml");
+
+        let detected = find_haitaka_workspace_root(&config_path).unwrap();
+
+        assert_eq!(detected, workspace_root);
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn annan_nnue_teacher_handles_live_check_positions_without_sfen_roundtrip() {
+        let bootstrap = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("../shogi-878ca61334a7.nnue");
+        if !bootstrap.exists() {
+            return;
+        }
+
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("haitaka_learn.toml");
+        fs::write(
+            &config_path,
+            format!(
+                r#"
+[rules]
+ruleset = "annan"
+rule_id = 26
+opening_sfen = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1"
+
+[paths]
+output_dir = "out"
+bootstrap_nnue = "{}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 2
+search_depth = 1
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 2
+seed = 5
+
+[verify]
+run_search_smoke = false
+"#,
+                bootstrap.display()
+            ),
+        )
+        .unwrap();
+
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let output = generate_data(&loaded).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
+    }
+
+    #[test]
+    #[cfg(feature = "annan")]
+    fn annan_nnue_teacher_handles_king_capture_lines() {
+        let bootstrap = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("../shogi-878ca61334a7.nnue");
+        if !bootstrap.exists() {
+            return;
+        }
+
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("haitaka_learn.toml");
+        fs::write(
+            &config_path,
+            format!(
+                r#"
+[rules]
+ruleset = "annan"
+rule_id = 26
+opening_sfen = "4k4/4R4/9/9/9/9/9/9/4K4 b - 1"
+
+[paths]
+output_dir = "out"
+bootstrap_nnue = "{}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 4
+search_depth = 2
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 2
+seed = 11
+
+[verify]
+run_search_smoke = false
+"#,
+                bootstrap.display()
+            ),
         )
         .unwrap();
 

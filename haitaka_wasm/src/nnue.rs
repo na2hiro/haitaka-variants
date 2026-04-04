@@ -646,15 +646,17 @@ fn build_feature_delta(
                     captured_piece,
                     to,
                 ));
-                let hand_piece = captured_piece.unpromote();
-                let old_hand_count = usize::from(parent_board.num_in_hand(mover, hand_piece));
-                delta.push_added(hand_feature_index(
-                    perspective,
-                    king_offset,
-                    mover,
-                    hand_piece,
-                    old_hand_count,
-                ));
+                if captured_piece != Piece::King {
+                    let hand_piece = captured_piece.unpromote();
+                    let old_hand_count = usize::from(parent_board.num_in_hand(mover, hand_piece));
+                    delta.push_added(hand_feature_index(
+                        perspective,
+                        king_offset,
+                        mover,
+                        hand_piece,
+                        old_hand_count,
+                    ));
+                }
             }
 
             delta.push_added(board_feature_index(

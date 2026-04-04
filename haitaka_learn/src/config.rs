@@ -19,8 +19,10 @@ pub struct LoadedConfig {
 
 impl LoadedConfig {
     pub fn from_path(path: &Path) -> Result<Self> {
-        let raw_toml = fs::read_to_string(path)
-            .with_context(|| format!("failed to read config {}", path.display()))?;
+        let canonical_path = fs::canonicalize(path)
+            .with_context(|| format!("failed to resolve config {}", path.display()))?;
+        let raw_toml = fs::read_to_string(&canonical_path)
+            .with_context(|| format!("failed to read config {}", canonical_path.display()))?;
         let config: LearnConfig =
             toml::from_str(&raw_toml).context("failed to parse haitaka_learn TOML")?;
         config.validate()?;
@@ -32,7 +34,7 @@ impl LoadedConfig {
         };
 
         Ok(Self {
-            path: path.to_path_buf(),
+            path: canonical_path,
             hash_hex,
             config,
         })
@@ -486,7 +488,10 @@ fn default_run_search_smoke() -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn parses_minimal_config() {
@@ -505,5 +510,34 @@ validation_games = 1
         config.validate().unwrap();
         assert_eq!(config.training.features, "HalfKAv2^");
         assert_eq!(config.export.output_name, "haitaka.nnue");
+    }
+
+    #[test]
+    fn loaded_config_canonicalizes_relative_path() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("haitaka_learn.toml");
+        fs::write(
+            &config_path,
+            r#"
+[rules]
+ruleset = "standard"
+
+[paths]
+output_dir = "out"
+
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(temp.path()).unwrap();
+        let loaded = LoadedConfig::from_path(Path::new("haitaka_learn.toml")).unwrap();
+        std::env::set_current_dir(original_dir).unwrap();
+
+        assert!(loaded.path.is_absolute());
+        assert_eq!(loaded.path, config_path.canonicalize().unwrap());
     }
 }

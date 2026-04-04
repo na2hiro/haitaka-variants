@@ -398,7 +398,7 @@ fn search_board_with_strategy(
         EvaluationStrategy::Nnue {
             model,
             mode: SearchEvalMode::Incremental,
-        } => Some(model.build_position_state_full(&board)),
+        } if has_both_kings(board) => Some(model.build_position_state_full(board)),
         _ => None,
     };
     let mut ctx = SearchContext {
@@ -661,8 +661,32 @@ pub fn search_impl_with_eval_mode(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_impl_with_eval_mode(
+    board: &Board,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<SearchSummary, String> {
+    search_board_with_strategy(
+        board,
+        depth.max(1),
+        EvaluationStrategy::Nnue { model, mode },
+        None,
+    )
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     search_impl_with_strategy(sfen, depth, EvaluationStrategy::Handcrafted)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted(board: &Board, depth: u8) -> Result<SearchSummary, String> {
+    search_board_with_strategy(board, depth.max(1), EvaluationStrategy::Handcrafted, None)
+        .map_err(|_| "search timed out unexpectedly".to_string())
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
@@ -804,6 +828,9 @@ fn search_best_move(
 ) -> Result<Option<(Move, i32)>, SearchInterrupted> {
     ctx.record_state()?;
     ctx.check_deadline()?;
+    if terminal_score_for_side_to_move(board, 0).is_some() {
+        return Ok(None);
+    }
     let moves = legal_moves(board);
     if moves.is_empty() {
         return Ok(None);
@@ -818,16 +845,20 @@ fn search_best_move(
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-        let score = -negamax(
-            &child,
-            depth.saturating_sub(1),
-            -beta,
-            -alpha,
-            1,
-            ctx,
-            child_state,
-        )?;
+        let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, 1) {
+            -terminal
+        } else {
+            let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+            -negamax(
+                &child,
+                depth.saturating_sub(1),
+                -beta,
+                -alpha,
+                1,
+                ctx,
+                child_state,
+            )?
+        };
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -849,6 +880,9 @@ fn negamax(
 ) -> Result<i32, SearchInterrupted> {
     ctx.record_state()?;
     ctx.check_deadline()?;
+    if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        return Ok(terminal);
+    }
     if depth == 0 {
         return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
     }
@@ -863,8 +897,12 @@ fn negamax(
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-        let score = -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state)?;
+        let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            -terminal
+        } else {
+            let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+            -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state)?
+        };
         if score > best_score {
             best_score = score;
         }
@@ -886,6 +924,9 @@ fn child_nnue_state(
     parent_state: Option<&NnuePositionState>,
     mv: Move,
 ) -> Option<NnuePositionState> {
+    if !has_both_kings(child_board) {
+        return None;
+    }
     match &ctx.evaluation {
         EvaluationStrategy::Nnue {
             model,
@@ -906,6 +947,9 @@ fn evaluate_or_mate(
     ctx: &SearchContext,
     nnue_state: Option<&NnuePositionState>,
 ) -> i32 {
+    if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        return terminal;
+    }
     let us = board.side_to_move();
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
@@ -930,6 +974,21 @@ fn evaluate_or_mate(
             board,
             nnue_state.expect("incremental evaluation should receive NNUE state"),
         ),
+    }
+}
+
+fn has_both_kings(board: &Board) -> bool {
+    board.has(Color::Black, Piece::King) && board.has(Color::White, Piece::King)
+}
+
+fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
+    let us = board.side_to_move();
+    if !board.has(us, Piece::King) {
+        Some(-MATE_SCORE + ply)
+    } else if !board.has(!us, Piece::King) {
+        Some(MATE_SCORE - ply)
+    } else {
+        None
     }
 }
 
@@ -1102,6 +1161,18 @@ mod tests {
         NnueModel::from_bytes(&bytes).ok()
     }
 
+    fn first_checking_child(board: &Board) -> Board {
+        let mut checking_move = None;
+        board.generate_checks(|moves| {
+            checking_move = moves.into_iter().next();
+            checking_move.is_some()
+        });
+        let mv = checking_move.expect("expected at least one checking move");
+        let mut child = board.clone();
+        child.play_unchecked(mv);
+        child
+    }
+
     fn assert_legal_best_move(sfen: &str, depth: u8) {
         let board = Board::from_sfen(sfen).unwrap();
         let best = search_impl(sfen, depth)
@@ -1158,6 +1229,20 @@ mod tests {
         assert!(summary.elapsed_ms >= 0.0);
         assert!(summary.nps >= 0.0);
         assert!(summary.best_move.is_some());
+    }
+
+    #[test]
+    fn board_native_handcrafted_search_handles_live_check_positions() {
+        let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
+        let checking_child = first_checking_child(&board);
+        let strict_sfen = checking_child.to_string();
+
+        let summary = search_board_impl_handcrafted(&checking_child, 1).unwrap();
+        assert!(summary.states > 0);
+        if let Ok(roundtripped) = search_impl_handcrafted(&strict_sfen, 1) {
+            assert_eq!(summary.best_move, roundtripped.best_move);
+            assert_eq!(summary.best_score, roundtripped.best_score);
+        }
     }
 
     #[test]
@@ -1363,6 +1448,38 @@ mod tests {
         let score = model.evaluate(&Board::startpos());
         assert!(score.abs() < INF_SCORE);
     }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn board_native_nnue_search_handles_live_check_positions() {
+        let Some(model) = load_test_nnue() else {
+            return;
+        };
+        let model = Arc::new(model);
+
+        let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
+        let checking_child = first_checking_child(&board);
+        let strict_sfen = checking_child.to_string();
+
+        let summary = search_board_impl_with_eval_mode(
+            &checking_child,
+            1,
+            model.clone(),
+            SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        assert!(summary.states > 0);
+        if let Ok(roundtripped) = search_impl_with_eval_mode(
+            &strict_sfen,
+            1,
+            model,
+            SearchEvalMode::Incremental,
+        ) {
+            assert_eq!(summary.best_move, roundtripped.best_move);
+            assert_eq!(summary.best_score, roundtripped.best_score);
+        }
+    }
+
 
     #[test]
     #[cfg(feature = "annan")]
