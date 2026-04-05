@@ -1395,6 +1395,26 @@ mod tests {
         );
     }
 
+    #[test]
+    #[cfg(feature = "annan")]
+    fn iterative_search_does_not_choose_illegal_pawn_drop_mate() {
+        let summary = search_iterative_deepening_impl(
+            "1nsg1gb1+B/1r1k5/2pp2p1p/1p4gp1/2n3n2/1P1PP2P1/2P1LKP1P/2+r6/2+l2GS+l1 w SL3Psn2p 1",
+            6,
+            5_000,
+        )
+        .unwrap();
+
+        assert_ne!(summary.best_move.as_deref(), Some("P*4f"));
+        assert!(
+            !summary
+                .dfpn
+                .as_ref()
+                .is_some_and(|dfpn| dfpn.best_move.as_deref() == Some("P*4f")),
+            "DFPN should not treat the illegal pawn-drop mate as a candidate"
+        );
+    }
+
     #[cfg(not(feature = "annan"))]
     fn assert_search_modes_match(sfen: &str, depth: u8) {
         let Some(model) = load_test_nnue() else {

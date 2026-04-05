@@ -971,6 +971,55 @@ fn annan_nifu_pawn_move_does_not_count_as_check() {
 
 #[test]
 #[cfg(feature = "annan")]
+fn annan_illegal_pawn_drop_mate_is_not_legal_or_generated() {
+    let board: Board =
+        "1nsg1gb1+B/1r1k5/2pp2p1p/1p4gp1/2n3n2/1P1PP2P1/2P1LKP1P/2+r6/2+l2GS+l1 w SL3Psn2p 1"
+            .parse()
+            .unwrap();
+    let pawn_drop_mate: Move = "P*4f".parse().unwrap();
+
+    assert!(
+        !board.is_legal_drop(pawn_drop_mate),
+        "illegal pawn-drop mate should not be legal"
+    );
+    assert!(
+        !board.is_legal(pawn_drop_mate),
+        "illegal pawn-drop mate should be excluded from legal moves"
+    );
+
+    let mut generated_drop = false;
+    board.generate_drops(|moves| {
+        generated_drop |= moves.has(pawn_drop_mate);
+        generated_drop
+    });
+    assert!(
+        !generated_drop,
+        "illegal pawn-drop mate should not be generated as a drop"
+    );
+
+    let mut generated_move = false;
+    board.generate_moves(|moves| {
+        generated_move |= moves.has(pawn_drop_mate);
+        generated_move
+    });
+    assert!(
+        !generated_move,
+        "illegal pawn-drop mate should not be generated as a legal move"
+    );
+
+    let mut generated_check = false;
+    board.generate_checks(|moves| {
+        generated_check |= moves.has(pawn_drop_mate);
+        generated_check
+    });
+    assert!(
+        !generated_check,
+        "illegal pawn-drop mate should not be generated as a checking move"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
 fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
     let board: Board =
         "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1"

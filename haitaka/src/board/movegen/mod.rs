@@ -533,48 +533,39 @@ impl Board {
     }
 
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {
-        debug_assert!(self.checkers.is_empty());
-
         let them = !self.side_to_move();
         if !self.has(them, Piece::King) {
             return false;
         }
-
-        #[cfg(not(feature = "annan"))]
-        {
-            // Quick rank check: a normal pawn only attacks one square ahead
-            let our_pawn_rank = to.rank() as usize;
-            let their_king_rank = self.king(them).rank() as usize;
-
-            if (them == Color::White && their_king_rank != our_pawn_rank - 1)
-                || (them == Color::Black && their_king_rank != our_pawn_rank + 1)
-            {
-                return false;
-            }
-        }
-
-        // We know that our Pawn on `to` square attacks their King.
-        //
-        // (1) If to square is not attacked by them (apart from by their King), and
-        // (2) to square is defended by at least one of ours, and
-        // (3) King can not move (to square was the only remaining free square of the King)
-        // then it is an illegal Pawn drop mate
-
-        // For now, adding a slow version
         let mut board = self.clone();
         board.play_unchecked(Move::Drop {
             piece: Piece::Pawn,
             to,
         });
 
-        // don't call generate_moves (which could cause recursion!)
+        // Uchi-fuzume only applies when the dropped pawn itself gives check.
+        if !board.checkers.has(to) {
+            return false;
+        }
+
         let mut has_legal_moves = false;
-        board.generate_board_moves(|_| {
+        board.generate_moves(|_| {
             has_legal_moves = true;
             true
         });
 
         !has_legal_moves
+    }
+
+    fn filter_illegal_pawn_drop_mates(&self, mut to: BitBoard) -> BitBoard {
+        let mut illegal = BitBoard::EMPTY;
+        for square in to {
+            if self.is_illegal_mate_by_pawn_drop(square) {
+                illegal |= square.bitboard();
+            }
+        }
+        to &= !illegal;
+        to
     }
 
     fn add_king_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
@@ -767,14 +758,7 @@ impl Board {
                 if to.is_empty() {
                     return false;
                 }
-                // check that the drop doesn't cause illegal checkmate
-                // note: if we're in check, this situation cannot occur!
-                if !IN_CHECK {
-                    let to_square = to.next_square().unwrap();
-                    if self.is_illegal_mate_by_pawn_drop(to_square) {
-                        to = to.rm(to_square);
-                    }
-                }
+                to = self.filter_illegal_pawn_drop_mates(to);
             }
             if to.is_empty() {
                 return false;
@@ -834,19 +818,28 @@ impl Board {
 
             #[cfg(feature = "annan")]
             {
-                if self.checkers.is_empty() {
-                    return true;
+                let resolves_check = if self.checkers.is_empty() {
+                    true
+                } else {
+                    self.annan_move_resolves_check(mv)
+                };
+                if !resolves_check {
+                    return false;
                 }
-                return self.annan_move_resolves_check(mv);
+                return piece != Piece::Pawn || !self.is_illegal_mate_by_pawn_drop(to);
             }
 
             #[cfg(not(feature = "annan"))]
             {
-                match self.checkers.len() {
-                    0 => return true,
-                    1 => return self.target_drops::<true>().has(to),
-                    _ => return false,
+                let resolves_check = match self.checkers.len() {
+                    0 => true,
+                    1 => self.target_drops::<true>().has(to),
+                    _ => false,
+                };
+                if !resolves_check {
+                    return false;
                 }
+                return piece != Piece::Pawn || !self.is_illegal_mate_by_pawn_drop(to);
             }
         }
         false
@@ -1269,14 +1262,7 @@ impl Board {
                 if piece == Piece::Pawn {
                     // avoid nifu
                     to &= self.pawnless_files[color as usize];
-
-                    // avoid illegal mate by pawn drop
-                    if !to.is_empty() {
-                        let to_square = to.next_square().unwrap();
-                        if self.is_illegal_mate_by_pawn_drop(to_square) {
-                            to = to.rm(to_square);
-                        }
-                    }
+                    to = self.filter_illegal_pawn_drop_mates(to);
                 }
 
                 if !to.is_empty() && listener(PieceMoves::Drops { color, piece, to }) {
