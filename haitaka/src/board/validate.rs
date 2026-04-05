@@ -138,6 +138,7 @@ impl Board {
     /// of all the opponent's pieces that attack `color`'s King and `pinned` is the bitboard of
     /// all pieces (of any color) that block an opponent's slider from attacking `color`'s King,
     /// assuming there is only one such blocking piece.
+    #[cfg(not(feature = "annan"))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
         let mut pinned = BitBoard::EMPTY;
@@ -176,6 +177,84 @@ impl Board {
         checkers |= knight_attacks(color, our_king) & their_pieces & self.pieces(Piece::Knight);
         checkers |= silver_attacks(color, our_king) & their_pieces & self.pseudo_silvers();
         checkers |= gold_attacks(color, our_king) & their_pieces & self.pseudo_golds();
+
+        (checkers, pinned)
+    }
+
+    /// Annan-aware checkers and pins calculation.
+    ///
+    /// Under Annan rules, each opponent piece's effective movement depends on
+    /// the friendly piece behind it. We compute the opponent's backing info
+    /// and then check each effective movement type.
+    #[cfg(feature = "annan")]
+    pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
+        self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
+    }
+
+    #[cfg(feature = "annan")]
+    pub(super) fn calculate_checkers_and_pins_excluding(
+        &self,
+        color: Color,
+        excluded_attackers: BitBoard,
+    ) -> (BitBoard, BitBoard) {
+        use crate::annan::{
+            AnnanBacking, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
+        };
+
+        let mut checkers = BitBoard::EMPTY;
+        let mut pinned = BitBoard::EMPTY;
+
+        if !self.has(color, Piece::King) {
+            return (checkers, pinned);
+        }
+
+        let our_king = self.king(color);
+        let their_color = !color;
+        let their_pieces = self.colors(their_color);
+        let occupied = self.occupied();
+
+        let backing = AnnanBacking::compute(self, their_color);
+
+        // For each piece type that could be the effective movement:
+        // find all opponent pieces moving as that type and check for attacks on our king.
+        for &eff_piece in &Piece::ALL {
+            // Collect all opponent pieces effectively moving as `eff_piece`:
+            //   - pieces of type `eff_piece` that are NOT backed (move as themselves)
+            //   - any piece backed by `eff_piece`
+            let unbacked_of_type =
+                self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
+            let backed_by_type = backing.backed_by[eff_piece as usize];
+            let movers = ((unbacked_of_type | backed_by_type) & their_pieces) & !excluded_attackers;
+
+            if movers.is_empty() {
+                continue;
+            }
+
+            if is_slider_movement(eff_piece) {
+                // Slider: check rays from king to these pieces
+                let pseudo = slider_pseudo_attacks(eff_piece, color, our_king);
+                let candidates = pseudo & movers;
+                for attacker in candidates {
+                    let between = get_between_rays(attacker, our_king) & occupied;
+                    match between.len() {
+                        0 => checkers |= attacker.bitboard(),
+                        1 => pinned |= between,
+                        _ => {}
+                    }
+                }
+
+                // For PRook/PBishop, also check short-range component
+                if eff_piece == Piece::PRook {
+                    checkers |= silver_attacks(color, our_king) & movers;
+                } else if eff_piece == Piece::PBishop {
+                    checkers |= gold_attacks(color, our_king) & movers;
+                }
+            } else {
+                // Non-slider: reverse-attack from king
+                let reverse = pseudo_legals_for(eff_piece, color, our_king, occupied);
+                checkers |= reverse & movers;
+            }
+        }
 
         (checkers, pinned)
     }

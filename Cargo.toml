@@ -1,7 +1,9 @@
 [workspace]
 members = [
     "haitaka",
-    "haitaka_types"
+    "haitaka_learn",
+    "haitaka_types",
+    "haitaka_wasm"
 ]
 resolver = "2"
 

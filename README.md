@@ -1,98 +1,139 @@
-# haitaka ハイタカ &emsp; [![Latest Version]][crates.io] [![Build Status]][actions] [![Documentation]][docs]
+# haitaka-variants
 
-[Build Status]: https://img.shields.io/github/actions/workflow/status/tofutofu/haitaka/rust.yml?branch=main
-[actions]: https://github.com/tofutofu/haitaka/actions?query=branch%3Amain
-[Latest Version]: https://img.shields.io/crates/v/haitaka.svg
-[crates.io]: https://crates.io/crates/haitaka
-[Documentation]: https://docs.rs/haitaka/badge.svg
-[docs]: https://docs.rs/haitaka
+`haitaka-variants` is an engine workspace for different shogi variants, forked from [`tofutofu/haitaka`](https://github.com/tofutofu/haitaka), which supports fast 9x9 shogi move generation.
 
-## Rust Shogi move generation library
+- Feature flags for different shogi variants
+  - Currently: `annan` for 安南
+  - Since these flags are compile-time options, there's zero overhead for switching logics for other variants
+- a DFPN mate solver in the core engine
+  - *Note: this is implemented with simple instructions to a coding agent. Needs more verification*
+- a browser-facing WASM search layer
+  - Simple alphabeta search with iterative deepening + DFPN prepass
+  - When `.nnue` model is loaded, evaluate with Fairy-Stockfish-compatible NNUE instead
+- a local NNUE data/training/export/verify pipeline
 
-`haitaka` is a [Shogi](https://en.wikipedia.org/wiki/Shogi) move generation library written in Rust that aims to support fast move generation.
-It is inspired by the beautifully designed [`cozy-chess`](https://github.com/analog-hors/cozy-chess) library written by [`analog-hors`](https://github.com/analog-hors). 
-The layout of the modules and the overall design is largely the same as in `cozy-chess`. Many low-level functions were copied from `cozy-chess`, with only trivial modifications, but since there are significant differences between Shogi and International Chess, I also modified some of the higher-level functions and added extra functionality.
+This repository is meant to be an engine workspace, not just a single move-generation crate.
 
-## Name
+## Workspace
 
-"Haitaka" or "taka" means "sparrowhawk" in Japanese. "Taka" is a haiku _kigo_ (season word) associated with winter.
+- `haitaka`
+  - core board representation, SFEN parsing, legal move generation, perft, and DFPN
+- `haitaka_types`
+  - shared types and feature-gated variant pieces/ranks support
+- `haitaka_wasm`
+  - `wasm-bindgen` wrapper exposing search, iterative deepening, perft, DFPN, and NNUE loading
+- `haitaka_learn`
+  - CLI for NNUE data generation, trainer orchestration, export, and verification
 
-   鷹の眼​にこぼれて雁のたち騒ぐ<br>
-   _Taka no me ni koborete kari no tachisawagu_
+## Main Changes From Upstream `tofutofu/haitaka`
 
-   _​Escaping the hawk's eye,<br>
-   the wild geese<br>
-   rise in tumult._<br>
-   -— 加賀千代女 ([Kaga no Chiyojo](https://en.wikipedia.org/wiki/Fukuda_Chiyo-ni))
+At a high level, the `wasm` branch adds:
 
-## Overview
-- `no_std` compatible
-- Strongly-typed API that makes heavy use of newtypes to avoid errors
-- Efficient bitboard-based board representation
-- Performant legal move generation
-- Incrementally updated zobrist hash for quickly obtaining a hash of a board
-- Supporting both Magic Bitboards and the [Qugiy](https://www.apply.computer-shogi.org/wcsc31/appeal/Qugiy/appeal.pdf) algorithm for slider move generation
-- Support for parsing [SFEN](https://en.wikipedia.org/wiki/Shogi_notation#SFEN) strings
+- Annan shogi support via the `annan` feature
+  - move generation
+  - legality checking
+  - check detection
+  - validation / zobrist support
+- a standalone DFPN mate solver in the core crate
+  - `Board::dfpn(...)`
+  - `haitaka/examples/dfpn.rs`
+  - `haitaka/benches/dfpn.rs`
+- a new `haitaka_wasm` crate
+  - fixed-depth search `search()`
+  - engine-owned iterative deepening with timeout `search_iterative_deepening()`
+    - root DFPN prepass for iterative search
+  - `perft()` and direct `dfpn()` exports
+  - Fairy-Stockfish-compatible NNUE loading `load_nnue()` and evaluation
+  - incremental NNUE accumulator updates and native benches
+- a new `haitaka_learn` crate
+  - generate training data from Haitaka positions/search
+  - call upstream [`variant-nnue-pytorch`](https://github.com/fairy-stockfish/variant-nnue-pytorch)
+  - export `.nnue`
+  - verify the exported net inside Haitaka
+- supporting workspace changes in `Cargo.toml`, examples, benches, and shared types
 
-## Main differences with `cozy-chess`
-- `BitBoard` uses `u128` instead of `u64` as backing to handle the 9x9 Shogi board
-- Move generation handles both board moves and drops
-- Move generation of sliders also implements the [Qugiy algorithm](https://yaneuraou.yaneu.com/2021/12/03/qugiys-jumpy-effect-code-complete-guide/)
-- File-major ordering of squares to make move generation faster
+The current `main..wasm` commit history is centered around:
 
-## Crate features
-- `std`: Enable features that require `std`. Currently only used for the `Error` trait.
+- Annan support
+- WASM build/search support
+- search speed work
+- NNUE support
+- incremental NNUE updates
+- `haitaka_learn`
+- DFPN
+- iterative deepening + DFPN integration
+- stricter handling of illegal pawn-drop mate (`uchi-fuzume`)
 
-## Installation
-Add `haitaka` to your `Cargo.toml`:
-```toml
-[dependencies]
-haitaka = "0.2.1"   # or use the latest version on crates.io
-```
+## Quick Start
 
-## Usage
+### Core engine
 
-### Basic 
-```rust
-use haitaka::*;
-// Start position
-let board = Board::startpos();
-let mut move_list = Vec::new();
-board.generate_moves(|moves| {
-    // Unpack into move list
-    move_list.extend(moves);
-    false
-});
-assert_eq!(move_list.len(), 30);
-```
-
-### Perft
 ```bash
-cargo run --release --example perft -- 5
+cargo test -p haitaka
+cargo test -p haitaka --features annan
 ```
 
-## Testing
+### WASM layer
 
-This code has been tested on an Apple M2, using the stable-aarch64-apple-darwin toolchain. In
-GitHub workflows it has also been tested on Ubuntu.
-
-The code has not yet been used in a Shogi engine, so should still be seen as experimental.
-
-To run all tests use:
 ```bash
-cargo test
+cargo test -p haitaka_wasm
+cargo test -p haitaka_wasm --features annan
 ```
 
-## Contributing
+### Perft and DFPN examples
 
-Contributions are very welcome! Please open an issue or submit a pull request on GitHub.
+```bash
+cargo run -p haitaka --release --example perft -- 4
+cargo run -p haitaka --release --example dfpn -- "8k/6G2/7B1/9/9/9/9/9/K8 b R 1"
+```
+
+### Benches
+
+```bash
+cargo bench -p haitaka --bench perft -- --noplot
+cargo bench -p haitaka --bench dfpn -- --noplot
+cargo bench -p haitaka_wasm --bench nnue -- --noplot
+```
+
+## Feature Flags
+
+### `haitaka`
+
+- `std`
+- `qugiy` ([ref. about qugiy algorithm](https://yaneuraou.yaneu.com/2021/12/03/qugiys-jumpy-effect-code-complete-guide/))
+- `annan`
+
+### `haitaka_wasm`
+
+- `annan`
+
+### `haitaka_learn`
+
+- `annan`
+
+## NNUE Notes
+
+- Standard shogi NNUE uses the same network layout as Fairy-Stockfish `HalfKAv2^`.
+- `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
+  - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
+- Annan currently keeps its custom rule logic in search/movegen; NNUE training/data generation is handled separately through `haitaka_learn`.
+
+For training details, see:
+
+- `haitaka_learn/README.md`
+- `haitaka_learn.toml`
 
 ## Acknowledgments
-Portions of this library are derived from the [`cozy-chess`](https://github.com/analog-hors/cozy-chess) project by [`analog-hors`](https://github.com/analog-hors). The `cozy-chess` project is licensed under the MIT license, and its license text is included in this repository under `third_party/cozy-chess/LICENSE`.
 
-## References
-- [cozy-chess](https://github.com/analog-hors/cozy-chess)
-- [WCSC31 Qugiy Appeal](https://www.apply.computer-shogi.org/wcsc31/appeal/Qugiy/appeal.pdf)
-- [Qugiy in YaneuraOu](https://yaneuraou.yaneu.com/2021/12/03/qugiys-jumpy-effect-code-complete-guide/)
-- [USI - Universal Shogi Interface](http://hgm.nubati.net/usi.html)
-- [YaneuraOu](https://github.com/yaneurao/YaneuraOu)
+This project still builds on the original `haitaka` design and on ideas/code structure from `cozy-chess`.
+
+Relevant references:
+
+- `tofutofu/haitaka`
+- `analog-hors/cozy-chess`
+- Fairy-Stockfish NNUE tooling and model layout
+- `variant-nnue-pytorch`
+
+## License
+
+MIT. See `LICENSE`.

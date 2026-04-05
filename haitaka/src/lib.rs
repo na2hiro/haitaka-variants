@@ -1,5 +1,5 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![doc = include_str!("../README.md")]
+#![cfg_attr(not(feature = "annan"), doc = include_str!("../README.md"))]
 
 //! # Examples
 //!
@@ -20,6 +20,7 @@ use haitaka_types::*;
 
 pub use bitboard::*;
 pub use color::*;
+pub use dfpn::*;
 pub use file::*;
 pub use piece::*;
 pub use rank::*;
@@ -27,8 +28,11 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
+#[cfg(feature = "annan")]
+pub mod annan;
 pub mod attacks;
 pub mod board;
+pub mod dfpn;
 pub mod slider_moves;
 
 pub use attacks::*;

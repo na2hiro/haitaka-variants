@@ -28,7 +28,17 @@ helpers::simple_error! {
 }
 
 /// SFEN string representing the start position
+#[cfg(not(feature = "annan"))]
 pub const SFEN_STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+
+/// SFEN string representing the Annan Shogi start position.
+///
+/// Pawns in front of the bishop and rook are moved one step forward
+/// to avoid them being too powerful from the start (they would otherwise
+/// move like bishop/rook due to Annan backing).
+#[cfg(feature = "annan")]
+pub const SFEN_STARTPOS: &str =
+    "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 
 // TODO: In handicap games is white's first move numbered 1 or 2? For now, to be consistent, I label it '2'.
 
@@ -86,8 +96,7 @@ impl Board {
     /// # Examples
     /// ```
     /// # use haitaka::*;
-    /// let sfen: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-    /// assert_eq!(Board::startpos(), sfen.parse().unwrap());
+    /// assert_eq!(Board::startpos(), SFEN_STARTPOS.parse().unwrap());
     /// ```
     pub fn startpos() -> Self {
         Self::from_sfen(SFEN_STARTPOS).unwrap()
@@ -134,8 +143,33 @@ impl Board {
     pub fn unchecked_put(&mut self, color: Color, piece: Piece, square: Square) {
         self.inner.xor_square(piece, color, square);
         if piece == Piece::Pawn {
-            self.pawnless_files[color as usize] &= !square.file().bitboard();
+            self.refresh_pawnless_file(color, square.file());
         }
+    }
+
+    #[inline(always)]
+    fn refresh_pawnless_file(&mut self, color: Color, file: File) {
+        let file_bb = file.bitboard();
+        if (self.colored_pieces(color, Piece::Pawn) & file_bb).is_empty() {
+            self.pawnless_files[color as usize] |= file_bb;
+        } else {
+            self.pawnless_files[color as usize] &= !file_bb;
+        }
+    }
+
+    #[cfg(feature = "annan")]
+    #[inline(always)]
+    fn pawn_move_would_be_nifu(
+        &self,
+        color: Color,
+        from: Square,
+        to: Square,
+        promotion: bool,
+    ) -> bool {
+        !promotion
+            && !((self.colored_pieces(color, Piece::Pawn) & !from.bitboard())
+                & to.file().bitboard())
+            .is_empty()
     }
 
     /// Get a [`BitBoard`] of all the pieces of the given piece type.
@@ -197,7 +231,8 @@ impl Board {
     /// Shorthand for `board.colors(color) & board.pieces(piece)`.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let white_pawns = board.colored_pieces(Color::White, Piece::Pawn);
@@ -284,7 +319,8 @@ impl Board {
 
     /// Get a [`BitBoard`] of all the pieces on the board.
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.occupied(), bitboard! {
@@ -307,7 +343,8 @@ impl Board {
     /// Get the current side to move.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.side_to_move(), Color::Black);
@@ -326,7 +363,8 @@ impl Board {
     /// Does not include the move number.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play("2g2f".parse().unwrap());
@@ -352,7 +390,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -373,7 +412,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -400,7 +440,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.move_number(), 1);
@@ -632,7 +673,7 @@ impl Board {
     /// indicates that whoever is side-to-to-move has the advantage of the first move.
     ///
     /// # Examples
-    /// 
+    ///
     /// # use haitaka::*;
     /// let sfen1 = "9/7k1/9/7S1/9/9/9/7L1/9 b -";
     /// let board1 = Board::tsume(sfen1).unwrap();
@@ -645,7 +686,7 @@ impl Board {
     /// assert_eq!(board2.dominates(board1), Dominance::DominatedBy);
     /// assert_eq!(board2.dominates(board3), Dominance::Incomparable);
     /// assert_eq!(board3.dominates(board2), Dominance::Incomparable);
-    /// 
+    ///
     pub fn dominates(&self, other: &Self) -> Dominance {
         self.inner.dominates(&other.inner)
     }
@@ -659,7 +700,8 @@ impl Board {
     ///
     /// # Examples
     /// ## Legal moves
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let sfen: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5";
     /// let mut board = Board::startpos();
@@ -699,7 +741,8 @@ impl Board {
     /// See [`Board::play`] for a variant _guaranteed_ to panic immediately on illegal moves.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "annan"), doc = "```")]
+    #[cfg_attr(feature = "annan", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play_unchecked("2g2f".parse().unwrap());
@@ -721,7 +764,7 @@ impl Board {
 
             // update pawn_on_file
             if piece == Piece::Pawn {
-                self.pawnless_files[color as usize] &= !to.file().bitboard();
+                self.refresh_pawnless_file(color, to.file());
             }
 
             // update checkers and pins
@@ -753,7 +796,7 @@ impl Board {
 
                 // update pawn_on_file
                 if capture == Piece::Pawn {
-                    self.pawnless_files[!color as usize] |= to.file().bitboard();
+                    self.refresh_pawnless_file(!color, to.file());
                 }
             }
 
@@ -765,8 +808,11 @@ impl Board {
             self.inner.xor_square(final_piece, color, to);
 
             // update pawn_on_file
-            if piece == Piece::Pawn && promotion {
-                self.pawnless_files[color as usize] |= to.file().bitboard();
+            if piece == Piece::Pawn {
+                self.refresh_pawnless_file(color, from.file());
+                if from.file() != to.file() || promotion {
+                    self.refresh_pawnless_file(color, to.file());
+                }
             }
 
             // update checkers and pins (if the other side has a King)
@@ -787,6 +833,7 @@ impl Board {
         self.inner.toggle_side_to_move();
     }
 
+    #[cfg(not(feature = "annan"))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
         self.pinned = BitBoard::EMPTY;
@@ -842,6 +889,27 @@ impl Board {
         }
     }
 
+    /// Under Annan, a single move can change backing relationships for multiple pieces,
+    /// so we fall back to a full recalculation.
+    ///
+    /// Note: called BEFORE toggle_side_to_move, so `color` is the mover.
+    /// Checkers/pins are from the opponent's (the new side-to-move's) perspective.
+    #[cfg(feature = "annan")]
+    fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
+        let them = !color;
+        let ignored_nifu_pawn = if piece == Piece::Pawn
+            && (self.colored_pieces(color, Piece::Pawn) & to.file().bitboard()).len() > 1
+        {
+            to.bitboard()
+        } else {
+            BitBoard::EMPTY
+        };
+        let (checkers, pinned) =
+            self.calculate_checkers_and_pins_excluding(them, ignored_nifu_pawn);
+        self.checkers = checkers;
+        self.pinned = pinned;
+    }
+
     /// Attempt to play a [null move](https://www.chessprogramming.org/Null_Move).
     /// Returns a new board if successful. Returns None if side-to-move is in check.
     ///
@@ -877,21 +945,33 @@ impl Board {
             board.move_number += 1;
             board.inner.toggle_side_to_move();
 
-            // we only need to update pinned
-            board.pinned = BitBoard::EMPTY;
-            let our_king = board.king(color);
-            let them = board.colors(color);
-            let their_attackers = them
-                & (
-                    bishop_pseudo_attacks(our_king) | rook_pseudo_attacks(our_king)
-                    // already includes Lance attacks
-                );
-            let occ = board.occupied();
-            for square in their_attackers {
-                let between = get_between_rays(our_king, square) & occ;
-                if between.len() == 1 {
-                    board.pinned |= between;
+            #[cfg(not(feature = "annan"))]
+            {
+                // we only need to update pinned
+                board.pinned = BitBoard::EMPTY;
+                let our_king = board.king(color);
+                let them = board.colors(color);
+                let their_attackers = them
+                    & (
+                        bishop_pseudo_attacks(our_king) | rook_pseudo_attacks(our_king)
+                        // already includes Lance attacks
+                    );
+                let occ = board.occupied();
+                for square in their_attackers {
+                    let between = get_between_rays(our_king, square) & occ;
+                    if between.len() == 1 {
+                        board.pinned |= between;
+                    }
                 }
+            }
+
+            #[cfg(feature = "annan")]
+            {
+                // Under Annan, non-sliders backed by sliders can also pin,
+                // so use full recalculation.
+                let (checkers, pinned) = board.calculate_checkers_and_pins(color);
+                board.checkers = checkers;
+                board.pinned = pinned;
             }
 
             Some(board)

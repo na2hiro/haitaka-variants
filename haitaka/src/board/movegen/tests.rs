@@ -143,6 +143,7 @@ fn legality_simple() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
         .parse()
@@ -191,6 +192,7 @@ fn pawn_push_mate_is_valid() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -328,6 +330,7 @@ fn tsume() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -368,6 +371,7 @@ fn generate_checks() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -422,6 +426,7 @@ fn invalid_tsume() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -485,6 +490,7 @@ fn pinners() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -585,6 +591,7 @@ fn discovered_checks2() {
 }
 
 #[test]
+#[cfg(not(feature = "annan"))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .
@@ -691,7 +698,7 @@ fn board_hash_trait_works() {
     let board1 = Board::startpos();
     let board2 = Board::startpos();
     let mut board3 = Board::startpos();
-    board3.play_unchecked("2g2f".parse().unwrap());
+    board3.play_unchecked("7g7f".parse().unwrap());
 
     let mut hasher1 = DefaultHasher::new();
     Hash::hash(&board1, &mut hasher1);
@@ -707,4 +714,346 @@ fn board_hash_trait_works() {
 
     assert_eq!(hash1, hash2, "Hashes of identical boards should match");
     assert_ne!(hash1, hash3, "Hashes of different boards should differ");
+}
+
+// ========================
+// Annan-specific tests
+// ========================
+
+/// Capturing the backer resolves check when the checker only attacks via backing.
+///
+/// Position: Black King on 5i, White King on 1a, White Pawn on 5g backed by
+/// White Rook on 5f. The Pawn moves like a Rook and checks the King along the file.
+/// Black Rook on 5a can capture the backer on 5f, removing the check.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_capture_backer_resolves_check() {
+    // rank a: Black Rook on 5a
+    // rank c: White King on 9c (safe from Black Rook — different file)
+    // rank f: White Rook on 5f (backer)
+    // rank g: White Pawn on 5g (checker, moves like Rook due to backing)
+    // rank i: Black King on 5i
+    let board: Board = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1".parse().unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from backed Pawn"
+    );
+
+    // Capturing the backer (White Rook on 5f) with Black Rook from 5a
+    let capture_backer = Move::BoardMove {
+        from: Square::A5, // 5a
+        to: Square::F5,   // 5f
+        promotion: false,
+    };
+    assert!(
+        board.is_legal(capture_backer),
+        "Capturing the backer should be legal to resolve check"
+    );
+
+    // Verify: after capturing backer, Black is no longer in check
+    let mut after = board.clone();
+    after.play_unchecked(capture_backer);
+    assert!(
+        after.checkers().is_empty(),
+        "After capturing backer, check should be resolved"
+    );
+}
+
+/// Capturing the backer does NOT resolve check when the checker natively attacks the king.
+///
+/// Position: White Gold on 5h backed by White Rook on 5g.
+/// The Gold moves like a Rook due to backing, but natively also attacks 5i.
+/// Capturing the Rook (backer on 5g) doesn't help — Gold still checks natively.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_capture_backer_does_not_help_native_check() {
+    // rank b: White King on 9b (safe)
+    // rank g: White Rook on 5g (backer)
+    // rank h: White Gold on 5h (checker — natively attacks 5i as Gold)
+    // rank i: Black King on 5i
+    // Black has a Rook on 5a to have a piece that could capture 5g
+    let board: Board = "4R4/k8/9/9/9/9/4r4/4g4/4K4 b - 1".parse().unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from Gold"
+    );
+
+    // Capturing the backer (Rook on 5g) should NOT resolve check
+    // because the Gold on 5h natively attacks 5i.
+    let capture_backer = Move::BoardMove {
+        from: Square::A5, // 5a
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+    assert!(
+        !board.is_legal(capture_backer),
+        "Capturing backer should NOT be legal when checker natively attacks king"
+    );
+}
+
+/// Drops can interpose against a non-slider that is effectively a slider due to backing.
+///
+/// Position: White Pawn on 5g backed by White Rook on 5f → Pawn checks like Rook.
+/// Black should be able to drop a piece on 5h to interpose.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_drop_interpose_backed_slider() {
+    // rank b: White King on 9b (safe)
+    // rank f: White Rook on 5f (backer)
+    // rank g: White Pawn on 5g (checker, moves like Rook)
+    // rank i: Black King on 5i
+    let board: Board = "9/k8/9/9/9/4r4/4p4/9/4K4 b G 1".parse().unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check"
+    );
+
+    // Drop Gold on 5h to interpose
+    let drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::H5, // 5h
+    };
+    assert!(
+        board.is_legal(drop),
+        "Dropping on interposition square should be legal against backed-slider check"
+    );
+}
+
+/// Drops cannot interpose against an unbacked non-slider check.
+#[test]
+#[cfg(feature = "annan")]
+fn annan_drop_no_interpose_non_slider() {
+    // White Pawn on 5h (no backer) gives check to Black King on 5i
+    // Black has a Gold in hand — but cannot interpose (no ray to block)
+    // rank b: White King on 9b (safe)
+    // rank h: White Pawn on 5h (no backer, checks King on 5i)
+    // rank i: Black King on 5i
+    let board: Board = "9/k8/9/9/9/9/9/4p4/4K4 b G 1".parse().unwrap();
+
+    assert!(
+        !board.checkers().is_empty(),
+        "Black King should be in check from Pawn"
+    );
+
+    // No valid drop should resolve check (non-slider, nothing to interpose)
+    let mut any_legal_drop = false;
+    board.generate_drops(|moves| {
+        for _mv in moves {
+            any_legal_drop = true;
+            return true;
+        }
+        false
+    });
+    assert!(!any_legal_drop, "No drop should resolve a non-slider check");
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_sideways_pawn_move_creating_nifu_is_illegal() {
+    let board: Board = "8k/9/4P4/9/9/9/3P5/3G5/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(mv));
+    assert!(!board.is_legal(mv));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(mv);
+        generated
+    });
+    assert!(
+        !generated,
+        "A pawn move that creates nifu should not be generated"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_nifu_pawn_move_is_legal_only_with_promotion() {
+    let board: Board = "8k/9/3P5/3GG4/9/9/4P4/9/K8 b - 1".parse().unwrap();
+
+    let non_promo = Move::BoardMove {
+        from: Square::C6, // 6c
+        to: Square::C5,   // 5c
+        promotion: false,
+    };
+    let promo = Move::BoardMove {
+        from: Square::C6, // 6c
+        to: Square::C5,   // 5c
+        promotion: true,
+    };
+
+    assert!(!board.is_legal_board_move(non_promo));
+    assert!(board.is_legal_board_move(promo));
+
+    let mut generated_non_promo = false;
+    let mut generated_promo = false;
+    board.generate_board_moves(|mvs| {
+        generated_non_promo |= mvs.has(non_promo);
+        generated_promo |= mvs.has(promo);
+        false
+    });
+
+    assert!(
+        !generated_non_promo,
+        "The non-promotion nifu move should not be generated"
+    );
+    assert!(
+        generated_promo,
+        "The promotion move should still be generated"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_sideways_pawn_move_updates_pawnless_files() {
+    let board: Board = "8k/9/9/9/9/9/3P5/3G5/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(mv));
+
+    let mut after = board.clone();
+    after.play_unchecked(mv);
+
+    assert!(
+        after.pawn_drop_ok(Color::Black, Square::E6),
+        "The source file should become pawnless after the pawn moves away"
+    );
+    assert!(
+        !after.pawn_drop_ok(Color::Black, Square::E5),
+        "The destination file should stop being pawnless after the pawn moves in"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_nifu_pawn_move_does_not_count_as_check() {
+    let board: Board = "9/9/4P4/9/9/5k3/3P5/3GG4/K8 b - 1".parse().unwrap();
+
+    let mv = Move::BoardMove {
+        from: Square::G6, // 6g
+        to: Square::G5,   // 5g
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(mv));
+
+    let mut generated = false;
+    board.generate_checks(|mvs| {
+        generated |= mvs.has(mv);
+        generated
+    });
+    assert!(
+        !generated,
+        "A pawn move that becomes nifu should not be treated as a checking move"
+    );
+
+    let mut after = board.clone();
+    after.play_unchecked(mv);
+    assert!(
+        after.checkers().is_empty(),
+        "The moved nifu pawn itself should not be counted as a checker"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_illegal_pawn_drop_mate_is_not_legal_or_generated() {
+    let board: Board =
+        "1nsg1gb1+B/1r1k5/2pp2p1p/1p4gp1/2n3n2/1P1PP2P1/2P1LKP1P/2+r6/2+l2GS+l1 w SL3Psn2p 1"
+            .parse()
+            .unwrap();
+    let pawn_drop_mate: Move = "P*4f".parse().unwrap();
+
+    assert!(
+        !board.is_legal_drop(pawn_drop_mate),
+        "illegal pawn-drop mate should not be legal"
+    );
+    assert!(
+        !board.is_legal(pawn_drop_mate),
+        "illegal pawn-drop mate should be excluded from legal moves"
+    );
+
+    let mut generated_drop = false;
+    board.generate_drops(|moves| {
+        generated_drop |= moves.has(pawn_drop_mate);
+        generated_drop
+    });
+    assert!(
+        !generated_drop,
+        "illegal pawn-drop mate should not be generated as a drop"
+    );
+
+    let mut generated_move = false;
+    board.generate_moves(|moves| {
+        generated_move |= moves.has(pawn_drop_mate);
+        generated_move
+    });
+    assert!(
+        !generated_move,
+        "illegal pawn-drop mate should not be generated as a legal move"
+    );
+
+    let mut generated_check = false;
+    board.generate_checks(|moves| {
+        generated_check |= moves.has(pawn_drop_mate);
+        generated_check
+    });
+    assert!(
+        !generated_check,
+        "illegal pawn-drop mate should not be generated as a checking move"
+    );
+}
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
+    let board: Board =
+        "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1"
+            .parse()
+            .unwrap();
+    let mating_try: Move = "6i5h".parse().unwrap();
+    assert!(board.is_legal(mating_try));
+
+    let mut after = board.clone();
+    after.play_unchecked(mating_try);
+
+    assert_eq!(
+        after.checkers().len(),
+        2,
+        "the mating try currently creates a double check"
+    );
+
+    let defense: Move = "4i5h".parse().unwrap();
+    assert!(
+        after.is_legal(defense),
+        "capturing the shared checker/backer should resolve both checks"
+    );
+
+    let mut generated = false;
+    after.generate_moves(|mvs| {
+        generated |= mvs.has(defense);
+        generated
+    });
+    assert!(generated, "the legal defense should be generated");
+
+    let mut resolved = after.clone();
+    resolved.play_unchecked(defense);
+    assert!(
+        resolved.checkers().is_empty(),
+        "after the capture, Black should no longer be in check"
+    );
 }
