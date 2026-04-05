@@ -62,9 +62,9 @@ impl LoadedConfig {
 
     pub fn ruleset_requires_matching_engine(&self) -> Result<()> {
         match self.config.rules.ruleset {
-            Ruleset::Annan if !cfg!(feature = "annan") => bail!(
-                "ruleset=annan requires building haitaka_learn with `--features annan`"
-            ),
+            Ruleset::Annan if !cfg!(feature = "annan") => {
+                bail!("ruleset=annan requires building haitaka_learn with `--features annan`")
+            }
             Ruleset::Standard | Ruleset::Handicap if cfg!(feature = "annan") => bail!(
                 "standard and handicap self-play data generation should use the default build without `--features annan`"
             ),
@@ -87,11 +87,9 @@ impl LoadedConfig {
                 if let Some(sfen) = &self.config.rules.opening_sfen {
                     Ok(sfen.clone())
                 } else {
-                    let preset = self
-                        .config
-                        .rules
-                        .handicap
-                        .ok_or_else(|| anyhow!("rules.handicap must be set for ruleset=handicap"))?;
+                    let preset = self.config.rules.handicap.ok_or_else(|| {
+                        anyhow!("rules.handicap must be set for ruleset=handicap")
+                    })?;
                     let sfen = match preset {
                         HandicapPreset::TwoPiece => haitaka::SFEN_2PIECE_HANDICAP,
                         HandicapPreset::FourPiece => haitaka::SFEN_4PIECE_HANDICAP,
@@ -108,12 +106,9 @@ impl LoadedConfig {
     }
 
     pub fn trainer_checkout(&self) -> Result<PathBuf> {
-        let checkout = self
-            .config
-            .paths
-            .trainer_checkout
-            .as_ref()
-            .ok_or_else(|| anyhow!("paths.trainer_checkout is required for train/export/pipeline"))?;
+        let checkout = self.config.paths.trainer_checkout.as_ref().ok_or_else(|| {
+            anyhow!("paths.trainer_checkout is required for train/export/pipeline")
+        })?;
         Ok(self.resolve_path(checkout))
     }
 

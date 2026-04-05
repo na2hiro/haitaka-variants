@@ -241,8 +241,14 @@ impl DfpnSolver {
         while evaluation.numbers.pn < phi && evaluation.numbers.dn < delta {
             let (best_index, second_numbers) = select_most_proving_child(kind, &children);
             let best_child = &children[best_index];
-            let (child_phi_target, child_delta_target) =
-                child_thresholds(kind, evaluation.numbers, best_child.numbers, second_numbers, phi, delta);
+            let (child_phi_target, child_delta_target) = child_thresholds(
+                kind,
+                evaluation.numbers,
+                best_child.numbers,
+                second_numbers,
+                phi,
+                delta,
+            );
             let child_phi = mid(best_child.numbers.pn, child_phi_target);
             let child_delta = mid(best_child.numbers.dn, child_delta_target);
 
@@ -250,8 +256,7 @@ impl DfpnSolver {
             let previous_child_numbers = best_child.numbers;
 
             path.push(hash);
-            let child_evaluation =
-                self.search(&best_child.board, child_phi, child_delta, path);
+            let child_evaluation = self.search(&best_child.board, child_phi, child_delta, path);
             path.pop();
 
             children[best_index].numbers = child_evaluation.numbers;
@@ -286,9 +291,11 @@ impl DfpnSolver {
             return true;
         }
 
-        if self.options.max_time_ms.is_some_and(|max_time_ms| {
-            self.started_at.elapsed().as_millis() >= max_time_ms as u128
-        }) {
+        if self
+            .options
+            .max_time_ms
+            .is_some_and(|max_time_ms| self.started_at.elapsed().as_millis() >= max_time_ms as u128)
+        {
             self.budget_hit = true;
             return true;
         }
@@ -514,30 +521,29 @@ fn select_most_proving_child(kind: NodeKind, children: &[Child]) -> (usize, Proo
         if is_better {
             second_index = Some(best_index);
             best_index = index;
-        } else if second_index.is_none_or(|candidate| {
-            match kind {
-                NodeKind::Attacker => {
-                    children[index].numbers.pn < children[candidate].numbers.pn
-                        || (children[index].numbers.pn == children[candidate].numbers.pn
-                            && children[index].numbers.dn > children[candidate].numbers.dn)
-                }
-                NodeKind::Defender => {
-                    children[index].numbers.dn < children[candidate].numbers.dn
-                        || (children[index].numbers.dn == children[candidate].numbers.dn
-                            && children[index].numbers.pn > children[candidate].numbers.pn)
-                }
+        } else if second_index.is_none_or(|candidate| match kind {
+            NodeKind::Attacker => {
+                children[index].numbers.pn < children[candidate].numbers.pn
+                    || (children[index].numbers.pn == children[candidate].numbers.pn
+                        && children[index].numbers.dn > children[candidate].numbers.dn)
+            }
+            NodeKind::Defender => {
+                children[index].numbers.dn < children[candidate].numbers.dn
+                    || (children[index].numbers.dn == children[candidate].numbers.dn
+                        && children[index].numbers.pn > children[candidate].numbers.pn)
             }
         }) {
             second_index = Some(index);
         }
     }
 
-    let second_numbers = second_index
-        .map(|index| children[index].numbers)
-        .unwrap_or(ProofNumbers {
-            pn: INF_PN,
-            dn: INF_PN,
-        });
+    let second_numbers =
+        second_index
+            .map(|index| children[index].numbers)
+            .unwrap_or(ProofNumbers {
+                pn: INF_PN,
+                dn: INF_PN,
+            });
 
     (best_index, second_numbers)
 }
@@ -566,7 +572,9 @@ fn delta_target(target: u32, total: u32, current: u32) -> u32 {
     if target >= INF_PN {
         INF_PN
     } else {
-        target.saturating_sub(total.saturating_sub(current)).min(INF_PN)
+        target
+            .saturating_sub(total.saturating_sub(current))
+            .min(INF_PN)
     }
 }
 
@@ -627,7 +635,11 @@ mod tests {
             board.play_unchecked(mv);
         }
 
-        assert_ne!(board.side_to_move(), attacker, "line should end on defender turn");
+        assert_ne!(
+            board.side_to_move(),
+            attacker,
+            "line should end on defender turn"
+        );
         assert!(
             !board.generate_moves(|_| true),
             "defender should have no legal replies at the end of the PV"

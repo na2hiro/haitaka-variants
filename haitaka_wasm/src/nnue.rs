@@ -168,10 +168,14 @@ impl NnueModel {
 
         let bucket_network = &self.buckets[bucket];
         let mut hidden1 = [0i32; HIDDEN_LAYER_1_DIMENSIONS];
-        bucket_network.hidden1.forward_into(&transformed, &mut hidden1);
+        bucket_network
+            .hidden1
+            .forward_into(&transformed, &mut hidden1);
         let hidden1_relu = clipped_relu_array(hidden1);
         let mut hidden2 = [0i32; HIDDEN_LAYER_2_DIMENSIONS];
-        bucket_network.hidden2.forward_into(&hidden1_relu, &mut hidden2);
+        bucket_network
+            .hidden2
+            .forward_into(&hidden1_relu, &mut hidden2);
         let hidden2_relu = clipped_relu_array(hidden2);
         let output = bucket_network.output.forward_single(&hidden2_relu);
         let psqt = (our_accumulator.psqt[bucket] - their_accumulator.psqt[bucket]) / 2;
@@ -924,7 +928,10 @@ mod tests {
 
     #[test]
     fn deterministic_sequence_matches_full_from_handicap_position() {
-        deterministic_rollout_matches_full(Board::from_sfen(haitaka::SFEN_6PIECE_HANDICAP).unwrap(), 16);
+        deterministic_rollout_matches_full(
+            Board::from_sfen(haitaka::SFEN_6PIECE_HANDICAP).unwrap(),
+            16,
+        );
     }
 
     #[test]

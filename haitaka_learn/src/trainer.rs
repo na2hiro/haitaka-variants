@@ -66,8 +66,12 @@ pub fn train(loaded: &LoadedConfig) -> Result<PathBuf> {
         "variant-nnue-pytorch training",
     )?;
 
-    find_latest_checkpoint(&artifacts.logs_dir)
-        .ok_or_else(|| anyhow!("training finished but no checkpoint was found under {}", artifacts.logs_dir.display()))
+    find_latest_checkpoint(&artifacts.logs_dir).ok_or_else(|| {
+        anyhow!(
+            "training finished but no checkpoint was found under {}",
+            artifacts.logs_dir.display()
+        )
+    })
 }
 
 pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Result<PathBuf> {
@@ -136,7 +140,9 @@ impl PreparedTrainer {
 
         let variant_py = trainer_checkout.join("variant.py");
         let variant_h = trainer_checkout.join("variant.h");
-        let mut prepared = Self { backups: Vec::new() };
+        let mut prepared = Self {
+            backups: Vec::new(),
+        };
         prepared.write_with_backup(&variant_py, variant_py_contents())?;
         prepared.write_with_backup(&variant_h, variant_h_contents())?;
 
@@ -201,7 +207,10 @@ struct FileBackup {
     previous: Option<Vec<u8>>,
 }
 
-fn materialize_bootstrap_pt(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Option<PathBuf>> {
+fn materialize_bootstrap_pt(
+    loaded: &LoadedConfig,
+    trainer_checkout: &Path,
+) -> Result<Option<PathBuf>> {
     let Some(bootstrap_nnue) = loaded.bootstrap_nnue() else {
         return Ok(None);
     };
@@ -224,12 +233,7 @@ fn materialize_bootstrap_pt(loaded: &LoadedConfig, trainer_checkout: &Path) -> R
     Ok(Some(artifacts.bootstrap_model_pt))
 }
 
-fn run_command(
-    program: &str,
-    args: &[String],
-    cwd: &Path,
-    label: &str,
-) -> Result<()> {
+fn run_command(program: &str, args: &[String], cwd: &Path, label: &str) -> Result<()> {
     let status = Command::new(program)
         .args(args)
         .current_dir(cwd)
@@ -265,9 +269,11 @@ fn detect_git_revision(repo_root: &Path) -> Option<String> {
 fn find_latest_checkpoint(root: &Path) -> Option<PathBuf> {
     let mut candidates = Vec::new();
     collect_checkpoints(root, &mut candidates);
-    candidates
-        .into_iter()
-        .max_by_key(|path| fs::metadata(path).and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH))
+    candidates.into_iter().max_by_key(|path| {
+        fs::metadata(path)
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH)
+    })
 }
 
 fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {

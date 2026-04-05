@@ -94,7 +94,10 @@ pub fn verify(loaded: &LoadedConfig) -> Result<VerificationReport> {
         positions,
         search_smoke,
     };
-    fs::write(&artifacts.verify_report, serde_json::to_vec_pretty(&report)?)
-        .with_context(|| format!("failed to write {}", artifacts.verify_report.display()))?;
+    fs::write(
+        &artifacts.verify_report,
+        serde_json::to_vec_pretty(&report)?,
+    )
+    .with_context(|| format!("failed to write {}", artifacts.verify_report.display()))?;
     Ok(report)
 }

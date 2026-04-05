@@ -73,22 +73,20 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         ("startpos_d4", haitaka::SFEN_STARTPOS, 4u8),
         ("tactical_d3", "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", 3u8),
     ] {
-        let full_refresh = search_impl_with_eval_mode(
-            sfen,
-            depth,
-            model.clone(),
-            SearchEvalMode::FullRefresh,
-        )
-        .unwrap();
-        let incremental = search_impl_with_eval_mode(
-            sfen,
-            depth,
-            model.clone(),
-            SearchEvalMode::Incremental,
-        )
-        .unwrap();
-        assert_eq!(incremental.best_move, full_refresh.best_move, "best move parity for {name}");
-        assert_eq!(incremental.best_score, full_refresh.best_score, "score parity for {name}");
+        let full_refresh =
+            search_impl_with_eval_mode(sfen, depth, model.clone(), SearchEvalMode::FullRefresh)
+                .unwrap();
+        let incremental =
+            search_impl_with_eval_mode(sfen, depth, model.clone(), SearchEvalMode::Incremental)
+                .unwrap();
+        assert_eq!(
+            incremental.best_move, full_refresh.best_move,
+            "best move parity for {name}"
+        );
+        assert_eq!(
+            incremental.best_score, full_refresh.best_score,
+            "score parity for {name}"
+        );
 
         search_group.bench_function(format!("{name}_full_refresh"), |b| {
             b.iter(|| {
@@ -126,8 +124,14 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     ] {
         let fixed = search_impl_handcrafted(sfen, depth).unwrap();
         let iterative = search_iterative_deepening_impl(sfen, depth, 5_000).unwrap();
-        assert_eq!(iterative.best_move, fixed.best_move, "iterative parity for {name}");
-        assert_eq!(iterative.completed_depth, depth, "completed depth for {name}");
+        assert_eq!(
+            iterative.best_move, fixed.best_move,
+            "iterative parity for {name}"
+        );
+        assert_eq!(
+            iterative.completed_depth, depth,
+            "completed depth for {name}"
+        );
 
         iterative_group.bench_function(format!("{name}_fixed"), |b| {
             b.iter(|| {
@@ -145,8 +149,8 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     }
 
     let mate_sfen = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
-    let dfpn_enabled = search_iterative_deepening_impl_with_dfpn_mode(mate_sfen, 4, 5_000, true)
-        .unwrap();
+    let dfpn_enabled =
+        search_iterative_deepening_impl_with_dfpn_mode(mate_sfen, 4, 5_000, true).unwrap();
     let dfpn_disabled =
         search_iterative_deepening_impl_with_dfpn_mode(mate_sfen, 4, 5_000, false).unwrap();
     assert_eq!(dfpn_enabled.completed_depth, 0);

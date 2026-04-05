@@ -79,8 +79,9 @@ impl Teacher {
             if path.exists() {
                 let bytes = fs::read(&path)
                     .with_context(|| format!("failed to read bootstrap NNUE {}", path.display()))?;
-                let model = NnueModel::from_bytes(&bytes)
-                    .map_err(|err| anyhow!("failed to load bootstrap NNUE {}: {err}", path.display()))?;
+                let model = NnueModel::from_bytes(&bytes).map_err(|err| {
+                    anyhow!("failed to load bootstrap NNUE {}: {err}", path.display())
+                })?;
                 return Ok(Self::Nnue(Arc::new(model)));
             }
         }
@@ -174,7 +175,8 @@ fn generate_split(
     };
 
     let mut writer = BufWriter::new(
-        File::create(bin_path).with_context(|| format!("failed to create {}", bin_path.display()))?,
+        File::create(bin_path)
+            .with_context(|| format!("failed to create {}", bin_path.display()))?,
     );
     let mut sampled_positions = 0u64;
 
@@ -198,7 +200,8 @@ fn generate_split(
                     % loaded.config.data.sample_every_ply
                     == 0
                 && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
-            let needs_teacher = should_sample || played_plies >= loaded.config.data.opening_random_plies;
+            let needs_teacher =
+                should_sample || played_plies >= loaded.config.data.opening_random_plies;
             let teacher_summary = if needs_teacher {
                 Some(teacher.search(&board, loaded.config.data.search_depth)?)
             } else {
@@ -295,16 +298,20 @@ fn generate_split(
 }
 
 fn effective_rule_id(loaded: &LoadedConfig) -> Option<u16> {
-    loaded.config.rules.rule_id.or(match loaded.config.rules.ruleset {
-        Ruleset::Standard => Some(0),
-        Ruleset::Annan => Some(26),
-        Ruleset::Handicap => match loaded.config.rules.handicap {
-            Some(HandicapPreset::SixPiece) => Some(6),
-            Some(HandicapPreset::FourPiece) => Some(4),
-            Some(HandicapPreset::TwoPiece) => Some(2),
-            None => None,
-        },
-    })
+    loaded
+        .config
+        .rules
+        .rule_id
+        .or(match loaded.config.rules.ruleset {
+            Ruleset::Standard => Some(0),
+            Ruleset::Annan => Some(26),
+            Ruleset::Handicap => match loaded.config.rules.handicap {
+                Some(HandicapPreset::SixPiece) => Some(6),
+                Some(HandicapPreset::FourPiece) => Some(4),
+                Some(HandicapPreset::TwoPiece) => Some(2),
+                None => None,
+            },
+        })
 }
 
 fn terminal_teacher_score(board: &Board) -> i32 {
@@ -348,7 +355,9 @@ fn find_haitaka_workspace_root(config_path: &Path) -> Option<&Path> {
         .parent()
         .into_iter()
         .flat_map(Path::ancestors)
-        .find(|candidate| candidate.join("Cargo.toml").is_file() && candidate.join("haitaka_learn").is_dir())
+        .find(|candidate| {
+            candidate.join("Cargo.toml").is_file() && candidate.join("haitaka_learn").is_dir()
+        })
 }
 
 fn write_training_entry(
@@ -440,7 +449,8 @@ fn trainer_hand_counts(board: &Board) -> [[u8; 10]; 2] {
             Piece::Rook,
             Piece::Gold,
         ] {
-            counts[trainer_color as usize][trainer_piece_type(piece)] = board.num_in_hand(color, piece);
+            counts[trainer_color as usize][trainer_piece_type(piece)] =
+                board.num_in_hand(color, piece);
         }
     }
     counts
@@ -557,8 +567,10 @@ mod tests {
 
     #[test]
     fn packer_preserves_feature_signature() {
-        let board = Board::from_sfen("lnsgkgsnl/1r5b1/pppp1pppp/4p4/4+P4/9/PPPP1PPPP/1B5R1/LNSGKGSNL b - 3")
-            .unwrap();
+        let board = Board::from_sfen(
+            "lnsgkgsnl/1r5b1/pppp1pppp/4p4/4+P4/9/PPPP1PPPP/1B5R1/LNSGKGSNL b - 3",
+        )
+        .unwrap();
         let packed = pack_board_for_training(&board).unwrap();
         let decoded = decode_signature(&packed);
 
@@ -838,7 +850,10 @@ run_search_smoke = false
 
     impl<'a> BitReader<'a> {
         fn new(bytes: &'a [u8; PACKED_SFEN_BYTES]) -> Self {
-            Self { bytes, bit_cursor: 0 }
+            Self {
+                bytes,
+                bit_cursor: 0,
+            }
         }
 
         fn read_one_bit(&mut self) -> bool {

@@ -3,9 +3,7 @@ mod nnue;
 use std::cmp::Reverse;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece,
-};
+use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
 use instant::Instant;
 pub use nnue::{NnueModel, NnuePositionState};
 use wasm_bindgen::prelude::*;
@@ -235,17 +233,34 @@ fn set_js_property(target: &js_sys::Object, key: &str, value: JsValue) {
 }
 
 fn option_string_to_js_value(value: &Option<String>) -> JsValue {
-    value.as_ref()
+    value
+        .as_ref()
         .map(|value| JsValue::from_str(value))
         .unwrap_or(JsValue::NULL)
 }
 
 fn iterative_iteration_to_js_value(iteration: &IterativeIterationSummary) -> JsValue {
     let object = js_sys::Object::new();
-    set_js_property(&object, "depth", JsValue::from_f64(f64::from(iteration.depth)));
-    set_js_property(&object, "bestMove", option_string_to_js_value(&iteration.best_move));
-    set_js_property(&object, "elapsedMs", JsValue::from_f64(iteration.elapsed_ms));
-    set_js_property(&object, "states", JsValue::from_f64(iteration.states as f64));
+    set_js_property(
+        &object,
+        "depth",
+        JsValue::from_f64(f64::from(iteration.depth)),
+    );
+    set_js_property(
+        &object,
+        "bestMove",
+        option_string_to_js_value(&iteration.best_move),
+    );
+    set_js_property(
+        &object,
+        "elapsedMs",
+        JsValue::from_f64(iteration.elapsed_ms),
+    );
+    set_js_property(
+        &object,
+        "states",
+        JsValue::from_f64(iteration.states as f64),
+    );
     set_js_property(&object, "nps", JsValue::from_f64(iteration.nps));
     object.into()
 }
@@ -254,11 +269,19 @@ fn dfpn_summary_to_js_value(summary: &DfpnSummary) -> JsValue {
     let object = js_sys::Object::new();
     set_js_property(&object, "status", JsValue::from_str(&summary.status));
     set_js_property(&object, "selected", JsValue::from_bool(summary.selected));
-    set_js_property(&object, "bestMove", option_string_to_js_value(&summary.best_move));
+    set_js_property(
+        &object,
+        "bestMove",
+        option_string_to_js_value(&summary.best_move),
+    );
     set_js_property(&object, "elapsedMs", JsValue::from_f64(summary.elapsed_ms));
     set_js_property(&object, "nodes", JsValue::from_f64(summary.nodes as f64));
     set_js_property(&object, "ttHits", JsValue::from_f64(summary.tt_hits as f64));
-    set_js_property(&object, "ttStores", JsValue::from_f64(summary.tt_stores as f64));
+    set_js_property(
+        &object,
+        "ttStores",
+        JsValue::from_f64(summary.tt_stores as f64),
+    );
     set_js_property(
         &object,
         "ttCollisions",
@@ -476,12 +499,7 @@ fn search_iterative_deepening_with_strategy(
         Some(Instant::now() + std::time::Duration::from_millis(u64::from(timeout_ms)))
     };
     search_iterative_deepening_with_strategy_and_deadline(
-        sfen,
-        max_depth,
-        timeout_ms,
-        evaluation,
-        config,
-        deadline,
+        sfen, max_depth, timeout_ms, evaluation, config, deadline,
     )
 }
 
@@ -690,8 +708,7 @@ pub fn search_board_impl_handcrafted(board: &Board, depth: u8) -> Result<SearchS
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
-    let board = Board::from_sfen(sfen)
-        .map_err(|err| format!("failed to parse SFEN: {err}"))?;
+    let board = Board::from_sfen(sfen).map_err(|err| format!("failed to parse SFEN: {err}"))?;
     let started_at = Instant::now();
     let nodes = perft_bulk(&board, depth);
     let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
@@ -796,10 +813,10 @@ pub fn dfpn(
     tt_megabytes: Option<u32>,
     max_pv_moves: Option<u32>,
 ) -> Result<DfpnResult, JsValue> {
-    let max_nodes = optional_u64_from_f64("max_nodes", max_nodes)
-        .map_err(|err| JsValue::from_str(&err))?;
-    let max_time_ms = optional_u64_from_f64("max_time_ms", max_time_ms)
-        .map_err(|err| JsValue::from_str(&err))?;
+    let max_nodes =
+        optional_u64_from_f64("max_nodes", max_nodes).map_err(|err| JsValue::from_str(&err))?;
+    let max_time_ms =
+        optional_u64_from_f64("max_time_ms", max_time_ms).map_err(|err| JsValue::from_str(&err))?;
     let core = dfpn_impl(
         sfen,
         max_nodes,
@@ -959,8 +976,7 @@ fn evaluate_or_mate(
     match &ctx.evaluation {
         EvaluationStrategy::Handcrafted => {
             let them = !us;
-            material_score(board, us)
-                - material_score(board, them)
+            material_score(board, us) - material_score(board, them)
                 + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
         }
         EvaluationStrategy::Nnue {
@@ -1007,7 +1023,8 @@ fn material_score(board: &Board, color: Color) -> i32 {
 }
 
 fn opponent_mobility(board: &Board) -> usize {
-    board.null_move()
+    board
+        .null_move()
         .map(|opponent_board| count_legal_moves(&opponent_board))
         .unwrap_or(0)
 }
@@ -1251,7 +1268,13 @@ mod tests {
         assert_eq!(summary.completed_depth, 3);
         assert!(!summary.timed_out);
         assert_eq!(summary.iterations.len(), 3);
-        assert_eq!(summary.best_move, summary.iterations.last().and_then(|it| it.best_move.clone()));
+        assert_eq!(
+            summary.best_move,
+            summary
+                .iterations
+                .last()
+                .and_then(|it| it.best_move.clone())
+        );
         assert!(summary.states > 0);
         assert!(summary.nps >= 0.0);
         assert!(summary.dfpn.is_none());
@@ -1277,8 +1300,8 @@ mod tests {
 
     #[test]
     fn iterative_search_uses_dfpn_for_standard_mate() {
-        let summary = search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true)
-            .unwrap();
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
 
         assert_eq!(summary.completed_depth, 0);
         assert!(!summary.timed_out);
@@ -1308,7 +1331,10 @@ mod tests {
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
 
         assert_eq!(summary.completed_depth, 0);
-        assert_eq!(summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()), Some("mate"));
+        assert_eq!(
+            summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()),
+            Some("mate")
+        );
         assert!(summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
         assert_eq!(summary.best_move.as_deref(), Some("R*1b"));
     }
@@ -1375,7 +1401,10 @@ mod tests {
         assert_eq!(summary.completed_depth, 0);
         assert!(!summary.timed_out);
         assert_eq!(summary.best_move.as_deref(), Some("4c1c"));
-        assert_eq!(summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()), Some("mate"));
+        assert_eq!(
+            summary.dfpn.as_ref().map(|dfpn| dfpn.status.as_str()),
+            Some("mate")
+        );
         assert!(summary.dfpn.as_ref().is_some_and(|dfpn| dfpn.selected));
     }
 
@@ -1421,20 +1450,11 @@ mod tests {
             return;
         };
         let model = Arc::new(model);
-        let full_refresh = search_impl_with_eval_mode(
-            sfen,
-            depth,
-            model.clone(),
-            SearchEvalMode::FullRefresh,
-        )
-        .unwrap();
-        let incremental = search_impl_with_eval_mode(
-            sfen,
-            depth,
-            model,
-            SearchEvalMode::Incremental,
-        )
-        .unwrap();
+        let full_refresh =
+            search_impl_with_eval_mode(sfen, depth, model.clone(), SearchEvalMode::FullRefresh)
+                .unwrap();
+        let incremental =
+            search_impl_with_eval_mode(sfen, depth, model, SearchEvalMode::Incremental).unwrap();
 
         assert_eq!(incremental.best_move, full_refresh.best_move);
         assert_eq!(incremental.best_score, full_refresh.best_score);
@@ -1489,17 +1509,13 @@ mod tests {
         )
         .unwrap();
         assert!(summary.states > 0);
-        if let Ok(roundtripped) = search_impl_with_eval_mode(
-            &strict_sfen,
-            1,
-            model,
-            SearchEvalMode::Incremental,
-        ) {
+        if let Ok(roundtripped) =
+            search_impl_with_eval_mode(&strict_sfen, 1, model, SearchEvalMode::Incremental)
+        {
             assert_eq!(summary.best_move, roundtripped.best_move);
             assert_eq!(summary.best_score, roundtripped.best_score);
         }
     }
-
 
     #[test]
     #[cfg(feature = "annan")]
