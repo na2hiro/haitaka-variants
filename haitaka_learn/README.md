@@ -19,7 +19,7 @@ The repository now expects the upstream trainer checkout at:
 
 `/Users/na2hiro/proj/engine/variant-nnue-pytorch`
 
-The example config at [/Users/na2hiro/proj/engine/haitaka/haitaka_learn.toml](/Users/na2hiro/proj/engine/haitaka/haitaka_learn.toml) already points there.
+The example config at [/haitaka_learn.toml](../haitaka_learn.toml) already points there.
 
 Important environment note:
 
