@@ -203,7 +203,7 @@ impl DfpnSolver {
         let hash = board.hash();
         if path.contains(&hash) {
             return NodeEvaluation {
-                numbers: ProofNumbers::UNKNOWN,
+                numbers: repetition_numbers(),
                 best_move: None,
             };
         }
@@ -238,8 +238,13 @@ impl DfpnSolver {
         }
 
         let mut evaluation = summarize(kind, &children);
+        let mut stalled = vec![false; children.len()];
         while evaluation.numbers.pn < phi && evaluation.numbers.dn < delta {
-            let (best_index, second_numbers) = select_most_proving_child(kind, &children);
+            let Some((best_index, second_numbers)) =
+                select_most_proving_child(kind, &children, &stalled)
+            else {
+                break;
+            };
             let best_child = &children[best_index];
             let (child_phi_target, child_delta_target) = child_thresholds(
                 kind,
@@ -265,7 +270,9 @@ impl DfpnSolver {
             if evaluation.numbers == previous_node_numbers
                 && children[best_index].numbers == previous_child_numbers
             {
-                break;
+                stalled[best_index] = true;
+            } else {
+                stalled.fill(false);
             }
         }
 
@@ -306,7 +313,7 @@ impl DfpnSolver {
     fn initial_child_numbers(&mut self, board: &Board, path: &[u64]) -> ProofNumbers {
         let hash = board.hash();
         if path.contains(&hash) {
-            return ProofNumbers::UNKNOWN;
+            return repetition_numbers();
         }
         self.probe(hash)
             .map(|entry| entry.numbers)
@@ -379,6 +386,13 @@ impl Board {
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
         DfpnSolver::new(self.side_to_move(), *options).solve(self)
     }
+}
+
+const fn repetition_numbers() -> ProofNumbers {
+    // DFPN only expands legal checking moves for the attacker, so an exact
+    // path repetition corresponds to a perpetual-check loop rather than a
+    // forced mate.
+    ProofNumbers::NO_MATE
 }
 
 fn tt_capacity(tt_megabytes: usize) -> usize {
@@ -499,44 +513,39 @@ fn summarize(kind: NodeKind, children: &[Child]) -> NodeEvaluation {
     }
 }
 
-fn select_most_proving_child(kind: NodeKind, children: &[Child]) -> (usize, ProofNumbers) {
-    debug_assert!(!children.is_empty());
-    let mut best_index = 0;
+fn select_most_proving_child(
+    kind: NodeKind,
+    children: &[Child],
+    stalled: &[bool],
+) -> Option<(usize, ProofNumbers)> {
+    debug_assert_eq!(children.len(), stalled.len());
+
+    let mut best_index = None;
     let mut second_index: Option<usize> = None;
 
-    for index in 1..children.len() {
-        let is_better = match kind {
-            NodeKind::Attacker => {
-                children[index].numbers.pn < children[best_index].numbers.pn
-                    || (children[index].numbers.pn == children[best_index].numbers.pn
-                        && children[index].numbers.dn > children[best_index].numbers.dn)
-            }
-            NodeKind::Defender => {
-                children[index].numbers.dn < children[best_index].numbers.dn
-                    || (children[index].numbers.dn == children[best_index].numbers.dn
-                        && children[index].numbers.pn > children[best_index].numbers.pn)
-            }
+    for index in 0..children.len() {
+        if stalled[index] {
+            continue;
+        }
+
+        let Some(current_best) = best_index else {
+            best_index = Some(index);
+            continue;
         };
 
+        let is_better = child_is_better(kind, &children[index], &children[current_best]);
+
         if is_better {
-            second_index = Some(best_index);
-            best_index = index;
-        } else if second_index.is_none_or(|candidate| match kind {
-            NodeKind::Attacker => {
-                children[index].numbers.pn < children[candidate].numbers.pn
-                    || (children[index].numbers.pn == children[candidate].numbers.pn
-                        && children[index].numbers.dn > children[candidate].numbers.dn)
-            }
-            NodeKind::Defender => {
-                children[index].numbers.dn < children[candidate].numbers.dn
-                    || (children[index].numbers.dn == children[candidate].numbers.dn
-                        && children[index].numbers.pn > children[candidate].numbers.pn)
-            }
-        }) {
+            second_index = Some(current_best);
+            best_index = Some(index);
+        } else if second_index
+            .is_none_or(|candidate| child_is_better(kind, &children[index], &children[candidate]))
+        {
             second_index = Some(index);
         }
     }
 
+    let best_index = best_index?;
     let second_numbers =
         second_index
             .map(|index| children[index].numbers)
@@ -545,7 +554,20 @@ fn select_most_proving_child(kind: NodeKind, children: &[Child]) -> (usize, Proo
                 dn: INF_PN,
             });
 
-    (best_index, second_numbers)
+    Some((best_index, second_numbers))
+}
+
+fn child_is_better(kind: NodeKind, lhs: &Child, rhs: &Child) -> bool {
+    match kind {
+        NodeKind::Attacker => {
+            lhs.numbers.pn < rhs.numbers.pn
+                || (lhs.numbers.pn == rhs.numbers.pn && lhs.numbers.dn > rhs.numbers.dn)
+        }
+        NodeKind::Defender => {
+            lhs.numbers.dn < rhs.numbers.dn
+                || (lhs.numbers.dn == rhs.numbers.dn && lhs.numbers.pn > rhs.numbers.pn)
+        }
+    }
 }
 
 fn child_thresholds(
@@ -607,6 +629,15 @@ mod tests {
 
     #[cfg(not(feature = "annan"))]
     const TSUME_SFEN: &str = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
+    #[cfg(not(feature = "annan"))]
+    const BESTSEL_LIVE_SHAPE_13_SFEN: &str = "4+B2nl/7k1/6p1p/6bN1/9/9/9/9/9 b R2GLr2g4s2n2l16p 1";
+    #[cfg(not(feature = "annan"))]
+    const BESTSEL_LIGHTNING_7_SFEN: &str = "9/9/9/4+B4/7+B1/5k3/4p1ps1/4s4/9 b 4G2r2s4n4l16p 1";
+    #[cfg(not(feature = "annan"))]
+    const BESTSEL_CONGRATS_37_SFEN: &str =
+        "9/9/3+p1+p3/2+p1+p1L2/4P3k/3+B5/1G7/B5S2/5RR2 b 2S3gs4n3l13p 1";
+    #[cfg(not(feature = "annan"))]
+    const BESTSEL_SWAPPED_7_SFEN: &str = "9/9/9/7R1/7S1/5S1k1/6+psR/8L/9 b G2b3gs4n3l17p 1";
     const ONE_PLY_MATE_SFEN: &str = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
     const ONE_PLY_MATE_WHITE_SFEN: &str = "k8/9/9/9/9/9/7b1/6g2/8K w r 1";
     const NO_MATE_SFEN: &str = "4k4/9/9/9/9/9/9/9/4K4 b - 1";
@@ -670,6 +701,17 @@ mod tests {
             .unwrap()
     }
 
+    #[cfg(not(feature = "annan"))]
+    fn assert_solves_standard_regression(sfen: &str) {
+        let board = parse_problem_board(sfen);
+        let result = board.dfpn(&DfpnOptions {
+            tt_megabytes: 64,
+            ..DfpnOptions::default()
+        });
+        assert_eq!(result.status, DfpnStatus::Mate);
+        assert_mating_line(&board, &result.pv);
+    }
+
     #[test]
     #[cfg(not(feature = "annan"))]
     fn solves_existing_tsume_position() {
@@ -678,6 +720,30 @@ mod tests {
         assert_eq!(result.status, DfpnStatus::Mate);
         assert_eq!(result.pv.first().copied(), Some("N*7e".parse().unwrap()));
         assert_mating_line(&board, &result.pv);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn solves_best_selection_live_shape_13_regression() {
+        assert_solves_standard_regression(BESTSEL_LIVE_SHAPE_13_SFEN);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn solves_best_selection_lightning_7_regression() {
+        assert_solves_standard_regression(BESTSEL_LIGHTNING_7_SFEN);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn solves_best_selection_congrats_37_regression() {
+        assert_solves_standard_regression(BESTSEL_CONGRATS_37_SFEN);
+    }
+
+    #[test]
+    #[cfg(not(feature = "annan"))]
+    fn solves_best_selection_swapped_7_regression() {
+        assert_solves_standard_regression(BESTSEL_SWAPPED_7_SFEN);
     }
 
     #[test]
