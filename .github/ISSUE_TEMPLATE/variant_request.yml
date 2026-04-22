@@ -1,0 +1,31 @@
+name: Variant request
+description: Propose support for another shogi variant.
+title: "[Variant]: "
+labels: ["variant-request"]
+body:
+  - type: input
+    id: variant
+    attributes:
+      label: Variant name
+    validations:
+      required: true
+  - type: input
+    id: rule_id
+    attributes:
+      label: Shogitter rule ID
+  - type: textarea
+    id: rules
+    attributes:
+      label: Rules source
+      description: Link or describe the authoritative rules.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example positions or edge cases
+      description: SFENs, legal/illegal moves, or known tricky rules.
+  - type: textarea
+    id: ai_value
+    attributes:
+      label: Why this variant is a good AI target

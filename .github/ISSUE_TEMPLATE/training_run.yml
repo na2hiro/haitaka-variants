@@ -1,0 +1,41 @@
+name: Training run report
+description: Share a dataset/training/export/verify run.
+title: "[Training]: "
+labels: ["training", "nnue"]
+body:
+  - type: input
+    id: variant
+    attributes:
+      label: Variant and rule ID
+      placeholder: Annan, rule_id 26
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Config
+      description: Paste key `haitaka_learn.toml` changes or link to the config.
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      placeholder: GPU, CPU, RAM
+  - type: textarea
+    id: data
+    attributes:
+      label: Dataset and training size
+      placeholder: games, positions, epochs, duration
+  - type: textarea
+    id: verify
+    attributes:
+      label: Verify result
+      description: Paste `haitaka_learn verify` summary or report path.
+    validations:
+      required: true
+  - type: input
+    id: artifact
+    attributes:
+      label: Artifact link
+      description: Link to model/checkpoint if available.

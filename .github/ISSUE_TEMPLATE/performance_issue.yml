@@ -1,0 +1,33 @@
+name: Performance issue
+description: Report slow move generation, search, DFPN, or NNUE behavior.
+title: "[Performance]: "
+labels: ["performance"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - movegen
+        - search
+        - DFPN
+        - NNUE
+        - WASM
+    validations:
+      required: true
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Benchmark command and result
+      placeholder: cargo bench -p haitaka --bench legals -- --noplot
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: CPU, OS, Rust version
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

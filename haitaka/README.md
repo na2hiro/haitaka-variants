@@ -2,7 +2,8 @@
 
 `haitaka` is the core engine crate inside the `haitaka-variants` workspace.
 
-It started from upstream `tofutofu/haitaka`, but this fork now uses the crate as the base for variant support, mate solving, WASM integration, and NNUE work.
+It started from upstream `tofutofu/haitaka`, but this fork now uses the crate
+as the base for variant support, mate solving, WASM integration, and NNUE work.
 
 ## What This Crate Does
 
@@ -18,6 +19,7 @@ This crate is the rules/movegen core used by:
 
 - `haitaka_wasm`
 - `haitaka_learn`
+- `haitaka_cli`
 
 ## Features
 
@@ -33,18 +35,38 @@ Variant features are compile-time modes:
 - `anhoku`: a friendly piece in front of the mover donates movement.
 - `antouzai`: friendly pieces immediately left and/or right of the mover donate movement; if both exist, movement is the union of both donor piece types.
 
-## Examples
+Use `--features annan` when you want Annan shogi rules:
+
+```bash
+cargo test -p haitaka --features annan
+cargo run -p haitaka --release --features annan --example perft -- 4
+```
+
+## Examples And Tools
 
 Perft:
 
 ```bash
 cargo run -p haitaka --release --example perft -- 4
+cargo run -p haitaka --release --example perft -- 4 "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
 ```
 
 DFPN:
 
 ```bash
 cargo run -p haitaka --release --example dfpn -- "8k/6G2/7B1/9/9/9/9/9/K8 b R 1"
+```
+
+DFPN corpus:
+
+```bash
+cargo run -p haitaka --release --example dfpn_corpus
+```
+
+Magic search helper:
+
+```bash
+cargo run -p haitaka --release --example find_magics
 ```
 
 ## Testing
@@ -55,6 +77,17 @@ cargo test -p haitaka --features annan
 cargo test -p haitaka --features anhoku
 cargo test -p haitaka --features antouzai
 ```
+
+## Benchmarks
+
+```bash
+cargo bench -p haitaka --bench legals -- --noplot
+cargo bench -p haitaka --bench perft -- --noplot
+cargo bench -p haitaka --bench dfpn -- --noplot
+cargo bench -p haitaka --features annan --bench legals -- --noplot
+```
+
+See also [`../docs/benchmarks.md`](../docs/benchmarks.md).
 
 ## How This Fork Differs From Upstream
 

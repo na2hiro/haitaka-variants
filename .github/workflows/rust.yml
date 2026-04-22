@@ -20,3 +20,7 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Build Annan
+      run: cargo build --workspace --features annan --verbose
+    - name: Run Annan tests
+      run: cargo test --workspace --features annan --verbose
