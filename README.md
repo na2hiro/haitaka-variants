@@ -3,7 +3,9 @@
 `haitaka-variants` is an engine workspace for different shogi variants, forked from [`tofutofu/haitaka`](https://github.com/tofutofu/haitaka), which supports fast 9x9 shogi move generation.
 
 - Feature flags for different shogi variants
-  - Currently: `annan` for 安南
+  - `annan` for 安南
+  - `anhoku` for 安北
+  - `antouzai` for 安東西
   - Since these flags are compile-time options, there's zero overhead for switching logics for other variants
 - a DFPN mate solver in the core engine
   - *Note: this is implemented with simple instructions to a coding agent. Needs more verification*
@@ -29,7 +31,10 @@ This repository is meant to be an engine workspace, not just a single move-gener
 
 At a high level, the `wasm` branch adds:
 
-- Annan shogi support via the `annan` feature
+- piece-influence variant support via mutually exclusive feature flags
+  - `annan`: friendly piece behind the mover donates movement
+  - `anhoku`: friendly piece in front of the mover donates movement
+  - `antouzai`: friendly pieces immediately left and/or right of the mover donate movement; both sides combine as a union
   - move generation
   - legality checking
   - check detection
@@ -71,6 +76,8 @@ The current `main..wasm` commit history is centered around:
 ```bash
 cargo test -p haitaka
 cargo test -p haitaka --features annan
+cargo test -p haitaka --features anhoku
+cargo test -p haitaka --features antouzai
 ```
 
 ### WASM layer
@@ -78,6 +85,8 @@ cargo test -p haitaka --features annan
 ```bash
 cargo test -p haitaka_wasm
 cargo test -p haitaka_wasm --features annan
+cargo test -p haitaka_wasm --features anhoku
+cargo test -p haitaka_wasm --features antouzai
 ```
 
 ### Perft and DFPN examples
@@ -102,21 +111,30 @@ cargo bench -p haitaka_wasm --bench nnue -- --noplot
 - `std`
 - `qugiy` ([ref. about qugiy algorithm](https://yaneuraou.yaneu.com/2021/12/03/qugiys-jumpy-effect-code-complete-guide/))
 - `annan`
+- `anhoku`
+- `antouzai`
+
+The variant rule features are mutually exclusive.
 
 ### `haitaka_wasm`
 
 - `annan`
+- `anhoku`
+- `antouzai`
 
 ### `haitaka_learn`
 
 - `annan`
+- `anhoku`
+- `antouzai`
 
 ## NNUE Notes
 
 - Standard shogi NNUE uses the same network layout as Fairy-Stockfish `HalfKAv2^`.
 - `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
   - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
-- Annan currently keeps its custom rule logic in search/movegen; NNUE training/data generation is handled separately through `haitaka_learn`.
+- Annan currently has a documented NNUE data-generation workflow in `haitaka_learn`.
+- Anhoku and Antouzai are currently core-engine/search feature modes only; add NNUE rule IDs and data workflow entries before using them for training runs.
 
 For training details, see:
 

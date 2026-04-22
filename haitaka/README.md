@@ -12,7 +12,7 @@ It started from upstream `tofutofu/haitaka`, but this fork now uses the crate as
 - perft tooling
 - Zobrist hashing
 - DFPN mate search
-- optional Annan shogi support via a feature flag
+- optional piece-influence variants via mutually exclusive feature flags
 
 This crate is the rules/movegen core used by:
 
@@ -24,6 +24,14 @@ This crate is the rules/movegen core used by:
 - `std`
 - `qugiy`
 - `annan`
+- `anhoku`
+- `antouzai`
+
+Variant features are compile-time modes:
+
+- `annan`: a friendly piece behind the mover donates movement.
+- `anhoku`: a friendly piece in front of the mover donates movement.
+- `antouzai`: friendly pieces immediately left and/or right of the mover donate movement; if both exist, movement is the union of both donor piece types.
 
 ## Examples
 
@@ -44,15 +52,17 @@ cargo run -p haitaka --release --example dfpn -- "8k/6G2/7B1/9/9/9/9/9/K8 b R 1"
 ```bash
 cargo test -p haitaka
 cargo test -p haitaka --features annan
+cargo test -p haitaka --features anhoku
+cargo test -p haitaka --features antouzai
 ```
 
 ## How This Fork Differs From Upstream
 
 Compared to upstream `main`, the core crate in this workspace now includes:
 
-- Annan shogi move generation and legality handling
+- piece-influence variant move generation and legality handling
 - DFPN mate solving (`Board::dfpn`)
-- additional Annan-specific movegen and mate-search regressions
+- additional variant-specific movegen and mate-search regressions
 - supporting board/validation/type changes needed by the WASM and NNUE layers
 
 For the full workspace-level summary, see the repository root `README.md`.

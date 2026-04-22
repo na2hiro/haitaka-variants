@@ -268,14 +268,16 @@ impl ZobristBoard {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(
+    test,
+    not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+))]
 mod tests {
     use crate::Board;
 
     // TODO: Test some more edge cases
 
     #[test]
-    #[cfg(not(feature = "annan"))]
     fn zobrist_transpositions() {
         let board = Board::startpos();
 

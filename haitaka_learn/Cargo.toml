@@ -20,3 +20,5 @@ tempfile = "3.16"
 
 [features]
 annan = ["haitaka/annan", "haitaka_wasm/annan"]
+anhoku = ["haitaka/anhoku", "haitaka_wasm/anhoku"]
+antouzai = ["haitaka/antouzai", "haitaka_wasm/antouzai"]

@@ -18,6 +18,7 @@ use serde::Serialize;
 use crate::config::{ArtifactPaths, HandicapPreset, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
+#[cfg(test)]
 const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 
 #[derive(Debug, Clone)]
@@ -578,6 +579,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(
+        feature = "annan",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
     fn generate_data_smoke_test_writes_non_empty_shards() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("haitaka_learn.toml");
@@ -627,7 +632,7 @@ run_search_smoke = false
     }
 
     #[test]
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn handicap_generate_data_smoke_test_writes_non_empty_shards() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("haitaka_learn.toml");

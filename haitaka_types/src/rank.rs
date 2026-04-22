@@ -93,12 +93,12 @@ const SOUTH_A: BitBoard = SOUTH_B.bitor(RANK_B);
 ///
 #[inline(always)]
 pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => {
@@ -124,12 +124,12 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
 /// be dropped. This is the inverse of `no_fly_zone`.
 #[inline(always)]
 pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::FULL
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => {
@@ -179,12 +179,12 @@ pub const fn prom_zone(color: Color) -> BitBoard {
 /// ```
 #[inline(always)]
 pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => match color {

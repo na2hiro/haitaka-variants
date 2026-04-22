@@ -43,3 +43,5 @@ harness = false
 std = ["haitaka-types/std"]
 qugiy = ["haitaka-types/qugiy"]
 annan = ["haitaka-types/annan"]
+anhoku = ["haitaka-types/anhoku"]
+antouzai = ["haitaka-types/antouzai"]

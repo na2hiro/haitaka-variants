@@ -55,6 +55,10 @@ impl LoadedConfig {
     pub fn runtime_mode(&self) -> &'static str {
         if cfg!(feature = "annan") {
             "annan"
+        } else if cfg!(feature = "anhoku") {
+            "anhoku"
+        } else if cfg!(feature = "antouzai") {
+            "antouzai"
         } else {
             "standard"
         }
@@ -65,9 +69,17 @@ impl LoadedConfig {
             Ruleset::Annan if !cfg!(feature = "annan") => {
                 bail!("ruleset=annan requires building haitaka_learn with `--features annan`")
             }
-            Ruleset::Standard | Ruleset::Handicap if cfg!(feature = "annan") => bail!(
-                "standard and handicap self-play data generation should use the default build without `--features annan`"
-            ),
+            Ruleset::Standard | Ruleset::Handicap
+                if cfg!(any(
+                    feature = "annan",
+                    feature = "anhoku",
+                    feature = "antouzai"
+                )) =>
+            {
+                bail!(
+                    "standard and handicap self-play data generation should use the default build without variant features"
+                )
+            }
             _ => Ok(()),
         }
     }

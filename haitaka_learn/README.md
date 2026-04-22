@@ -13,6 +13,8 @@ It keeps Haitaka's inference side compatible with Fairy-Stockfish-style `HalfKAv
 - handicap shogi on the standard 9x9 geometry
 - Annan shogi
 
+Anhoku and Antouzai are wired as core-engine/search feature modes, but this training workflow does not yet define ruleset config entries, rule IDs, or dataset conventions for them.
+
 ## What Is Already Prepared
 
 The repository now expects the upstream trainer checkout at:
@@ -183,6 +185,8 @@ cargo run -p haitaka_learn --features annan -- verify --config haitaka_learn.tom
 ```
 
 Use the same `--features annan` flag consistently for Annan data-generation and verification runs.
+
+`--features anhoku` and `--features antouzai` are intentionally not training modes yet. Add explicit ruleset parsing, rule IDs, and verification fixtures before generating NNUE data for those variants.
 
 ## Notes On Labels
 

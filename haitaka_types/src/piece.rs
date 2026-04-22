@@ -155,8 +155,14 @@ impl Piece {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.must_promote(Color::Black, Square::A3));
     /// assert!(Piece::Lance.must_promote(Color::Black, Square::A3));
@@ -176,14 +182,14 @@ impl Piece {
     /// ```
     #[inline(always)]
     pub const fn must_promote(self, color: Color, square: Square) -> bool {
-        #[cfg(feature = "annan")]
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
         {
-            // In Annan Shogi, pieces can gain any movement via backing,
-            // so there are no "stuck piece" restrictions.
+            // In piece-influence variants, pieces can gain any movement via donors,
+            // so there are no stuck-piece restrictions.
             let _ = (color, square);
             false
         }
-        #[cfg(not(feature = "annan"))]
+        #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
         {
             let rank = square.rank() as usize;
             if 1 < rank && rank < 7 {

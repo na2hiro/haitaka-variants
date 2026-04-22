@@ -61,8 +61,8 @@ macro_rules! abort_if {
 }
 
 impl Board {
-    #[cfg(feature = "annan")]
-    fn annan_move_resolves_check(&self, mv: Move) -> bool {
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
         board.play_unchecked(mv);
@@ -70,8 +70,8 @@ impl Board {
         checkers.is_empty()
     }
 
-    #[cfg(feature = "annan")]
-    fn annan_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn variant_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
         match mv {
             Move::BoardMove {
                 from,
@@ -96,21 +96,21 @@ impl Board {
         }
     }
 
-    #[cfg(feature = "annan")]
-    fn generate_annan_evasions<F: FnMut(PieceMoves) -> bool>(&self, listener: &mut F) -> bool {
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn generate_variant_evasions<F: FnMut(PieceMoves) -> bool>(&self, listener: &mut F) -> bool {
         debug_assert!(!self.checkers.is_empty());
 
         let mut filter = |mvs: PieceMoves| {
             for mv in mvs {
-                if self.annan_move_resolves_check(mv) {
+                if self.variant_move_resolves_check(mv) {
                     let singleton = match mv {
-                        Move::BoardMove { from, .. } => Self::annan_singleton_piece_moves(
+                        Move::BoardMove { from, .. } => Self::variant_singleton_piece_moves(
                             mv,
                             self.side_to_move(),
                             self.piece_on(from).unwrap(),
                         ),
                         Move::Drop { piece, .. } => {
-                            Self::annan_singleton_piece_moves(mv, self.side_to_move(), piece)
+                            Self::variant_singleton_piece_moves(mv, self.side_to_move(), piece)
                         }
                     };
                     if listener(singleton) {
@@ -121,11 +121,81 @@ impl Board {
             false
         };
 
-        abort_if! {
-            self.add_all_drops::<_, true>(&mut filter, !self.occupied()),
-            self.add_all_legals::<_, false>(BitBoard::FULL, &mut filter)
+        if self.checkers.len() == 1 {
+            abort_if! {
+                self.add_all_drops::<_, true>(&mut filter, self.target_drops::<true>()),
+                self.add_all_legals::<_, true>(BitBoard::FULL, &mut filter)
+            }
+        } else {
+            abort_if!(self.add_all_legals::<_, false>(BitBoard::FULL, &mut filter));
         }
         false
+    }
+
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn generate_variant_board_evasions<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        mask: BitBoard,
+        listener: &mut F,
+    ) -> bool {
+        debug_assert!(!self.checkers.is_empty());
+
+        let mut filter = |mvs: PieceMoves| {
+            for mv in mvs {
+                if self.variant_move_resolves_check(mv) {
+                    if let Move::BoardMove { from, .. } = mv {
+                        let singleton = Self::variant_singleton_piece_moves(
+                            mv,
+                            self.side_to_move(),
+                            self.piece_on(from).unwrap(),
+                        );
+                        if listener(singleton) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
+
+        if self.checkers.len() == 1 {
+            self.add_all_legals::<_, true>(mask, &mut filter)
+        } else {
+            self.add_all_legals::<_, false>(mask, &mut filter)
+        }
+    }
+
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn generate_variant_drop_evasions<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        listener: &mut F,
+        piece_filter: Option<Piece>,
+    ) -> bool {
+        debug_assert!(!self.checkers.is_empty());
+
+        let mut filter = |mvs: PieceMoves| {
+            for mv in mvs {
+                if self.variant_move_resolves_check(mv) {
+                    if let Move::Drop { piece, .. } = mv {
+                        if piece_filter.is_none_or(|filter| filter == piece) {
+                            let singleton =
+                                Self::variant_singleton_piece_moves(mv, self.side_to_move(), piece);
+                            if listener(singleton) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        };
+
+        if self.checkers.len() == 1 {
+            let targets = self.target_drops::<true>();
+            self.add_all_drops::<_, true>(&mut filter, targets)
+        } else {
+            false
+        }
     }
 
     // Target destination squares of board moves (other than by King).
@@ -135,7 +205,7 @@ impl Board {
     // King is in check (and to prevent illegal capture of one's own pieces
     // ...which actually sometimes is observed in amateur tournaments...).
     //
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let targets = if IN_CHECK {
@@ -151,7 +221,7 @@ impl Board {
         targets & !self.colors(color)
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let targets = if IN_CHECK {
@@ -160,23 +230,31 @@ impl Board {
             let our_king = self.king(color);
             let mut targets = get_between_rays(checker, our_king) | checker.bitboard();
 
-            // Under Annan: if the checker is backed, capturing the backer
-            // may also resolve check — but only if the checker's NATIVE
-            // piece type doesn't also attack the king from checker's square.
             let them = !color;
-            if let Some(behind) = crate::annan::backer_square(them, checker) {
-                if self.colors(them).has(behind) {
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            {
+                // In single-donor variants, capturing the donor may resolve
+                // check only if the checker does not also attack natively.
+                let donors = crate::variant_rules::influencing_donor_squares(self, them, checker);
+                if !donors.is_empty() {
                     let native_piece = self.piece_on(checker).unwrap();
-                    let native_attacks = crate::annan::pseudo_legals_for(
+                    let native_attacks = crate::variant_rules::pseudo_legals_for(
                         native_piece,
                         them,
                         checker,
                         self.occupied(),
                     );
                     if !native_attacks.has(our_king) {
-                        targets |= behind.bitboard();
+                        targets |= donors;
                     }
                 }
+            }
+            #[cfg(feature = "antouzai")]
+            {
+                // With multiple donors, any donor capture can potentially
+                // remove one part of a union attack, so let the final legality
+                // check decide.
+                targets |= crate::variant_rules::influencing_donor_squares(self, them, checker);
             }
             targets
         } else {
@@ -190,7 +268,7 @@ impl Board {
     // In check, a drop can only be used to interpose. Otherwise, any empty square is ok.
     // Note that this doesn't exclude the forbidden drop ranks of Pawn, Lance and Knight.
     //
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();
@@ -212,7 +290,7 @@ impl Board {
         }
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();
@@ -221,9 +299,14 @@ impl Board {
             debug_assert!(self.checkers.len() == 1);
             let checker = self.checkers.next_square().unwrap();
             let them = !color;
-            // Use effective piece type to determine if interposition is possible
-            let eff = crate::annan::effective_piece(self, them, checker);
-            if crate::annan::is_slider_movement(eff) {
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            let is_slider_check = crate::variant_rules::is_slider_movement(
+                crate::variant_rules::effective_piece(self, them, checker),
+            );
+            #[cfg(feature = "antouzai")]
+            let is_slider_check =
+                crate::variant_rules::effective_movements(self, them, checker).has_slider();
+            if is_slider_check {
                 let our_king = self.king(color);
                 get_between_rays(checker, our_king) & open_squares
             } else {
@@ -248,9 +331,9 @@ impl Board {
             return false;
         }
 
-        #[cfg(feature = "annan")]
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
         if piece == Piece::Pawn {
-            return self.emit_annan_pawn_moves(color, from, to, listener);
+            return self.emit_variant_pawn_moves(color, from, to, listener);
         }
 
         listener(PieceMoves::BoardMoves {
@@ -262,8 +345,8 @@ impl Board {
         })
     }
 
-    #[cfg(feature = "annan")]
-    fn emit_annan_pawn_moves<F: FnMut(PieceMoves) -> bool>(
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn emit_variant_pawn_moves<F: FnMut(PieceMoves) -> bool>(
         &self,
         color: Color,
         from: Square,
@@ -416,7 +499,7 @@ impl Board {
     // safety by efficient caching since this would require more work in
     // maintaining some cached data struct of 'attacks'. However...
 
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
         macro_rules! lazy_and {
@@ -469,14 +552,14 @@ impl Board {
         }
     }
 
-    /// Annan-aware king safety check.
+    /// Variant-aware king safety check.
     ///
-    /// Checks if any opponent piece (using its effective Annan movement) can
+    /// Checks if any opponent piece (using its effective movement) can
     /// attack the given square.
-    #[cfg(feature = "annan")]
-    fn annan_king_safe_on(&self, square: Square) -> bool {
-        use crate::annan::{
-            AnnanBacking, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn variant_king_safe_on(&self, square: Square) -> bool {
+        use crate::variant_rules::{
+            MovementInfluence, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
         };
 
         let color = self.side_to_move();
@@ -487,13 +570,13 @@ impl Board {
         let blockers =
             (self.occupied() ^ self.colored_pieces(color, Piece::King)) | square.bitboard();
 
-        let backing = AnnanBacking::compute(self, their_color);
+        let influence = MovementInfluence::compute(self, their_color);
 
         for &eff_piece in &Piece::ALL {
-            let unbacked_of_type =
-                self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
-            let backed_by_type = backing.backed_by[eff_piece as usize];
-            let movers = (unbacked_of_type | backed_by_type) & their_pieces;
+            let uninfluenced_of_type =
+                self.colored_pieces(their_color, eff_piece) & !influence.has_influence;
+            let influenced_by_type = influence.influenced_by[eff_piece as usize];
+            let movers = (uninfluenced_of_type | influenced_by_type) & their_pieces;
 
             if movers.is_empty() {
                 continue;
@@ -584,23 +667,34 @@ impl Board {
             return false;
         }
 
-        #[cfg(feature = "annan")]
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
         let mut moves = {
-            use crate::annan::{effective_piece, pseudo_legals_for};
-            let eff = effective_piece(self, color, our_king);
-            pseudo_legals_for(eff, color, our_king, self.occupied()) & !our_pieces
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            {
+                let eff = crate::variant_rules::effective_piece(self, color, our_king);
+                crate::variant_rules::pseudo_legals_for(eff, color, our_king, self.occupied())
+                    & !our_pieces
+            }
+            #[cfg(feature = "antouzai")]
+            {
+                crate::variant_rules::effective_movements(self, color, our_king).pseudo_legals(
+                    color,
+                    our_king,
+                    self.occupied(),
+                ) & !our_pieces
+            }
         };
 
-        #[cfg(not(feature = "annan"))]
+        #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
 
         for to in moves {
             // removing unsafe squares should generally be more efficient than
             // adding safe squares since (until the endgame) most squares are safe
-            #[cfg(not(feature = "annan"))]
+            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
             let safe = self.king_safe_on(to);
-            #[cfg(feature = "annan")]
-            let safe = self.annan_king_safe_on(to);
+            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+            let safe = self.variant_king_safe_on(to);
 
             if !safe {
                 moves ^= to.bitboard();
@@ -618,7 +712,7 @@ impl Board {
         false
     }
 
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
         mask: BitBoard,
@@ -647,64 +741,111 @@ impl Board {
         false
     }
 
-    /// Annan-aware move generation for all pieces.
+    /// Variant-aware move generation for all pieces.
     ///
-    /// Splits each piece type into unbacked (normal movement) and backed (backer's movement).
-    /// King also follows Annan rules (handled by add_king_legals which detects effective piece).
-    #[cfg(feature = "annan")]
+    /// Splits each piece type into uninfluenced pieces with normal movement and
+    /// influenced pieces with donor movement. Antouzai may produce a union of
+    /// multiple donor movement types.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
         mask: BitBoard,
         listener: &mut F,
     ) -> bool {
-        use crate::annan::{AnnanBacking, pseudo_legals_for};
+        use crate::variant_rules::MovementInfluence;
 
         let color = self.side_to_move();
-        let backing = AnnanBacking::compute(self, color);
+        let influence = MovementInfluence::compute(self, color);
 
-        // Generate moves for unbacked non-king pieces (normal movement)
-        let unbacked_mask = mask & !backing.has_backer;
+        // Generate moves for uninfluenced non-king pieces (normal movement).
+        let uninfluenced_mask = mask & !influence.has_influence;
         abort_if! {
-            self.add_common_legals::<commoner::Pawn, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::Lance, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::Knight, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::Silver, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::Gold, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::Tokin, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::PLance, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::PKnight, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::PSilver, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::Bishop, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::Rook, _, IN_CHECK>(unbacked_mask, PromotionStatus::Undecided, listener),
-            self.add_common_legals::<commoner::PBishop, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener),
-            self.add_common_legals::<commoner::PRook, _, IN_CHECK>(unbacked_mask, PromotionStatus::CannotPromote, listener)
+            self.add_common_legals::<commoner::Pawn, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Lance, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Knight, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Silver, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Gold, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::Tokin, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PLance, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PKnight, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PSilver, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::Bishop, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::Rook, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::Undecided, listener),
+            self.add_common_legals::<commoner::PBishop, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener),
+            self.add_common_legals::<commoner::PRook, _, IN_CHECK>(uninfluenced_mask, PromotionStatus::CannotPromote, listener)
         }
 
-        // Generate moves for backed non-king pieces: each piece uses its backer's movement
+        // Generate moves for influenced non-king pieces.
         let target_squares = self.target_squares::<IN_CHECK>();
         if !(IN_CHECK && target_squares.is_empty()) {
             let pinned = self.pinned;
             let blockers = self.occupied();
             let has_king = self.has(color, Piece::King);
 
-            for &backing_piece in &Piece::ALL {
-                let backed_squares = backing.backed_by[backing_piece as usize] & mask;
-                if backed_squares.is_empty() {
-                    continue;
-                }
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            {
+                use crate::variant_rules::pseudo_legals_for;
 
-                for from in backed_squares {
+                for &donor_piece in &Piece::ALL {
+                    let influenced_squares = influence.influenced_by[donor_piece as usize] & mask;
+                    if influenced_squares.is_empty() {
+                        continue;
+                    }
+
+                    for from in influenced_squares {
+                        let actual_piece = self.piece_on(from).unwrap();
+
+                        // King is handled separately because it needs king-safety filtering.
+                        if actual_piece == Piece::King {
+                            continue;
+                        }
+
+                        let mut to =
+                            pseudo_legals_for(donor_piece, color, from, blockers) & target_squares;
+
+                        // Handle pins.
+                        if pinned.has(from) {
+                            if IN_CHECK || !has_king {
+                                continue;
+                            }
+                            to &= line_ray(self.king(color), from);
+                        }
+
+                        if !to.is_empty() {
+                            let prom_status = if actual_piece.is_promotable() {
+                                PromotionStatus::Undecided
+                            } else {
+                                PromotionStatus::CannotPromote
+                            };
+                            abort_if!(self.emit_board_moves(
+                                color,
+                                actual_piece,
+                                from,
+                                to,
+                                prom_status,
+                                listener,
+                            ));
+                        }
+                    }
+                }
+            }
+
+            #[cfg(feature = "antouzai")]
+            {
+                for from in (influence.has_influence & mask) & self.colors(color) {
                     let actual_piece = self.piece_on(from).unwrap();
 
-                    // King is handled separately (needs king_safe_on filtering)
+                    // King is handled separately because it needs king-safety filtering.
                     if actual_piece == Piece::King {
                         continue;
                     }
 
-                    let mut to =
-                        pseudo_legals_for(backing_piece, color, from, blockers) & target_squares;
+                    let mut to = influence
+                        .effective_movements(actual_piece, from)
+                        .pseudo_legals(color, from, blockers)
+                        & target_squares;
 
-                    // Handle pins
+                    // Handle pins.
                     if pinned.has(from) {
                         if IN_CHECK || !has_king {
                             continue;
@@ -731,7 +872,7 @@ impl Board {
             }
         }
 
-        // King moves (add_king_legals handles Annan effective movement internally)
+        // King moves use effective movement internally.
         abort_if!(self.add_king_legals::<_, IN_CHECK>(mask, listener));
 
         false
@@ -816,12 +957,12 @@ impl Board {
                 return false;
             }
 
-            #[cfg(feature = "annan")]
+            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
             {
                 let resolves_check = if self.checkers.is_empty() {
                     true
                 } else {
-                    self.annan_move_resolves_check(mv)
+                    self.variant_move_resolves_check(mv)
                 };
                 if !resolves_check {
                     return false;
@@ -829,7 +970,7 @@ impl Board {
                 return piece != Piece::Pawn || !self.is_illegal_mate_by_pawn_drop(to);
             }
 
-            #[cfg(not(feature = "annan"))]
+            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
             {
                 let resolves_check = match self.checkers.len() {
                     0 => true,
@@ -846,7 +987,7 @@ impl Board {
     }
 
     /// Is this move a legal board move?
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
             from,
@@ -945,11 +1086,9 @@ impl Board {
         false
     }
 
-    /// Annan-aware legality check for a board move.
-    #[cfg(feature = "annan")]
+    /// Variant-aware legality check for a board move.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
-        use crate::annan::{effective_piece, pseudo_legals_for};
-
         if let Move::BoardMove {
             from,
             to,
@@ -968,19 +1107,30 @@ impl Board {
                 None => return false,
             };
 
-            // Get effective movement type (the backer's type, or own type if unbacked)
-            let eff = effective_piece(self, color, from);
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            let moves = crate::variant_rules::pseudo_legals_for(
+                crate::variant_rules::effective_piece(self, color, from),
+                color,
+                from,
+                self.occupied(),
+            );
+            #[cfg(feature = "antouzai")]
+            let moves = crate::variant_rules::effective_movements(self, color, from).pseudo_legals(
+                color,
+                from,
+                self.occupied(),
+            );
 
             if piece == Piece::King {
                 if promotion {
                     return false;
                 }
-                // King uses effective movement, but must still be safe
-                let candidate = pseudo_legals_for(eff, color, from, self.occupied()) & !our_pieces;
+                // King uses effective movement, but must still be safe.
+                let candidate = moves & !our_pieces;
                 if !candidate.has(to) {
                     return false;
                 }
-                return self.annan_king_safe_on(to);
+                return self.variant_king_safe_on(to);
             }
 
             if promotion {
@@ -989,7 +1139,7 @@ impl Board {
                     return false;
                 }
             }
-            // No must_promote check under Annan
+            // No must_promote check under piece-influence variants.
 
             if piece == Piece::Pawn && self.pawn_move_would_be_nifu(color, from, to, promotion) {
                 return false;
@@ -1000,8 +1150,7 @@ impl Board {
                 return false;
             }
 
-            // Use effective movement type for move validation
-            let moves = pseudo_legals_for(eff, color, from, self.occupied());
+            // Use effective movement type for move validation.
             if !moves.has(to) {
                 return false;
             }
@@ -1010,12 +1159,12 @@ impl Board {
                 return true;
             }
 
-            return self.annan_move_resolves_check(mv);
+            return self.variant_move_resolves_check(mv);
         }
         false
     }
 
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn king_is_legal(&self, color: Color, from: Square, to: Square) -> bool {
         if !(king_attacks(color, from) & !self.colors(color)).has(to) {
             false
@@ -1050,8 +1199,14 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let mut total_moves = 0;
@@ -1065,7 +1220,7 @@ impl Board {
     /// });
     /// assert_eq!(total_moves, 30);
     /// ```
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         abort_if! {
             self.generate_drops(&mut listener),
@@ -1074,10 +1229,10 @@ impl Board {
         false
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         if !self.checkers.is_empty() {
-            return self.generate_annan_evasions(&mut listener);
+            return self.generate_variant_evasions(&mut listener);
         }
 
         abort_if! {
@@ -1099,8 +1254,14 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let pawns = board.pieces(Piece::Pawn);
@@ -1120,6 +1281,11 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        if !self.checkers.is_empty() {
+            return self.generate_variant_board_evasions(mask, &mut listener);
+        }
+
         match self.checkers.len() {
             0 => self.add_all_legals::<_, false>(mask, &mut listener),
             1 => self.add_all_legals::<_, true>(mask, &mut listener),
@@ -1156,6 +1322,11 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        if !self.checkers.is_empty() {
+            return self.generate_variant_drop_evasions(&mut listener, None);
+        }
+
         match self.checkers.len() {
             0 => {
                 let targets = !self.occupied();
@@ -1176,6 +1347,11 @@ impl Board {
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
         let num_checkers = self.checkers.len();
+        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        if num_checkers > 0 {
+            return self.generate_variant_drop_evasions(&mut listener, Some(piece));
+        }
+
         if num_checkers == 0 {
             let dst = !self.occupied();
             match piece {
@@ -1211,7 +1387,7 @@ impl Board {
     /// This function will call the `listener` callback multiple times. The listener can interrupt
     /// further processing by returning true. Otherwise, the function will generate all remaining
     /// checks and eventually return false.
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let color = self.side_to_move();
         let their_color = !color;
@@ -1348,7 +1524,7 @@ impl Board {
     }
 
     // Helper function to handle all PromotionStatus variants
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn filter_checks_by_promotion_status(
         color: Color,
         piece: Piece,
@@ -1422,12 +1598,12 @@ impl Board {
         false
     }
 
-    /// Annan-aware check generation.
+    /// Variant-aware check generation.
     ///
     /// Uses a generate-and-filter approach: generates all legal moves, then plays
     /// each one to see if it results in check. Less optimized than the normal version
-    /// but correct under Annan rules where effective movement types are dynamic.
-    #[cfg(feature = "annan")]
+    /// but correct for variants where effective movement types are dynamic.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let their_color = !self.side_to_move();
         if !self.has(their_color, Piece::King) {

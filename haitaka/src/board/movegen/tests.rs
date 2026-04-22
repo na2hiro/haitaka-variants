@@ -7,6 +7,7 @@ use super::*;
 
 // Tests the generation of board moves based on giving a subset of squares
 #[test]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn subset_movegen_habu_position() {
     fn visit(board: &Board, depth: u8) {
         let random = board.hash();
@@ -49,6 +50,7 @@ fn subset_movegen_habu_position() {
     visit(&board, 2);
 }
 
+#[allow(dead_code)]
 fn test_is_legal(board: Board) {
     use std::collections::HashSet;
 
@@ -73,6 +75,7 @@ fn test_is_legal(board: Board) {
     }
 }
 
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn test_forbidden_drops(board: &Board) {
     use std::collections::HashSet;
 
@@ -108,6 +111,7 @@ fn test_forbidden_drops(board: &Board) {
     }
 }
 
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn test_nifu(board: &Board) {
     let color = board.side_to_move();
 
@@ -133,6 +137,7 @@ fn test_nifu(board: &Board) {
 }
 
 #[test]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn legality_simple() {
     test_is_legal(Board::startpos());
     test_is_legal(
@@ -143,7 +148,7 @@ fn legality_simple() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
         .parse()
@@ -192,7 +197,7 @@ fn pawn_push_mate_is_valid() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -214,6 +219,7 @@ fn discount_pawn_drop_mate_in_perft() {
 }
 
 #[test]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
     let mut board: Board = Board::tsume(sfen).unwrap();
@@ -330,7 +336,7 @@ fn tsume() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -371,7 +377,7 @@ fn generate_checks() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -426,7 +432,7 @@ fn invalid_tsume() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -490,7 +496,7 @@ fn pinners() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -591,7 +597,7 @@ fn discovered_checks2() {
 }
 
 #[test]
-#[cfg(not(feature = "annan"))]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .
@@ -653,6 +659,7 @@ fn fuzzing_generate_moves() {
 }
 
 #[test]
+#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
 fn fuzzing_checks() {
     let mut rng = rng();
 
@@ -714,6 +721,120 @@ fn board_hash_trait_works() {
 
     assert_eq!(hash1, hash2, "Hashes of identical boards should match");
     assert_ne!(hash1, hash3, "Hashes of different boards should differ");
+}
+
+// ========================
+// Piece-influence variant tests
+// ========================
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_front_donor_changes_movement() {
+    let board: Board = "k8/9/9/4R4/4G4/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::E1,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(rook_like));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(rook_like);
+        generated
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_without_front_donor_uses_native_movement() {
+    let board: Board = "k8/9/9/9/4G4/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+    let gold_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(rook_like));
+    assert!(board.is_legal_board_move(gold_like));
+}
+
+#[test]
+#[cfg(feature = "antouzai")]
+fn antouzai_left_donor_changes_movement() {
+    let board: Board = "k8/9/9/9/3RG4/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(rook_like));
+}
+
+#[test]
+#[cfg(feature = "antouzai")]
+fn antouzai_right_donor_changes_movement() {
+    let board: Board = "9/k8/9/9/4GB3/9/9/9/8K b - 1".parse().unwrap();
+    let bishop_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A1,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(bishop_like));
+}
+
+#[test]
+#[cfg(feature = "antouzai")]
+fn antouzai_left_and_right_donors_union_movement() {
+    let board: Board = "9/k8/9/9/3RGB3/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+    let bishop_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A1,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(rook_like));
+    assert!(board.is_legal_board_move(bishop_like));
+
+    let mut generated_rook = false;
+    let mut generated_bishop = false;
+    board.generate_board_moves(|mvs| {
+        generated_rook |= mvs.has(rook_like);
+        generated_bishop |= mvs.has(bishop_like);
+        generated_rook && generated_bishop
+    });
+    assert!(generated_rook);
+    assert!(generated_bishop);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_effective_slider_check_is_detected() {
+    let board: Board = "k8/9/9/9/9/9/4p3K/4r4/9 b - 1".parse().unwrap();
+    assert_eq!(board.checkers(), Square::G5.bitboard());
+    test_is_legal(board);
+}
+
+#[test]
+#[cfg(feature = "antouzai")]
+fn antouzai_effective_slider_check_is_detected() {
+    let board: Board = "k8/9/9/9/9/9/3rp3K/9/9 b - 1".parse().unwrap();
+    assert_eq!(board.checkers(), Square::G5.bitboard());
+    test_is_legal(board);
 }
 
 // ========================

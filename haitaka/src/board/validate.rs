@@ -138,7 +138,7 @@ impl Board {
     /// of all the opponent's pieces that attack `color`'s King and `pinned` is the bitboard of
     /// all pieces (of any color) that block an opponent's slider from attacking `color`'s King,
     /// assuming there is only one such blocking piece.
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
         let mut pinned = BitBoard::EMPTY;
@@ -181,24 +181,24 @@ impl Board {
         (checkers, pinned)
     }
 
-    /// Annan-aware checkers and pins calculation.
+    /// Variant-aware checkers and pins calculation.
     ///
-    /// Under Annan rules, each opponent piece's effective movement depends on
-    /// the friendly piece behind it. We compute the opponent's backing info
-    /// and then check each effective movement type.
-    #[cfg(feature = "annan")]
+    /// In influence variants, each opponent piece's effective movement depends
+    /// on adjacent friendly donor pieces. We compute the opponent's influence
+    /// info and then check each effective movement type.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     pub(super) fn calculate_checkers_and_pins_excluding(
         &self,
         color: Color,
         excluded_attackers: BitBoard,
     ) -> (BitBoard, BitBoard) {
-        use crate::annan::{
-            AnnanBacking, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
+        use crate::variant_rules::{
+            MovementInfluence, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
         };
 
         let mut checkers = BitBoard::EMPTY;
@@ -213,18 +213,19 @@ impl Board {
         let their_pieces = self.colors(their_color);
         let occupied = self.occupied();
 
-        let backing = AnnanBacking::compute(self, their_color);
+        let influence = MovementInfluence::compute(self, their_color);
 
         // For each piece type that could be the effective movement:
         // find all opponent pieces moving as that type and check for attacks on our king.
         for &eff_piece in &Piece::ALL {
             // Collect all opponent pieces effectively moving as `eff_piece`:
-            //   - pieces of type `eff_piece` that are NOT backed (move as themselves)
-            //   - any piece backed by `eff_piece`
-            let unbacked_of_type =
-                self.colored_pieces(their_color, eff_piece) & !backing.has_backer;
-            let backed_by_type = backing.backed_by[eff_piece as usize];
-            let movers = ((unbacked_of_type | backed_by_type) & their_pieces) & !excluded_attackers;
+            //   - pieces of type `eff_piece` that are not influenced
+            //   - any piece influenced by `eff_piece`
+            let uninfluenced_of_type =
+                self.colored_pieces(their_color, eff_piece) & !influence.has_influence;
+            let influenced_by_type = influence.influenced_by[eff_piece as usize];
+            let movers =
+                ((uninfluenced_of_type | influenced_by_type) & their_pieces) & !excluded_attackers;
 
             if movers.is_empty() {
                 continue;

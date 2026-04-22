@@ -1,5 +1,8 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(not(feature = "annan"), doc = include_str!("../README.md"))]
+#![cfg_attr(
+    not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+    doc = include_str!("../README.md")
+)]
 
 //! # Examples
 //!
@@ -16,6 +19,11 @@
 //! cargo run --release --example perft -- 3
 //! ```
 
+#[cfg(all(feature = "annan", any(feature = "anhoku", feature = "antouzai")))]
+compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
+#[cfg(all(feature = "anhoku", feature = "antouzai"))]
+compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
+
 use haitaka_types::*;
 
 pub use bitboard::*;
@@ -28,12 +36,12 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
-#[cfg(feature = "annan")]
-pub mod annan;
 pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod slider_moves;
+#[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+pub mod variant_rules;
 
 pub use attacks::*;
 pub use board::*;

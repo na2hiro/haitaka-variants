@@ -1,5 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
+#[cfg(all(feature = "annan", any(feature = "anhoku", feature = "antouzai")))]
+compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
+#[cfg(all(feature = "anhoku", feature = "antouzai"))]
+compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
 pub mod bitboard;
 pub mod color;
 pub mod file;

@@ -23,3 +23,5 @@ harness = false
 
 [features]
 annan = ["haitaka/annan"]
+anhoku = ["haitaka/anhoku"]
+antouzai = ["haitaka/antouzai"]

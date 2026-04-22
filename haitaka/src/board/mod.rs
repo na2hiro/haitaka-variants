@@ -157,7 +157,7 @@ impl Board {
         }
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
         &self,
@@ -231,8 +231,14 @@ impl Board {
     /// Shorthand for `board.colors(color) & board.pieces(piece)`.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let white_pawns = board.colored_pieces(Color::White, Piece::Pawn);
@@ -319,8 +325,14 @@ impl Board {
 
     /// Get a [`BitBoard`] of all the pieces on the board.
     /// # Examples
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.occupied(), bitboard! {
@@ -343,8 +355,14 @@ impl Board {
     /// Get the current side to move.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.side_to_move(), Color::Black);
@@ -363,8 +381,14 @@ impl Board {
     /// Does not include the move number.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play("2g2f".parse().unwrap());
@@ -390,8 +414,14 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -412,8 +442,14 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// use haitaka::*;
     /// let sfen: &str = "ln3gsn1/7kl/3+B1p1p1/p4s2p/2P6/P2B3PP/1PNP+rPP2/2G3SK1/L4G1NL b G3Prs3p 65";
     /// let mut board = Board::from_sfen(sfen).unwrap();
@@ -440,8 +476,14 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.move_number(), 1);
@@ -700,8 +742,14 @@ impl Board {
     ///
     /// # Examples
     /// ## Legal moves
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let sfen: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5";
     /// let mut board = Board::startpos();
@@ -741,8 +789,14 @@ impl Board {
     /// See [`Board::play`] for a variant _guaranteed_ to panic immediately on illegal moves.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "annan"), doc = "```")]
-    #[cfg_attr(feature = "annan", doc = "```ignore")]
+    #[cfg_attr(
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        doc = "```ignore"
+    )]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// board.play_unchecked("2g2f".parse().unwrap());
@@ -833,7 +887,7 @@ impl Board {
         self.inner.toggle_side_to_move();
     }
 
-    #[cfg(not(feature = "annan"))]
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
         self.pinned = BitBoard::EMPTY;
@@ -889,12 +943,12 @@ impl Board {
         }
     }
 
-    /// Under Annan, a single move can change backing relationships for multiple pieces,
+    /// In piece-influence variants, a single move can change donor relationships for multiple pieces,
     /// so we fall back to a full recalculation.
     ///
     /// Note: called BEFORE toggle_side_to_move, so `color` is the mover.
     /// Checkers/pins are from the opponent's (the new side-to-move's) perspective.
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         let them = !color;
         let ignored_nifu_pawn = if piece == Piece::Pawn
@@ -945,7 +999,7 @@ impl Board {
             board.move_number += 1;
             board.inner.toggle_side_to_move();
 
-            #[cfg(not(feature = "annan"))]
+            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
             {
                 // we only need to update pinned
                 board.pinned = BitBoard::EMPTY;
@@ -965,9 +1019,9 @@ impl Board {
                 }
             }
 
-            #[cfg(feature = "annan")]
+            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
             {
-                // Under Annan, non-sliders backed by sliders can also pin,
+                // In influence variants, non-sliders with slider movement can also pin,
                 // so use full recalculation.
                 let (checkers, pinned) = board.calculate_checkers_and_pins(color);
                 board.checkers = checkers;
