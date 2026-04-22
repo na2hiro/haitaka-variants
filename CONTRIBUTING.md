@@ -57,5 +57,7 @@ cargo bench -p haitaka --bench dfpn -- --noplot
 
 - Keep rule changes small and include SFEN-based regression tests when possible.
 - Include benchmark numbers for move generation or search performance changes.
+- Use the manual `Benchmarks` workflow when a PR needs CI-side performance
+  validation but did not touch files covered by the benchmark path filters.
 - Say whether the change was tested with `--features annan`.
 - Do not include generated training outputs or large model files directly in PRs.
