@@ -7,7 +7,18 @@ YaneuraOu, which Shogitter still detects with its `.js`/`.worker.js`/`.wasm` heu
 
 Run these commands from the repository root.
 
-Build the WASM artifacts first:
+The preferred commands are Cargo aliases backed by the workspace `xtask` helper:
+
+```bash
+cargo pack
+cargo pack-annan
+```
+
+`cargo pack` builds the standard WASM package and writes
+`target/haitaka-variants.tgz`. `cargo pack-annan` builds with the
+`annan` feature and writes `target/haitaka-variants-annan.tgz`.
+
+For manual debugging, build the WASM artifacts first:
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -26,7 +37,7 @@ Then create the package:
 ```bash
 cargo run -p haitaka_cli -- package \
   --wasm-dir haitaka_wasm/pkg \
-  --output target/haitaka-shogitter-package.tgz
+  --output target/haitaka-variants.tgz
 ```
 
 For Annan, also build the package command with the Annan feature:
@@ -78,7 +89,7 @@ they exist. `haitaka_wasm.js` and `haitaka_wasm_bg.wasm` are required unless
   "schemaVersion": 1,
   "engine": {
     "id": "haitaka-variants",
-    "name": "Haitaka Variants",
+    "name": "Haitaka Variants (annan)",
     "version": "0.1.0",
     "commit": "<git commit or unknown>"
   },
@@ -122,7 +133,9 @@ When `--nnue path/to/model.nnue` is passed, `artifacts.nnue` is:
 
 - `schema`: always `shogitter-engine-package`.
 - `schemaVersion`: currently `1`.
-- `engine`: Shogitter display and provenance metadata.
+- `engine`: Shogitter display and provenance metadata. The display name
+  includes the packaged ruleset, such as `Haitaka Variants (annan)`, so users
+  can distinguish registered engines.
 - `runtime.kind`: `wasm-bindgen` for Haitaka packages.
 - `runtime.module`: archive-relative path to the generated JS glue module.
 - `runtime.wasm`: archive-relative path to the generated WASM binary.

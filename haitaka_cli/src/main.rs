@@ -122,7 +122,7 @@ struct EnginePackageManifest {
 #[derive(Debug, Serialize)]
 struct ManifestEngine {
     id: &'static str,
-    name: &'static str,
+    name: String,
     version: &'static str,
     commit: String,
 }
@@ -217,7 +217,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
         schema_version: 1,
         engine: ManifestEngine {
             id: ENGINE_ID,
-            name: ENGINE_NAME,
+            name: format!("{ENGINE_NAME} ({})", args.ruleset),
             version: env!("CARGO_PKG_VERSION"),
             commit: git_commit(),
         },
@@ -625,7 +625,10 @@ mod tests {
         assert_eq!(json["schema"], "shogitter-engine-package");
         assert_eq!(json["schemaVersion"], 1);
         assert_eq!(json["engine"]["id"], ENGINE_ID);
-        assert_eq!(json["engine"]["name"], ENGINE_NAME);
+        assert_eq!(
+            json["engine"]["name"],
+            format!("{ENGINE_NAME} ({})", default_ruleset())
+        );
         assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
         assert_eq!(json["runtime"]["module"], WASM_BINDGEN_MODULE);
@@ -737,6 +740,7 @@ mod tests {
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
+        assert_eq!(json["engine"]["name"], "Haitaka Variants (annan)");
         assert_eq!(json["rules"][0]["ruleId"], 26);
         assert_eq!(json["rules"][0]["variant"], "annan");
         assert_eq!(json["rules"][0]["positionFormat"], "sfen");

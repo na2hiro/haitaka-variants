@@ -52,7 +52,22 @@ checks, not for publishing serious engine ratings.
 
 ### Shogitter Engine Package v1
 
-Build WASM first:
+From the repository root, create a standard package with:
+
+```bash
+cargo pack
+```
+
+Create an Annan package with:
+
+```bash
+cargo pack-annan
+```
+
+These Cargo aliases are defined in `.cargo/config.toml` and run the workspace
+`xtask` helper, which builds WASM and then invokes `haitaka_cli package`.
+
+For manual debugging, build WASM first:
 
 ```bash
 wasm-pack build haitaka_wasm --target web --out-dir pkg --release

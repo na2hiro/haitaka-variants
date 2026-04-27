@@ -4,7 +4,8 @@ members = [
     "haitaka_cli",
     "haitaka_learn",
     "haitaka_types",
-    "haitaka_wasm"
+    "haitaka_wasm",
+    "xtask"
 ]
 resolver = "2"
 

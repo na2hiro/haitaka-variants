@@ -52,6 +52,18 @@ archive.
 From the repository root:
 
 ```bash
+cargo pack
+```
+
+For Annan:
+
+```bash
+cargo pack-annan
+```
+
+For manual debugging, run the steps directly:
+
+```bash
 wasm-pack build haitaka_wasm --target web --out-dir pkg --release
 cargo run -p haitaka_cli --release -- package \
   --wasm-dir haitaka_wasm/pkg \

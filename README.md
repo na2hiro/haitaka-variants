@@ -131,23 +131,31 @@ The output directory is `haitaka_wasm/pkg`.
 
 ## Make A Shogitter Engine Package v1
 
-After building WASM, create the `.tgz` package:
+Create the standard package with one Cargo alias:
+
+```bash
+cargo pack
+```
+
+Create the Annan package with:
+
+```bash
+cargo pack-annan
+```
+
+These aliases run `wasm-pack build` and then `haitaka_cli package`. If you need
+to debug the steps manually, build WASM first:
+
+```bash
+wasm-pack build haitaka_wasm --target web --out-dir pkg --release
+```
+
+Then create the `.tgz` package:
 
 ```bash
 cargo run -p haitaka_cli --release -- package \
   --wasm-dir haitaka_wasm/pkg \
   --output target/haitaka-variants.tgz
-```
-
-For Annan, build both the WASM crate and package command with the Annan feature:
-
-```bash
-wasm-pack build haitaka_wasm --target web --out-dir pkg --release --features annan
-cargo run -p haitaka_cli --release --features annan -- package \
-  --wasm-dir haitaka_wasm/pkg \
-  --ruleset annan \
-  --rule-id 26 \
-  --output target/haitaka-variants-annan.tgz
 ```
 
 The generated archive contains a root `shogitter-engine.json` manifest plus the
