@@ -830,6 +830,97 @@ fn anhoku_effective_slider_check_is_detected() {
 }
 
 #[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_last_rank_drops_stay_illegal_but_second_rank_knight_drop_is_legal() {
+    let board: Board = "k8/9/9/9/9/9/9/9/8K b NLP 1".parse().unwrap();
+    let forbidden = [
+        Move::Drop {
+            piece: Piece::Pawn,
+            to: Square::A5,
+        },
+        Move::Drop {
+            piece: Piece::Lance,
+            to: Square::A5,
+        },
+        Move::Drop {
+            piece: Piece::Knight,
+            to: Square::A5,
+        },
+    ];
+    let allowed = Move::Drop {
+        piece: Piece::Knight,
+        to: Square::B5,
+    };
+
+    for mv in forbidden {
+        assert!(!board.is_legal_drop(mv));
+    }
+    assert!(board.is_legal_drop(allowed));
+
+    let mut saw_allowed = false;
+    let mut saw_forbidden = false;
+    board.generate_drops(|mvs| {
+        saw_allowed |= mvs.has(allowed);
+        saw_forbidden |= forbidden.into_iter().any(|mv| mvs.has(mv));
+        saw_allowed && saw_forbidden
+    });
+
+    assert!(saw_allowed);
+    assert!(!saw_forbidden);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_last_rank_move_must_promote() {
+    let board: Board = "k8/4B4/4P4/9/9/9/9/9/8K b - 1".parse().unwrap();
+    let non_promotion = Move::BoardMove {
+        from: Square::C5,
+        to: Square::A3,
+        promotion: false,
+    };
+    let promotion = Move::BoardMove {
+        from: Square::C5,
+        to: Square::A3,
+        promotion: true,
+    };
+
+    assert!(!board.is_legal_board_move(non_promotion));
+    assert!(board.is_legal_board_move(promotion));
+
+    let mut saw_non_promotion = false;
+    let mut saw_promotion = false;
+    board.generate_board_moves(|mvs| {
+        saw_non_promotion |= mvs.has(non_promotion);
+        saw_promotion |= mvs.has(promotion);
+        saw_non_promotion && saw_promotion
+    });
+
+    assert!(!saw_non_promotion);
+    assert!(saw_promotion);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_knight_may_remain_unpromoted_on_second_rank() {
+    let board: Board = "k8/4B4/4N4/9/9/9/9/9/8K b - 1".parse().unwrap();
+    let non_promotion = Move::BoardMove {
+        from: Square::C5,
+        to: Square::B4,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(non_promotion));
+
+    let mut saw_non_promotion = false;
+    board.generate_board_moves(|mvs| {
+        saw_non_promotion |= mvs.has(non_promotion);
+        saw_non_promotion
+    });
+
+    assert!(saw_non_promotion);
+}
+
+#[test]
 #[cfg(feature = "antouzai")]
 fn antouzai_effective_slider_check_is_detected() {
     let board: Board = "k8/9/9/9/9/9/3rp3K/9/9 b - 1".parse().unwrap();

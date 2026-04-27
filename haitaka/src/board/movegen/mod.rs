@@ -1138,8 +1138,9 @@ impl Board {
                 if !(zone.has(to) || zone.has(from)) {
                     return false;
                 }
+            } else if piece.must_promote(color, to) {
+                return false;
             }
-            // No must_promote check under piece-influence variants.
 
             if piece == Piece::Pawn && self.pawn_move_would_be_nifu(color, from, to, promotion) {
                 return false;

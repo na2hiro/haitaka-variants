@@ -182,12 +182,26 @@ impl Piece {
     /// ```
     #[inline(always)]
     pub const fn must_promote(self, color: Color, square: Square) -> bool {
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(feature = "annan", feature = "antouzai"))]
         {
             // In piece-influence variants, pieces can gain any movement via donors,
             // so there are no stuck-piece restrictions.
             let _ = (color, square);
             false
+        }
+        #[cfg(feature = "anhoku")]
+        {
+            // Anhoku still needs to forbid dead pieces on the last rank:
+            // there is no square in front, so no donor can ever influence them.
+            let rank = square.rank() as usize;
+            match color {
+                Color::White => {
+                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 8
+                }
+                Color::Black => {
+                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 0
+                }
+            }
         }
         #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
         {
