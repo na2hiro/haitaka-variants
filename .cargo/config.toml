@@ -1,3 +1,5 @@
 [alias]
 pack = "run -p xtask -- package"
 pack-annan = "run -p xtask -- package --ruleset annan --rule-id 26 --features annan --output target/haitaka-variants-annan.tgz"
+pack-anhoku = "run -p xtask -- package --ruleset anhoku --rule-id 55 --features anhoku --output target/haitaka-variants-anhoku.tgz"
+pack-antouzai = "run -p xtask -- package --ruleset antouzai --rule-id 95 --features antouzai --output target/haitaka-variants-antouzai.tgz"
