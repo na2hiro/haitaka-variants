@@ -1,5 +1,7 @@
 [rules]
+# ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai"
 ruleset = "standard"
+# Override only when you need a specific external rule registry value.
 rule_id = 0
 
 [paths]

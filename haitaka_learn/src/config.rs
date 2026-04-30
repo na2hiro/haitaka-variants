@@ -10,6 +10,57 @@ const STANDARD_STARTPOS_SFEN: &str =
 const ANNAN_STARTPOS_SFEN: &str =
     "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RulesetSpec {
+    pub ruleset: Ruleset,
+    pub required_feature: Option<&'static str>,
+    pub default_rule_id: u16,
+    pub default_opening_sfen: &'static str,
+    pub verification_name: &'static str,
+}
+
+pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 4] = [
+    RulesetSpec {
+        ruleset: Ruleset::Standard,
+        required_feature: None,
+        default_rule_id: 0,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "standard_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Annan,
+        required_feature: Some("annan"),
+        default_rule_id: 26,
+        default_opening_sfen: ANNAN_STARTPOS_SFEN,
+        verification_name: "annan_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Anhoku,
+        required_feature: Some("anhoku"),
+        default_rule_id: 55,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "anhoku_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Antouzai,
+        required_feature: Some("antouzai"),
+        default_rule_id: 95,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "antouzai_startpos",
+    },
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerificationFixture {
+    pub name: &'static str,
+    pub sfen: &'static str,
+}
+
+const HANDICAP_6PIECE_FIXTURE: VerificationFixture = VerificationFixture {
+    name: "handicap_6piece",
+    sfen: haitaka::SFEN_6PIECE_HANDICAP,
+};
+
 #[derive(Debug, Clone)]
 pub struct LoadedConfig {
     pub path: PathBuf,
@@ -53,64 +104,104 @@ impl LoadedConfig {
     }
 
     pub fn runtime_mode(&self) -> &'static str {
-        if cfg!(feature = "annan") {
-            "annan"
-        } else if cfg!(feature = "anhoku") {
-            "anhoku"
-        } else if cfg!(feature = "antouzai") {
-            "antouzai"
-        } else {
-            "standard"
-        }
+        active_variant_feature().unwrap_or("standard")
     }
 
     pub fn ruleset_requires_matching_engine(&self) -> Result<()> {
         match self.config.rules.ruleset {
-            Ruleset::Annan if !cfg!(feature = "annan") => {
-                bail!("ruleset=annan requires building haitaka_learn with `--features annan`")
+            Ruleset::Handicap | Ruleset::Standard => {
+                if active_variant_feature().is_some() {
+                    bail!(
+                        "ruleset={} requires the default haitaka_learn build without variant features",
+                        self.config.rules.ruleset.as_str()
+                    );
+                }
+                Ok(())
             }
-            Ruleset::Standard | Ruleset::Handicap
-                if cfg!(any(
-                    feature = "annan",
-                    feature = "anhoku",
-                    feature = "antouzai"
-                )) =>
-            {
-                bail!(
-                    "standard and handicap self-play data generation should use the default build without variant features"
-                )
+            ruleset => {
+                let required_feature = ruleset
+                    .spec()
+                    .and_then(|spec| spec.required_feature)
+                    .expect("non-standard variant rulesets should have a required feature");
+                if active_variant_feature() == Some(required_feature) {
+                    Ok(())
+                } else {
+                    bail!(
+                        "ruleset={} requires building haitaka_learn with `--features {required_feature}`",
+                        ruleset.as_str()
+                    );
+                }
             }
-            _ => Ok(()),
         }
     }
 
     pub fn opening_sfen(&self) -> Result<String> {
+        self.ruleset_requires_matching_engine()?;
+        if let Some(sfen) = &self.config.rules.opening_sfen {
+            return Ok(sfen.clone());
+        }
+
         match self.config.rules.ruleset {
-            Ruleset::Standard => {
-                self.ruleset_requires_matching_engine()?;
-                Ok(STANDARD_STARTPOS_SFEN.to_string())
-            }
-            Ruleset::Annan => {
-                self.ruleset_requires_matching_engine()?;
-                Ok(ANNAN_STARTPOS_SFEN.to_string())
-            }
+            Ruleset::Standard | Ruleset::Annan | Ruleset::Anhoku | Ruleset::Antouzai => self
+                .config
+                .rules
+                .ruleset
+                .spec()
+                .map(|spec| spec.default_opening_sfen.to_string())
+                .ok_or_else(|| {
+                    anyhow!(
+                        "missing ruleset spec for {}",
+                        self.config.rules.ruleset.as_str()
+                    )
+                }),
             Ruleset::Handicap => {
-                self.ruleset_requires_matching_engine()?;
-                if let Some(sfen) = &self.config.rules.opening_sfen {
-                    Ok(sfen.clone())
-                } else {
-                    let preset = self.config.rules.handicap.ok_or_else(|| {
+                let preset =
+                    self.config.rules.handicap.ok_or_else(|| {
                         anyhow!("rules.handicap must be set for ruleset=handicap")
                     })?;
-                    let sfen = match preset {
-                        HandicapPreset::TwoPiece => haitaka::SFEN_2PIECE_HANDICAP,
-                        HandicapPreset::FourPiece => haitaka::SFEN_4PIECE_HANDICAP,
-                        HandicapPreset::SixPiece => haitaka::SFEN_6PIECE_HANDICAP,
-                    };
-                    Ok(sfen.to_string())
-                }
+                let sfen = match preset {
+                    HandicapPreset::TwoPiece => haitaka::SFEN_2PIECE_HANDICAP,
+                    HandicapPreset::FourPiece => haitaka::SFEN_4PIECE_HANDICAP,
+                    HandicapPreset::SixPiece => haitaka::SFEN_6PIECE_HANDICAP,
+                };
+                Ok(sfen.to_string())
             }
         }
+    }
+
+    pub fn effective_rule_id(&self) -> Result<u16> {
+        if let Some(rule_id) = self.config.rules.rule_id {
+            return Ok(rule_id);
+        }
+
+        match self.config.rules.ruleset {
+            Ruleset::Handicap => match self.config.rules.handicap {
+                Some(HandicapPreset::SixPiece) => Ok(6),
+                Some(HandicapPreset::FourPiece) => Ok(4),
+                Some(HandicapPreset::TwoPiece) => Ok(2),
+                None => bail!(
+                    "rules.rule_id must be set when ruleset=handicap uses a custom opening_sfen without a named handicap preset"
+                ),
+            },
+            ruleset => ruleset
+                .spec()
+                .map(|spec| spec.default_rule_id)
+                .ok_or_else(|| anyhow!("missing ruleset spec for {}", ruleset.as_str())),
+        }
+    }
+
+    pub fn verification_fixtures(&self) -> Vec<VerificationFixture> {
+        let mut fixtures = Vec::with_capacity(DEFAULT_RULESET_SPECS.len() + 1);
+        fixtures.extend(
+            DEFAULT_RULESET_SPECS
+                .iter()
+                .map(|spec| VerificationFixture {
+                    name: spec.verification_name,
+                    sfen: spec.default_opening_sfen,
+                }),
+        );
+        fixtures.push(HANDICAP_6PIECE_FIXTURE);
+        fixtures
     }
 
     pub fn artifact_paths(&self) -> ArtifactPaths {
@@ -248,6 +339,26 @@ pub enum Ruleset {
     Standard,
     Handicap,
     Annan,
+    Anhoku,
+    Antouzai,
+}
+
+impl Ruleset {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Standard => "standard",
+            Self::Handicap => "handicap",
+            Self::Annan => "annan",
+            Self::Anhoku => "anhoku",
+            Self::Antouzai => "antouzai",
+        }
+    }
+
+    pub fn spec(self) -> Option<&'static RulesetSpec> {
+        DEFAULT_RULESET_SPECS
+            .iter()
+            .find(|spec| spec.ruleset == self)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -493,6 +604,18 @@ fn default_run_search_smoke() -> bool {
     true
 }
 
+fn active_variant_feature() -> Option<&'static str> {
+    if cfg!(feature = "annan") {
+        Some("annan")
+    } else if cfg!(feature = "anhoku") {
+        Some("anhoku")
+    } else if cfg!(feature = "antouzai") {
+        Some("antouzai")
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -517,6 +640,108 @@ validation_games = 1
         config.validate().unwrap();
         assert_eq!(config.training.features, "HalfKAv2^");
         assert_eq!(config.export.output_name, "haitaka.nnue");
+    }
+
+    #[test]
+    fn ruleset_specs_cover_supported_training_rules() {
+        assert_eq!(Ruleset::Standard.spec().unwrap().default_rule_id, 0);
+        assert_eq!(Ruleset::Annan.spec().unwrap().default_rule_id, 26);
+        assert_eq!(Ruleset::Anhoku.spec().unwrap().default_rule_id, 55);
+        assert_eq!(Ruleset::Antouzai.spec().unwrap().default_rule_id, 95);
+        assert_eq!(
+            Ruleset::Anhoku.spec().unwrap().required_feature,
+            Some("anhoku")
+        );
+        assert_eq!(
+            Ruleset::Antouzai.spec().unwrap().required_feature,
+            Some("antouzai")
+        );
+        assert!(Ruleset::Handicap.spec().is_none());
+    }
+
+    #[test]
+    fn explicit_opening_override_applies_to_non_handicap_rulesets() {
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "anhoku"
+opening_sfen = "4k4/9/9/9/9/9/9/9/4K4 b - 1"
+
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        let loaded = LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.toml"),
+            hash_hex: "hash".to_string(),
+            config,
+        };
+
+        assert_eq!(
+            loaded.config.rules.opening_sfen.as_deref(),
+            Some("4k4/9/9/9/9/9/9/9/4K4 b - 1")
+        );
+        if cfg!(feature = "anhoku") {
+            assert_eq!(
+                loaded.opening_sfen().unwrap(),
+                "4k4/9/9/9/9/9/9/9/4K4 b - 1"
+            );
+        }
+    }
+
+    #[test]
+    fn effective_rule_id_uses_registry_defaults() {
+        for (ruleset, expected) in [
+            (Ruleset::Standard, 0),
+            (Ruleset::Annan, 26),
+            (Ruleset::Anhoku, 55),
+            (Ruleset::Antouzai, 95),
+        ] {
+            let loaded = LoadedConfig {
+                path: PathBuf::from("/tmp/haitaka_learn.toml"),
+                hash_hex: "hash".to_string(),
+                config: LearnConfig {
+                    rules: RulesConfig {
+                        ruleset,
+                        rule_id: None,
+                        handicap: None,
+                        opening_sfen: None,
+                    },
+                    paths: PathsConfig::default(),
+                    data: DataConfig::default(),
+                    training: TrainingConfig::default(),
+                    export: ExportConfig::default(),
+                    verify: VerifyConfig::default(),
+                },
+            };
+            assert_eq!(loaded.effective_rule_id().unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn custom_handicap_opening_requires_explicit_rule_id() {
+        let loaded = LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.toml"),
+            hash_hex: "hash".to_string(),
+            config: LearnConfig {
+                rules: RulesConfig {
+                    ruleset: Ruleset::Handicap,
+                    rule_id: None,
+                    handicap: None,
+                    opening_sfen: Some("4k4/9/9/9/9/9/9/9/4K4 b - 1".to_string()),
+                },
+                paths: PathsConfig::default(),
+                data: DataConfig::default(),
+                training: TrainingConfig::default(),
+                export: ExportConfig::default(),
+                verify: VerifyConfig::default(),
+            },
+        };
+
+        let err = loaded.effective_rule_id().unwrap_err().to_string();
+        assert!(err.contains("rules.rule_id must be set"));
     }
 
     #[test]

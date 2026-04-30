@@ -133,8 +133,13 @@ The variant rule features are mutually exclusive.
 - Standard shogi NNUE uses the same network layout as Fairy-Stockfish `HalfKAv2^`.
 - `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
   - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
-- Annan currently has a documented NNUE data-generation workflow in `haitaka_learn`.
-- Anhoku and Antouzai are currently core-engine/search feature modes only; add NNUE rule IDs and data workflow entries before using them for training runs.
+- `haitaka_learn` now supports standard, handicap, Annan, Anhoku, and Antouzai NNUE data generation / train / export / verify flows.
+- Variant runs must use the matching feature build:
+  - `--features annan`
+  - `--features anhoku`
+  - `--features antouzai`
+- `haitaka_learn` now emits a concrete `rule_id` for built-in standard, handicap, Annan, Anhoku (`55`), and Antouzai (`95`) runs.
+- `rules.rule_id` remains as an override when you need to match an external registry or when a custom handicap opening has no preset-based default.
 
 For training details, see:
 

@@ -15,7 +15,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
 
-use crate::config::{ArtifactPaths, HandicapPreset, LoadedConfig, Ruleset};
+use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
 #[cfg(test)]
@@ -32,7 +32,7 @@ pub struct DatasetOutput {
 struct DatasetManifest {
     dataset: String,
     ruleset: Ruleset,
-    rule_id: Option<u16>,
+    rule_id: u16,
     opening_sfen: String,
     game_count: u32,
     sampled_positions: u64,
@@ -279,7 +279,7 @@ fn generate_split(
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
-        rule_id: effective_rule_id(loaded),
+        rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
         game_count,
         sampled_positions,
@@ -296,23 +296,6 @@ fn generate_split(
         .with_context(|| format!("failed to write {}", manifest_path.display()))?;
 
     Ok(sampled_positions)
-}
-
-fn effective_rule_id(loaded: &LoadedConfig) -> Option<u16> {
-    loaded
-        .config
-        .rules
-        .rule_id
-        .or(match loaded.config.rules.ruleset {
-            Ruleset::Standard => Some(0),
-            Ruleset::Annan => Some(26),
-            Ruleset::Handicap => match loaded.config.rules.handicap {
-                Some(HandicapPreset::SixPiece) => Some(6),
-                Some(HandicapPreset::FourPiece) => Some(4),
-                Some(HandicapPreset::TwoPiece) => Some(2),
-                None => None,
-            },
-        })
 }
 
 fn terminal_teacher_score(board: &Board) -> i32 {
@@ -581,6 +564,8 @@ mod tests {
     #[test]
     #[cfg(any(
         feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
         not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
     ))]
     fn generate_data_smoke_test_writes_non_empty_shards() {
@@ -588,6 +573,10 @@ mod tests {
         let config_path = temp.path().join("haitaka_learn.toml");
         let ruleset = if cfg!(feature = "annan") {
             "annan"
+        } else if cfg!(feature = "anhoku") {
+            "anhoku"
+        } else if cfg!(feature = "antouzai") {
+            "antouzai"
         } else {
             "standard"
         };
@@ -748,7 +737,7 @@ run_search_smoke = false
 [rules]
 ruleset = "annan"
 rule_id = 26
-opening_sfen = "4k4/4R4/9/9/9/9/9/9/4K4 b - 1"
+opening_sfen = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1"
 
 [paths]
 output_dir = "out"
