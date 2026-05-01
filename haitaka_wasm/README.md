@@ -81,8 +81,10 @@ cargo run -p haitaka_cli --release --features annan -- package \
   --output target/haitaka-variants-annan.tgz
 ```
 
-See [`../docs/shogitter-package.md`](../docs/shogitter-package.md) for the
-archive layout.
+The generated archive contains a root `shogitter-engine.json` manifest plus the
+declared `engine/haitaka_wasm.js` and `engine/haitaka_wasm_bg.wasm` artifacts.
+For package metadata details, see
+[docs/shogitter-package.md](docs/shogitter-package.md).
 
 ## Tests And Benchmarks
 

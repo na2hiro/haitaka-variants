@@ -1,25 +1,22 @@
 # Haitaka Variants
 
-Haitaka Variants is an open engine workspace for building strong AI for shogi
-variants.
+Haitaka Variantsは、変則将棋AIやその機械学習に関するリポジトリです！これは`haitaka`というモダンで高速な本将棋の合法手生成エンジンを以下の点で拡張したものです。
 
-Modern shogi AI is already stronger than top human players, but many variant
-rules still have little or no serious engine support. Shogitter is a central
-place where people play those variants. This repository is the engine side of
-that effort: fast legal move generation, search, benchmarks, WASM delivery, and
-NNUE training tools that can grow into stronger bots for Shogitter.
+- 現在は、安南、安北、安東西といった役割変化系のルールに対応しています。 ([supported-rules.md](./docs/supported-rules.md))
+  - bitboardを使用した高速な合法手生成ができ、手元のM4 Mac上におけるperftの計算では約1億NPS出ます。
+  - ルールごとの拡張に当たってRustのfeature機能を使っているため、使用されないルール個別のコードはコンパイル時に取り除かれるため、拡張によるオーバーヘッドが少なくなっています。
+- 簡単な反復深化alphabeta探索による思考
+  - WebAssembly (WASM)にコンパイルしてブラウザ上で動かした場合、数十万NPS (ノード毎秒)読め、これだけで５秒以内に絞っても深さ５とか６まで読めるので安南初心者からすると結構強いAIになっています。
+  - 現状、手書きの非常にナイーブな（合法手の数と駒得のみを用いた）評価関数となっています。
+- NNUEモデルの学習と評価
+  - CUDAを用いてNNUEモデル(Fairy Stockfish互換)の学習を行うパイプラインを用意してあります。
+  - 上記alphabeta思考の際にNNUEモデルによる評価を行うことができます。
+- [将棋ったー](https://shogitter.com)上でのAI対局
+  - 「将棋ったーAI」を対局相手として選択し、対局できるようになっています。
+  - 個人的なビルドやNNUEモデルなどはマイページよりエンジン登録をすることにより、自分で対局相手として選択することができるようになります。
+  - （今後は、学習したNNUEモデルを将棋ったー上で共有し、他のプレイヤーが対戦できるような環境を整える予定です）
 
-The first launch target is Annan shogi.
-
-Current piece-influence rule modes:
-
-- `annan`: a friendly piece behind the mover donates movement.
-- `anhoku`: a friendly piece in front of the mover donates movement.
-- `antouzai`: friendly pieces immediately left and/or right of the mover donate
-  movement, combined as a union.
-
-These variant rule features are compile-time options, so switching rule logic
-does not add runtime overhead.
+変則将棋AIに興味がある、盛り上げたいという方は、[CONTRIBUTING.md](./CONTRIBUTING.md)もご覧ください。
 
 ## Repository Overview
 
@@ -41,12 +38,11 @@ Supporting docs:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): how different kinds of contributors can
   help.
-- [PRELAUNCH.md](PRELAUNCH.md): launch-readiness checklist.
 - [ROADMAP.md](ROADMAP.md): post-launch direction.
 - [docs/benchmarks.md](docs/benchmarks.md): benchmark commands and reporting.
+- [docs/models.md](docs/models.md): model registry expectations.
 - [docs/shogitter-package.md](docs/shogitter-package.md): package layout for
   Shogitter.
-- [docs/models.md](docs/models.md): model registry expectations.
 
 ## What Works Now
 
@@ -58,7 +54,7 @@ Supporting docs:
 - Local play/debug and self-play/rating commands.
 - A `.tgz` Shogitter Engine Package v1 generator for `wasm-bindgen` engine
   artifacts.
-- Local NNUE data generation, trainer orchestration, export, and verification.
+- Local NNUE data generation, trainer orchestration, export, and verification. (not tested)
 
 ## Quick Start
 
@@ -106,62 +102,11 @@ cargo bench -p haitaka_wasm --bench nnue -- --noplot
 
 For more benchmark coverage, see [docs/benchmarks.md](docs/benchmarks.md).
 
-## Build WASM For Shogitter
+## Build WASM
 
-Install the WASM target and `wasm-pack`:
+You can build WebAssembly and run the engine in the browser. There's also a command for generating a package for Shogitter. 
 
-```bash
-rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
-```
-
-Build the standard shogi WASM package:
-
-```bash
-wasm-pack build haitaka_wasm --target web --out-dir pkg --release
-```
-
-Build the Annan shogi WASM package:
-
-```bash
-wasm-pack build haitaka_wasm --target web --out-dir pkg --release --features annan
-```
-
-The output directory is `haitaka_wasm/pkg`.
-
-## Make A Shogitter Engine Package v1
-
-Create the standard package with one Cargo alias:
-
-```bash
-cargo pack
-```
-
-Create the Annan package with:
-
-```bash
-cargo pack-annan
-```
-
-These aliases run `wasm-pack build` and then `haitaka_cli package`. If you need
-to debug the steps manually, build WASM first:
-
-```bash
-wasm-pack build haitaka_wasm --target web --out-dir pkg --release
-```
-
-Then create the `.tgz` package:
-
-```bash
-cargo run -p haitaka_cli --release -- package \
-  --wasm-dir haitaka_wasm/pkg \
-  --output target/haitaka-variants.tgz
-```
-
-The generated archive contains a root `shogitter-engine.json` manifest plus the
-declared `engine/haitaka_wasm.js` and `engine/haitaka_wasm_bg.wasm` artifacts.
-For package metadata details, see
-[docs/shogitter-package.md](docs/shogitter-package.md).
+See [haitaka_wasm/README.md](haitaka_wasm/README.md).
 
 ## Feature Flags
 

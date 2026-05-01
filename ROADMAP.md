@@ -3,18 +3,16 @@
 This roadmap starts after launch. Basic local play, self-play, benchmarks, and
 package generation are pre-launch requirements, not future promises.
 
-## Stronger Annan AI
+## Stronger AI for Annan and other variants
 
-- Build and publish the first useful Annan NNUE model.
+- Train and publish the first useful Annan NNUE model.
 - Improve search strength and time management.
 - Collect player-reported bad moves and turn them into tests or training data.
 
 ## More Variants
 
-- Document the minimum rule evidence needed to add a variant.
+- Assess Shogitter rule list for the next variant targets to implement.
 - Add variants incrementally with rule tests and perft-style checks.
-- Keep compile-time feature flags for zero-cost rule specialization unless the
-  architecture needs to change.
 
 ## Shared Training Effort
 
@@ -25,12 +23,5 @@ package generation are pre-launch requirements, not future promises.
 
 ## Shogitter Integration
 
-- Consume generated engine packages in Shogitter staging.
-- Expose stronger bots to players.
+- Allow NNUE to be uploaded and directly consumed by players
 - Use player games and reports to guide engine and model improvements.
-
-## Benchmark Automation
-
-- Publish stable benchmark baselines.
-- Add automated benchmark comparison for performance-sensitive pull requests.
-- Track move generation, search, DFPN, and NNUE inference separately.
