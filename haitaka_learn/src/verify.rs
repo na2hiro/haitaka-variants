@@ -9,11 +9,6 @@ use serde::Serialize;
 
 use crate::config::LoadedConfig;
 
-const STANDARD_STARTPOS_SFEN: &str =
-    "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-const ANNAN_STARTPOS_SFEN: &str =
-    "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
-
 #[derive(Debug, Serialize)]
 pub struct VerificationReport {
     pub report_path: PathBuf,
@@ -49,11 +44,9 @@ pub fn verify(loaded: &LoadedConfig) -> Result<VerificationReport> {
     );
 
     let mut positions = Vec::new();
-    for (name, sfen) in [
-        ("standard_startpos", STANDARD_STARTPOS_SFEN),
-        ("handicap_6piece", haitaka::SFEN_6PIECE_HANDICAP),
-        ("annan_startpos", ANNAN_STARTPOS_SFEN),
-    ] {
+    for fixture in loaded.verification_fixtures() {
+        let name = fixture.name;
+        let sfen = fixture.sfen;
         let board = Board::from_sfen(sfen)
             .map_err(|err| anyhow!("failed to parse verification SFEN `{name}`: {err}"))?;
         positions.push(VerifiedPosition {

@@ -12,6 +12,8 @@ It keeps Haitaka's inference side compatible with Fairy-Stockfish-style `HalfKAv
 - standard shogi
 - handicap shogi on the standard 9x9 geometry
 - Annan shogi
+- Anhoku shogi
+- Antouzai shogi
 
 ## What Is Already Prepared
 
@@ -80,8 +82,11 @@ Start from:
 Key fields:
 
 - `[rules]`
-  - `ruleset = "standard" | "handicap" | "annan"`
+  - `ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai"`
   - `handicap = "two-piece" | "four-piece" | "six-piece"` when `ruleset = "handicap"`
+  - `rule_id` defaults to the built-in registry for standard, handicap presets, Annan, Anhoku (`55`), and Antouzai (`95`)
+  - set `rule_id` explicitly when using a custom handicap `opening_sfen` without a named preset, or when matching an external registry
+  - `opening_sfen` can override the default opening for any ruleset
 - `[paths]`
   - `trainer_checkout`
   - `bootstrap_nnue`
@@ -152,9 +157,9 @@ cd /Users/na2hiro/proj/engine/haitaka
 cargo run -p haitaka_learn -- pipeline --config haitaka_learn.toml
 ```
 
-## Annan Workflow
+## Variant Workflows
 
-Annan uses the same NNUE feature geometry, but data generation and verification must be built with the Annan feature enabled.
+Annan, Anhoku, and Antouzai use the same NNUE feature geometry, but each workflow must be built with the matching Haitaka feature enabled.
 
 ### 1. Switch config
 
@@ -162,27 +167,38 @@ Set:
 
 ```toml
 [rules]
-ruleset = "annan"
+ruleset = "annan"   # or "anhoku" / "antouzai"
+# rule_id is only needed for a custom registry value, or for handicap+opening_sfen without a preset.
 rule_id = 26
 ```
 
-### 2. Generate Annan data
+### 2. Generate variant data
 
 ```bash
 cd /Users/na2hiro/proj/engine/haitaka
 cargo run -p haitaka_learn --features annan -- generate-data --config haitaka_learn.toml
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.toml
+cargo run -p haitaka_learn --features antouzai -- generate-data --config haitaka_learn.toml
 ```
 
-### 3. Train / export / verify the Annan run
+### 3. Train / export / verify the variant run
 
 ```bash
 cd /Users/na2hiro/proj/engine/haitaka
 cargo run -p haitaka_learn --features annan -- train --config haitaka_learn.toml
 cargo run -p haitaka_learn --features annan -- export --config haitaka_learn.toml
 cargo run -p haitaka_learn --features annan -- verify --config haitaka_learn.toml
+
+cargo run -p haitaka_learn --features anhoku -- train --config haitaka_learn.toml
+cargo run -p haitaka_learn --features anhoku -- export --config haitaka_learn.toml
+cargo run -p haitaka_learn --features anhoku -- verify --config haitaka_learn.toml
+
+cargo run -p haitaka_learn --features antouzai -- train --config haitaka_learn.toml
+cargo run -p haitaka_learn --features antouzai -- export --config haitaka_learn.toml
+cargo run -p haitaka_learn --features antouzai -- verify --config haitaka_learn.toml
 ```
 
-Use the same `--features annan` flag consistently for Annan data-generation and verification runs.
+Use the same matching feature flag consistently for data-generation, training, export, and verification runs.
 
 ## Notes On Labels
 
@@ -203,7 +219,7 @@ Current limitation:
 `verify` checks that the exported net:
 
 - parses through Haitaka's `NnueModel::from_bytes`
-- evaluates fixed standard, handicap, and Annan SFENs
+- evaluates fixed standard, handicap, Annan, Anhoku, and Antouzai SFENs
 - optionally returns a legal search result for the configured ruleset
 
 The report is written to:

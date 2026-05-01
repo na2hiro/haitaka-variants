@@ -332,7 +332,10 @@ impl Display for Board {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(
+    test,
+    not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+))]
 mod tests {
     use super::*;
 

@@ -93,12 +93,25 @@ const SOUTH_A: BitBoard = SOUTH_B.bitor(RANK_B);
 ///
 #[inline(always)]
 pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(feature = "anhoku")]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance | Piece::Knight => {
+                if color as usize == Color::White as usize {
+                    RANK_I
+                } else {
+                    RANK_A
+                }
+            }
+            _ => BitBoard::EMPTY,
+        }
+    }
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => {
@@ -124,12 +137,25 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
 /// be dropped. This is the inverse of `no_fly_zone`.
 #[inline(always)]
 pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::FULL
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(feature = "anhoku")]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance | Piece::Knight => {
+                if color as usize == Color::White as usize {
+                    NORTH_I
+                } else {
+                    SOUTH_A
+                }
+            }
+            _ => BitBoard::FULL,
+        }
+    }
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => {
@@ -179,12 +205,22 @@ pub const fn prom_zone(color: Color) -> BitBoard {
 /// ```
 #[inline(always)]
 pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(feature = "annan")]
+    #[cfg(any(feature = "annan", feature = "antouzai"))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
     }
-    #[cfg(not(feature = "annan"))]
+    #[cfg(feature = "anhoku")]
+    {
+        match piece {
+            Piece::Pawn | Piece::Lance | Piece::Knight => match color {
+                Color::White => RANK_I,
+                Color::Black => RANK_A,
+            },
+            _ => BitBoard::EMPTY,
+        }
+    }
+    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
     {
         match piece {
             Piece::Pawn | Piece::Lance => match color {
