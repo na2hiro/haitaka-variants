@@ -81,7 +81,8 @@ they exist. `haitaka_wasm.js` and `haitaka_wasm_bg.wasm` are required unless
 
 ## Manifest
 
-`shogitter-engine.json` is authoritative. Haitaka emits schema version 1:
+`shogitter-engine.json` is authoritative. Haitaka emits schema version 1 with
+profile-scoped rule and NNUE declarations:
 
 ```json
 {
@@ -105,22 +106,26 @@ they exist. `haitaka_wasm.js` and `haitaka_wasm_bg.wasm` are required unless
     "supportsMovetime": true,
     "supportsDepth": true
   },
-  "rules": [
+  "profiles": [
     {
-      "ruleId": 26,
-      "variant": "annan",
-      "positionFormat": "sfen",
-      "moveFormat": "usi",
-      "startpos": "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1"
+      "id": "annan-default",
+      "name": "Annan default",
+      "rules": [
+        {
+          "ruleId": 26,
+          "variant": "annan",
+          "positionFormat": "sfen",
+          "moveFormat": "usi",
+          "startpos": "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1"
+        }
+      ],
+      "nnue": null
     }
-  ],
-  "artifacts": {
-    "nnue": null
-  }
+  ]
 }
 ```
 
-When `--nnue path/to/model.nnue` is passed, `artifacts.nnue` is:
+When `--nnue path/to/model.nnue` is passed, the selected profile's `nnue` is:
 
 ```json
 {
@@ -140,10 +145,12 @@ When `--nnue path/to/model.nnue` is passed, `artifacts.nnue` is:
 - `runtime.module`: archive-relative path to the generated JS glue module.
 - `runtime.wasm`: archive-relative path to the generated WASM binary.
 - `capabilities`: direct-call commands Shogitter can expect from the engine.
-- `rules`: Shogitter rule mappings declared by the engine package.
-- `artifacts.nnue`: optional archive-relative NNUE model descriptor.
+- `profiles`: packaged engine profiles. Each profile is a selectable
+  engine/NNUE configuration with its own rule list.
+- `profiles[].nnue`: optional archive-relative NNUE model descriptor for that
+  profile.
 
-For the default standard build, the package uses `ruleId = 0`,
-`variant = "standard"`, `positionFormat = "sfen"`, and `moveFormat = "usi"`.
-For `--features annan`, the defaults are `ruleId = 26` and
-`variant = "annan"`.
+For the default standard build, Haitaka emits one `standard` profile using
+`ruleId = 0`, `variant = "standard"`, `positionFormat = "sfen"`, and
+`moveFormat = "usi"`. For `--features annan`, Haitaka emits one `annan`
+profile using `ruleId = 26` and `variant = "annan"`.
