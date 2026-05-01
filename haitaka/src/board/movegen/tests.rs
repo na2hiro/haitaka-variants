@@ -823,6 +823,78 @@ fn antouzai_left_and_right_donors_union_movement() {
 
 #[test]
 #[cfg(feature = "anhoku")]
+fn anhoku_king_capture_removes_enemy_donor_attack() {
+    let board: Board = "k8/9/4n4/4g4/3K5/9/9/9/9 b - 1".parse().unwrap();
+    let from = board.king(Color::Black);
+    let to = board
+        .colored_pieces(Color::White, Piece::Gold)
+        .next_square()
+        .unwrap();
+    let capture = Move::BoardMove {
+        from,
+        to,
+        promotion: false,
+    };
+
+    let moves = crate::variant_rules::pseudo_legals_for(
+        crate::variant_rules::effective_piece(&board, Color::Black, from),
+        Color::Black,
+        from,
+        board.occupied(),
+    );
+    assert!(moves.has(to));
+
+    let mut after = board.clone();
+    after.play_unchecked(capture);
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::Black);
+    assert!(checkers.is_empty());
+
+    assert!(board.is_legal_board_move(capture));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(capture);
+        generated
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "antouzai")]
+fn antouzai_king_capture_removes_enemy_donor_attack() {
+    let board: Board = "k8/9/9/3gn4/2K6/9/9/9/9 b - 1".parse().unwrap();
+    let from = board.king(Color::Black);
+    let to = board
+        .colored_pieces(Color::White, Piece::Gold)
+        .next_square()
+        .unwrap();
+    let capture = Move::BoardMove {
+        from,
+        to,
+        promotion: false,
+    };
+
+    let moves = crate::variant_rules::effective_movements(&board, Color::Black, from)
+        .pseudo_legals(Color::Black, from, board.occupied());
+    assert!(moves.has(to));
+
+    let mut after = board.clone();
+    after.play_unchecked(capture);
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::Black);
+    assert!(checkers.is_empty());
+
+    assert!(board.is_legal_board_move(capture));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(capture);
+        generated
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
 fn anhoku_effective_slider_check_is_detected() {
     let board: Board = "k8/9/9/9/9/9/4p3K/4r4/9 b - 1".parse().unwrap();
     assert_eq!(board.checkers(), Square::G5.bitboard());
@@ -931,6 +1003,44 @@ fn antouzai_effective_slider_check_is_detected() {
 // ========================
 // Annan-specific tests
 // ========================
+
+#[test]
+#[cfg(feature = "annan")]
+fn annan_king_capture_removes_enemy_backer_attack() {
+    let board: Board = "k8/4K4/4r4/4p4/9/9/9/9/9 b - 1".parse().unwrap();
+    let from = board.king(Color::Black);
+    let to = board
+        .colored_pieces(Color::White, Piece::Rook)
+        .next_square()
+        .unwrap();
+    let capture = Move::BoardMove {
+        from,
+        to,
+        promotion: false,
+    };
+
+    let moves = crate::variant_rules::pseudo_legals_for(
+        crate::variant_rules::effective_piece(&board, Color::Black, from),
+        Color::Black,
+        from,
+        board.occupied(),
+    );
+    assert!(moves.has(to));
+
+    let mut after = board.clone();
+    after.play_unchecked(capture);
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::Black);
+    assert!(checkers.is_empty());
+
+    assert!(board.is_legal_board_move(capture));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(capture);
+        generated
+    });
+    assert!(generated);
+}
 
 /// Capturing the backer resolves check when the checker only attacks via backing.
 ///

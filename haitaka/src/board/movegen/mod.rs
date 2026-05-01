@@ -558,61 +558,18 @@ impl Board {
     /// attack the given square.
     #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
-        use crate::variant_rules::{
-            MovementInfluence, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
-        };
-
         let color = self.side_to_move();
-        let their_color = !color;
-        let their_pieces = self.colors(their_color);
+        let mut board = self.clone();
+        board.play_unchecked(Move::BoardMove {
+            from: self.king(color),
+            to: square,
+            promotion: false,
+        });
 
-        // Simulate moving the King to the square
-        let blockers =
-            (self.occupied() ^ self.colored_pieces(color, Piece::King)) | square.bitboard();
-
-        let influence = MovementInfluence::compute(self, their_color);
-
-        for &eff_piece in &Piece::ALL {
-            let uninfluenced_of_type =
-                self.colored_pieces(their_color, eff_piece) & !influence.has_influence;
-            let influenced_by_type = influence.influenced_by[eff_piece as usize];
-            let movers = (uninfluenced_of_type | influenced_by_type) & their_pieces;
-
-            if movers.is_empty() {
-                continue;
-            }
-
-            if is_slider_movement(eff_piece) {
-                // Check if any mover can reach the square via sliding rays
-                let pseudo = slider_pseudo_attacks(eff_piece, color, square);
-                let candidates = pseudo & movers;
-                if !candidates.is_empty() {
-                    // Verify actual reachability (no blockers in between)
-                    let actual = pseudo_legals_for(eff_piece, color, square, blockers);
-                    if !(actual & movers).is_empty() {
-                        return false;
-                    }
-                }
-
-                // PRook/PBishop also have short-range components
-                if eff_piece == Piece::PRook {
-                    if !(silver_attacks(color, square) & movers).is_empty() {
-                        return false;
-                    }
-                } else if eff_piece == Piece::PBishop {
-                    if !(gold_attacks(color, square) & movers).is_empty() {
-                        return false;
-                    }
-                }
-            } else {
-                // Non-slider: reverse-attack
-                let reverse = pseudo_legals_for(eff_piece, color, square, blockers);
-                if !(reverse & movers).is_empty() {
-                    return false;
-                }
-            }
-        }
-        true
+        // In influence variants, captures can change the opponent's donor graph,
+        // so king safety must be evaluated on the actual post-move position.
+        let (checkers, _) = board.calculate_checkers_and_pins(color);
+        checkers.is_empty()
     }
 
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {
