@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a crash, wrong result, or confusing behavior.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: The command or workflow that reproduced the issue.
+      placeholder: cargo run -p haitaka_cli -- play --human none --depth 3
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      placeholder: git rev-parse HEAD

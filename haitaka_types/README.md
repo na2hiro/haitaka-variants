@@ -1,17 +1,39 @@
-`haitaka-types` `ハイタカ型`
+# haitaka_types
 
-## Internal package for `haitaka`
+`haitaka_types` defines the shared core types used by the `haitaka-variants`
+workspace.
 
-This package defines the core data types used in `haitaka`. It's not intended
-as stand-alone library (though nothing will prevent you from using it like that). 
+It is primarily an internal support crate for `haitaka`, though it can still be
+used directly by other crates in the workspace.
 
-Splitting off the data types into a separate crate allows `haitaka` to run a
-build script to generate slider move hash tables used in move generation based on
-[magic bitboard](https://analog-hors.github.io/site/magic-bitboards/). Without a 
-separate crate to run against the build script would have to duplicate quite a bit
-of code or the library would need a separate initialization function -- either as
- a hidden, lazy initialization or as an explicit initialization step. Both those 
- alternatives are less than ideal.
+## What This Crate Provides
 
-Setting up a separate crate also ensures a clearer separation of concerns making
-the codebase easier to maintain, test, and extend.
+- colors, files, ranks, and squares
+- pieces and promoted pieces
+- USI move parsing and formatting
+- bitboards and bitboard iteration
+- slider move helpers
+- feature-gated variant type support
+
+Splitting these types into a separate crate lets `haitaka` run a build script
+that generates slider move hash tables for magic bitboards without duplicating
+type definitions.
+
+## Features
+
+- `std`
+- `qugiy`
+- `annan`
+
+Use the same feature flags as the consuming crate:
+
+```bash
+cargo test -p haitaka_types
+cargo test -p haitaka_types --features annan
+```
+
+## Related Crates
+
+- `haitaka`: consumes these types for board representation and move generation.
+- `haitaka_wasm`: exposes engine results to JavaScript.
+- `haitaka_cli`: uses move/SFEN types in local tools.

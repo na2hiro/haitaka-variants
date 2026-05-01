@@ -1,0 +1,101 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Base ref or SHA to compare against.
+        required: true
+        default: main
+      head_ref:
+        description: Head ref or SHA to benchmark. Leave empty to use the selected workflow ref.
+        required: false
+        default: ""
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "haitaka/**"
+      - "haitaka_types/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "scripts/compare_criterion.py"
+      - ".github/workflows/benchmarks.yml"
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  benchmark:
+    name: Compare Criterion Benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base_ref || 'main' }}
+      HEAD_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.head_ref || github.sha }}
+      HEAD_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+
+    steps:
+      - name: Check out base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          clean: false
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            target/bench-annan
+            target/bench-default
+          key: ${{ runner.os }}-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bench-
+
+      - name: Clear old Criterion reports
+        run: |
+          rm -rf target/bench-default/criterion target/bench-annan/criterion
+
+      - name: Benchmark base
+        run: |
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench slider_moves -- --noplot --save-baseline base
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench legals -- --noplot --save-baseline base
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench perft -- --noplot --save-baseline base
+          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench legals -- --noplot --save-baseline base
+          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench perft -- --noplot --save-baseline base
+
+      - name: Check out head
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HEAD_REPOSITORY }}
+          ref: ${{ env.HEAD_REF }}
+          clean: false
+
+      - name: Benchmark head
+        run: |
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench slider_moves -- --noplot --baseline base
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench legals -- --noplot --baseline base
+          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench perft -- --noplot --baseline base
+          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench legals -- --noplot --baseline base
+          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench perft -- --noplot --baseline base
+
+      - name: Compare results
+        run: |
+          python3 scripts/compare_criterion.py \
+            --suite default=target/bench-default/criterion \
+            --suite annan=target/bench-annan/criterion \
+            | tee "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Criterion reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: criterion-reports
+          path: |
+            target/bench-default/criterion
+            target/bench-annan/criterion
+          if-no-files-found: ignore

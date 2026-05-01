@@ -17,9 +17,9 @@ It keeps Haitaka's inference side compatible with Fairy-Stockfish-style `HalfKAv
 
 ## What Is Already Prepared
 
-The repository now expects the upstream trainer checkout at:
+The example config expects the upstream trainer checkout at:
 
-`/Users/na2hiro/proj/engine/variant-nnue-pytorch`
+`../variant-nnue-pytorch`
 
 The example config at [/haitaka_learn.toml](../haitaka_learn.toml) already points there.
 
@@ -33,7 +33,7 @@ Important environment note:
 
 Typical outputs go under the configured `output_dir`, by default:
 
-`/Users/na2hiro/proj/engine/haitaka/haitaka_learn-out`
+`./haitaka_learn-out`
 
 Generated artifacts:
 
@@ -60,12 +60,12 @@ Generated artifacts:
 - C++17 compiler
 - NVIDIA GPU with CUDA support
 - upstream trainer checkout:
-  - `/Users/na2hiro/proj/engine/variant-nnue-pytorch`
+  - `../variant-nnue-pytorch`
 
 Recommended CUDA-machine setup inside the trainer checkout:
 
 ```bash
-cd /Users/na2hiro/proj/engine/variant-nnue-pytorch
+cd ../variant-nnue-pytorch
 python3 -m venv env
 source env/bin/activate
 pip install -r requirements.txt
@@ -77,7 +77,7 @@ The upstream trainer README says CUDA 11.8 wheels are the default path.
 
 Start from:
 
-[/Users/na2hiro/proj/engine/haitaka/haitaka_learn.toml](/Users/na2hiro/proj/engine/haitaka/haitaka_learn.toml)
+[haitaka_learn.toml](../haitaka_learn.toml)
 
 Key fields:
 
@@ -108,7 +108,7 @@ Use the default build for standard shogi and handicap shogi.
 ### 1. Generate data
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml
 ```
 
@@ -124,7 +124,7 @@ This:
 Run this on the CUDA machine:
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn -- train --config haitaka_learn.toml
 ```
 
@@ -139,21 +139,21 @@ This command:
 ### 3. Export
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn -- export --config haitaka_learn.toml
 ```
 
 ### 4. Verify
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn -- verify --config haitaka_learn.toml
 ```
 
 ### 5. One-shot pipeline
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn -- pipeline --config haitaka_learn.toml
 ```
 
@@ -175,7 +175,7 @@ rule_id = 26
 ### 2. Generate variant data
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn --features annan -- generate-data --config haitaka_learn.toml
 cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.toml
 cargo run -p haitaka_learn --features antouzai -- generate-data --config haitaka_learn.toml
@@ -184,7 +184,7 @@ cargo run -p haitaka_learn --features antouzai -- generate-data --config haitaka
 ### 3. Train / export / verify the variant run
 
 ```bash
-cd /Users/na2hiro/proj/engine/haitaka
+cd haitaka-variants
 cargo run -p haitaka_learn --features annan -- train --config haitaka_learn.toml
 cargo run -p haitaka_learn --features annan -- export --config haitaka_learn.toml
 cargo run -p haitaka_learn --features annan -- verify --config haitaka_learn.toml
@@ -224,7 +224,7 @@ Current limitation:
 
 The report is written to:
 
-[/Users/na2hiro/proj/engine/haitaka/haitaka_learn-out/artifacts/verify.json](/Users/na2hiro/proj/engine/haitaka/haitaka_learn-out/artifacts/verify.json)
+`haitaka_learn-out/artifacts/verify.json`
 
 ## Practical Recommendation
 

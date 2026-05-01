@@ -2,3 +2,8 @@ benchmarks/
 target/
 .vscode/
 Cargo.lock
+.idea/
+.serena/
+
+haitaka_wasm/pkg/
+haitaka_learn-out
