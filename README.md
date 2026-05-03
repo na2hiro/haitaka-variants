@@ -156,6 +156,7 @@ For training details, see:
 
 - [`haitaka_learn/README.md`](haitaka_learn/README.md)
 - [`haitaka_learn.toml`](haitaka_learn.toml)
+- [`docs/anhoku-nnue-training.md`](docs/anhoku-nnue-training.md)
 
 ## Acknowledgments
 

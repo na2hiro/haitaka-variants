@@ -1,0 +1,40 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "haitaka_learn-out/anhoku-v0"
+trainer_checkout = "../variant-nnue-pytorch"
+bootstrap_nnue = "../shogi-878ca61334a7.nnue"
+python = "python3"
+cmake = "cmake"
+
+[data]
+train_games = 50000
+validation_games = 5000
+max_plies = 180
+search_depth = 2
+opening_random_plies = 16
+sample_start_ply = 8
+sample_every_ply = 2
+max_positions_per_game = 64
+seed = 55
+
+[training]
+features = "HalfKAv2^"
+num_workers = 8
+batch_size = 16384
+lambda = 1.0
+random_fen_skipping = 3
+epoch_size = 1000000
+validation_size = 100000
+max_epochs = 20
+build_data_loader = true
+extra_args = ["--threads", "8"]
+
+[export]
+output_name = "haitaka-anhoku-v0.nnue"
+description = "Haitaka Anhoku v0 NNUE trained with variant-nnue-pytorch"
+
+[verify]
+search_depth = 2
+run_search_smoke = true

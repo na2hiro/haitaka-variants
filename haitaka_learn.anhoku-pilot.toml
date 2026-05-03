@@ -1,0 +1,40 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "haitaka_learn-out/anhoku-pilot"
+trainer_checkout = "../variant-nnue-pytorch"
+bootstrap_nnue = "../shogi-878ca61334a7.nnue"
+python = "python3"
+cmake = "cmake"
+
+[data]
+train_games = 2000
+validation_games = 200
+max_plies = 160
+search_depth = 2
+opening_random_plies = 12
+sample_start_ply = 8
+sample_every_ply = 2
+max_positions_per_game = 48
+seed = 55
+
+[training]
+features = "HalfKAv2^"
+num_workers = 4
+batch_size = 16384
+lambda = 1.0
+random_fen_skipping = 3
+epoch_size = 200000
+validation_size = 20000
+max_epochs = 3
+build_data_loader = true
+extra_args = ["--threads", "8"]
+
+[export]
+output_name = "haitaka-anhoku-pilot.nnue"
+description = "Haitaka Anhoku pilot NNUE trained with variant-nnue-pytorch"
+
+[verify]
+search_depth = 2
+run_search_smoke = true

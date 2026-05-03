@@ -659,6 +659,23 @@ validation_games = 1
         assert!(Ruleset::Handicap.spec().is_none());
     }
 
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn checked_in_anhoku_training_configs_load() {
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        for file_name in [
+            "haitaka_learn.anhoku-pilot.toml",
+            "haitaka_learn.anhoku-v0.toml",
+        ] {
+            let path = workspace_root.join(file_name);
+            let loaded = LoadedConfig::from_path(&path).unwrap();
+
+            assert_eq!(loaded.config.rules.ruleset, Ruleset::Anhoku);
+            assert_eq!(loaded.effective_rule_id().unwrap(), 55);
+            assert!(loaded.opening_sfen().is_ok());
+        }
+    }
+
     #[test]
     fn explicit_opening_override_applies_to_non_handicap_rulesets() {
         let config: LearnConfig = toml::from_str(
