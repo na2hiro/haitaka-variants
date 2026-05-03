@@ -150,7 +150,7 @@ When `--nnue path/to/model.nnue` is passed, the selected profile's `nnue` is:
 - `profiles[].nnue`: optional archive-relative NNUE model descriptor for that
   profile.
 
-For the default standard build, Haitaka emits one `standard` profile using
-`ruleId = 0`, `variant = "standard"`, `positionFormat = "sfen"`, and
-`moveFormat = "usi"`. For `--features annan`, Haitaka emits one `annan`
-profile using `ruleId = 26` and `variant = "annan"`.
+For the default standard build, Haitaka emits one `standard-default` profile
+using `ruleId = 0`, `variant = "standard"`, `positionFormat = "sfen"`, and
+`moveFormat = "usi"`. For `--features annan`, Haitaka emits one
+`annan-default` profile using `ruleId = 26` and `variant = "annan"`.
