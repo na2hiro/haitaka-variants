@@ -380,20 +380,11 @@ fn best_move_impl(sfen: &str, depth: u8) -> Result<Option<String>, String> {
 }
 
 fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
-    {
-        let _ = bytes;
-        Err("NNUE is currently only supported for standard shogi rules.".to_string())
-    }
-
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
-    {
-        let model =
-            NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
-        let description = model.description().to_string();
-        *nnue_model_slot().write().unwrap() = Some(Arc::new(model));
-        Ok(description)
-    }
+    let model =
+        NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
+    let description = model.description().to_string();
+    *nnue_model_slot().write().unwrap() = Some(Arc::new(model));
+    Ok(description)
 }
 
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {

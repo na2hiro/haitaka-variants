@@ -115,8 +115,7 @@ struct EnginePackageManifest {
     engine: ManifestEngine,
     runtime: ManifestRuntime,
     capabilities: ManifestCapabilities,
-    rules: Vec<ManifestRule>,
-    artifacts: ManifestArtifacts,
+    profiles: Vec<ManifestProfile>,
 }
 
 #[derive(Debug, Serialize)]
@@ -159,7 +158,10 @@ struct ManifestRule {
 }
 
 #[derive(Debug, Serialize)]
-struct ManifestArtifacts {
+struct ManifestProfile {
+    id: String,
+    name: String,
+    rules: Vec<ManifestRule>,
     nnue: Option<NnueArtifact>,
 }
 
@@ -211,6 +213,24 @@ fn default_rule_id() -> u32 {
     if cfg!(feature = "annan") { 26 } else { 0 }
 }
 
+fn profile_display_ruleset(ruleset: &str) -> String {
+    match ruleset {
+        "standard" => "Standard".to_string(),
+        "annan" => "Annan".to_string(),
+        "anhoku" => "Anhoku".to_string(),
+        "antouzai" => "Antouzai".to_string(),
+        other => {
+            let mut chars = other.chars();
+            let Some(first) = chars.next() else {
+                return String::new();
+            };
+            let mut display = first.to_ascii_uppercase().to_string();
+            display.push_str(chars.as_str());
+            display
+        }
+    }
+}
+
 fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePackageManifest {
     EnginePackageManifest {
         schema: "shogitter-engine-package",
@@ -233,14 +253,18 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             supports_movetime: true,
             supports_depth: true,
         },
-        rules: vec![ManifestRule {
-            rule_id: args.rule_id,
-            variant: args.ruleset.clone(),
-            position_format: "sfen",
-            move_format: "usi",
-            startpos: SFEN_STARTPOS,
+        profiles: vec![ManifestProfile {
+            id: format!("{}-default", args.ruleset),
+            name: format!("{} default", profile_display_ruleset(&args.ruleset)),
+            rules: vec![ManifestRule {
+                rule_id: args.rule_id,
+                variant: args.ruleset.clone(),
+                position_format: "sfen",
+                move_format: "usi",
+                startpos: SFEN_STARTPOS,
+            }],
+            nnue,
         }],
-        artifacts: ManifestArtifacts { nnue },
     }
 }
 
@@ -638,12 +662,26 @@ mod tests {
         assert_eq!(json["capabilities"]["supportsPonder"], false);
         assert_eq!(json["capabilities"]["supportsMovetime"], true);
         assert_eq!(json["capabilities"]["supportsDepth"], true);
-        assert_eq!(json["rules"][0]["ruleId"], default_rule_id());
-        assert_eq!(json["rules"][0]["variant"], default_ruleset());
-        assert_eq!(json["rules"][0]["positionFormat"], "sfen");
-        assert_eq!(json["rules"][0]["moveFormat"], "usi");
-        assert_eq!(json["rules"][0]["startpos"], SFEN_STARTPOS);
-        assert!(json["artifacts"]["nnue"].is_null());
+        assert!(json.get("rules").is_none());
+        assert!(json.get("artifacts").is_none());
+        assert_eq!(json["profiles"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            json["profiles"][0]["id"],
+            format!("{}-default", default_ruleset())
+        );
+        assert_eq!(
+            json["profiles"][0]["name"],
+            format!("{} default", profile_display_ruleset(default_ruleset()))
+        );
+        assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], default_rule_id());
+        assert_eq!(
+            json["profiles"][0]["rules"][0]["variant"],
+            default_ruleset()
+        );
+        assert_eq!(json["profiles"][0]["rules"][0]["positionFormat"], "sfen");
+        assert_eq!(json["profiles"][0]["rules"][0]["moveFormat"], "usi");
+        assert_eq!(json["profiles"][0]["rules"][0]["startpos"], SFEN_STARTPOS);
+        assert!(json["profiles"][0]["nnue"].is_null());
     }
 
     #[test]
@@ -658,8 +696,24 @@ mod tests {
         );
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
-        assert_eq!(json["artifacts"]["nnue"]["path"], NNUE_ARTIFACT_PATH);
-        assert_eq!(json["artifacts"]["nnue"]["format"], "nnue");
+        assert_eq!(json["profiles"][0]["nnue"]["path"], NNUE_ARTIFACT_PATH);
+        assert_eq!(json["profiles"][0]["nnue"]["format"], "nnue");
+    }
+
+    #[test]
+    fn manifest_serializes_explicit_anhoku_profile() {
+        let mut args =
+            test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
+        args.ruleset = "anhoku".to_string();
+        args.rule_id = 55;
+
+        let manifest = package_manifest(&args, None);
+        let json = serde_json::to_value(&manifest).expect("serialize manifest");
+
+        assert_eq!(json["profiles"][0]["id"], "anhoku-default");
+        assert_eq!(json["profiles"][0]["name"], "Anhoku default");
+        assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], 55);
+        assert_eq!(json["profiles"][0]["rules"][0]["variant"], "anhoku");
     }
 
     #[test]
@@ -705,8 +759,13 @@ mod tests {
         assert_eq!(manifest["runtime"]["kind"], "wasm-bindgen");
         assert_eq!(manifest["runtime"]["module"], WASM_BINDGEN_MODULE);
         assert_eq!(manifest["runtime"]["wasm"], WASM_BINDGEN_WASM);
-        assert_eq!(manifest["rules"][0]["positionFormat"], "sfen");
-        assert_eq!(manifest["rules"][0]["moveFormat"], "usi");
+        assert_eq!(
+            manifest["profiles"][0]["rules"][0]["positionFormat"],
+            "sfen"
+        );
+        assert_eq!(manifest["profiles"][0]["rules"][0]["moveFormat"], "usi");
+        assert!(manifest.get("rules").is_none());
+        assert!(manifest.get("artifacts").is_none());
 
         fs::remove_dir_all(temp).expect("clean temp package dir");
     }
@@ -741,12 +800,14 @@ mod tests {
 
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
         assert_eq!(json["engine"]["name"], "Haitaka Variants (annan)");
-        assert_eq!(json["rules"][0]["ruleId"], 26);
-        assert_eq!(json["rules"][0]["variant"], "annan");
-        assert_eq!(json["rules"][0]["positionFormat"], "sfen");
-        assert_eq!(json["rules"][0]["moveFormat"], "usi");
+        assert_eq!(json["profiles"][0]["id"], "annan-default");
+        assert_eq!(json["profiles"][0]["name"], "Annan default");
+        assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], 26);
+        assert_eq!(json["profiles"][0]["rules"][0]["variant"], "annan");
+        assert_eq!(json["profiles"][0]["rules"][0]["positionFormat"], "sfen");
+        assert_eq!(json["profiles"][0]["rules"][0]["moveFormat"], "usi");
         assert_eq!(
-            json["rules"][0]["startpos"],
+            json["profiles"][0]["rules"][0]["startpos"],
             "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1"
         );
     }
