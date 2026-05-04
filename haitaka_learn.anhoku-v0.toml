@@ -4,7 +4,6 @@ ruleset = "anhoku"
 [paths]
 output_dir = "haitaka_learn-out/anhoku-v0"
 trainer_checkout = "../variant-nnue-pytorch"
-bootstrap_nnue = "../shogi-878ca61334a7.nnue"
 python = "python3"
 cmake = "cmake"
 
@@ -29,7 +28,7 @@ epoch_size = 1000000
 validation_size = 100000
 max_epochs = 20
 build_data_loader = true
-extra_args = ["--threads", "8"]
+extra_args = ["--threads", "8", "--accelerator", "gpu", "--devices", "1"]
 
 [export]
 output_name = "haitaka-anhoku-v0.nnue"

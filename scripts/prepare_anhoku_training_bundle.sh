@@ -41,8 +41,13 @@ if [ -z "$output_dir" ]; then
 fi
 
 if [ -z "$bootstrap_nnue" ]; then
-  echo "paths.bootstrap_nnue is missing in $config" >&2
-  exit 1
+  bootstrap_name=""
+else
+  if [ ! -f "$bootstrap_nnue" ]; then
+    echo "bootstrap NNUE not found: $bootstrap_nnue" >&2
+    exit 1
+  fi
+  bootstrap_name="$(basename "$bootstrap_nnue")"
 fi
 
 datasets_dir="$output_dir/datasets"
@@ -52,15 +57,9 @@ if [ ! -d "$datasets_dir" ]; then
   exit 1
 fi
 
-if [ ! -f "$bootstrap_nnue" ]; then
-  echo "bootstrap NNUE not found: $bootstrap_nnue" >&2
-  exit 1
-fi
-
 stem="$(basename "$config" .toml)"
 bundle="$(pwd)/anhoku-training-input-${stem}.tgz"
 tmpdir="${TMPDIR:-/tmp}/anhoku-training-input-${stem}-$$"
-bootstrap_name="$(basename "$bootstrap_nnue")"
 
 rm -rf "$tmpdir"
 mkdir -p "$tmpdir/haitaka"
@@ -68,8 +67,14 @@ mkdir -p "$tmpdir/haitaka"
 cp "$config" "$tmpdir/haitaka/"
 mkdir -p "$tmpdir/haitaka/$output_dir"
 cp -R "$datasets_dir" "$tmpdir/haitaka/$output_dir/"
-cp "$bootstrap_nnue" "$tmpdir/$bootstrap_name"
+if [ -n "$bootstrap_name" ]; then
+  cp "$bootstrap_nnue" "$tmpdir/$bootstrap_name"
+fi
 
-tar -czf "$bundle" -C "$tmpdir" haitaka "$bootstrap_name"
+if [ -n "$bootstrap_name" ]; then
+  tar -czf "$bundle" -C "$tmpdir" haitaka "$bootstrap_name"
+else
+  tar -czf "$bundle" -C "$tmpdir" haitaka
+fi
 rm -rf "$tmpdir"
 echo "wrote $bundle"
