@@ -984,10 +984,6 @@ fn validate_merge_shard(
         "config_hash does not match",
     )?;
     ensure_merge(
-        manifest.bootstrap_nnue == bootstrap_nnue_path(loaded),
-        "bootstrap_nnue does not match",
-    )?;
-    ensure_merge(
         manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string),
         "bootstrap_nnue_sha256 does not match",
     )?;
@@ -1631,6 +1627,38 @@ run_search_smoke = false
 
         let err = format!("{:?}", merge_data(&loaded, &[input]).unwrap_err());
         assert!(err.contains("engine_revision does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
+    fn merge_allows_shards_with_different_bootstrap_paths() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-bootstrap-path.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        for dataset_name in ["train", "validation"] {
+            mutate_first_shard_manifest_in_dir(&input, dataset_name, |manifest| {
+                manifest["bootstrap_nnue"] =
+                    serde_json::Value::String("/different/machine/bootstrap.nnue".to_string());
+            });
+        }
+
+        let output = merge_data(&loaded, &[input]).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
     }
 
     #[test]
