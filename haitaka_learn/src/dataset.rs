@@ -856,6 +856,9 @@ fn merge_split(
     let mut by_start = BTreeMap::new();
     for input_dir in input_dirs {
         let shard_dir = input_dir.join("datasets").join("shards").join(dataset_name);
+        if !shard_dir.exists() {
+            continue;
+        }
         let entries = fs::read_dir(&shard_dir)
             .with_context(|| format!("failed to read shard dir {}", shard_dir.display()))?;
         for entry in entries {
@@ -1553,6 +1556,62 @@ run_search_smoke = false
         feature = "antouzai",
         not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
     ))]
+    fn merge_treats_empty_shard_lanes_as_empty_inputs() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-empty-lane.toml");
+        fs::write(
+            &config_path,
+            distributed_empty_lane_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data_with_options(
+            &loaded,
+            GenerateOptions {
+                jobs: Some(1),
+                resume: Some(false),
+                shard_index: Some(0),
+                shard_count: Some(2),
+            },
+        )
+        .unwrap();
+        let first_input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &first_input).unwrap();
+
+        generate_data_with_options(
+            &loaded,
+            GenerateOptions {
+                jobs: Some(1),
+                resume: Some(false),
+                shard_index: Some(1),
+                shard_count: Some(2),
+            },
+        )
+        .unwrap();
+        let second_input = temp.path().join("machine-b");
+        fs::rename(loaded.artifact_paths().output_dir, &second_input).unwrap();
+
+        assert!(
+            !second_input
+                .join("datasets")
+                .join("shards")
+                .join("validation")
+                .exists()
+        );
+
+        let output = merge_data(&loaded, &[first_input, second_input]).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
     fn merge_rejects_shards_with_mismatched_teacher_identity() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-teacher.toml");
@@ -1653,6 +1712,36 @@ max_positions_per_game = 4
 seed = 7
 jobs = 1
 shard_games = 1
+progress_every_percent = 50
+resume = true
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
+    fn distributed_empty_lane_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 2
+validation_games = 1
+max_plies = 8
+search_depth = 1
+opening_random_plies = 2
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 4
+seed = 7
+jobs = 1
+shard_games = 100
 progress_every_percent = 50
 resume = true
 
