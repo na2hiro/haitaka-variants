@@ -16,6 +16,7 @@ use haitaka_wasm::{
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
@@ -59,6 +60,7 @@ struct DatasetManifest {
     sampled_positions: u64,
     search_depth: u8,
     bootstrap_nnue: Option<String>,
+    bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
     generated_at_unix_ms: u128,
@@ -83,6 +85,8 @@ struct ShardManifest {
     sampled_positions: u64,
     search_depth: u8,
     bootstrap_nnue: Option<String>,
+    #[serde(default)]
+    bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
     generated_at_unix_ms: u128,
@@ -118,7 +122,10 @@ impl GameOutcome {
 #[derive(Debug, Clone)]
 enum Teacher {
     Handcrafted,
-    Nnue(Arc<NnueModel>),
+    Nnue {
+        model: Arc<NnueModel>,
+        bootstrap_sha256: String,
+    },
 }
 
 impl Teacher {
@@ -127,10 +134,14 @@ impl Teacher {
             if path.exists() {
                 let bytes = fs::read(&path)
                     .with_context(|| format!("failed to read bootstrap NNUE {}", path.display()))?;
+                let bootstrap_sha256 = hash_bytes_hex(&bytes);
                 let model = NnueModel::from_bytes(&bytes).map_err(|err| {
                     anyhow!("failed to load bootstrap NNUE {}: {err}", path.display())
                 })?;
-                return Ok(Self::Nnue(Arc::new(model)));
+                return Ok(Self::Nnue {
+                    model: Arc::new(model),
+                    bootstrap_sha256,
+                });
             }
         }
         Ok(Self::Handcrafted)
@@ -139,7 +150,16 @@ impl Teacher {
     fn describe(&self) -> &'static str {
         match self {
             Self::Handcrafted => "handcrafted",
-            Self::Nnue(_) => "nnue",
+            Self::Nnue { .. } => "nnue",
+        }
+    }
+
+    fn bootstrap_sha256(&self) -> Option<&str> {
+        match self {
+            Self::Handcrafted => None,
+            Self::Nnue {
+                bootstrap_sha256, ..
+            } => Some(bootstrap_sha256),
         }
     }
 
@@ -147,7 +167,7 @@ impl Teacher {
         match self {
             Self::Handcrafted => search_board_impl_handcrafted(board, depth)
                 .map_err(|err| anyhow!("handcrafted teacher search failed: {err}")),
-            Self::Nnue(model) => search_board_impl_with_eval_mode(
+            Self::Nnue { model, .. } => search_board_impl_with_eval_mode(
                 board,
                 depth,
                 model.clone(),
@@ -333,13 +353,12 @@ fn generate_split(
         completed_games,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
-        bootstrap_nnue: loaded
-            .bootstrap_nnue()
-            .map(|path| path.display().to_string()),
+        bootstrap_nnue: bootstrap_nnue_path(loaded),
+        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
         generated_at_unix_ms,
-        build_mode: format!("{}+teacher:{}", loaded.runtime_mode(), teacher.describe()),
+        build_mode: teacher_build_mode(loaded, teacher),
         entry_bytes: ENTRY_BYTES,
         shard_count: shard_results.len(),
         jobs,
@@ -362,6 +381,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
 
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
+    let teacher = Teacher::from_config(loaded)?;
     let opening_sfen = loaded.opening_sfen()?;
     let engine_revision = detect_git_revision(loaded)?;
     let generated_at_unix_ms = SystemTime::now()
@@ -377,6 +397,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         input_dirs,
         loaded.config.data.train_games,
         &opening_sfen,
+        &teacher,
         &engine_revision,
         generated_at_unix_ms,
     )?;
@@ -388,6 +409,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         input_dirs,
         loaded.config.data.validation_games,
         &opening_sfen,
+        &teacher,
         &engine_revision,
         generated_at_unix_ms,
     )?;
@@ -560,6 +582,8 @@ fn generate_or_reuse_shard(
             loaded,
             dataset_name,
             opening_sfen,
+            teacher,
+            engine_revision,
             plan,
             &bin_path,
             &manifest_path,
@@ -599,13 +623,12 @@ fn generate_or_reuse_shard(
         game_count: plan.game_count,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
-        bootstrap_nnue: loaded
-            .bootstrap_nnue()
-            .map(|path| path.display().to_string()),
+        bootstrap_nnue: bootstrap_nnue_path(loaded),
+        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
         generated_at_unix_ms,
-        build_mode: format!("{}+teacher:{}", loaded.runtime_mode(), teacher.describe()),
+        build_mode: teacher_build_mode(loaded, teacher),
         entry_bytes: ENTRY_BYTES,
         shard_index: plan.shard_index,
     };
@@ -627,6 +650,8 @@ fn reusable_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    teacher: &Teacher,
+    engine_revision: &Option<String>,
     plan: ShardPlan,
     bin_path: &Path,
     manifest_path: &Path,
@@ -640,6 +665,9 @@ fn reusable_shard(
     )
     .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
     if !shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest)? {
+        return Ok(None);
+    }
+    if !shard_teacher_matches(loaded, teacher, engine_revision, &manifest) {
         return Ok(None);
     }
     let expected_len = manifest
@@ -676,6 +704,18 @@ fn shard_manifest_matches(
         && manifest.config_hash == loaded.hash_hex
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
+}
+
+fn shard_teacher_matches(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    engine_revision: &Option<String>,
+    manifest: &ShardManifest,
+) -> bool {
+    manifest.bootstrap_nnue == bootstrap_nnue_path(loaded)
+        && manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string)
+        && manifest.engine_revision == *engine_revision
+        && manifest.build_mode == teacher_build_mode(loaded, teacher)
 }
 
 fn generate_game_entries(
@@ -808,6 +848,7 @@ fn merge_split(
     input_dirs: &[PathBuf],
     game_count: u32,
     opening_sfen: &str,
+    teacher: &Teacher,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
 ) -> Result<u64> {
@@ -826,8 +867,15 @@ fn merge_split(
                 &fs::read(&path).with_context(|| format!("failed to read {}", path.display()))?,
             )
             .with_context(|| format!("failed to parse {}", path.display()))?;
-            validate_merge_shard(loaded, dataset_name, opening_sfen, &manifest)
-                .with_context(|| format!("invalid shard manifest {}", path.display()))?;
+            validate_merge_shard(
+                loaded,
+                dataset_name,
+                opening_sfen,
+                teacher,
+                engine_revision,
+                &manifest,
+            )
+            .with_context(|| format!("invalid shard manifest {}", path.display()))?;
             let bin = path.with_extension("bin");
             validate_shard_bin(&bin, &manifest)?;
             let game_start = manifest.game_start;
@@ -874,9 +922,8 @@ fn merge_split(
         completed_games: expected_start,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
-        bootstrap_nnue: loaded
-            .bootstrap_nnue()
-            .map(|path| path.display().to_string()),
+        bootstrap_nnue: bootstrap_nnue_path(loaded),
+        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
         generated_at_unix_ms,
@@ -905,6 +952,8 @@ fn validate_merge_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    teacher: &Teacher,
+    engine_revision: &Option<String>,
     manifest: &ShardManifest,
 ) -> Result<()> {
     ensure_merge(
@@ -930,6 +979,22 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.config_hash == loaded.hash_hex,
         "config_hash does not match",
+    )?;
+    ensure_merge(
+        manifest.bootstrap_nnue == bootstrap_nnue_path(loaded),
+        "bootstrap_nnue does not match",
+    )?;
+    ensure_merge(
+        manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string),
+        "bootstrap_nnue_sha256 does not match",
+    )?;
+    ensure_merge(
+        manifest.engine_revision == *engine_revision,
+        "engine_revision does not match",
+    )?;
+    ensure_merge(
+        manifest.build_mode == teacher_build_mode(loaded, teacher),
+        "build_mode does not match",
     )?;
     ensure_merge(
         manifest.entry_bytes == ENTRY_BYTES,
@@ -963,6 +1028,22 @@ fn validate_shard_bin(bin_path: &Path, manifest: &ShardManifest) -> Result<()> {
         );
     }
     Ok(())
+}
+
+fn bootstrap_nnue_path(loaded: &LoadedConfig) -> Option<String> {
+    loaded
+        .bootstrap_nnue()
+        .map(|path| path.display().to_string())
+}
+
+fn teacher_build_mode(loaded: &LoadedConfig, teacher: &Teacher) -> String {
+    format!("{}+teacher:{}", loaded.runtime_mode(), teacher.describe())
+}
+
+fn hash_bytes_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 fn game_seed(base_seed: u64, dataset_name: &str, game_index: u32) -> u64 {
@@ -1393,6 +1474,35 @@ run_search_smoke = false
         feature = "antouzai",
         not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
     ))]
+    fn resume_regenerates_shards_when_teacher_identity_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-teacher.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["build_mode"] = serde_json::Value::String("stale-teacher".to_string());
+        });
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert!(manifest["generated_shards"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
     fn merge_data_combines_distributed_shards() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge.toml");
@@ -1434,6 +1544,34 @@ run_search_smoke = false
         assert!(output.validation_positions > 0);
         assert!(loaded.artifact_paths().train_bin.exists());
         assert!(loaded.artifact_paths().validation_bin.exists());
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
+    fn merge_rejects_shards_with_mismatched_teacher_identity() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-teacher.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["engine_revision"] = serde_json::Value::String("other-revision".to_string());
+        });
+
+        let err = format!("{:?}", merge_data(&loaded, &[input]).unwrap_err());
+        assert!(err.contains("engine_revision does not match"));
     }
 
     #[test]
@@ -1522,6 +1660,34 @@ resume = true
 run_search_smoke = false
 "#,
         )
+    }
+
+    fn mutate_first_shard_manifest(
+        loaded: &LoadedConfig,
+        dataset_name: &str,
+        mutate: impl FnOnce(&mut serde_json::Value),
+    ) {
+        mutate_first_shard_manifest_in_dir(
+            &loaded.artifact_paths().output_dir,
+            dataset_name,
+            mutate,
+        )
+    }
+
+    fn mutate_first_shard_manifest_in_dir(
+        output_dir: &Path,
+        dataset_name: &str,
+        mutate: impl FnOnce(&mut serde_json::Value),
+    ) {
+        let shard_path = output_dir
+            .join("datasets")
+            .join("shards")
+            .join(dataset_name)
+            .join("shard-000000.json");
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(&shard_path).unwrap()).unwrap();
+        mutate(&mut manifest);
+        fs::write(&shard_path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
     }
 
     #[test]
