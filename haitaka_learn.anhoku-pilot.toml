@@ -8,15 +8,19 @@ python = "python3"
 cmake = "cmake"
 
 [data]
-train_games = 2000
-validation_games = 200
-max_plies = 160
+train_games = 500
+validation_games = 100
+max_plies = 120
 search_depth = 2
 opening_random_plies = 12
 sample_start_ply = 8
 sample_every_ply = 2
-max_positions_per_game = 48
+max_positions_per_game = 36
 seed = 55
+jobs = 0
+shard_games = 25
+progress_every_percent = 5
+resume = true
 
 [training]
 features = "HalfKAv2^"
@@ -24,9 +28,9 @@ num_workers = 4
 batch_size = 16384
 lambda = 1.0
 random_fen_skipping = 3
-epoch_size = 200000
-validation_size = 20000
-max_epochs = 3
+epoch_size = 80000
+validation_size = 8000
+max_epochs = 2
 build_data_loader = true
 extra_args = ["--threads", "8", "--accelerator", "gpu", "--devices", "1"]
 

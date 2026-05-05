@@ -701,6 +701,7 @@ validation_games = 1
     fn checked_in_anhoku_training_configs_load() {
         let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
         for file_name in [
+            "haitaka_learn.anhoku-smoke.toml",
             "haitaka_learn.anhoku-pilot.toml",
             "haitaka_learn.anhoku-v0.toml",
         ] {

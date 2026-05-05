@@ -17,6 +17,10 @@ sample_start_ply = 8
 sample_every_ply = 2
 max_positions_per_game = 64
 seed = 55
+jobs = 0
+shard_games = 100
+progress_every_percent = 1
+resume = true
 
 [training]
 features = "HalfKAv2^"

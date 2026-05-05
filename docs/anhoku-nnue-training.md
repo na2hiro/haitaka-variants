@@ -4,18 +4,20 @@ This runbook documents the practice path that successfully trained and loaded a
 small Anhoku NNUE using local data generation on an Apple Silicon Mac and
 PyTorch training/export on a temporary vast.ai CUDA instance.
 
-Use the pilot config first. Move to the v0 config only after the pilot proves
-that transfer, CUDA, training, export, local verification, and browser loading
-all work.
+Use the smoke config first. Move to the pilot config only after smoke proves the
+local loop works, then move to v0 after the pilot proves transfer, CUDA,
+training, export, local verification, and browser loading all work.
 
 ## Configs
 
+- `haitaka_learn.anhoku-smoke.toml` is the quick local generator/trainer check.
 - `haitaka_learn.anhoku-pilot.toml` is the cheap pipeline check.
 - `haitaka_learn.anhoku-v0.toml` is the first useful model attempt.
 
 Expected dataset sizes:
 
-- Pilot: about 96k train positions and 9.6k validation positions.
+- Smoke: about 2.4k train positions and 480 validation positions.
+- Pilot: about 18k train positions and 3.6k validation positions.
 - v0: about 3.2M train positions and 320k validation positions.
 - Each row is 72 bytes before compression, so the v0 dataset should be small
   enough to transfer comfortably.
@@ -51,21 +53,54 @@ For first Anhoku practice runs, random initialization is simpler and worked.
 
 ## Local Mac
 
-Generate the pilot dataset:
+Generate the smoke dataset first:
 
 ```bash
-cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-pilot.toml
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-smoke.toml --jobs 2
+```
+
+Generate the pilot dataset after smoke succeeds:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-pilot.toml --jobs 0
 ```
 
 Generate the v0 dataset after the pilot succeeds:
 
 ```bash
-cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.toml
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.toml --jobs 0
+```
+
+Generation is resumable. If you stop it with Ctrl-C or kill the process, rerun
+the same command; completed shard files under `datasets/shards/` are reused.
+Progress prints to stdout at the configured percent interval with elapsed time,
+ETA, positions, and games/minute.
+
+To split v0 data generation across the M4 Mac and the Dell, run one shard lane
+on each machine:
+
+```bash
+# M4
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.toml --jobs 0 --shard-index 0 --shard-count 2
+
+# Dell
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.toml --jobs 0 --shard-index 1 --shard-count 2
+```
+
+Copy the two output directories back to the Mac with different wrapper names,
+then merge:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- merge-data \
+  --config haitaka_learn.anhoku-v0.toml \
+  --input haitaka_learn-out/anhoku-v0-m4 \
+  --input haitaka_learn-out/anhoku-v0-dell
 ```
 
 Create a transfer bundle for either config:
 
 ```bash
+sh scripts/prepare_anhoku_training_bundle.sh haitaka_learn.anhoku-smoke.toml
 sh scripts/prepare_anhoku_training_bundle.sh haitaka_learn.anhoku-pilot.toml
 sh scripts/prepare_anhoku_training_bundle.sh haitaka_learn.anhoku-v0.toml
 ```

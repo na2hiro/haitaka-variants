@@ -1,0 +1,43 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "haitaka_learn-out/anhoku-smoke"
+trainer_checkout = "../variant-nnue-pytorch"
+python = "python3"
+cmake = "cmake"
+
+[data]
+train_games = 100
+validation_games = 20
+max_plies = 80
+search_depth = 1
+opening_random_plies = 12
+sample_start_ply = 8
+sample_every_ply = 2
+max_positions_per_game = 24
+seed = 55
+jobs = 0
+shard_games = 10
+progress_every_percent = 10
+resume = true
+
+[training]
+features = "HalfKAv2^"
+num_workers = 2
+batch_size = 8192
+lambda = 1.0
+random_fen_skipping = 3
+epoch_size = 20000
+validation_size = 2000
+max_epochs = 1
+build_data_loader = true
+extra_args = ["--threads", "4", "--accelerator", "gpu", "--devices", "1"]
+
+[export]
+output_name = "haitaka-anhoku-smoke.nnue"
+description = "Haitaka Anhoku smoke NNUE trained with variant-nnue-pytorch"
+
+[verify]
+search_depth = 1
+run_search_smoke = true
