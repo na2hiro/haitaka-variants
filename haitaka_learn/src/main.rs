@@ -22,6 +22,20 @@ enum Command {
     GenerateData {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        jobs: Option<u32>,
+        #[arg(long)]
+        no_resume: bool,
+        #[arg(long)]
+        shard_index: Option<u32>,
+        #[arg(long)]
+        shard_count: Option<u32>,
+    },
+    MergeData {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
     },
     Train {
         #[arg(long)]
@@ -44,11 +58,35 @@ enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::GenerateData { config } => {
+        Command::GenerateData {
+            config,
+            jobs,
+            no_resume,
+            shard_index,
+            shard_count,
+        } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let output = dataset::generate_data(&loaded)?;
+            let output = dataset::generate_data_with_options(
+                &loaded,
+                dataset::GenerateOptions {
+                    jobs,
+                    resume: if no_resume { Some(false) } else { None },
+                    shard_index,
+                    shard_count,
+                },
+            )?;
             println!(
                 "generated {} training and {} validation samples into {}",
+                output.train_positions,
+                output.validation_positions,
+                output.output_dir.display()
+            );
+        }
+        Command::MergeData { config, input } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let output = dataset::merge_data(&loaded, &input)?;
+            println!(
+                "merged {} training and {} validation samples into {}",
                 output.train_positions,
                 output.validation_positions,
                 output.output_dir.display()

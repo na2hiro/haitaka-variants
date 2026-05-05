@@ -93,6 +93,10 @@ Key fields:
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters
+  - `jobs = 0` uses all available CPU cores; the default `1` is conservative
+  - `shard_games` controls resumable shard size
+  - `progress_every_percent` controls stdout progress and ETA frequency
+  - `resume = true` reuses completed shard files after interruptions
 - `[training]`
   - `features` must stay `HalfKAv2^`
   - upstream trainer args like batch size and epoch count
@@ -117,7 +121,26 @@ This:
 - plays Haitaka self-play games
 - samples positions
 - labels them with teacher search scores
-- writes trainer-compatible `.bin` files plus JSON manifests
+- writes resumable shard files, then assembles trainer-compatible `.bin` files
+  plus JSON manifests
+
+Use all local cores:
+
+```bash
+cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml --jobs 0
+```
+
+Generate only one lane of a distributed shard split:
+
+```bash
+cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
+```
+
+Merge shard outputs copied back from multiple machines:
+
+```bash
+cargo run -p haitaka_learn -- merge-data --config haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
+```
 
 ### 2. Train
 

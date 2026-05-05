@@ -308,6 +308,11 @@ impl LearnConfig {
             self.data.max_positions_per_game > 0,
             "data.max_positions_per_game must be > 0"
         );
+        ensure!(self.data.shard_games > 0, "data.shard_games must be > 0");
+        ensure!(
+            (1..=100).contains(&self.data.progress_every_percent),
+            "data.progress_every_percent must be between 1 and 100"
+        );
         ensure!(
             self.training.features == "HalfKAv2^",
             "training.features must stay `HalfKAv2^` for Haitaka/Fairy-Stockfish compatibility"
@@ -415,6 +420,14 @@ pub struct DataConfig {
     pub max_positions_per_game: u16,
     #[serde(default = "default_seed")]
     pub seed: u64,
+    #[serde(default = "default_jobs")]
+    pub jobs: u32,
+    #[serde(default = "default_shard_games")]
+    pub shard_games: u32,
+    #[serde(default = "default_progress_every_percent")]
+    pub progress_every_percent: u32,
+    #[serde(default = "default_resume")]
+    pub resume: bool,
 }
 
 impl Default for DataConfig {
@@ -429,6 +442,10 @@ impl Default for DataConfig {
             sample_every_ply: default_sample_every_ply(),
             max_positions_per_game: default_max_positions_per_game(),
             seed: default_seed(),
+            jobs: default_jobs(),
+            shard_games: default_shard_games(),
+            progress_every_percent: default_progress_every_percent(),
+            resume: default_resume(),
         }
     }
 }
@@ -552,6 +569,22 @@ fn default_seed() -> u64 {
     42
 }
 
+fn default_jobs() -> u32 {
+    0
+}
+
+fn default_shard_games() -> u32 {
+    100
+}
+
+fn default_progress_every_percent() -> u32 {
+    1
+}
+
+fn default_resume() -> bool {
+    true
+}
+
 fn default_features() -> String {
     "HalfKAv2^".to_string()
 }
@@ -640,6 +673,10 @@ validation_games = 1
         config.validate().unwrap();
         assert_eq!(config.training.features, "HalfKAv2^");
         assert_eq!(config.export.output_name, "haitaka.nnue");
+        assert_eq!(config.data.jobs, 0);
+        assert_eq!(config.data.shard_games, 100);
+        assert_eq!(config.data.progress_every_percent, 1);
+        assert!(config.data.resume);
     }
 
     #[test]
