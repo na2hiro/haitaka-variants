@@ -381,9 +381,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
 
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
-    let teacher = Teacher::from_config(loaded)?;
     let opening_sfen = loaded.opening_sfen()?;
-    let engine_revision = detect_git_revision(loaded)?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -397,8 +395,6 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         input_dirs,
         loaded.config.data.train_games,
         &opening_sfen,
-        &teacher,
-        &engine_revision,
         generated_at_unix_ms,
     )?;
     let validation_positions = merge_split(
@@ -409,8 +405,6 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         input_dirs,
         loaded.config.data.validation_games,
         &opening_sfen,
-        &teacher,
-        &engine_revision,
         generated_at_unix_ms,
     )?;
 
@@ -460,6 +454,25 @@ struct ShardResult {
     bin_path: PathBuf,
     manifest: ShardManifest,
     reused: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MergeTeacherIdentity {
+    bootstrap_nnue: Option<String>,
+    bootstrap_nnue_sha256: Option<String>,
+    engine_revision: Option<String>,
+    build_mode: String,
+}
+
+impl MergeTeacherIdentity {
+    fn from_manifest(manifest: &ShardManifest) -> Self {
+        Self {
+            bootstrap_nnue: manifest.bootstrap_nnue.clone(),
+            bootstrap_nnue_sha256: manifest.bootstrap_nnue_sha256.clone(),
+            engine_revision: manifest.engine_revision.clone(),
+            build_mode: manifest.build_mode.clone(),
+        }
+    }
 }
 
 struct Progress {
@@ -848,12 +861,11 @@ fn merge_split(
     input_dirs: &[PathBuf],
     game_count: u32,
     opening_sfen: &str,
-    teacher: &Teacher,
-    engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
 ) -> Result<u64> {
     let started = Instant::now();
     let mut by_start = BTreeMap::new();
+    let mut teacher_identity = None;
     for input_dir in input_dirs {
         let shard_dir = input_dir.join("datasets").join("shards").join(dataset_name);
         if !shard_dir.exists() {
@@ -874,8 +886,7 @@ fn merge_split(
                 loaded,
                 dataset_name,
                 opening_sfen,
-                teacher,
-                engine_revision,
+                &mut teacher_identity,
                 &manifest,
             )
             .with_context(|| format!("invalid shard manifest {}", path.display()))?;
@@ -925,9 +936,15 @@ fn merge_split(
         completed_games: expected_start,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
-        bootstrap_nnue: bootstrap_nnue_path(loaded),
-        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
-        engine_revision: engine_revision.clone(),
+        bootstrap_nnue: teacher_identity
+            .as_ref()
+            .and_then(|identity| identity.bootstrap_nnue.clone()),
+        bootstrap_nnue_sha256: teacher_identity
+            .as_ref()
+            .and_then(|identity| identity.bootstrap_nnue_sha256.clone()),
+        engine_revision: teacher_identity
+            .as_ref()
+            .and_then(|identity| identity.engine_revision.clone()),
         config_hash: loaded.hash_hex.clone(),
         generated_at_unix_ms,
         build_mode: format!("{}+merged", loaded.runtime_mode()),
@@ -955,8 +972,7 @@ fn validate_merge_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
-    teacher: &Teacher,
-    engine_revision: &Option<String>,
+    teacher_identity: &mut Option<MergeTeacherIdentity>,
     manifest: &ShardManifest,
 ) -> Result<()> {
     ensure_merge(
@@ -983,22 +999,35 @@ fn validate_merge_shard(
         manifest.config_hash == loaded.hash_hex,
         "config_hash does not match",
     )?;
-    ensure_merge(
-        manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string),
-        "bootstrap_nnue_sha256 does not match",
-    )?;
-    ensure_merge(
-        manifest.engine_revision == *engine_revision,
-        "engine_revision does not match",
-    )?;
-    ensure_merge(
-        manifest.build_mode == teacher_build_mode(loaded, teacher),
-        "build_mode does not match",
-    )?;
+    validate_merge_teacher_identity(teacher_identity, manifest)?;
     ensure_merge(
         manifest.entry_bytes == ENTRY_BYTES,
         "entry_bytes does not match",
     )?;
+    Ok(())
+}
+
+fn validate_merge_teacher_identity(
+    expected: &mut Option<MergeTeacherIdentity>,
+    manifest: &ShardManifest,
+) -> Result<()> {
+    let current = MergeTeacherIdentity::from_manifest(manifest);
+    if let Some(expected) = expected.as_ref() {
+        ensure_merge(
+            current.bootstrap_nnue_sha256 == expected.bootstrap_nnue_sha256,
+            "bootstrap_nnue_sha256 does not match",
+        )?;
+        ensure_merge(
+            current.engine_revision == expected.engine_revision,
+            "engine_revision does not match",
+        )?;
+        ensure_merge(
+            current.build_mode == expected.build_mode,
+            "build_mode does not match",
+        )?;
+    } else {
+        *expected = Some(current);
+    }
     Ok(())
 }
 
@@ -1653,6 +1682,42 @@ run_search_smoke = false
             mutate_first_shard_manifest_in_dir(&input, dataset_name, |manifest| {
                 manifest["bootstrap_nnue"] =
                     serde_json::Value::String("/different/machine/bootstrap.nnue".to_string());
+            });
+        }
+
+        let output = merge_data(&loaded, &[input]).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
+    fn merge_does_not_require_local_bootstrap_file() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-missing-bootstrap.toml");
+        fs::write(
+            &config_path,
+            distributed_empty_lane_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        for dataset_name in ["train", "validation"] {
+            mutate_first_shard_manifest_in_dir(&input, dataset_name, |manifest| {
+                manifest["bootstrap_nnue"] =
+                    serde_json::Value::String("/worker/bootstrap.nnue".to_string());
+                manifest["bootstrap_nnue_sha256"] =
+                    serde_json::Value::String("same-bootstrap-hash".to_string());
+                manifest["build_mode"] =
+                    serde_json::Value::String(format!("{}+teacher:nnue", active_test_ruleset()));
             });
         }
 
