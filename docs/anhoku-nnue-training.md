@@ -22,10 +22,16 @@ Expected dataset sizes:
 - Each row is 72 bytes before compression, so the v0 dataset should be small
   enough to transfer comfortably.
 
-Both checked-in configs train from random initialization. Do not set
-`paths.bootstrap_nnue` to a Fairy-Stockfish `.nnue` for these Anhoku runs unless
-you have confirmed that `variant-nnue-pytorch/serialize.py` can import that file
-with `--features HalfKAv2^`.
+The `paths.bootstrap_nnue` field has two different effects:
+
+- During `generate-data`, Haitaka loads the `.nnue` directly and uses it as the
+  teacher evaluator inside search.
+- During `train`, `haitaka_learn` asks `variant-nnue-pytorch/serialize.py` to
+  convert that same file into `bootstrap.pt` and resume PyTorch training from
+  it.
+
+These are not equivalent compatibility checks. A `.nnue` can be valid for
+Haitaka search while still failing as a PyTorch training seed.
 
 ## What Did Not Work
 
@@ -47,9 +53,73 @@ The checked-in trainer overlay uses shogi pockets and factorized `HalfKAv2^`:
 - Difference: `1944` virtual factor features.
 
 Exported `.nnue` files are coalesced runtime artifacts. They are good for
-Haitaka loading/search, but they are not the safest way to resume training.
-Resume from a Lightning `.ckpt` or a compatible `.pt` if you need continuation.
-For first Anhoku practice runs, random initialization is simpler and worked.
+Haitaka loading/search, and they can be useful as teachers for generating the
+next dataset. They are not automatically safe as PyTorch training seeds.
+
+For continuation, prefer a Lightning `.ckpt` from the same run. For
+cross-generation distillation, use the previous `.nnue` as the data-generation
+teacher, then train from random initialization unless you have built a compatible
+factorized `.pt` seed.
+
+## Bootstrap And Factorization
+
+`HalfKAv2` is the runtime feature layout. For Haitaka shogi geometry, it has
+`150903` real features.
+
+`HalfKAv2^` is the factorized training layout. It has the same `150903` real
+features plus `1944` virtual factor features, for `152847` total training
+features. Export coalesces those virtual factors back into the real runtime
+features, so the final `.nnue` does not store the extra `1944` rows.
+
+To try using a compatible runtime `.nnue` as the starting point for a factorized
+training run, first convert it as non-factorized `HalfKAv2`, then append the
+zero-initialized `HalfKAv2^` virtual factor block:
+
+```bash
+cd /workspace/variant-nnue-pytorch
+source env/bin/activate
+
+python serialize.py /workspace/haitaka_learn-out/anhoku-v0/artifacts/haitaka-anhoku-v0.nnue \
+  /workspace/anhoku-v0-halfkav2.pt \
+  --features HalfKAv2
+
+python - <<'PY'
+import torch
+import features
+
+src = "/workspace/anhoku-v0-halfkav2.pt"
+dst = "/workspace/anhoku-v0-halfkav2-factorized.pt"
+
+model = torch.load(src, weights_only=False)
+model.set_feature_set(features.get_feature_set_from_name("HalfKAv2^"))
+torch.save(model, dst)
+
+print("wrote", dst)
+print("features", model.feature_set.name)
+print("input weight shape", tuple(model.input.weight.shape))
+PY
+```
+
+This creates a `.pt` model with the runtime weights preserved and the virtual
+factor block initialized to zero.
+
+Current `haitaka_learn` does not yet accept a prebuilt `.pt` bootstrap directly;
+`paths.bootstrap_nnue` is treated as a `.nnue` and converted internally. Until
+that support is added, use this factorization path only for manual trainer
+experiments, or resume from a Lightning `.ckpt`.
+
+Fallback when `train` fails while converting `bootstrap_nnue`:
+
+```bash
+cp haitaka_learn.anhoku-v0.toml haitaka_learn.anhoku-v0-train-nobootstrap.toml
+sed -i '/bootstrap_nnue/d' haitaka_learn.anhoku-v0-train-nobootstrap.toml
+
+cargo run -p haitaka_learn --features anhoku -- train --config haitaka_learn.anhoku-v0-train-nobootstrap.toml
+cargo run -p haitaka_learn --features anhoku -- export --config haitaka_learn.anhoku-v0-train-nobootstrap.toml
+```
+
+This keeps the already generated dataset. It only changes the PyTorch
+initialization from NNUE bootstrap to random initialization.
 
 ## Local Mac
 
