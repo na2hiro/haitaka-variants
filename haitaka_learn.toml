@@ -22,6 +22,9 @@ sample_start_ply = 0
 sample_every_ply = 2
 max_positions_per_game = 24
 seed = 42
+jobs = 0
+# Leave this at 0 to use all local CPU cores for data generation unless the
+# machine becomes memory- or thermally-limited.
 
 [training]
 features = "HalfKAv2^"

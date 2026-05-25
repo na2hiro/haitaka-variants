@@ -58,7 +58,7 @@ Moving from depth 3 to depth 4 can increase node count sharply. If the pipeline 
 
 These should be done first because they are cheap and immediately measurable.
 
-### 0.1 Run generation in release mode
+### [done] 0.1 Run generation in release mode
 
 If any long generation jobs are still using plain `cargo run`, switch all docs and scripts to:
 
@@ -74,7 +74,7 @@ Risk:
 
 - none
 
-### 0.2 Always use all local cores
+### [done] 0.2 Always use all local cores
 
 Prefer `--jobs 0` unless the machine becomes memory- or thermally-limited.
 
@@ -318,7 +318,7 @@ This is a targeted optimization, not the main solution to multi-day generation t
 
 ## Recommended Execution Order
 
-1. Confirm all large runs use `--release`, `--jobs 0`, and multi-machine shard splits where available.
+1. Confirm all large runs use `--release`, `--jobs 0`, and multi-machine shard splits where available. Phase 0.1 and 0.2 are complete; 0.3 remains open.
 2. Measure the current fraction of runtime spent on:
    - rollout teacher calls
    - sampled-position labeling
@@ -354,7 +354,7 @@ Track:
 
 ### Short term
 
-- update runbooks to require `--release` for serious generation jobs
+- update runbooks to require `--release` for serious generation jobs [done]
 - add profiling counters for teacher-call counts and search states
 - add a config split between rollout depth and label depth
 

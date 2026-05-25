@@ -93,7 +93,7 @@ Key fields:
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters
-  - `jobs = 0` uses all available CPU cores; the default `1` is conservative
+  - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions
@@ -113,7 +113,7 @@ Use the default build for standard shogi and handicap shogi.
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml
+cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
 ```
 
 This:
@@ -124,16 +124,18 @@ This:
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
 
-Use all local cores:
+`--jobs 0` is already the default. Pass a smaller value only if the machine becomes memory- or thermally-limited.
+
+Equivalent command with the explicit `jobs` override:
 
 ```bash
-cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml --jobs 0
+cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
 ```
 
 Generate only one lane of a distributed shard split:
 
 ```bash
-cargo run -p haitaka_learn -- generate-data --config haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
+cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
 ```
 
 Merge shard outputs copied back from multiple machines:
@@ -177,7 +179,7 @@ cargo run -p haitaka_learn -- verify --config haitaka_learn.toml
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn -- pipeline --config haitaka_learn.toml
+cargo run -p haitaka_learn --release -- pipeline --config haitaka_learn.toml
 ```
 
 ## Variant Workflows
@@ -199,9 +201,9 @@ rule_id = 26
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --features annan -- generate-data --config haitaka_learn.toml
-cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.toml
-cargo run -p haitaka_learn --features antouzai -- generate-data --config haitaka_learn.toml
+cargo run -p haitaka_learn --release --features annan -- generate-data --config haitaka_learn.toml --jobs 0
+cargo run -p haitaka_learn --release --features anhoku -- generate-data --config haitaka_learn.toml --jobs 0
+cargo run -p haitaka_learn --release --features antouzai -- generate-data --config haitaka_learn.toml --jobs 0
 ```
 
 ### 3. Train / export / verify the variant run
