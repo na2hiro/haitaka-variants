@@ -317,11 +317,7 @@ fn sort_checkpoints_newest_first(paths: &mut [PathBuf]) {
     paths.reverse();
 }
 
-fn find_latest_valid_checkpoint(
-    root: &Path,
-    python: &str,
-    cwd: &Path,
-) -> Result<Option<PathBuf>> {
+fn find_latest_valid_checkpoint(root: &Path, python: &str, cwd: &Path) -> Result<Option<PathBuf>> {
     let mut candidates = Vec::new();
     collect_checkpoints(root, &mut candidates);
     sort_checkpoints_newest_first(&mut candidates);

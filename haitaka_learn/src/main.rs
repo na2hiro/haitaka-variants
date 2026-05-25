@@ -59,6 +59,10 @@ enum Command {
     },
 }
 
+fn resume_override(no_resume: bool) -> Option<bool> {
+    no_resume.then_some(false)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -98,7 +102,7 @@ fn main() -> Result<()> {
         }
         Command::Train { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let checkpoint = trainer::train(&loaded, Some(!no_resume))?;
+            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
         Command::Export { config } => {
@@ -122,7 +126,7 @@ fn main() -> Result<()> {
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
             );
-            let checkpoint = trainer::train(&loaded, Some(!no_resume))?;
+            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
             let exported = trainer::export(&loaded, Some(checkpoint.clone()))?;
             println!("exported NNUE: {}", exported.display());
@@ -136,4 +140,19 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resume_override;
+
+    #[test]
+    fn resume_override_is_none_without_cli_flag() {
+        assert_eq!(resume_override(false), None);
+    }
+
+    #[test]
+    fn resume_override_disables_resume_when_flag_is_set() {
+        assert_eq!(resume_override(true), Some(false));
+    }
 }
