@@ -63,6 +63,15 @@ fn resume_override(no_resume: bool) -> Option<bool> {
     no_resume.then_some(false)
 }
 
+fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
+    dataset::GenerateOptions {
+        jobs: None,
+        resume: resume_override(no_resume),
+        shard_index: None,
+        shard_count: None,
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -78,7 +87,7 @@ fn main() -> Result<()> {
                 &loaded,
                 dataset::GenerateOptions {
                     jobs,
-                    resume: if no_resume { Some(false) } else { None },
+                    resume: resume_override(no_resume),
                     shard_index,
                     shard_count,
                 },
@@ -121,7 +130,7 @@ fn main() -> Result<()> {
         }
         Command::Pipeline { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let data = dataset::generate_data(&loaded)?;
+            let data = dataset::generate_data_with_options(&loaded, generate_options(no_resume))?;
             println!(
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
@@ -144,7 +153,8 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::resume_override;
+    use super::{generate_options, resume_override};
+    use crate::dataset::GenerateOptions;
 
     #[test]
     fn resume_override_is_none_without_cli_flag() {
@@ -154,5 +164,31 @@ mod tests {
     #[test]
     fn resume_override_disables_resume_when_flag_is_set() {
         assert_eq!(resume_override(true), Some(false));
+    }
+
+    #[test]
+    fn pipeline_generate_options_preserve_config_resume_without_cli_flag() {
+        assert_eq!(
+            generate_options(false),
+            GenerateOptions {
+                jobs: None,
+                resume: None,
+                shard_index: None,
+                shard_count: None,
+            }
+        );
+    }
+
+    #[test]
+    fn pipeline_generate_options_disable_resume_when_flag_is_set() {
+        assert_eq!(
+            generate_options(true),
+            GenerateOptions {
+                jobs: None,
+                resume: Some(false),
+                shard_index: None,
+                shard_count: None,
+            }
+        );
     }
 }

@@ -331,15 +331,16 @@ fn find_latest_valid_checkpoint(root: &Path, python: &str, cwd: &Path) -> Result
 
 fn is_valid_checkpoint(path: &Path, python: &str, cwd: &Path) -> Result<bool> {
     let status = Command::new(python)
-        .args([
-            "-c",
-            "import sys, torch; torch.load(sys.argv[1], map_location='cpu')",
-        ])
+        .args(["-c", checkpoint_validation_script()])
         .arg(path)
         .current_dir(cwd)
         .status()
         .with_context(|| format!("failed to inspect checkpoint {}", path.display()))?;
     Ok(status.success())
+}
+
+fn checkpoint_validation_script() -> &'static str {
+    "import sys, torch; torch.load(sys.argv[1], map_location='cpu', weights_only=False)"
 }
 
 fn variant_py_contents() -> String {
@@ -382,6 +383,11 @@ fn variant_h_contents() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn checkpoint_validation_script_disables_weights_only_mode() {
+        assert!(checkpoint_validation_script().contains("weights_only=False"));
+    }
 
     #[test]
     fn variant_overlays_match_haitaka_geometry() {
