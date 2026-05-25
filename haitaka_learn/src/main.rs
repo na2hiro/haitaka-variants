@@ -40,6 +40,8 @@ enum Command {
     Train {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        no_resume: bool,
     },
     Export {
         #[arg(long)]
@@ -52,6 +54,8 @@ enum Command {
     Pipeline {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        no_resume: bool,
     },
 }
 
@@ -92,9 +96,9 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::Train { config } => {
+        Command::Train { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let checkpoint = trainer::train(&loaded)?;
+            let checkpoint = trainer::train(&loaded, Some(!no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
         Command::Export { config } => {
@@ -111,14 +115,14 @@ fn main() -> Result<()> {
                 report.report_path.display()
             );
         }
-        Command::Pipeline { config } => {
+        Command::Pipeline { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
             let data = dataset::generate_data(&loaded)?;
             println!(
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
             );
-            let checkpoint = trainer::train(&loaded)?;
+            let checkpoint = trainer::train(&loaded, Some(!no_resume))?;
             println!("training finished: {}", checkpoint.display());
             let exported = trainer::export(&loaded, Some(checkpoint.clone()))?;
             println!("exported NNUE: {}", exported.display());

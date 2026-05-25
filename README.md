@@ -85,6 +85,23 @@ cargo run -p haitaka_cli -- play --human none --depth 3
 cargo run -p haitaka_cli --features annan -- play --human none --depth 3
 ```
 
+Compare a learned NNUE against the built-in handcrafted evaluator with a single
+`self-play` command:
+
+```bash
+cargo run -p haitaka_cli --release -- self-play \
+  --games 100 \
+  --a-depth 3 \
+  --b-depth 3 \
+  --a-eval nnue \
+  --opening-random-plies 4 \
+  --seed 1 \
+  --nnue path/to/model.nnue
+```
+
+The summary reports an approximate Elo-style difference as `A - B`, so positive
+numbers mean the NNUE side outscored the handcrafted side.
+
 Run the core examples:
 
 ```bash

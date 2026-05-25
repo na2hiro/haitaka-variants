@@ -3,11 +3,15 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
+use haitaka_wasm::{NnueModel, SearchEvalMode, SearchSummary};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use serde::Serialize;
 
 const ENGINE_ID: &str = "haitaka-variants";
@@ -66,6 +70,12 @@ enum HumanSide {
     None,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum EngineEvalKind {
+    Handcrafted,
+    Nnue,
+}
+
 #[derive(Debug, Parser)]
 struct SelfPlayArgs {
     /// Number of games to run.
@@ -77,9 +87,30 @@ struct SelfPlayArgs {
     /// Engine B fixed search depth.
     #[arg(long = "b-depth", default_value_t = 2)]
     b_depth: u8,
+    /// Engine A evaluator.
+    #[arg(long = "a-eval", value_enum, default_value = "handcrafted")]
+    a_eval: EngineEvalKind,
+    /// Engine B evaluator.
+    #[arg(long = "b-eval", value_enum, default_value = "handcrafted")]
+    b_eval: EngineEvalKind,
+    /// Shared NNUE file for any side using NNUE without a side-specific override.
+    #[arg(long)]
+    nnue: Option<PathBuf>,
+    /// Engine A NNUE file override.
+    #[arg(long = "a-nnue")]
+    a_nnue: Option<PathBuf>,
+    /// Engine B NNUE file override.
+    #[arg(long = "b-nnue")]
+    b_nnue: Option<PathBuf>,
     /// Starting SFEN. Defaults to the ruleset start position.
     #[arg(long)]
     sfen: Option<String>,
+    /// Number of random plies applied before each paired game to diversify openings.
+    #[arg(long, default_value_t = 0)]
+    opening_random_plies: u16,
+    /// Seed for random opening generation.
+    #[arg(long, default_value_t = 0)]
+    seed: u64,
     /// Maximum plies per game before declaring a draw.
     #[arg(long, default_value_t = 200)]
     max_plies: u16,
@@ -177,10 +208,20 @@ enum Seat {
     B,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct EngineConfig {
-    seat: Seat,
+    label: &'static str,
     depth: u8,
+    evaluator: EngineEvaluator,
+}
+
+#[derive(Debug, Clone)]
+enum EngineEvaluator {
+    Handcrafted,
+    Nnue {
+        path: PathBuf,
+        model: Arc<NnueModel>,
+    },
 }
 
 #[derive(Debug, Default)]
@@ -271,6 +312,113 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
 fn parse_board(sfen: Option<&str>) -> Result<Board> {
     let sfen = sfen.unwrap_or(SFEN_STARTPOS);
     Board::from_sfen(sfen).map_err(|err| anyhow!("failed to parse SFEN: {err}"))
+}
+
+fn load_nnue_model(path: &Path) -> Result<Arc<NnueModel>> {
+    let bytes =
+        fs::read(path).with_context(|| format!("failed to read NNUE {}", path.display()))?;
+    let model = NnueModel::from_bytes(&bytes)
+        .map_err(|err| anyhow!("failed to load NNUE {}: {err}", path.display()))?;
+    Ok(Arc::new(model))
+}
+
+fn engine_config(
+    label: &'static str,
+    depth: u8,
+    evaluator: EngineEvalKind,
+    shared_nnue: Option<&Path>,
+    side_nnue: Option<&Path>,
+) -> Result<EngineConfig> {
+    let evaluator = match evaluator {
+        EngineEvalKind::Handcrafted => EngineEvaluator::Handcrafted,
+        EngineEvalKind::Nnue => {
+            let path = side_nnue
+                .or(shared_nnue)
+                .ok_or_else(|| anyhow!("{label} uses NNUE but no NNUE path was provided"))?;
+            EngineEvaluator::Nnue {
+                path: path.to_path_buf(),
+                model: load_nnue_model(path)?,
+            }
+        }
+    };
+
+    Ok(EngineConfig {
+        label,
+        depth,
+        evaluator,
+    })
+}
+
+fn search_with_engine(board: &Board, engine: &EngineConfig) -> Result<SearchSummary> {
+    match &engine.evaluator {
+        EngineEvaluator::Handcrafted => {
+            haitaka_wasm::search_board_impl_handcrafted(board, engine.depth)
+                .map_err(|err| anyhow!("{} search failed: {err}", engine.label))
+        }
+        EngineEvaluator::Nnue { model, .. } => haitaka_wasm::search_board_impl_with_eval_mode(
+            board,
+            engine.depth,
+            model.clone(),
+            SearchEvalMode::Incremental,
+        )
+        .map_err(|err| anyhow!("{} NNUE search failed: {err}", engine.label)),
+    }
+}
+
+fn describe_engine(engine: &EngineConfig) -> String {
+    match &engine.evaluator {
+        EngineEvaluator::Handcrafted => {
+            format!("{}: handcrafted depth={}", engine.label, engine.depth)
+        }
+        EngineEvaluator::Nnue { path, .. } => {
+            format!(
+                "{}: nnue depth={} model={}",
+                engine.label,
+                engine.depth,
+                path.display()
+            )
+        }
+    }
+}
+
+fn opening_seed(seed: u64, pair_index: u32, attempt: u32) -> u64 {
+    seed ^ (u64::from(pair_index) << 32) ^ u64::from(attempt).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+}
+
+fn generate_opening_board(
+    base: &Board,
+    opening_random_plies: u16,
+    seed: u64,
+    pair_index: u32,
+) -> Result<Board> {
+    if opening_random_plies == 0 {
+        return Ok(base.clone());
+    }
+
+    for attempt in 0..16 {
+        let mut board = base.clone();
+        let mut rng = StdRng::seed_from_u64(opening_seed(seed, pair_index, attempt));
+        let mut completed = 0;
+
+        while completed < opening_random_plies && board.status() == GameStatus::Ongoing {
+            let moves = legal_moves(&board);
+            if moves.is_empty() {
+                break;
+            }
+            let mv = moves[rng.random_range(0..moves.len())];
+            board.play(mv);
+            completed += 1;
+        }
+
+        if completed == opening_random_plies && board.status() == GameStatus::Ongoing {
+            return Ok(board);
+        }
+    }
+
+    bail!(
+        "failed to generate a non-terminal opening after {} random plies; try reducing --opening-random-plies",
+        opening_random_plies
+    )
 }
 
 fn legal_moves(board: &Board) -> Vec<Move> {
@@ -367,10 +515,40 @@ fn read_human_move(board: &Board) -> Result<Move> {
 }
 
 fn self_play(args: SelfPlayArgs) -> Result<()> {
+    let base_board = parse_board(args.sfen.as_deref())?;
+    let engine_a = engine_config(
+        "A",
+        args.a_depth,
+        args.a_eval,
+        args.nnue.as_deref(),
+        args.a_nnue.as_deref(),
+    )?;
+    let engine_b = engine_config(
+        "B",
+        args.b_depth,
+        args.b_eval,
+        args.nnue.as_deref(),
+        args.b_nnue.as_deref(),
+    )?;
     let mut stats = MatchStats::default();
 
+    println!("{}", describe_engine(&engine_a));
+    println!("{}", describe_engine(&engine_b));
+    if args.opening_random_plies > 0 {
+        println!(
+            "paired random opening plies={} seed={}",
+            args.opening_random_plies, args.seed
+        );
+    }
+
     for game_index in 0..args.games {
-        let mut board = parse_board(args.sfen.as_deref())?;
+        let pair_index = game_index / 2;
+        let mut board = generate_opening_board(
+            &base_board,
+            args.opening_random_plies,
+            args.seed,
+            pair_index,
+        )?;
         let a_color = if game_index % 2 == 0 {
             Color::Black
         } else {
@@ -390,22 +568,16 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
             }
 
             let config = if board.side_to_move() == a_color {
-                EngineConfig {
-                    seat: Seat::A,
-                    depth: args.a_depth,
-                }
+                &engine_a
             } else {
-                EngineConfig {
-                    seat: Seat::B,
-                    depth: args.b_depth,
-                }
+                &engine_b
             };
-            let summary = haitaka_wasm::search_board_impl_handcrafted(&board, config.depth)
+            let summary = search_with_engine(&board, config)
                 .map_err(|err| anyhow!("search failed in game {}: {err}", game_index + 1))?;
             stats.total_nodes += summary.states;
             stats.total_elapsed_ms += summary.elapsed_ms;
             let Some(best_move) = summary.best_move else {
-                winner = Some(if config.seat == Seat::A {
+                winner = Some(if config.label == "A" {
                     Seat::B
                 } else {
                     Seat::A
@@ -714,6 +886,71 @@ mod tests {
         assert_eq!(json["profiles"][0]["name"], "Anhoku default");
         assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], 55);
         assert_eq!(json["profiles"][0]["rules"][0]["variant"], "anhoku");
+    }
+
+    #[test]
+    fn self_play_requires_nnue_path_for_nnue_side() {
+        let err = engine_config("A", 3, EngineEvalKind::Nnue, None, None)
+            .expect_err("NNUE side should require a model path");
+        assert!(
+            err.to_string()
+                .contains("A uses NNUE but no NNUE path was provided"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn cli_parses_self_play_nnue_flags() {
+        let cli = Cli::try_parse_from([
+            "haitaka",
+            "self-play",
+            "--games",
+            "8",
+            "--a-depth",
+            "4",
+            "--b-depth",
+            "4",
+            "--a-eval",
+            "nnue",
+            "--b-eval",
+            "handcrafted",
+            "--nnue",
+            "model.nnue",
+            "--b-nnue",
+            "other.nnue",
+            "--opening-random-plies",
+            "4",
+            "--seed",
+            "7",
+        ])
+        .expect("CLI args should parse");
+
+        match cli.command {
+            Command::SelfPlay(args) => {
+                assert_eq!(args.games, 8);
+                assert_eq!(args.a_depth, 4);
+                assert_eq!(args.b_depth, 4);
+                assert_eq!(args.a_eval, EngineEvalKind::Nnue);
+                assert_eq!(args.b_eval, EngineEvalKind::Handcrafted);
+                assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
+                assert_eq!(args.b_nnue, Some(PathBuf::from("other.nnue")));
+                assert_eq!(args.opening_random_plies, 4);
+                assert_eq!(args.seed, 7);
+            }
+            other => panic!("expected self-play command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn random_opening_generation_is_reproducible() {
+        let base = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
+        let opening_a =
+            generate_opening_board(&base, 2, 123, 0).expect("opening generation should succeed");
+        let opening_b =
+            generate_opening_board(&base, 2, 123, 0).expect("opening generation should succeed");
+
+        assert_eq!(opening_a.to_string(), opening_b.to_string());
+        assert_ne!(opening_a.to_string(), base.to_string());
     }
 
     #[test]

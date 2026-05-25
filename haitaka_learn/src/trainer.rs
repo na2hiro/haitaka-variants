@@ -19,7 +19,7 @@ struct ExportMetadata {
     config_hash: String,
 }
 
-pub fn train(loaded: &LoadedConfig) -> Result<PathBuf> {
+pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -28,7 +28,21 @@ pub fn train(loaded: &LoadedConfig) -> Result<PathBuf> {
     ensure_file_exists(&artifacts.validation_bin, "validation dataset")?;
 
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
-    let bootstrap_model = materialize_bootstrap_pt(loaded, &trainer_checkout)?;
+    let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
+    let resume_checkpoint = if should_resume {
+        find_latest_valid_checkpoint(
+            &artifacts.logs_dir,
+            &loaded.config.paths.python,
+            &trainer_checkout,
+        )?
+    } else {
+        None
+    };
+    let bootstrap_model = if resume_checkpoint.is_none() {
+        materialize_bootstrap_pt(loaded, &trainer_checkout)?
+    } else {
+        None
+    };
 
     let mut args = vec![
         "train.py".to_string(),
@@ -53,7 +67,11 @@ pub fn train(loaded: &LoadedConfig) -> Result<PathBuf> {
         "--validation-size".to_string(),
         loaded.config.training.validation_size.to_string(),
     ];
-    if let Some(model) = bootstrap_model {
+    if let Some(checkpoint) = resume_checkpoint {
+        println!("resuming training from {}", checkpoint.display());
+        args.push("--resume_from_checkpoint".to_string());
+        args.push(checkpoint.display().to_string());
+    } else if let Some(model) = bootstrap_model {
         args.push("--resume-from-model".to_string());
         args.push(model.display().to_string());
     }
@@ -66,9 +84,14 @@ pub fn train(loaded: &LoadedConfig) -> Result<PathBuf> {
         "variant-nnue-pytorch training",
     )?;
 
-    find_latest_checkpoint(&artifacts.logs_dir).ok_or_else(|| {
+    find_latest_valid_checkpoint(
+        &artifacts.logs_dir,
+        &loaded.config.paths.python,
+        &trainer_checkout,
+    )?
+    .ok_or_else(|| {
         anyhow!(
-            "training finished but no checkpoint was found under {}",
+            "training finished but no valid checkpoint was found under {}",
             artifacts.logs_dir.display()
         )
     })
@@ -82,9 +105,14 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     let checkpoint = if let Some(path) = source_checkpoint {
         path
     } else {
-        find_latest_checkpoint(&artifacts.logs_dir).ok_or_else(|| {
+        find_latest_valid_checkpoint(
+            &artifacts.logs_dir,
+            &loaded.config.paths.python,
+            &trainer_checkout,
+        )?
+        .ok_or_else(|| {
             anyhow!(
-                "could not find a checkpoint under {}",
+                "could not find a valid checkpoint under {}",
                 artifacts.logs_dir.display()
             )
         })?
@@ -266,16 +294,6 @@ fn detect_git_revision(repo_root: &Path) -> Option<String> {
     Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn find_latest_checkpoint(root: &Path) -> Option<PathBuf> {
-    let mut candidates = Vec::new();
-    collect_checkpoints(root, &mut candidates);
-    candidates.into_iter().max_by_key(|path| {
-        fs::metadata(path)
-            .and_then(|m| m.modified())
-            .unwrap_or(SystemTime::UNIX_EPOCH)
-    })
-}
-
 fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
@@ -288,6 +306,44 @@ fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
             out.push(path);
         }
     }
+}
+
+fn sort_checkpoints_newest_first(paths: &mut [PathBuf]) {
+    paths.sort_by_key(|path| {
+        fs::metadata(path)
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH)
+    });
+    paths.reverse();
+}
+
+fn find_latest_valid_checkpoint(
+    root: &Path,
+    python: &str,
+    cwd: &Path,
+) -> Result<Option<PathBuf>> {
+    let mut candidates = Vec::new();
+    collect_checkpoints(root, &mut candidates);
+    sort_checkpoints_newest_first(&mut candidates);
+    for candidate in candidates {
+        if is_valid_checkpoint(&candidate, python, cwd)? {
+            return Ok(Some(candidate));
+        }
+    }
+    Ok(None)
+}
+
+fn is_valid_checkpoint(path: &Path, python: &str, cwd: &Path) -> Result<bool> {
+    let status = Command::new(python)
+        .args([
+            "-c",
+            "import sys, torch; torch.load(sys.argv[1], map_location='cpu')",
+        ])
+        .arg(path)
+        .current_dir(cwd)
+        .status()
+        .with_context(|| format!("failed to inspect checkpoint {}", path.display()))?;
+    Ok(status.success())
 }
 
 fn variant_py_contents() -> String {
