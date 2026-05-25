@@ -43,9 +43,33 @@ Run a small engine-vs-engine comparison:
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 4 \
+  --threads 0 \
   --a-depth 3 \
   --b-depth 2
 ```
+
+Compare an NNUE model against the handcrafted evaluator and report the Elo-style
+gap as `A - B`:
+
+```bash
+cargo run -p haitaka_cli --release -- self-play \
+  --games 10 \
+  --threads 0 \
+  --a-depth 4 \
+  --b-depth 4 \
+  --a-eval nnue \
+  --opening-random-plies 4 \
+  --seed 1 \
+  --nnue path/to/model.nnue
+```
+
+This treats engine A as `nnue` and engine B as `handcrafted`. Use `--a-nnue`
+or `--b-nnue` when each side should load a different model. `--threads 0`
+selects available parallelism automatically.
+
+`--opening-random-plies` is the important knob when matches look too
+deterministic from one fixed start position. The same randomized opening is used
+for each consecutive color-swapped pair of games.
 
 The Elo output is only a small-sample estimate. It is useful for quick local
 checks, not for publishing serious engine ratings.

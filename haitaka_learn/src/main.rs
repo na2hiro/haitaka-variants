@@ -40,6 +40,8 @@ enum Command {
     Train {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        no_resume: bool,
     },
     Export {
         #[arg(long)]
@@ -52,7 +54,22 @@ enum Command {
     Pipeline {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        no_resume: bool,
     },
+}
+
+fn resume_override(no_resume: bool) -> Option<bool> {
+    no_resume.then_some(false)
+}
+
+fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
+    dataset::GenerateOptions {
+        jobs: None,
+        resume: resume_override(no_resume),
+        shard_index: None,
+        shard_count: None,
+    }
 }
 
 fn main() -> Result<()> {
@@ -70,7 +87,7 @@ fn main() -> Result<()> {
                 &loaded,
                 dataset::GenerateOptions {
                     jobs,
-                    resume: if no_resume { Some(false) } else { None },
+                    resume: resume_override(no_resume),
                     shard_index,
                     shard_count,
                 },
@@ -92,9 +109,9 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::Train { config } => {
+        Command::Train { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let checkpoint = trainer::train(&loaded)?;
+            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
         Command::Export { config } => {
@@ -111,14 +128,14 @@ fn main() -> Result<()> {
                 report.report_path.display()
             );
         }
-        Command::Pipeline { config } => {
+        Command::Pipeline { config, no_resume } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let data = dataset::generate_data(&loaded)?;
+            let data = dataset::generate_data_with_options(&loaded, generate_options(no_resume))?;
             println!(
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
             );
-            let checkpoint = trainer::train(&loaded)?;
+            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
             let exported = trainer::export(&loaded, Some(checkpoint.clone()))?;
             println!("exported NNUE: {}", exported.display());
@@ -132,4 +149,46 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{generate_options, resume_override};
+    use crate::dataset::GenerateOptions;
+
+    #[test]
+    fn resume_override_is_none_without_cli_flag() {
+        assert_eq!(resume_override(false), None);
+    }
+
+    #[test]
+    fn resume_override_disables_resume_when_flag_is_set() {
+        assert_eq!(resume_override(true), Some(false));
+    }
+
+    #[test]
+    fn pipeline_generate_options_preserve_config_resume_without_cli_flag() {
+        assert_eq!(
+            generate_options(false),
+            GenerateOptions {
+                jobs: None,
+                resume: None,
+                shard_index: None,
+                shard_count: None,
+            }
+        );
+    }
+
+    #[test]
+    fn pipeline_generate_options_disable_resume_when_flag_is_set() {
+        assert_eq!(
+            generate_options(true),
+            GenerateOptions {
+                jobs: None,
+                resume: Some(false),
+                shard_index: None,
+                shard_count: None,
+            }
+        );
+    }
 }

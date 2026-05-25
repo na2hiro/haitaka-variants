@@ -30,7 +30,7 @@ pub struct DatasetOutput {
     pub validation_positions: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GenerateOptions {
     pub jobs: Option<u32>,
     pub resume: Option<bool>,

@@ -454,6 +454,8 @@ impl Default for DataConfig {
 pub struct TrainingConfig {
     #[serde(default = "default_features")]
     pub features: String,
+    #[serde(default = "default_training_resume")]
+    pub resume: bool,
     #[serde(default = "default_num_workers")]
     pub num_workers: u32,
     #[serde(default = "default_batch_size")]
@@ -478,6 +480,7 @@ impl Default for TrainingConfig {
     fn default() -> Self {
         Self {
             features: default_features(),
+            resume: default_training_resume(),
             num_workers: default_num_workers(),
             batch_size: default_batch_size(),
             lambda_: default_lambda(),
@@ -587,6 +590,10 @@ fn default_resume() -> bool {
 
 fn default_features() -> String {
     "HalfKAv2^".to_string()
+}
+
+fn default_training_resume() -> bool {
+    true
 }
 
 fn default_num_workers() -> u32 {
