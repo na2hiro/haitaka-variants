@@ -9,7 +9,7 @@ work before a public announcement.
   - `cargo run -p haitaka_cli -- play --human black --depth 3`
   - `cargo run -p haitaka_cli --features annan -- play --human none --depth 3`
 - Engine self-play/rating command:
-  - `cargo run -p haitaka_cli --release -- self-play --games 4 --a-depth 3 --b-depth 2`
+  - `cargo run -p haitaka_cli --release -- self-play --games 4 --threads 0 --a-depth 3 --b-depth 2`
 - Legal move benchmark instructions:
   - [docs/benchmarks.md](docs/benchmarks.md)
 - Shogitter package generator:

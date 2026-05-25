@@ -4,7 +4,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::mpsc;
+use std::thread;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -81,6 +84,9 @@ struct SelfPlayArgs {
     /// Number of games to run.
     #[arg(long, default_value_t = 2)]
     games: u32,
+    /// Number of worker threads. Set to 0 to use available parallelism.
+    #[arg(long, default_value_t = 0)]
+    threads: usize,
     /// Engine A fixed search depth.
     #[arg(long = "a-depth", default_value_t = 3)]
     a_depth: u8,
@@ -234,6 +240,15 @@ struct MatchStats {
     total_plies: u64,
 }
 
+#[derive(Debug, Clone)]
+struct GameResult {
+    a_color: Color,
+    winner: Option<Seat>,
+    plies: u16,
+    total_nodes: u64,
+    total_elapsed_ms: f64,
+}
+
 fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Play(args) => play(args),
@@ -381,6 +396,33 @@ fn describe_engine(engine: &EngineConfig) -> String {
     }
 }
 
+fn resolve_self_play_threads(requested: usize, games: u32) -> usize {
+    let available = thread::available_parallelism()
+        .map(|parallelism| parallelism.get())
+        .unwrap_or(1);
+    let threads = if requested == 0 { available } else { requested };
+    threads.max(1).min(games.max(1) as usize)
+}
+
+fn format_eta(seconds: f64) -> String {
+    if !seconds.is_finite() || seconds <= 0.0 {
+        return "0s".to_string();
+    }
+
+    let total = seconds.ceil() as u64;
+    let hours = total / 3_600;
+    let minutes = (total % 3_600) / 60;
+    let secs = total % 60;
+
+    if hours > 0 {
+        format!("{hours}h{minutes:02}m{secs:02}s")
+    } else if minutes > 0 {
+        format!("{minutes}m{secs:02}s")
+    } else {
+        format!("{secs}s")
+    }
+}
+
 fn opening_seed(seed: u64, pair_index: u32, attempt: u32) -> u64 {
     seed ^ (u64::from(pair_index) << 32) ^ u64::from(attempt).wrapping_mul(0x9E37_79B9_7F4A_7C15)
 }
@@ -419,6 +461,68 @@ fn generate_opening_board(
         "failed to generate a non-terminal opening after {} random plies; try reducing --opening-random-plies",
         opening_random_plies
     )
+}
+
+fn play_self_play_game(
+    game_index: u32,
+    args: &SelfPlayArgs,
+    base_board: &Board,
+    engine_a: &EngineConfig,
+    engine_b: &EngineConfig,
+) -> Result<GameResult> {
+    let pair_index = game_index / 2;
+    let mut board =
+        generate_opening_board(base_board, args.opening_random_plies, args.seed, pair_index)?;
+    let a_color = if game_index % 2 == 0 {
+        Color::Black
+    } else {
+        Color::White
+    };
+    let mut winner = None;
+    let mut plies = 0;
+    let mut total_nodes = 0;
+    let mut total_elapsed_ms = 0.0;
+
+    for ply in 0..args.max_plies {
+        if board.status() != GameStatus::Ongoing {
+            winner = Some(if board.side_to_move() == a_color {
+                Seat::B
+            } else {
+                Seat::A
+            });
+            break;
+        }
+
+        let config = if board.side_to_move() == a_color {
+            engine_a
+        } else {
+            engine_b
+        };
+        let summary = search_with_engine(&board, config)
+            .map_err(|err| anyhow!("search failed in game {}: {err}", game_index + 1))?;
+        total_nodes += summary.states;
+        total_elapsed_ms += summary.elapsed_ms;
+        let Some(best_move) = summary.best_move else {
+            winner = Some(if config.label == "A" {
+                Seat::B
+            } else {
+                Seat::A
+            });
+            break;
+        };
+        let mv = Move::from_str(&best_move)
+            .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
+        board.play(mv);
+        plies = ply + 1;
+    }
+
+    Ok(GameResult {
+        a_color,
+        winner,
+        plies,
+        total_nodes,
+        total_elapsed_ms,
+    })
 }
 
 fn legal_moves(board: &Board) -> Vec<Move> {
@@ -530,10 +634,12 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
         args.nnue.as_deref(),
         args.b_nnue.as_deref(),
     )?;
+    let threads = resolve_self_play_threads(args.threads, args.games);
     let mut stats = MatchStats::default();
 
     println!("{}", describe_engine(&engine_a));
     println!("{}", describe_engine(&engine_b));
+    println!("self-play threads={threads}");
     if args.opening_random_plies > 0 {
         println!(
             "paired random opening plies={} seed={}",
@@ -541,74 +647,81 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
         );
     }
 
-    for game_index in 0..args.games {
-        let pair_index = game_index / 2;
-        let mut board = generate_opening_board(
-            &base_board,
-            args.opening_random_plies,
-            args.seed,
-            pair_index,
-        )?;
-        let a_color = if game_index % 2 == 0 {
-            Color::Black
-        } else {
-            Color::White
-        };
-        let mut winner = None;
-        let mut plies = 0;
+    let next_game = AtomicU32::new(0);
+    let (tx, rx) = mpsc::channel();
+    let start = Instant::now();
+    let mut completed = 0_u32;
 
-        for ply in 0..args.max_plies {
-            if board.status() != GameStatus::Ongoing {
-                winner = Some(if board.side_to_move() == a_color {
-                    Seat::B
-                } else {
-                    Seat::A
-                });
-                break;
-            }
+    thread::scope(|scope| -> Result<()> {
+        for _ in 0..threads {
+            let tx = tx.clone();
+            let args = &args;
+            let base_board = &base_board;
+            let engine_a = &engine_a;
+            let engine_b = &engine_b;
+            let next_game = &next_game;
 
-            let config = if board.side_to_move() == a_color {
-                &engine_a
-            } else {
-                &engine_b
-            };
-            let summary = search_with_engine(&board, config)
-                .map_err(|err| anyhow!("search failed in game {}: {err}", game_index + 1))?;
-            stats.total_nodes += summary.states;
-            stats.total_elapsed_ms += summary.elapsed_ms;
-            let Some(best_move) = summary.best_move else {
-                winner = Some(if config.label == "A" {
-                    Seat::B
-                } else {
-                    Seat::A
-                });
-                break;
-            };
-            let mv = Move::from_str(&best_move)
-                .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
-            board.play(mv);
-            plies = ply + 1;
+            scope.spawn(move || {
+                loop {
+                    let game_index = next_game.fetch_add(1, Ordering::Relaxed);
+                    if game_index >= args.games {
+                        break;
+                    }
+                    let result =
+                        play_self_play_game(game_index, args, base_board, engine_a, engine_b);
+                    if tx.send((game_index, result)).is_err() {
+                        break;
+                    }
+                }
+            });
         }
+        drop(tx);
 
-        stats.total_plies += u64::from(plies);
-        match winner {
-            Some(Seat::A) => stats.a_wins += 1,
-            Some(Seat::B) => stats.b_wins += 1,
-            None => stats.draws += 1,
-        }
-        println!(
-            "game {}: A({:?}) vs B({:?}) plies={} result={}",
-            game_index + 1,
-            a_color,
-            !a_color,
-            plies,
-            match winner {
+        for _ in 0..args.games {
+            let (game_index, result) = rx.recv().map_err(|err| {
+                anyhow!("self-play worker exited before reporting all games: {err}")
+            })?;
+            let result = result?;
+            let outcome = match result.winner {
                 Some(Seat::A) => "A win",
                 Some(Seat::B) => "B win",
                 None => "draw",
+            };
+
+            completed += 1;
+            stats.total_nodes += result.total_nodes;
+            stats.total_elapsed_ms += result.total_elapsed_ms;
+            stats.total_plies += u64::from(result.plies);
+            match result.winner {
+                Some(Seat::A) => stats.a_wins += 1,
+                Some(Seat::B) => stats.b_wins += 1,
+                None => stats.draws += 1,
             }
-        );
-    }
+
+            let elapsed = start.elapsed().as_secs_f64();
+            let remaining = args.games.saturating_sub(completed);
+            let eta = if completed == 0 {
+                0.0
+            } else {
+                elapsed * f64::from(remaining) / f64::from(completed)
+            };
+
+            println!(
+                "game {} done ({}/{}): A({:?}) vs B({:?}) plies={} result={} eta={}",
+                game_index + 1,
+                completed,
+                args.games,
+                result.a_color,
+                !result.a_color,
+                result.plies,
+                outcome,
+                format_eta(eta)
+            );
+            io::stdout().flush()?;
+        }
+
+        Ok(())
+    })?;
 
     let decided = stats.a_wins + stats.b_wins;
     let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
@@ -928,6 +1041,7 @@ mod tests {
         match cli.command {
             Command::SelfPlay(args) => {
                 assert_eq!(args.games, 8);
+                assert_eq!(args.threads, 0);
                 assert_eq!(args.a_depth, 4);
                 assert_eq!(args.b_depth, 4);
                 assert_eq!(args.a_eval, EngineEvalKind::Nnue);
@@ -939,6 +1053,36 @@ mod tests {
             }
             other => panic!("expected self-play command, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn cli_parses_self_play_threads_flag() {
+        let cli = Cli::try_parse_from(["haitaka", "self-play", "--threads", "6"])
+            .expect("CLI args should parse");
+
+        match cli.command {
+            Command::SelfPlay(args) => assert_eq!(args.threads, 6),
+            other => panic!("expected self-play command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn self_play_thread_count_uses_available_parallelism_when_zero() {
+        let available = thread::available_parallelism()
+            .map(|parallelism| parallelism.get())
+            .unwrap_or(1);
+
+        assert_eq!(resolve_self_play_threads(0, 2), available.min(2));
+        assert_eq!(resolve_self_play_threads(99, 2), 2);
+        assert_eq!(resolve_self_play_threads(0, 0), 1);
+    }
+
+    #[test]
+    fn format_eta_renders_compact_durations() {
+        assert_eq!(format_eta(-1.0), "0s");
+        assert_eq!(format_eta(0.4), "1s");
+        assert_eq!(format_eta(65.0), "1m05s");
+        assert_eq!(format_eta(3_661.0), "1h01m01s");
     }
 
     #[test]

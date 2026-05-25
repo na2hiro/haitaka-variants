@@ -43,6 +43,7 @@ Run a small engine-vs-engine comparison:
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 4 \
+  --threads 0 \
   --a-depth 3 \
   --b-depth 2
 ```
@@ -53,6 +54,7 @@ gap as `A - B`:
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 10 \
+  --threads 0 \
   --a-depth 4 \
   --b-depth 4 \
   --a-eval nnue \
@@ -62,7 +64,8 @@ cargo run -p haitaka_cli --release -- self-play \
 ```
 
 This treats engine A as `nnue` and engine B as `handcrafted`. Use `--a-nnue`
-or `--b-nnue` when each side should load a different model.
+or `--b-nnue` when each side should load a different model. `--threads 0`
+selects available parallelism automatically.
 
 `--opening-random-plies` is the important knob when matches look too
 deterministic from one fixed start position. The same randomized opening is used

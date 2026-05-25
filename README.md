@@ -91,6 +91,7 @@ Compare a learned NNUE against the built-in handcrafted evaluator with a single
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 100 \
+  --threads 0 \
   --a-depth 3 \
   --b-depth 3 \
   --a-eval nnue \
@@ -100,7 +101,8 @@ cargo run -p haitaka_cli --release -- self-play \
 ```
 
 The summary reports an approximate Elo-style difference as `A - B`, so positive
-numbers mean the NNUE side outscored the handcrafted side.
+numbers mean the NNUE side outscored the handcrafted side. `--threads 0` uses
+all available CPU threads; set an explicit value to cap parallel self-play.
 
 Run the core examples:
 
