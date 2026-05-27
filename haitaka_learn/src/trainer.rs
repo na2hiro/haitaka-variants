@@ -6,7 +6,7 @@ use std::time::SystemTime;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::Serialize;
 
-use crate::config::LoadedConfig;
+use crate::config::{LoadedConfig, Ruleset};
 
 #[derive(Debug, Serialize)]
 struct ExportMetadata {
@@ -49,7 +49,7 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
         artifacts.train_bin.display().to_string(),
         artifacts.validation_bin.display().to_string(),
         "--features".to_string(),
-        loaded.config.training.features.clone(),
+        loaded.training_features().to_string(),
         "--default_root_dir".to_string(),
         artifacts.logs_dir.display().to_string(),
         "--max_epochs".to_string(),
@@ -127,7 +127,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
             checkpoint.display().to_string(),
             artifacts.exported_nnue.display().to_string(),
             "--features".to_string(),
-            loaded.config.training.features.clone(),
+            loaded.training_features().to_string(),
             "--description".to_string(),
             loaded.config.export.description.clone(),
         ],
@@ -140,7 +140,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
         trainer_revision: detect_git_revision(&trainer_checkout),
-        features: loaded.config.training.features.clone(),
+        features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
     };
@@ -168,11 +168,22 @@ impl PreparedTrainer {
 
         let variant_py = trainer_checkout.join("variant.py");
         let variant_h = trainer_checkout.join("variant.h");
+        let feature_set_py = trainer_checkout.join("feature_set.py");
+        let features_py = trainer_checkout.join("features.py");
+        let donor_features_py = trainer_checkout.join("donor_features.py");
+        let training_data_loader_cpp = trainer_checkout.join("training_data_loader.cpp");
         let mut prepared = Self {
             backups: Vec::new(),
         };
-        prepared.write_with_backup(&variant_py, variant_py_contents())?;
-        prepared.write_with_backup(&variant_h, variant_h_contents())?;
+        prepared.write_with_backup(&variant_py, variant_py_contents(loaded))?;
+        prepared.write_with_backup(&variant_h, variant_h_contents(loaded))?;
+        prepared.write_with_backup(&feature_set_py, overlay_feature_set_py_contents())?;
+        prepared.write_with_backup(&features_py, overlay_features_py_contents())?;
+        prepared.write_with_backup(&donor_features_py, overlay_donor_features_py_contents())?;
+        prepared.write_with_backup(
+            &training_data_loader_cpp,
+            overlay_training_data_loader_cpp_contents(),
+        )?;
 
         if loaded.config.training.build_data_loader {
             run_command(
@@ -252,7 +263,7 @@ fn materialize_bootstrap_pt(
             bootstrap_nnue.display().to_string(),
             artifacts.bootstrap_model_pt.display().to_string(),
             "--features".to_string(),
-            loaded.config.training.features.clone(),
+            loaded.training_features().to_string(),
         ],
         trainer_checkout,
         "convert bootstrap NNUE to torch checkpoint",
@@ -343,8 +354,9 @@ fn checkpoint_validation_script() -> &'static str {
     "import sys, torch; torch.load(sys.argv[1], map_location='cpu', weights_only=False)"
 }
 
-fn variant_py_contents() -> String {
-    r#"RANKS = 9
+fn variant_py_contents(loaded: &LoadedConfig) -> String {
+    format!(
+        r#"RANKS = 9
 FILES = 9
 SQUARES = RANKS * FILES
 KING_SQUARES = RANKS * FILES
@@ -352,8 +364,10 @@ PIECE_TYPES = 10
 PIECES = 2 * PIECE_TYPES
 USE_POCKETS = True
 POCKETS = 2 * FILES if USE_POCKETS else 0
+RULESET = "{ruleset}"
+DONOR_MODE = "{donor_mode}"
 
-PIECE_VALUES = {
+PIECE_VALUES = {{
     1: 700,
     2: 800,
     3: 400,
@@ -363,26 +377,69 @@ PIECE_VALUES = {
     7: 300,
     8: 500,
     9: 900,
-}
-"#
-    .to_string()
+}}
+"#,
+        ruleset = loaded.config.rules.ruleset.as_str(),
+        donor_mode = donor_mode_py_name(loaded.config.rules.ruleset)
+    )
 }
 
-fn variant_h_contents() -> String {
-    r#"#define FILES 9
+fn variant_h_contents(loaded: &LoadedConfig) -> String {
+    format!(
+        r#"#define FILES 9
 #define RANKS 9
 #define PIECE_TYPES 10
 #define PIECE_COUNT 40
 #define POCKETS true
 #define KING_SQUARES FILES * RANKS
 #define DATA_SIZE 512
-"#
-    .to_string()
+#define HAITAKA_DONOR_MODE {}
+"#,
+        donor_mode_cpp_value(loaded.config.rules.ruleset)
+    )
+}
+
+fn overlay_feature_set_py_contents() -> String {
+    include_str!("../trainer_overlay/feature_set.py").to_string()
+}
+
+fn overlay_features_py_contents() -> String {
+    include_str!("../trainer_overlay/features.py").to_string()
+}
+
+fn overlay_donor_features_py_contents() -> String {
+    include_str!("../trainer_overlay/donor_features.py").to_string()
+}
+
+fn overlay_training_data_loader_cpp_contents() -> String {
+    include_str!("../trainer_overlay/training_data_loader.cpp").to_string()
+}
+
+fn donor_mode_py_name(ruleset: Ruleset) -> &'static str {
+    match ruleset {
+        Ruleset::Standard | Ruleset::Handicap => "none",
+        Ruleset::Annan => "single-behind",
+        Ruleset::Anhoku => "single-front",
+        Ruleset::Antouzai => "pair-left-right",
+    }
+}
+
+fn donor_mode_cpp_value(ruleset: Ruleset) -> u8 {
+    match ruleset {
+        Ruleset::Standard | Ruleset::Handicap => 0,
+        Ruleset::Annan => 1,
+        Ruleset::Anhoku => 2,
+        Ruleset::Antouzai => 3,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{
+        DataConfig, ExportConfig, LearnConfig, PathsConfig, RulesConfig, TrainingConfig,
+        VerifyConfig,
+    };
 
     #[test]
     fn checkpoint_validation_script_disables_weights_only_mode() {
@@ -391,11 +448,33 @@ mod tests {
 
     #[test]
     fn variant_overlays_match_haitaka_geometry() {
-        let py = variant_py_contents();
-        let h = variant_h_contents();
+        let loaded = LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.toml"),
+            hash_hex: "hash".to_string(),
+            config: LearnConfig {
+                rules: RulesConfig {
+                    ruleset: Ruleset::Anhoku,
+                    rule_id: None,
+                    handicap: None,
+                    opening_sfen: None,
+                },
+                paths: PathsConfig::default(),
+                data: DataConfig::default(),
+                training: TrainingConfig::default(),
+                export: ExportConfig::default(),
+                verify: VerifyConfig::default(),
+            },
+        };
+        let py = variant_py_contents(&loaded);
+        let h = variant_h_contents(&loaded);
         assert!(py.contains("PIECE_TYPES = 10"));
         assert!(py.contains("USE_POCKETS = True"));
+        assert!(py.contains("DONOR_MODE = \"single-front\""));
         assert!(h.contains("#define FILES 9"));
         assert!(h.contains("#define DATA_SIZE 512"));
+        assert!(h.contains("#define HAITAKA_DONOR_MODE 2"));
+        assert!(overlay_features_py_contents().contains("donor_features"));
+        assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
+        assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
     }
 }

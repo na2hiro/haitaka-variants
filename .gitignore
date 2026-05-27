@@ -7,3 +7,4 @@ Cargo.lock
 
 haitaka_wasm/pkg/
 haitaka_learn-out
+/.codex

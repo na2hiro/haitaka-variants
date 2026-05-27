@@ -161,6 +161,10 @@ Use the same feature flag consistently across crates when working on a variant.
 ## NNUE Notes
 
 - Standard shogi NNUE uses the same network layout as Fairy-Stockfish `HalfKAv2^`.
+- Donor-rule variants use an extra real donor block instead of overloading `^`:
+  - standard / handicap: `HalfKAv2^`
+  - Annan / Anhoku: `HalfKAv2^+DonorSingleEff`
+  - Antouzai: `HalfKAv2^+DonorPairSlots`
 - `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
   - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
 - `haitaka_learn` now supports standard, handicap, Annan, Anhoku, and Antouzai NNUE data generation / train / export / verify flows.
