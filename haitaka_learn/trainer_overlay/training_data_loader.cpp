@@ -105,7 +105,7 @@ static Square single_donor_square(Color color, Square sq) {
 }
 
 static std::array<Square, DONOR_PAIR_SLOTS> pair_donor_squares(Square sq) {
-    return {offset_square(sq, 1, 0), offset_square(sq, -1, 0)};
+    return {offset_square(sq, -1, 0), offset_square(sq, 1, 0)};
 }
 
 static std::array<Square, DONOR_KNIGHT8_SLOTS> knight8_donor_squares(Color color, Square sq) {

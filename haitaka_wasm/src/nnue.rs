@@ -5,6 +5,10 @@ use haitaka::{Board, Color, Move, Piece, Square};
 const VERSION: u32 = 0x7AF32F20;
 const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
 const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
+#[cfg(feature = "annan")]
+const DONOR_SINGLE_ANNAN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9e37_79b1;
+#[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+const DONOR_SINGLE_ANHOKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x3c6e_f362;
 const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
@@ -83,8 +87,14 @@ const fn network_hash(feature_set_hash: u32) -> u32 {
 }
 
 const HALFKAV2_NETWORK_HASH: u32 = network_hash(HALFKAV2_FEATURE_SET_HASH);
+#[cfg(feature = "annan")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANNAN_BLOCK_HASH;
+#[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANHOKU_BLOCK_HASH;
+#[cfg(not(any(feature = "annan", feature = "anhoku")))]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
-    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_BLOCK_HASH);
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_PAIR_BLOCK_HASH);
 const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
@@ -97,6 +107,7 @@ const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 enum FeatureFamily {
     HalfKAv2,
     HalfKAv2DonorSingle,
@@ -108,6 +119,7 @@ impl FeatureFamily {
     fn from_network_hash(hash: u32) -> Option<Self> {
         match hash {
             HALFKAV2_NETWORK_HASH => Some(Self::HalfKAv2),
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
@@ -1192,9 +1204,29 @@ mod tests {
         assert_eq!(PIECE_INDICES, 1_863);
         assert_eq!(HALFKAV2_REAL_FEATURES, 150_903);
         assert_eq!(HALFKAV2_NETWORK_HASH, 0x3c103e72);
+        #[cfg(feature = "annan")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1810b26d);
+        #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x0d8f62a2);
+        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
         assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
         assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0x5bf765a4);
+    }
+
+    #[test]
+    fn single_donor_hash_is_accepted_only_by_single_donor_builds() {
+        #[cfg(any(feature = "annan", feature = "anhoku"))]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
+            Some(FeatureFamily::HalfKAv2DonorSingle)
+        );
+
+        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
+            None
+        );
     }
 
     #[test]
