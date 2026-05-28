@@ -964,7 +964,7 @@ fn donor_pair_feature_index(
 ) -> usize {
     orient_square(square, perspective)
         + piece_slot(donor_piece) * SQUARES
-        + (slot + DONOR_PAIR_SLOT_COUNT * relative_color_index(perspective, color))
+        + (relative_color_index(perspective, color) + slot * Color::NUM)
             * PIECE_TYPE_COUNT
             * SQUARES
 }
@@ -1291,6 +1291,22 @@ mod tests {
             + donor_pair_feature_index(Color::Black, Color::Black, 1, Piece::Bishop, Square::E5);
         assert!(features.iter().any(|&index| index == left));
         assert!(features.iter().any(|&index| index == right));
+    }
+
+    #[test]
+    fn pair_donor_family_uses_slot_major_stride() {
+        let own_slot0 =
+            donor_pair_feature_index(Color::Black, Color::Black, 0, Piece::Gold, Square::E5);
+        let enemy_slot0 =
+            donor_pair_feature_index(Color::Black, Color::White, 0, Piece::Gold, Square::E5);
+        let own_slot1 =
+            donor_pair_feature_index(Color::Black, Color::Black, 1, Piece::Gold, Square::E5);
+
+        assert_eq!(enemy_slot0 - own_slot0, PIECE_TYPE_COUNT * SQUARES);
+        assert_eq!(
+            own_slot1 - own_slot0,
+            PIECE_TYPE_COUNT * Color::NUM * SQUARES
+        );
     }
 
     #[test]
