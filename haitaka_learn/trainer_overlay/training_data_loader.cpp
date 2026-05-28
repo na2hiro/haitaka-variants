@@ -73,6 +73,8 @@ static Square offset_square(Square sq, int file_delta, int rank_delta) {
 }
 
 static Square offset_square_from_relative(Color color, Square sq, int left, int forward) {
+    // haitaka_learn packs training squares as file = 8 - file and rank = 8 - rank,
+    // so runtime-relative donor offsets are negated on both axes in trainer space.
     const int file_delta = color == Color::White ? left : -left;
     const int rank_delta = color == Color::White ? -forward : forward;
     return offset_square(sq, file_delta, rank_delta);

@@ -1362,6 +1362,40 @@ mod tests {
     }
 
     #[test]
+    fn trainer_packing_maps_pair_donor_slots_to_overlay_order() {
+        let square = Square::E5;
+        assert_eq!(packed_delta(square, square.try_offset(1, 0).unwrap()), (-1, 0));
+        assert_eq!(packed_delta(square, square.try_offset(-1, 0).unwrap()), (1, 0));
+    }
+
+    #[test]
+    fn trainer_packing_maps_knight8_runtime_offsets_to_overlay_order() {
+        let square = Square::E5;
+        let relative_offsets = [
+            (1, 2),
+            (-1, 2),
+            (-2, 1),
+            (-2, -1),
+            (-1, -2),
+            (1, -2),
+            (2, -1),
+            (2, 1),
+        ];
+
+        for color in [Color::Black, Color::White] {
+            for (left, forward) in relative_offsets {
+                let runtime_donor = runtime_relative_square(color, square, left, forward).unwrap();
+                let expected_overlay_delta = overlay_relative_delta(color, left, forward);
+                assert_eq!(
+                    packed_delta(square, runtime_donor),
+                    expected_overlay_delta,
+                    "color={color:?}, left={left}, forward={forward}"
+                );
+            }
+        }
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -1996,6 +2030,39 @@ run_search_smoke = false
             hands: trainer_hand_counts(board),
             fullmove: board.move_number(),
         }
+    }
+
+    fn runtime_relative_square(
+        color: Color,
+        square: Square,
+        left: i8,
+        forward: i8,
+    ) -> Option<Square> {
+        let file_delta = match color {
+            Color::Black => left,
+            Color::White => -left,
+        };
+        let rank_delta = match color {
+            Color::Black => -forward,
+            Color::White => forward,
+        };
+        square.try_offset(file_delta, rank_delta)
+    }
+
+    fn overlay_relative_delta(color: Color, left: i8, forward: i8) -> (i8, i8) {
+        match color {
+            Color::Black => (-left, forward),
+            Color::White => (left, -forward),
+        }
+    }
+
+    fn packed_delta(origin: Square, target: Square) -> (i8, i8) {
+        let origin = trainer_square_index(origin);
+        let target = trainer_square_index(target);
+        (
+            (target % 9) as i8 - (origin % 9) as i8,
+            (target / 9) as i8 - (origin / 9) as i8,
+        )
     }
 
     fn decode_signature(packed: &[u8; PACKED_SFEN_BYTES]) -> FeatureSignature {
