@@ -105,6 +105,8 @@ static Square single_donor_square(Color color, Square sq) {
 }
 
 static std::array<Square, DONOR_PAIR_SLOTS> pair_donor_squares(Square sq) {
+    // Training SFEN is packed with file = 8 - haitaka_file, so trainer file -1
+    // corresponds to runtime try_offset(+1, 0), the Antouzai slot-0 donor.
     return {offset_square(sq, -1, 0), offset_square(sq, 1, 0)};
 }
 
