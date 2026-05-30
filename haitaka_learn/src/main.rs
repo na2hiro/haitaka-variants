@@ -46,6 +46,8 @@ enum Command {
     Export {
         #[arg(long)]
         config: PathBuf,
+        #[arg(long)]
+        checkpoint: Option<PathBuf>,
     },
     Verify {
         #[arg(long)]
@@ -114,9 +116,9 @@ fn main() -> Result<()> {
             let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
-        Command::Export { config } => {
+        Command::Export { config, checkpoint } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let exported = trainer::export(&loaded, None)?;
+            let exported = trainer::export(&loaded, checkpoint)?;
             println!("exported NNUE: {}", exported.display());
         }
         Command::Verify { config } => {
