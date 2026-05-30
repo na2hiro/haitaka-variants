@@ -16,6 +16,7 @@ Options:
   --output-dir DIR       Export destination. Default:
                          <output_dir>/artifacts/epoch-exports
   --start-epoch N        First epoch to export. Default: 4
+  --end-epoch N          Last epoch to export, inclusive. Default: no limit
   --step N               Epoch interval. Default: 5
   --release              Use cargo run --release.
   -h, --help             Show this help.
@@ -28,6 +29,7 @@ feature="anhoku"
 checkpoint_dir=""
 output_dir=""
 start_epoch=4
+end_epoch=""
 step=5
 release=0
 
@@ -51,6 +53,10 @@ while (($#)); do
       ;;
     --start-epoch)
       start_epoch="$2"
+      shift 2
+      ;;
+    --end-epoch)
+      end_epoch="$2"
       shift 2
       ;;
     --step)
@@ -79,6 +85,14 @@ config_dir="$(cd "$(dirname "$config")" && pwd)"
 
 if [[ ! "$start_epoch" =~ ^[0-9]+$ ]] || [[ ! "$step" =~ ^[1-9][0-9]*$ ]]; then
   echo "--start-epoch must be non-negative and --step must be positive" >&2
+  exit 2
+fi
+if [[ -n "$end_epoch" ]] && [[ ! "$end_epoch" =~ ^[0-9]+$ ]]; then
+  echo "--end-epoch must be non-negative" >&2
+  exit 2
+fi
+if [[ -n "$end_epoch" ]] && ((end_epoch < start_epoch)); then
+  echo "--end-epoch must be greater than or equal to --start-epoch" >&2
   exit 2
 fi
 
@@ -139,7 +153,7 @@ cargo_args+=(-- export --config "$config")
 
 mapfile -t checkpoints < <(
   find "$checkpoint_dir" -maxdepth 1 -type f -name '*.ckpt' -printf '%f\t%p\n' |
-    awk -F '\t' -v start="$start_epoch" -v step="$step" '
+    awk -F '\t' -v start="$start_epoch" -v end="$end_epoch" -v step="$step" '
       {
         name = $1
         if (name !~ /epoch=[0-9]+/) {
@@ -148,6 +162,9 @@ mapfile -t checkpoints < <(
         sub(/^.*epoch=/, "", name)
         sub(/[^0-9].*$/, "", name)
         epoch = name + 0
+        if (end != "" && epoch > end) {
+          next
+        }
         if (epoch >= start && ((epoch - start) % step) == 0) {
           printf "%08d\t%s\n", epoch, $2
         }
