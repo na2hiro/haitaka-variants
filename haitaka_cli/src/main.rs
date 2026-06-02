@@ -11,7 +11,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
-use haitaka_wasm::{NnueModel, SearchEvalMode};
+use haitaka_wasm::{NnueModel, SearchEvalMode, UsiSession};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
@@ -354,7 +354,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             wasm: WASM_BINDGEN_WASM,
         },
         capabilities: ManifestCapabilities {
-            protocols: vec!["shogitter-direct-v1"],
+            protocols: vec!["shogitter-direct-v1", "usi-wasm-v1"],
             commands: vec!["search", "iterative-search", "perft", "dfpn"],
             supports_ponder: false,
             supports_movetime: true,
@@ -1007,172 +1007,34 @@ fn read_human_move(board: &Board) -> Result<Move> {
 }
 
 fn usi(args: UsiArgs) -> Result<()> {
-    let mut engine = engine_config(
-        "USI",
-        SearchBudget::Depth(1),
-        args.eval,
-        args.nnue.as_deref(),
-        None,
-        None,
-        &[],
-    )?;
-    let mut board = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
+    let mut session = UsiSession::new(ENGINE_NAME, args.movetime_max_depth);
+    if args.eval == EngineEvalKind::Nnue {
+        let path = args
+            .nnue
+            .as_ref()
+            .ok_or_else(|| anyhow!("USI engine uses NNUE but no NNUE path was provided"))?;
+        let bytes =
+            fs::read(path).with_context(|| format!("failed to read NNUE {}", path.display()))?;
+        session
+            .load_nnue(&bytes)
+            .map_err(|err| anyhow!("failed to load NNUE {}: {err}", path.display()))?;
+    }
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
     for line in stdin.lock().lines() {
         let line = line.context("failed to read USI command")?;
         let command = line.trim();
-        if command.is_empty() {
-            continue;
+        if command == "quit" {
+            break;
         }
-
-        match command {
-            "quit" => break,
-            "usi" => {
-                writeln!(stdout, "id name {ENGINE_NAME}")?;
-                writeln!(stdout, "usiok")?;
-                stdout.flush()?;
-            }
-            "isready" => {
-                writeln!(stdout, "readyok")?;
-                stdout.flush()?;
-            }
-            "usinewgame" => {}
-            command if command.starts_with("position ") => match parse_usi_position(command) {
-                Ok(parsed) => board = parsed,
-                Err(err) => eprintln!("info string invalid position command: {err}"),
-            },
-            command if command.starts_with("go") => {
-                let budget = match parse_usi_go(command, args.movetime_max_depth) {
-                    Ok(budget) => budget,
-                    Err(err) => {
-                        eprintln!("info string invalid go command: {err}");
-                        continue;
-                    }
-                };
-                engine.budget = budget;
-                if board.status() != GameStatus::Ongoing {
-                    writeln!(stdout, "bestmove resign")?;
-                    stdout.flush()?;
-                    continue;
-                }
-                match search_with_engine(&board, &engine) {
-                    Ok(summary) => {
-                        let best_move = summary.best_move.as_deref().unwrap_or("resign");
-                        writeln!(stdout, "bestmove {best_move}")?;
-                    }
-                    Err(err) => {
-                        eprintln!("info string search failed: {err}");
-                        writeln!(stdout, "bestmove resign")?;
-                    }
-                }
-                stdout.flush()?;
-            }
-            other => {
-                eprintln!("info string unsupported command: {other}");
-            }
+        for output in session.handle_line(command) {
+            writeln!(stdout, "{output}")?;
         }
+        stdout.flush()?;
     }
 
     Ok(())
-}
-
-fn parse_usi_position(command: &str) -> Result<Board> {
-    let rest = command
-        .strip_prefix("position ")
-        .ok_or_else(|| anyhow!("expected position command"))?;
-    let tokens = rest.split_whitespace().collect::<Vec<_>>();
-    if tokens.is_empty() {
-        bail!("missing position body");
-    }
-
-    let mut index;
-    let mut board = match tokens[0] {
-        "startpos" => {
-            index = 1;
-            Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse")
-        }
-        "sfen" => {
-            index = 1;
-            let sfen_start = index;
-            while index < tokens.len() && tokens[index] != "moves" {
-                index += 1;
-            }
-            if sfen_start == index {
-                bail!("missing SFEN after position sfen");
-            }
-            Board::from_sfen(&tokens[sfen_start..index].join(" "))
-                .map_err(|err| anyhow!("failed to parse SFEN: {err}"))?
-        }
-        other => bail!("unsupported position source {other}"),
-    };
-
-    if index < tokens.len() {
-        if tokens[index] != "moves" {
-            bail!("unexpected token {}", tokens[index]);
-        }
-        index += 1;
-        for move_text in &tokens[index..] {
-            let mv = Move::from_str(move_text)
-                .map_err(|err| anyhow!("invalid move {move_text}: {err}"))?;
-            board
-                .try_play(mv)
-                .map_err(|_| anyhow!("illegal move {move_text}"))?;
-        }
-    }
-
-    Ok(board)
-}
-
-fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<SearchBudget> {
-    let rest = command
-        .strip_prefix("go")
-        .ok_or_else(|| anyhow!("expected go command"))?;
-    let tokens = rest.split_whitespace().collect::<Vec<_>>();
-    let mut index = 0;
-    let mut depth = None;
-    let mut movetime = None;
-
-    while index < tokens.len() {
-        match tokens[index] {
-            "depth" => {
-                index += 1;
-                let value = tokens
-                    .get(index)
-                    .ok_or_else(|| anyhow!("missing depth value"))?;
-                depth = Some(
-                    value
-                        .parse::<u8>()
-                        .with_context(|| format!("invalid depth {value}"))?,
-                );
-            }
-            "movetime" => {
-                index += 1;
-                let value = tokens
-                    .get(index)
-                    .ok_or_else(|| anyhow!("missing movetime value"))?;
-                movetime = Some(
-                    value
-                        .parse::<u32>()
-                        .with_context(|| format!("invalid movetime {value}"))?,
-                );
-            }
-            _ => {}
-        }
-        index += 1;
-    }
-
-    if let Some(depth) = depth {
-        return Ok(SearchBudget::Depth(depth.max(1)));
-    }
-    if let Some(millis) = movetime {
-        return Ok(SearchBudget::Movetime {
-            max_depth: movetime_max_depth.max(1),
-            millis,
-        });
-    }
-    bail!("only go depth N and go movetime N are supported")
 }
 
 /// Number of lines in the live status block, used to move the cursor back up.
@@ -1535,6 +1397,7 @@ mod tests {
         assert_eq!(json["runtime"]["module"], WASM_BINDGEN_MODULE);
         assert_eq!(json["runtime"]["wasm"], WASM_BINDGEN_WASM);
         assert_eq!(json["capabilities"]["protocols"][0], "shogitter-direct-v1");
+        assert_eq!(json["capabilities"]["protocols"][1], "usi-wasm-v1");
         assert_eq!(json["capabilities"]["commands"][0], "search");
         assert_eq!(json["capabilities"]["supportsPonder"], false);
         assert_eq!(json["capabilities"]["supportsMovetime"], true);
@@ -1712,45 +1575,6 @@ mod tests {
     }
 
     #[test]
-    fn parses_usi_position_startpos_and_moves() {
-        let board =
-            parse_usi_position("position startpos moves 7g7f").expect("position should parse");
-        let mut expected = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
-        expected.try_play(Move::from_str("7g7f").unwrap()).unwrap();
-        assert_eq!(board.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn parses_usi_position_sfen() {
-        let sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-        let board =
-            parse_usi_position(&format!("position sfen {sfen}")).expect("position should parse");
-        assert_eq!(board.to_string(), sfen);
-    }
-
-    #[test]
-    fn rejects_illegal_usi_position_move() {
-        let err = parse_usi_position("position startpos moves 1a1b")
-            .expect_err("illegal move should fail");
-        assert!(err.to_string().contains("illegal move"));
-    }
-
-    #[test]
-    fn parses_usi_go_budgets() {
-        assert_eq!(
-            parse_usi_go("go depth 4", 8).unwrap(),
-            SearchBudget::Depth(4)
-        );
-        assert_eq!(
-            parse_usi_go("go movetime 100", 8).unwrap(),
-            SearchBudget::Movetime {
-                max_depth: 8,
-                millis: 100
-            }
-        );
-    }
-
-    #[test]
     fn self_play_thread_count_uses_available_parallelism_when_zero() {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -1854,6 +1678,31 @@ mod tests {
         );
 
         fs::remove_dir_all(temp).expect("clean temp package dir");
+    }
+
+    #[test]
+    fn wasm_usi_future_work_plan_documents_deferred_items() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../plans/wasm-usi-future-work.md");
+        let contents = fs::read_to_string(path).expect("future work plan should exist");
+
+        for expected in [
+            "Async search and `stop`",
+            "Ponder",
+            "Full time controls",
+            "Multi-PV",
+            "USI options",
+            "Web Worker harness",
+            "Browser self-play UI",
+            "Native archive workflow",
+            "Rating and report improvements",
+            "Cross-runtime rating policy",
+        ] {
+            assert!(
+                contents.contains(expected),
+                "future work plan should mention {expected}"
+            );
+        }
     }
 
     #[cfg(feature = "annan")]

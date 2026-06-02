@@ -100,7 +100,7 @@ profile-scoped rule and NNUE declarations:
     "wasm": "engine/haitaka_wasm_bg.wasm"
   },
   "capabilities": {
-    "protocols": ["shogitter-direct-v1"],
+    "protocols": ["shogitter-direct-v1", "usi-wasm-v1"],
     "commands": ["search", "iterative-search", "perft", "dfpn"],
     "supportsPonder": false,
     "supportsMovetime": true,
@@ -145,6 +145,8 @@ When `--nnue path/to/model.nnue` is passed, the selected profile's `nnue` is:
 - `runtime.module`: archive-relative path to the generated JS glue module.
 - `runtime.wasm`: archive-relative path to the generated WASM binary.
 - `capabilities`: direct-call commands Shogitter can expect from the engine.
+  `usi-wasm-v1` means USI command strings are exchanged through JavaScript or
+  Worker calls into the WASM module, not through stdin/stdout.
 - `profiles`: packaged engine profiles. Each profile is a selectable
   engine/NNUE configuration with its own rule list.
 - `profiles[].nnue`: optional archive-relative NNUE model descriptor for that

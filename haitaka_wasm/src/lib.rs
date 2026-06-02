@@ -1,6 +1,7 @@
 mod nnue;
 
 use std::cmp::Reverse;
+use std::str::FromStr;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
@@ -11,6 +12,7 @@ use wasm_bindgen::prelude::*;
 const INF_SCORE: i32 = 1_000_000;
 const MATE_SCORE: i32 = 100_000;
 const MOBILITY_WEIGHT: i32 = 2;
+const ENGINE_NAME: &str = "Haitaka Variants";
 const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
     Piece::Pawn,
     Piece::Lance,
@@ -439,6 +441,222 @@ fn search_board_with_strategy(
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UsiSearchBudget {
+    Depth(u8),
+    Movetime { max_depth: u8, millis: u32 },
+}
+
+#[derive(Debug, Clone)]
+pub struct UsiSession {
+    engine_name: String,
+    board: Board,
+    nnue_model: Option<Arc<NnueModel>>,
+    movetime_max_depth: u8,
+}
+
+impl Default for UsiSession {
+    fn default() -> Self {
+        Self::new(ENGINE_NAME, 64)
+    }
+}
+
+impl UsiSession {
+    pub fn new(engine_name: impl Into<String>, movetime_max_depth: u8) -> Self {
+        Self {
+            engine_name: engine_name.into(),
+            board: Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse"),
+            nnue_model: None,
+            movetime_max_depth: movetime_max_depth.max(1),
+        }
+    }
+
+    pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, String> {
+        let model =
+            NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
+        let description = model.description().to_string();
+        self.nnue_model = Some(Arc::new(model));
+        Ok(description)
+    }
+
+    pub fn handle_line(&mut self, line: &str) -> Vec<String> {
+        let command = line.trim();
+        if command.is_empty() {
+            return Vec::new();
+        }
+
+        match command {
+            "usi" => vec![format!("id name {}", self.engine_name), "usiok".to_string()],
+            "isready" => vec!["readyok".to_string()],
+            "usinewgame" => Vec::new(),
+            "quit" => Vec::new(),
+            command if command.starts_with("position ") => {
+                if let Err(err) = self.apply_position(command) {
+                    vec![format!("info string invalid position command: {err}")]
+                } else {
+                    Vec::new()
+                }
+            }
+            command if command.starts_with("go") => {
+                match parse_usi_go(command, self.movetime_max_depth) {
+                    Ok(budget) => vec![format!("bestmove {}", self.bestmove_for_budget(budget))],
+                    Err(err) => vec![format!("info string invalid go command: {err}")],
+                }
+            }
+            other => vec![format!("info string unsupported command: {other}")],
+        }
+    }
+
+    pub fn board_sfen(&self) -> String {
+        self.board.to_string()
+    }
+
+    fn apply_position(&mut self, command: &str) -> Result<(), String> {
+        self.board = parse_usi_position(command)?;
+        Ok(())
+    }
+
+    fn bestmove_for_budget(&self, budget: UsiSearchBudget) -> String {
+        if self.board.status() != haitaka::GameStatus::Ongoing {
+            return "resign".to_string();
+        }
+
+        let result = match budget {
+            UsiSearchBudget::Depth(depth) => {
+                search_board_with_strategy(&self.board, depth, self.evaluation_strategy(), None)
+                    .map_err(|_| "search timed out unexpectedly".to_string())
+                    .map(|summary| summary.best_move)
+            }
+            UsiSearchBudget::Movetime { max_depth, millis } => {
+                search_iterative_deepening_with_strategy(
+                    &self.board.to_string(),
+                    max_depth,
+                    millis,
+                    self.evaluation_strategy(),
+                    IterativeSearchConfig::default(),
+                )
+                .map(|summary| summary.best_move)
+            }
+        };
+
+        match result {
+            Ok(Some(best_move)) => best_move,
+            Ok(None) => "resign".to_string(),
+            Err(err) => {
+                let _ = err;
+                "resign".to_string()
+            }
+        }
+    }
+
+    fn evaluation_strategy(&self) -> EvaluationStrategy {
+        match self.nnue_model.as_ref() {
+            Some(model) => EvaluationStrategy::Nnue {
+                model: Arc::clone(model),
+                mode: SearchEvalMode::Incremental,
+            },
+            None => EvaluationStrategy::Handcrafted,
+        }
+    }
+}
+
+fn parse_usi_position(command: &str) -> Result<Board, String> {
+    let rest = command
+        .strip_prefix("position ")
+        .ok_or_else(|| "expected position command".to_string())?;
+    let tokens = rest.split_whitespace().collect::<Vec<_>>();
+    if tokens.is_empty() {
+        return Err("missing position body".to_string());
+    }
+
+    let mut index;
+    let mut board = match tokens[0] {
+        "startpos" => {
+            index = 1;
+            Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse")
+        }
+        "sfen" => {
+            index = 1;
+            let sfen_start = index;
+            while index < tokens.len() && tokens[index] != "moves" {
+                index += 1;
+            }
+            if sfen_start == index {
+                return Err("missing SFEN after position sfen".to_string());
+            }
+            Board::from_sfen(&tokens[sfen_start..index].join(" "))
+                .map_err(|err| format!("failed to parse SFEN: {err}"))?
+        }
+        other => return Err(format!("unsupported position source {other}")),
+    };
+
+    if index < tokens.len() {
+        if tokens[index] != "moves" {
+            return Err(format!("unexpected token {}", tokens[index]));
+        }
+        index += 1;
+        for move_text in &tokens[index..] {
+            let mv = Move::from_str(move_text)
+                .map_err(|err| format!("invalid move {move_text}: {err}"))?;
+            board
+                .try_play(mv)
+                .map_err(|_| format!("illegal move {move_text}"))?;
+        }
+    }
+
+    Ok(board)
+}
+
+fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget, String> {
+    let rest = command
+        .strip_prefix("go")
+        .ok_or_else(|| "expected go command".to_string())?;
+    let tokens = rest.split_whitespace().collect::<Vec<_>>();
+    let mut index = 0;
+    let mut depth = None;
+    let mut movetime = None;
+
+    while index < tokens.len() {
+        match tokens[index] {
+            "depth" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| "missing depth value".to_string())?;
+                depth = Some(
+                    value
+                        .parse::<u8>()
+                        .map_err(|_| format!("invalid depth {value}"))?,
+                );
+            }
+            "movetime" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| "missing movetime value".to_string())?;
+                movetime = Some(
+                    value
+                        .parse::<u32>()
+                        .map_err(|_| format!("invalid movetime {value}"))?,
+                );
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+
+    if let Some(depth) = depth {
+        return Ok(UsiSearchBudget::Depth(depth.max(1)));
+    }
+    if let Some(millis) = movetime {
+        return Ok(UsiSearchBudget::Movetime {
+            max_depth: movetime_max_depth.max(1),
+            millis,
+        });
+    }
+    Err("only go depth N and go movetime N are supported".to_string())
+}
+
 fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
     let max_time_ms = if timeout_ms == 0 {
         None
@@ -776,6 +994,42 @@ pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
 #[wasm_bindgen(js_name = load_nnue)]
 pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
+}
+
+#[wasm_bindgen]
+pub struct UsiEngine {
+    session: UsiSession,
+}
+
+#[wasm_bindgen]
+impl UsiEngine {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            session: UsiSession::default(),
+        }
+    }
+
+    #[wasm_bindgen(js_name = load_nnue)]
+    pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, JsValue> {
+        self.session
+            .load_nnue(bytes)
+            .map_err(|err| JsValue::from_str(&err))
+    }
+
+    pub fn send(&mut self, line: &str) -> js_sys::Array {
+        self.session
+            .handle_line(line)
+            .into_iter()
+            .map(JsValue::from)
+            .collect()
+    }
+}
+
+impl Default for UsiEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[wasm_bindgen]
@@ -1197,6 +1451,64 @@ mod tests {
         let mut child = board.clone();
         child.play_unchecked(mv);
         child
+    }
+
+    #[test]
+    fn usi_session_reports_id_and_ready() {
+        let mut session = UsiSession::default();
+        assert_eq!(
+            session.handle_line("usi"),
+            vec!["id name Haitaka Variants".to_string(), "usiok".to_string()]
+        );
+        assert_eq!(session.handle_line("isready"), vec!["readyok".to_string()]);
+    }
+
+    #[test]
+    fn usi_session_applies_startpos_moves() {
+        let mut session = UsiSession::default();
+        let output = session.handle_line("position startpos moves 7g7f");
+        assert!(output.is_empty(), "unexpected output: {output:?}");
+
+        let mut expected = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        expected.try_play(Move::from_str("7g7f").unwrap()).unwrap();
+        assert_eq!(session.board_sfen(), expected.to_string());
+    }
+
+    #[test]
+    fn usi_session_rejects_bad_position_without_corrupting_board() {
+        let mut session = UsiSession::default();
+        let before = session.board_sfen();
+        let output = session.handle_line("position startpos moves 1a1b");
+
+        assert_eq!(session.board_sfen(), before);
+        assert_eq!(output.len(), 1);
+        assert!(output[0].contains("invalid position command"));
+        assert!(output[0].contains("illegal move"));
+    }
+
+    #[test]
+    fn usi_session_returns_legal_bestmove_for_depth_search() {
+        let mut session = UsiSession::default();
+        assert!(session.handle_line("position startpos").is_empty());
+        let output = session.handle_line("go depth 1");
+
+        assert_eq!(output.len(), 1);
+        let best_move = output[0]
+            .strip_prefix("bestmove ")
+            .expect("expected bestmove output");
+        assert_ne!(best_move, "resign");
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        let mv = Move::from_str(best_move).expect("bestmove should parse");
+        assert!(board.is_legal(mv), "{best_move} should be legal");
+    }
+
+    #[test]
+    fn usi_session_reports_unsupported_command() {
+        let mut session = UsiSession::default();
+        let output = session.handle_line("setoption name Hash value 16");
+
+        assert_eq!(output.len(), 1);
+        assert!(output[0].contains("unsupported command"));
     }
 
     #[cfg(any(
