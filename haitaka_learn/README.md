@@ -102,7 +102,14 @@ Key fields:
   - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
-  - `resume = true` reuses completed shard files after interruptions
+  - `resume = true` reuses completed shard files after interruptions. Each shard records the
+    git revision and a config-file hash; if a resumed shard's revision or config hash differs
+    from the current run (e.g. a local patch that doesn't affect data generation, or a
+    comment-only config edit), `generate-data` reports how much of the run's data is affected
+    and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
+    Pass `--ignore-identity-mismatch` to reuse them non-interactively (e.g. on sharded/CI runs).
+    Throughput (`speed`) and `eta` are computed from freshly generated games only, so restored
+    shards no longer distort them.
 - `[training]`
   - `features` defaults to the recommended family for the selected ruleset
   - standard / handicap keep `HalfKAv2^`
@@ -152,6 +159,10 @@ Merge shard outputs copied back from multiple machines:
 ```bash
 cargo run -p haitaka_learn -- merge-data --config haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
 ```
+
+`merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
+expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
+`--ignore-identity-mismatch` to skip those two checks.
 
 ### 2. Train
 

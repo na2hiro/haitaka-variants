@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
-use std::io::{BufWriter, Read, Write};
+use std::io::{BufWriter, IsTerminal, Read, Write, stdin};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -36,6 +36,7 @@ pub struct GenerateOptions {
     pub resume: Option<bool>,
     pub shard_index: Option<u32>,
     pub shard_count: Option<u32>,
+    pub ignore_identity_mismatch: bool,
 }
 
 impl GenerateOptions {
@@ -45,6 +46,7 @@ impl GenerateOptions {
             resume: Some(loaded.config.data.resume),
             shard_index: None,
             shard_count: None,
+            ignore_identity_mismatch: false,
         }
     }
 }
@@ -204,6 +206,16 @@ pub fn generate_data_with_options(
     let shard_selector = ShardSelector::new(options.shard_index, options.shard_count)?;
     let jobs = resolve_jobs(options.jobs.unwrap_or(loaded.config.data.jobs))?;
     let resume = options.resume.unwrap_or(loaded.config.data.resume);
+    let allow_identity_mismatch = resolve_identity_mismatch(
+        loaded,
+        &artifacts,
+        &teacher,
+        &opening_sfen,
+        &engine_revision,
+        shard_selector,
+        resume,
+        options.ignore_identity_mismatch,
+    )?;
     let started = Instant::now();
 
     let train_positions = generate_split(
@@ -218,6 +230,7 @@ pub fn generate_data_with_options(
         jobs,
         resume,
         shard_selector,
+        allow_identity_mismatch,
     )?;
     let validation_positions = generate_split(
         "validation",
@@ -231,6 +244,7 @@ pub fn generate_data_with_options(
         jobs,
         resume,
         shard_selector,
+        allow_identity_mismatch,
     )?;
 
     println!(
@@ -257,6 +271,7 @@ fn generate_split(
     jobs: usize,
     resume: bool,
     shard_selector: ShardSelector,
+    allow_identity_mismatch: bool,
 ) -> Result<u64> {
     let (bin_path, manifest_path) = match dataset_name {
         "train" => (&artifacts.train_bin, &artifacts.train_manifest),
@@ -305,6 +320,7 @@ fn generate_split(
                         generated_at_unix_ms,
                         plan,
                         resume,
+                        allow_identity_mismatch,
                     )?;
                     progress.lock().unwrap().record(&result);
                     results.lock().unwrap().push(result);
@@ -373,7 +389,11 @@ fn generate_split(
     Ok(sampled_positions)
 }
 
-pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<DatasetOutput> {
+pub fn merge_data(
+    loaded: &LoadedConfig,
+    input_dirs: &[PathBuf],
+    ignore_identity_mismatch: bool,
+) -> Result<DatasetOutput> {
     loaded.ruleset_requires_matching_engine()?;
     if input_dirs.is_empty() {
         bail!("merge-data requires at least one --input directory");
@@ -396,6 +416,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         loaded.config.data.train_games,
         &opening_sfen,
         generated_at_unix_ms,
+        ignore_identity_mismatch,
     )?;
     let validation_positions = merge_split(
         "validation",
@@ -406,6 +427,7 @@ pub fn merge_data(loaded: &LoadedConfig, input_dirs: &[PathBuf]) -> Result<Datas
         loaded.config.data.validation_games,
         &opening_sfen,
         generated_at_unix_ms,
+        ignore_identity_mismatch,
     )?;
 
     Ok(DatasetOutput {
@@ -583,6 +605,7 @@ fn generate_or_reuse_shard(
     generated_at_unix_ms: u128,
     plan: ShardPlan,
     resume: bool,
+    allow_identity_mismatch: bool,
 ) -> Result<ShardResult> {
     let shards_dir = artifacts.datasets_dir.join("shards").join(dataset_name);
     fs::create_dir_all(&shards_dir)
@@ -600,6 +623,7 @@ fn generate_or_reuse_shard(
             plan,
             &bin_path,
             &manifest_path,
+            allow_identity_mismatch,
         )? {
             return Ok(result);
         }
@@ -668,6 +692,7 @@ fn reusable_shard(
     plan: ShardPlan,
     bin_path: &Path,
     manifest_path: &Path,
+    allow_identity_mismatch: bool,
 ) -> Result<Option<ShardResult>> {
     if !bin_path.exists() || !manifest_path.exists() {
         return Ok(None);
@@ -677,10 +702,23 @@ fn reusable_shard(
             .with_context(|| format!("failed to read {}", manifest_path.display()))?,
     )
     .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
-    if !shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest)? {
+    if !shard_manifest_matches(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        plan,
+        &manifest,
+        allow_identity_mismatch,
+    )? {
         return Ok(None);
     }
-    if !shard_teacher_matches(loaded, teacher, engine_revision, &manifest) {
+    if !shard_teacher_matches(
+        loaded,
+        teacher,
+        engine_revision,
+        &manifest,
+        allow_identity_mismatch,
+    ) {
         return Ok(None);
     }
     let expected_len = manifest
@@ -706,6 +744,7 @@ fn shard_manifest_matches(
     opening_sfen: &str,
     plan: ShardPlan,
     manifest: &ShardManifest,
+    ignore_identity: bool,
 ) -> Result<bool> {
     Ok(manifest.dataset == dataset_name
         && manifest.ruleset == loaded.config.rules.ruleset
@@ -714,7 +753,7 @@ fn shard_manifest_matches(
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
         && manifest.search_depth == loaded.config.data.search_depth
-        && manifest.config_hash == loaded.hash_hex
+        && (ignore_identity || manifest.config_hash == loaded.hash_hex)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
 }
@@ -724,11 +763,135 @@ fn shard_teacher_matches(
     teacher: &Teacher,
     engine_revision: &Option<String>,
     manifest: &ShardManifest,
+    ignore_identity: bool,
 ) -> bool {
     manifest.bootstrap_nnue == bootstrap_nnue_path(loaded)
         && manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string)
-        && manifest.engine_revision == *engine_revision
+        && (ignore_identity || manifest.engine_revision == *engine_revision)
         && manifest.build_mode == teacher_build_mode(loaded, teacher)
+}
+
+enum MismatchChoice {
+    Abort,
+    Reuse,
+    Regenerate,
+}
+
+/// Decides whether resumed shards with a mismatching git revision or config hash
+/// may be reused. Returns `true` when such shards should be reused as-is.
+#[allow(clippy::too_many_arguments)]
+fn resolve_identity_mismatch(
+    loaded: &LoadedConfig,
+    artifacts: &ArtifactPaths,
+    teacher: &Teacher,
+    opening_sfen: &str,
+    engine_revision: &Option<String>,
+    shard_selector: ShardSelector,
+    resume: bool,
+    ignore_identity_mismatch: bool,
+) -> Result<bool> {
+    if ignore_identity_mismatch {
+        return Ok(true);
+    }
+    if !resume {
+        return Ok(false);
+    }
+    let (mismatched_games, total_games) = detect_identity_mismatch(
+        loaded,
+        artifacts,
+        teacher,
+        opening_sfen,
+        engine_revision,
+        shard_selector,
+    )?;
+    if mismatched_games == 0 {
+        return Ok(false);
+    }
+    let percent = if total_games == 0 {
+        0.0
+    } else {
+        f64::from(mismatched_games) / f64::from(total_games) * 100.0
+    };
+    match prompt_identity_mismatch_choice(percent)? {
+        MismatchChoice::Abort => bail!(
+            "aborting: existing shards have a mismatching git revision and/or config hash. \
+             Re-run with --ignore-identity-mismatch to reuse them, or with --no-resume to regenerate."
+        ),
+        MismatchChoice::Reuse => Ok(true),
+        MismatchChoice::Regenerate => Ok(false),
+    }
+}
+
+/// Scans the shards this run would produce (our lane only) and counts how many
+/// games sit in shards that would be reusable if and only if the git revision /
+/// config hash checks were relaxed. Returns `(mismatched_games, total_games)`.
+fn detect_identity_mismatch(
+    loaded: &LoadedConfig,
+    artifacts: &ArtifactPaths,
+    teacher: &Teacher,
+    opening_sfen: &str,
+    engine_revision: &Option<String>,
+    shard_selector: ShardSelector,
+) -> Result<(u32, u32)> {
+    let mut mismatched_games = 0u32;
+    let mut total_games = 0u32;
+    for (dataset_name, game_count) in [
+        ("train", loaded.config.data.train_games),
+        ("validation", loaded.config.data.validation_games),
+    ] {
+        let shards_dir = artifacts.datasets_dir.join("shards").join(dataset_name);
+        let plans = shard_plans(game_count, loaded.config.data.shard_games, shard_selector);
+        for plan in plans {
+            total_games += plan.game_count;
+            let manifest_path = shards_dir.join(format!("shard-{:06}.json", plan.shard_index));
+            if !manifest_path.exists() {
+                continue;
+            }
+            let Ok(bytes) = fs::read(&manifest_path) else {
+                continue;
+            };
+            let Ok(manifest) = serde_json::from_slice::<ShardManifest>(&bytes) else {
+                continue;
+            };
+            let strict =
+                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, false)?
+                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
+            let relaxed =
+                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, true)?
+                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
+            if relaxed && !strict {
+                mismatched_games += plan.game_count;
+            }
+        }
+    }
+    Ok((mismatched_games, total_games))
+}
+
+fn prompt_identity_mismatch_choice(percent: f64) -> Result<MismatchChoice> {
+    println!(
+        "Identity mismatch (git revision and/or config hash) found in existing shards \
+         covering {percent:.1}% of this run's data."
+    );
+    if !stdin().is_terminal() {
+        println!(
+            "  stdin is not interactive; aborting. Re-run with --ignore-identity-mismatch to reuse."
+        );
+        return Ok(MismatchChoice::Abort);
+    }
+    println!("  1) Abort");
+    println!("  2) Resume, reusing the mismatched shards as-is");
+    println!("  3) Discard the mismatched shards and regenerate them");
+    print!("Choice [1/2/3] (default 1): ");
+    std::io::stdout().flush().ok();
+    let mut line = String::new();
+    if stdin().read_line(&mut line)? == 0 {
+        return Ok(MismatchChoice::Abort);
+    }
+    Ok(match line.trim() {
+        "2" => MismatchChoice::Reuse,
+        "3" => MismatchChoice::Regenerate,
+        _ => MismatchChoice::Abort,
+    })
 }
 
 fn generate_game_entries(
@@ -862,6 +1025,7 @@ fn merge_split(
     game_count: u32,
     opening_sfen: &str,
     generated_at_unix_ms: u128,
+    ignore_identity_mismatch: bool,
 ) -> Result<u64> {
     let started = Instant::now();
     let mut by_start = BTreeMap::new();
@@ -888,6 +1052,7 @@ fn merge_split(
                 opening_sfen,
                 &mut teacher_identity,
                 &manifest,
+                ignore_identity_mismatch,
             )
             .with_context(|| format!("invalid shard manifest {}", path.display()))?;
             let bin = path.with_extension("bin");
@@ -974,6 +1139,7 @@ fn validate_merge_shard(
     opening_sfen: &str,
     teacher_identity: &mut Option<MergeTeacherIdentity>,
     manifest: &ShardManifest,
+    ignore_identity_mismatch: bool,
 ) -> Result<()> {
     ensure_merge(
         manifest.dataset == dataset_name,
@@ -995,11 +1161,13 @@ fn validate_merge_shard(
         manifest.search_depth == loaded.config.data.search_depth,
         "search_depth does not match",
     )?;
-    ensure_merge(
-        manifest.config_hash == loaded.hash_hex,
-        "config_hash does not match",
-    )?;
-    validate_merge_teacher_identity(teacher_identity, manifest)?;
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.config_hash == loaded.hash_hex,
+            "config_hash does not match. If you're sure to continue merging using mismatching identity, rerun with --ignore-identity-mismatch flag",
+        )?;
+    }
+    validate_merge_teacher_identity(teacher_identity, manifest, ignore_identity_mismatch)?;
     ensure_merge(
         manifest.entry_bytes == ENTRY_BYTES,
         "entry_bytes does not match",
@@ -1010,6 +1178,7 @@ fn validate_merge_shard(
 fn validate_merge_teacher_identity(
     expected: &mut Option<MergeTeacherIdentity>,
     manifest: &ShardManifest,
+    ignore_identity_mismatch: bool,
 ) -> Result<()> {
     let current = MergeTeacherIdentity::from_manifest(manifest);
     if let Some(expected) = expected.as_ref() {
@@ -1017,10 +1186,12 @@ fn validate_merge_teacher_identity(
             current.bootstrap_nnue_sha256 == expected.bootstrap_nnue_sha256,
             "bootstrap_nnue_sha256 does not match",
         )?;
-        ensure_merge(
-            current.engine_revision == expected.engine_revision,
-            "engine_revision does not match",
-        )?;
+        if !ignore_identity_mismatch {
+            ensure_merge(
+                current.engine_revision == expected.engine_revision,
+                "engine_revision does not match. If you're sure to continue merging using mismatching identity, rerun with --ignore-identity-mismatch flag",
+            )?;
+        }
         ensure_merge(
             current.build_mode == expected.build_mode,
             "build_mode does not match",
@@ -1478,6 +1649,7 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: None,
                 shard_count: None,
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
@@ -1488,6 +1660,7 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: None,
                 shard_count: None,
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
@@ -1565,6 +1738,98 @@ run_search_smoke = false
         feature = "antouzai",
         not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
     ))]
+    fn resume_reuses_mismatched_shards_when_identity_ignored() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-ignore-identity.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["config_hash"] = serde_json::Value::String("stale-config-hash".to_string());
+            manifest["engine_revision"] = serde_json::Value::String("other-revision".to_string());
+        });
+        generate_data_with_options(
+            &loaded,
+            GenerateOptions {
+                jobs: Some(1),
+                resume: Some(true),
+                shard_index: None,
+                shard_count: None,
+                ignore_identity_mismatch: true,
+            },
+        )
+        .unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
+        assert_eq!(manifest["generated_shards"].as_u64().unwrap(), 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
+    fn detect_identity_mismatch_counts_mismatched_games() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("detect-identity.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let artifacts = loaded.artifact_paths();
+        let teacher = Teacher::from_config(&loaded).unwrap();
+        let opening_sfen = loaded.opening_sfen().unwrap();
+        let engine_revision = detect_git_revision(&loaded).unwrap();
+        let selector = ShardSelector::new(None, None).unwrap();
+
+        let (before, total) = detect_identity_mismatch(
+            &loaded,
+            &artifacts,
+            &teacher,
+            &opening_sfen,
+            &engine_revision,
+            selector,
+        )
+        .unwrap();
+        assert_eq!(before, 0);
+        assert!(total > 0);
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["config_hash"] = serde_json::Value::String("stale-config-hash".to_string());
+        });
+        let (after, _) = detect_identity_mismatch(
+            &loaded,
+            &artifacts,
+            &teacher,
+            &opening_sfen,
+            &engine_revision,
+            selector,
+        )
+        .unwrap();
+        assert!(after > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
     fn merge_data_combines_distributed_shards() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge.toml");
@@ -1582,6 +1847,7 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: Some(0),
                 shard_count: Some(2),
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
@@ -1595,13 +1861,14 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: Some(1),
                 shard_count: Some(2),
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
         let second_input = temp.path().join("machine-b");
         fs::rename(loaded.artifact_paths().output_dir, &second_input).unwrap();
 
-        let output = merge_data(&loaded, &[first_input, second_input]).unwrap();
+        let output = merge_data(&loaded, &[first_input, second_input], false).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
         assert!(loaded.artifact_paths().train_bin.exists());
@@ -1632,6 +1899,7 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: Some(0),
                 shard_count: Some(2),
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
@@ -1645,6 +1913,7 @@ run_search_smoke = false
                 resume: Some(false),
                 shard_index: Some(1),
                 shard_count: Some(2),
+                ignore_identity_mismatch: false,
             },
         )
         .unwrap();
@@ -1659,7 +1928,7 @@ run_search_smoke = false
                 .exists()
         );
 
-        let output = merge_data(&loaded, &[first_input, second_input]).unwrap();
+        let output = merge_data(&loaded, &[first_input, second_input], false).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
     }
@@ -1688,8 +1957,44 @@ run_search_smoke = false
             manifest["engine_revision"] = serde_json::Value::String("other-revision".to_string());
         });
 
-        let err = format!("{:?}", merge_data(&loaded, &[input]).unwrap_err());
+        let err = format!("{:?}", merge_data(&loaded, &[input], false).unwrap_err());
         assert!(err.contains("engine_revision does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    ))]
+    fn merge_ignores_identity_mismatch_with_flag() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-ignore-identity.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["config_hash"] = serde_json::Value::String("stale-config-hash".to_string());
+        });
+
+        let err = format!(
+            "{:?}",
+            merge_data(&loaded, &[input.clone()], false).unwrap_err()
+        );
+        assert!(err.contains("config_hash does not match"));
+        assert!(err.contains("--ignore-identity-mismatch"));
+
+        let output = merge_data(&loaded, &[input], true).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
     }
 
     #[test]
@@ -1719,7 +2024,7 @@ run_search_smoke = false
             });
         }
 
-        let output = merge_data(&loaded, &[input]).unwrap();
+        let output = merge_data(&loaded, &[input], false).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
     }
@@ -1755,7 +2060,7 @@ run_search_smoke = false
             });
         }
 
-        let output = merge_data(&loaded, &[input]).unwrap();
+        let output = merge_data(&loaded, &[input], false).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
     }
