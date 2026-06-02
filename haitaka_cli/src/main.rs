@@ -1,18 +1,17 @@
 use std::fs;
-use std::io::{self, IsTerminal, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command as ProcessCommand;
+use std::process::{Child, ChildStdin, Command as ProcessCommand, Stdio};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
-use haitaka_wasm::{NnueModel, SearchEvalMode, SearchSummary};
+use haitaka_wasm::{NnueModel, SearchEvalMode};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::Serialize;
@@ -31,6 +30,10 @@ const OPTIONAL_WASM_FILES: [&str; 4] = [
     "package.json",
     "README.md",
 ];
+const USI_STARTUP_TIMEOUT: Duration = Duration::from_secs(5);
+const USI_DEPTH_SEARCH_TIMEOUT: Duration = Duration::from_secs(30);
+const USI_SEARCH_TIMEOUT_GRACE: Duration = Duration::from_secs(5);
+const USI_STDERR_LIMIT: usize = 50;
 
 #[derive(Debug, Parser)]
 #[command(name = "haitaka")]
@@ -44,6 +47,8 @@ struct Cli {
 enum Command {
     /// Play or debug one side against the built-in search.
     Play(PlayArgs),
+    /// Run the engine as a minimal USI subprocess.
+    Usi(UsiArgs),
     /// Run engine-vs-engine games and report a small-sample rating estimate.
     SelfPlay(SelfPlayArgs),
     /// Create a Shogitter-consumable engine package archive.
@@ -64,6 +69,19 @@ struct PlayArgs {
     /// Maximum plies before the session stops.
     #[arg(long, default_value_t = 200)]
     max_plies: u16,
+}
+
+#[derive(Debug, Parser)]
+struct UsiArgs {
+    /// Evaluator used by the USI engine.
+    #[arg(long = "eval", value_enum, default_value = "handcrafted")]
+    eval: EngineEvalKind,
+    /// NNUE file used when --eval nnue is selected.
+    #[arg(long)]
+    nnue: Option<PathBuf>,
+    /// Maximum depth used for `go movetime`.
+    #[arg(long, default_value_t = 64)]
+    movetime_max_depth: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -108,6 +126,21 @@ struct SelfPlayArgs {
     /// Engine B NNUE file override.
     #[arg(long = "b-nnue")]
     b_nnue: Option<PathBuf>,
+    /// External USI engine executable for side A.
+    #[arg(long = "a-engine")]
+    a_engine: Option<PathBuf>,
+    /// Argument appended after `usi` when launching side A's external engine.
+    #[arg(long = "a-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
+    a_engine_args: Vec<String>,
+    /// External USI engine executable for side B.
+    #[arg(long = "b-engine")]
+    b_engine: Option<PathBuf>,
+    /// Argument appended after `usi` when launching side B's external engine.
+    #[arg(long = "b-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
+    b_engine_args: Vec<String>,
+    /// Shared movetime budget in milliseconds. If set, both sides use movetime.
+    #[arg(long)]
+    movetime_ms: Option<u32>,
     /// Starting SFEN. Defaults to the ruleset start position.
     #[arg(long)]
     sfen: Option<String>,
@@ -217,7 +250,7 @@ enum Seat {
 #[derive(Debug, Clone)]
 struct EngineConfig {
     label: &'static str,
-    depth: u8,
+    budget: SearchBudget,
     evaluator: EngineEvaluator,
 }
 
@@ -228,6 +261,23 @@ enum EngineEvaluator {
         path: PathBuf,
         model: Arc<NnueModel>,
     },
+    External {
+        path: PathBuf,
+        args: Vec<String>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SearchBudget {
+    Depth(u8),
+    Movetime { max_depth: u8, millis: u32 },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct EngineSearchResult {
+    best_move: Option<String>,
+    total_nodes: u64,
+    elapsed_ms: f64,
 }
 
 #[derive(Debug, Default)]
@@ -252,6 +302,7 @@ struct GameResult {
 fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Play(args) => play(args),
+        Command::Usi(args) => usi(args),
         Command::SelfPlay(args) => self_play(args),
         Command::Package(args) => package(args),
     }
@@ -339,60 +390,168 @@ fn load_nnue_model(path: &Path) -> Result<Arc<NnueModel>> {
 
 fn engine_config(
     label: &'static str,
-    depth: u8,
+    budget: SearchBudget,
     evaluator: EngineEvalKind,
     shared_nnue: Option<&Path>,
     side_nnue: Option<&Path>,
+    external_engine: Option<&Path>,
+    external_args: &[String],
 ) -> Result<EngineConfig> {
-    let evaluator = match evaluator {
-        EngineEvalKind::Handcrafted => EngineEvaluator::Handcrafted,
-        EngineEvalKind::Nnue => {
-            let path = side_nnue
-                .or(shared_nnue)
-                .ok_or_else(|| anyhow!("{label} uses NNUE but no NNUE path was provided"))?;
-            EngineEvaluator::Nnue {
-                path: path.to_path_buf(),
-                model: load_nnue_model(path)?,
+    let evaluator = if let Some(path) = external_engine {
+        EngineEvaluator::External {
+            path: path.to_path_buf(),
+            args: external_args.to_vec(),
+        }
+    } else {
+        match evaluator {
+            EngineEvalKind::Handcrafted => EngineEvaluator::Handcrafted,
+            EngineEvalKind::Nnue => {
+                let path = side_nnue
+                    .or(shared_nnue)
+                    .ok_or_else(|| anyhow!("{label} uses NNUE but no NNUE path was provided"))?;
+                EngineEvaluator::Nnue {
+                    path: path.to_path_buf(),
+                    model: load_nnue_model(path)?,
+                }
             }
         }
     };
 
     Ok(EngineConfig {
         label,
-        depth,
+        budget,
         evaluator,
     })
 }
 
-fn search_with_engine(board: &Board, engine: &EngineConfig) -> Result<SearchSummary> {
+fn search_with_engine(board: &Board, engine: &EngineConfig) -> Result<EngineSearchResult> {
     match &engine.evaluator {
-        EngineEvaluator::Handcrafted => {
-            haitaka_wasm::search_board_impl_handcrafted(board, engine.depth)
-                .map_err(|err| anyhow!("{} search failed: {err}", engine.label))
+        EngineEvaluator::Handcrafted => search_in_process_handcrafted(board, engine.budget)
+            .map_err(|err| anyhow!("{} search failed: {err}", engine.label)),
+        EngineEvaluator::Nnue { model, .. } => {
+            search_in_process_nnue(board, engine.budget, model.clone())
+                .map_err(|err| anyhow!("{} NNUE search failed: {err}", engine.label))
         }
-        EngineEvaluator::Nnue { model, .. } => haitaka_wasm::search_board_impl_with_eval_mode(
-            board,
-            engine.depth,
-            model.clone(),
-            SearchEvalMode::Incremental,
-        )
-        .map_err(|err| anyhow!("{} NNUE search failed: {err}", engine.label)),
+        EngineEvaluator::External { .. } => {
+            bail!("external engine must be started before searching")
+        }
+    }
+}
+
+fn search_in_process_handcrafted(
+    board: &Board,
+    budget: SearchBudget,
+) -> Result<EngineSearchResult, String> {
+    match budget {
+        SearchBudget::Depth(depth) => {
+            let summary = haitaka_wasm::search_board_impl_handcrafted(board, depth)?;
+            Ok(EngineSearchResult {
+                best_move: summary.best_move,
+                total_nodes: summary.states,
+                elapsed_ms: summary.elapsed_ms,
+            })
+        }
+        SearchBudget::Movetime { max_depth, millis } => {
+            let summary = haitaka_wasm::search_iterative_deepening_impl(
+                &board.to_string(),
+                max_depth,
+                millis,
+            )?;
+            Ok(EngineSearchResult {
+                best_move: summary.best_move,
+                total_nodes: summary.states,
+                elapsed_ms: summary.elapsed_ms,
+            })
+        }
+    }
+}
+
+fn search_in_process_nnue(
+    board: &Board,
+    budget: SearchBudget,
+    model: Arc<NnueModel>,
+) -> Result<EngineSearchResult, String> {
+    match budget {
+        SearchBudget::Depth(depth) => {
+            let summary = haitaka_wasm::search_board_impl_with_eval_mode(
+                board,
+                depth,
+                model,
+                SearchEvalMode::Incremental,
+            )?;
+            Ok(EngineSearchResult {
+                best_move: summary.best_move,
+                total_nodes: summary.states,
+                elapsed_ms: summary.elapsed_ms,
+            })
+        }
+        SearchBudget::Movetime { max_depth, millis } => {
+            let summary = haitaka_wasm::search_iterative_deepening_impl_with_eval_mode(
+                &board.to_string(),
+                max_depth,
+                millis,
+                model,
+                SearchEvalMode::Incremental,
+            )?;
+            Ok(EngineSearchResult {
+                best_move: summary.best_move,
+                total_nodes: summary.states,
+                elapsed_ms: summary.elapsed_ms,
+            })
+        }
     }
 }
 
 fn describe_engine(engine: &EngineConfig) -> String {
     match &engine.evaluator {
         EngineEvaluator::Handcrafted => {
-            format!("{}: handcrafted depth={}", engine.label, engine.depth)
+            format!(
+                "{}: handcrafted {}",
+                engine.label,
+                describe_budget(engine.budget)
+            )
         }
         EngineEvaluator::Nnue { path, .. } => {
             format!(
-                "{}: nnue depth={} model={}",
+                "{}: nnue {} model={}",
                 engine.label,
-                engine.depth,
+                describe_budget(engine.budget),
                 path.display()
             )
         }
+        EngineEvaluator::External { path, args } => {
+            let rendered_args = if args.is_empty() {
+                String::new()
+            } else {
+                format!(" args={}", args.join(" "))
+            };
+            format!(
+                "{}: external {} command={} usi{}",
+                engine.label,
+                describe_budget(engine.budget),
+                path.display(),
+                rendered_args
+            )
+        }
+    }
+}
+
+fn describe_budget(budget: SearchBudget) -> String {
+    match budget {
+        SearchBudget::Depth(depth) => format!("depth={depth}"),
+        SearchBudget::Movetime { max_depth, millis } => {
+            format!("movetime_ms={millis} max_depth={max_depth}")
+        }
+    }
+}
+
+fn self_play_budget(depth: u8, movetime_ms: Option<u32>) -> SearchBudget {
+    match movetime_ms {
+        Some(millis) => SearchBudget::Movetime {
+            max_depth: depth.max(1),
+            millis,
+        },
+        None => SearchBudget::Depth(depth.max(1)),
     }
 }
 
@@ -463,6 +622,223 @@ fn generate_opening_board(
     )
 }
 
+enum GameEngine<'a> {
+    InProcess(&'a EngineConfig),
+    External(UsiEngineClient),
+}
+
+impl<'a> GameEngine<'a> {
+    fn start(config: &'a EngineConfig) -> Result<Self> {
+        match &config.evaluator {
+            EngineEvaluator::External { path, args } => {
+                Ok(Self::External(UsiEngineClient::spawn(path, args)?))
+            }
+            EngineEvaluator::Handcrafted | EngineEvaluator::Nnue { .. } => {
+                Ok(Self::InProcess(config))
+            }
+        }
+    }
+
+    fn search(&mut self, board: &Board, budget: SearchBudget) -> Result<EngineSearchResult> {
+        match self {
+            Self::InProcess(config) => search_with_engine(board, config),
+            Self::External(client) => client.search(board, budget),
+        }
+    }
+}
+
+struct UsiEngineClient {
+    child: Child,
+    stdin: ChildStdin,
+    lines: mpsc::Receiver<String>,
+    stderr_lines: Arc<Mutex<Vec<String>>>,
+}
+
+impl UsiEngineClient {
+    fn spawn(path: &Path, args: &[String]) -> Result<Self> {
+        let mut child = ProcessCommand::new(path)
+            .arg("usi")
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .with_context(|| format!("failed to launch external engine {}", path.display()))?;
+
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow!("external engine stdin was not piped"))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow!("external engine stdout was not piped"))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| anyhow!("external engine stderr was not piped"))?;
+
+        let (tx, rx) = mpsc::channel();
+        thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                let Ok(line) = line else {
+                    break;
+                };
+                if tx.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+
+        let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+        let stderr_slot = Arc::clone(&stderr_lines);
+        thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                let Ok(line) = line else {
+                    break;
+                };
+                let Ok(mut lines) = stderr_slot.lock() else {
+                    break;
+                };
+                if lines.len() == USI_STDERR_LIMIT {
+                    lines.remove(0);
+                }
+                lines.push(line);
+            }
+        });
+
+        let mut client = Self {
+            child,
+            stdin,
+            lines: rx,
+            stderr_lines,
+        };
+        client.send_command("usi")?;
+        client.read_until_exact("usiok", USI_STARTUP_TIMEOUT)?;
+        client.send_command("isready")?;
+        client.read_until_exact("readyok", USI_STARTUP_TIMEOUT)?;
+        client.send_command("usinewgame")?;
+        Ok(client)
+    }
+
+    fn search(&mut self, board: &Board, budget: SearchBudget) -> Result<EngineSearchResult> {
+        let started_at = Instant::now();
+        self.send_command(&format!("position sfen {board}"))?;
+        self.send_command(&go_command(budget))?;
+        let timeout = search_timeout(budget);
+        let bestmove = self.read_bestmove(timeout)?;
+        Ok(EngineSearchResult {
+            best_move: bestmove,
+            total_nodes: 0,
+            elapsed_ms: started_at.elapsed().as_secs_f64() * 1_000.0,
+        })
+    }
+
+    fn send_command(&mut self, command: &str) -> Result<()> {
+        writeln!(self.stdin, "{command}").context("failed to write to external engine")?;
+        self.stdin
+            .flush()
+            .context("failed to flush external engine stdin")
+    }
+
+    fn read_until_exact(&mut self, expected: &str, timeout: Duration) -> Result<()> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let line = self.recv_line_until(deadline)?;
+            if line == expected {
+                return Ok(());
+            }
+        }
+    }
+
+    fn read_bestmove(&mut self, timeout: Duration) -> Result<Option<String>> {
+        let deadline = Instant::now() + timeout;
+        loop {
+            let line = self.recv_line_until(deadline)?;
+            if let Some(rest) = line.strip_prefix("bestmove ") {
+                let move_text = rest.split_whitespace().next().unwrap_or_default();
+                if move_text.is_empty() {
+                    bail!("external engine returned empty bestmove");
+                }
+                if move_text == "resign" {
+                    return Ok(None);
+                }
+                return Ok(Some(move_text.to_string()));
+            }
+        }
+    }
+
+    fn recv_line_until(&mut self, deadline: Instant) -> Result<String> {
+        let now = Instant::now();
+        if now >= deadline {
+            self.check_child_status()?;
+            bail!("external engine timed out{}", self.stderr_context());
+        }
+        match self.lines.recv_timeout(deadline - now) {
+            Ok(line) => Ok(line),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                self.check_child_status()?;
+                bail!("external engine timed out{}", self.stderr_context())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                self.check_child_status()?;
+                bail!("external engine closed stdout{}", self.stderr_context())
+            }
+        }
+    }
+
+    fn check_child_status(&mut self) -> Result<()> {
+        if let Some(status) = self
+            .child
+            .try_wait()
+            .context("check external engine status")?
+        {
+            bail!(
+                "external engine exited with status {status}{}",
+                self.stderr_context()
+            );
+        }
+        Ok(())
+    }
+
+    fn stderr_context(&self) -> String {
+        let Ok(lines) = self.stderr_lines.lock() else {
+            return String::new();
+        };
+        if lines.is_empty() {
+            String::new()
+        } else {
+            format!("; recent stderr: {}", lines.join(" | "))
+        }
+    }
+}
+
+impl Drop for UsiEngineClient {
+    fn drop(&mut self) {
+        let _ = self.send_command("quit");
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+fn go_command(budget: SearchBudget) -> String {
+    match budget {
+        SearchBudget::Depth(depth) => format!("go depth {}", depth.max(1)),
+        SearchBudget::Movetime { millis, .. } => format!("go movetime {millis}"),
+    }
+}
+
+fn search_timeout(budget: SearchBudget) -> Duration {
+    match budget {
+        SearchBudget::Depth(_) => USI_DEPTH_SEARCH_TIMEOUT,
+        SearchBudget::Movetime { millis, .. } => {
+            Duration::from_millis(u64::from(millis)) + USI_SEARCH_TIMEOUT_GRACE
+        }
+    }
+}
+
 fn play_self_play_game(
     game_index: u32,
     args: &SelfPlayArgs,
@@ -482,6 +858,10 @@ fn play_self_play_game(
     let mut plies = 0;
     let mut total_nodes = 0;
     let mut total_elapsed_ms = 0.0;
+    let mut runtime_a = GameEngine::start(engine_a)
+        .map_err(|err| anyhow!("failed to start engine A in game {}: {err}", game_index + 1))?;
+    let mut runtime_b = GameEngine::start(engine_b)
+        .map_err(|err| anyhow!("failed to start engine B in game {}: {err}", game_index + 1))?;
 
     for ply in 0..args.max_plies {
         if board.status() != GameStatus::Ongoing {
@@ -498,9 +878,15 @@ fn play_self_play_game(
         } else {
             engine_b
         };
-        let summary = search_with_engine(&board, config)
+        let runtime = if board.side_to_move() == a_color {
+            &mut runtime_a
+        } else {
+            &mut runtime_b
+        };
+        let summary = runtime
+            .search(&board, config.budget)
             .map_err(|err| anyhow!("search failed in game {}: {err}", game_index + 1))?;
-        total_nodes += summary.states;
+        total_nodes += summary.total_nodes;
         total_elapsed_ms += summary.elapsed_ms;
         let Some(best_move) = summary.best_move else {
             winner = Some(if config.label == "A" {
@@ -512,7 +898,9 @@ fn play_self_play_game(
         };
         let mv = Move::from_str(&best_move)
             .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
-        board.play(mv);
+        board
+            .try_play(mv)
+            .map_err(|_| anyhow!("engine returned illegal move {best_move}"))?;
         plies = ply + 1;
     }
 
@@ -618,6 +1006,175 @@ fn read_human_move(board: &Board) -> Result<Move> {
     }
 }
 
+fn usi(args: UsiArgs) -> Result<()> {
+    let mut engine = engine_config(
+        "USI",
+        SearchBudget::Depth(1),
+        args.eval,
+        args.nnue.as_deref(),
+        None,
+        None,
+        &[],
+    )?;
+    let mut board = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    for line in stdin.lock().lines() {
+        let line = line.context("failed to read USI command")?;
+        let command = line.trim();
+        if command.is_empty() {
+            continue;
+        }
+
+        match command {
+            "quit" => break,
+            "usi" => {
+                writeln!(stdout, "id name {ENGINE_NAME}")?;
+                writeln!(stdout, "usiok")?;
+                stdout.flush()?;
+            }
+            "isready" => {
+                writeln!(stdout, "readyok")?;
+                stdout.flush()?;
+            }
+            "usinewgame" => {}
+            command if command.starts_with("position ") => match parse_usi_position(command) {
+                Ok(parsed) => board = parsed,
+                Err(err) => eprintln!("info string invalid position command: {err}"),
+            },
+            command if command.starts_with("go") => {
+                let budget = match parse_usi_go(command, args.movetime_max_depth) {
+                    Ok(budget) => budget,
+                    Err(err) => {
+                        eprintln!("info string invalid go command: {err}");
+                        continue;
+                    }
+                };
+                engine.budget = budget;
+                if board.status() != GameStatus::Ongoing {
+                    writeln!(stdout, "bestmove resign")?;
+                    stdout.flush()?;
+                    continue;
+                }
+                match search_with_engine(&board, &engine) {
+                    Ok(summary) => {
+                        let best_move = summary.best_move.as_deref().unwrap_or("resign");
+                        writeln!(stdout, "bestmove {best_move}")?;
+                    }
+                    Err(err) => {
+                        eprintln!("info string search failed: {err}");
+                        writeln!(stdout, "bestmove resign")?;
+                    }
+                }
+                stdout.flush()?;
+            }
+            other => {
+                eprintln!("info string unsupported command: {other}");
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_usi_position(command: &str) -> Result<Board> {
+    let rest = command
+        .strip_prefix("position ")
+        .ok_or_else(|| anyhow!("expected position command"))?;
+    let tokens = rest.split_whitespace().collect::<Vec<_>>();
+    if tokens.is_empty() {
+        bail!("missing position body");
+    }
+
+    let mut index;
+    let mut board = match tokens[0] {
+        "startpos" => {
+            index = 1;
+            Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse")
+        }
+        "sfen" => {
+            index = 1;
+            let sfen_start = index;
+            while index < tokens.len() && tokens[index] != "moves" {
+                index += 1;
+            }
+            if sfen_start == index {
+                bail!("missing SFEN after position sfen");
+            }
+            Board::from_sfen(&tokens[sfen_start..index].join(" "))
+                .map_err(|err| anyhow!("failed to parse SFEN: {err}"))?
+        }
+        other => bail!("unsupported position source {other}"),
+    };
+
+    if index < tokens.len() {
+        if tokens[index] != "moves" {
+            bail!("unexpected token {}", tokens[index]);
+        }
+        index += 1;
+        for move_text in &tokens[index..] {
+            let mv = Move::from_str(move_text)
+                .map_err(|err| anyhow!("invalid move {move_text}: {err}"))?;
+            board
+                .try_play(mv)
+                .map_err(|_| anyhow!("illegal move {move_text}"))?;
+        }
+    }
+
+    Ok(board)
+}
+
+fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<SearchBudget> {
+    let rest = command
+        .strip_prefix("go")
+        .ok_or_else(|| anyhow!("expected go command"))?;
+    let tokens = rest.split_whitespace().collect::<Vec<_>>();
+    let mut index = 0;
+    let mut depth = None;
+    let mut movetime = None;
+
+    while index < tokens.len() {
+        match tokens[index] {
+            "depth" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| anyhow!("missing depth value"))?;
+                depth = Some(
+                    value
+                        .parse::<u8>()
+                        .with_context(|| format!("invalid depth {value}"))?,
+                );
+            }
+            "movetime" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| anyhow!("missing movetime value"))?;
+                movetime = Some(
+                    value
+                        .parse::<u32>()
+                        .with_context(|| format!("invalid movetime {value}"))?,
+                );
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+
+    if let Some(depth) = depth {
+        return Ok(SearchBudget::Depth(depth.max(1)));
+    }
+    if let Some(millis) = movetime {
+        return Ok(SearchBudget::Movetime {
+            max_depth: movetime_max_depth.max(1),
+            millis,
+        });
+    }
+    bail!("only go depth N and go movetime N are supported")
+}
+
 /// Number of lines in the live status block, used to move the cursor back up.
 const STATUS_LINES: usize = 8;
 
@@ -649,19 +1206,25 @@ fn render_status(block: &str, first: bool) {
 
 fn self_play(args: SelfPlayArgs) -> Result<()> {
     let base_board = parse_board(args.sfen.as_deref())?;
+    let a_budget = self_play_budget(args.a_depth, args.movetime_ms);
+    let b_budget = self_play_budget(args.b_depth, args.movetime_ms);
     let engine_a = engine_config(
         "A",
-        args.a_depth,
+        a_budget,
         args.a_eval,
         args.nnue.as_deref(),
         args.a_nnue.as_deref(),
+        args.a_engine.as_deref(),
+        &args.a_engine_args,
     )?;
     let engine_b = engine_config(
         "B",
-        args.b_depth,
+        b_budget,
         args.b_eval,
         args.nnue.as_deref(),
         args.b_nnue.as_deref(),
+        args.b_engine.as_deref(),
+        &args.b_engine_args,
     )?;
     let threads = resolve_self_play_threads(args.threads, args.games);
     let mut stats = MatchStats::default();
@@ -1032,8 +1595,16 @@ mod tests {
 
     #[test]
     fn self_play_requires_nnue_path_for_nnue_side() {
-        let err = engine_config("A", 3, EngineEvalKind::Nnue, None, None)
-            .expect_err("NNUE side should require a model path");
+        let err = engine_config(
+            "A",
+            SearchBudget::Depth(3),
+            EngineEvalKind::Nnue,
+            None,
+            None,
+            None,
+            &[],
+        )
+        .expect_err("NNUE side should require a model path");
         assert!(
             err.to_string()
                 .contains("A uses NNUE but no NNUE path was provided"),
@@ -1060,6 +1631,12 @@ mod tests {
             "model.nnue",
             "--b-nnue",
             "other.nnue",
+            "--a-engine",
+            "old-haitaka",
+            "--a-engine-arg=--eval",
+            "--a-engine-arg=nnue",
+            "--movetime-ms",
+            "100",
             "--opening-random-plies",
             "4",
             "--seed",
@@ -1077,6 +1654,9 @@ mod tests {
                 assert_eq!(args.b_eval, EngineEvalKind::Handcrafted);
                 assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
                 assert_eq!(args.b_nnue, Some(PathBuf::from("other.nnue")));
+                assert_eq!(args.a_engine, Some(PathBuf::from("old-haitaka")));
+                assert_eq!(args.a_engine_args, ["--eval", "nnue"]);
+                assert_eq!(args.movetime_ms, Some(100));
                 assert_eq!(args.opening_random_plies, 4);
                 assert_eq!(args.seed, 7);
             }
@@ -1093,6 +1673,81 @@ mod tests {
             Command::SelfPlay(args) => assert_eq!(args.threads, 6),
             other => panic!("expected self-play command, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn cli_parses_usi_flags() {
+        let cli = Cli::try_parse_from([
+            "haitaka",
+            "usi",
+            "--eval",
+            "nnue",
+            "--nnue",
+            "model.nnue",
+            "--movetime-max-depth",
+            "8",
+        ])
+        .expect("CLI args should parse");
+
+        match cli.command {
+            Command::Usi(args) => {
+                assert_eq!(args.eval, EngineEvalKind::Nnue);
+                assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
+                assert_eq!(args.movetime_max_depth, 8);
+            }
+            other => panic!("expected usi command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn self_play_budget_prefers_movetime_when_set() {
+        assert_eq!(self_play_budget(3, None), SearchBudget::Depth(3));
+        assert_eq!(
+            self_play_budget(3, Some(100)),
+            SearchBudget::Movetime {
+                max_depth: 3,
+                millis: 100
+            }
+        );
+    }
+
+    #[test]
+    fn parses_usi_position_startpos_and_moves() {
+        let board =
+            parse_usi_position("position startpos moves 7g7f").expect("position should parse");
+        let mut expected = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
+        expected.try_play(Move::from_str("7g7f").unwrap()).unwrap();
+        assert_eq!(board.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parses_usi_position_sfen() {
+        let sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+        let board =
+            parse_usi_position(&format!("position sfen {sfen}")).expect("position should parse");
+        assert_eq!(board.to_string(), sfen);
+    }
+
+    #[test]
+    fn rejects_illegal_usi_position_move() {
+        let err = parse_usi_position("position startpos moves 1a1b")
+            .expect_err("illegal move should fail");
+        assert!(err.to_string().contains("illegal move"));
+    }
+
+    #[test]
+    fn parses_usi_go_budgets() {
+        assert_eq!(
+            parse_usi_go("go depth 4", 8).unwrap(),
+            SearchBudget::Depth(4)
+        );
+        assert_eq!(
+            parse_usi_go("go movetime 100", 8).unwrap(),
+            SearchBudget::Movetime {
+                max_depth: 8,
+                millis: 100
+            }
+        );
     }
 
     #[test]

@@ -670,6 +670,24 @@ pub fn search_impl_with_eval_mode(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_iterative_deepening_impl_with_eval_mode(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_with_strategy(
+        sfen,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Nnue { model, mode },
+        IterativeSearchConfig::default(),
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_board_impl_with_eval_mode(
     board: &Board,
     depth: u8,
