@@ -353,9 +353,14 @@ fn generate_split(
         .sum::<u32>();
     let resumed_shards = shard_results.iter().filter(|result| result.reused).count();
     let generated_shards = shard_results.len() - resumed_shards;
+    let generated_positions = shard_results
+        .iter()
+        .filter(|result| !result.reused)
+        .map(|result| result.manifest.sampled_positions)
+        .sum::<u64>();
     let elapsed = split_started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
-        sampled_positions as f64 / elapsed.as_secs_f64()
+        generated_positions as f64 / elapsed.as_secs_f64()
     } else {
         0.0
     };
@@ -502,6 +507,7 @@ struct Progress {
     total_games: u32,
     completed_games: u32,
     sampled_positions: u64,
+    generated_games: u32,
     started: Instant,
     next_percent: u32,
     every_percent: u32,
@@ -514,6 +520,7 @@ impl Progress {
             total_games,
             completed_games: 0,
             sampled_positions: 0,
+            generated_games: 0,
             started: Instant::now(),
             next_percent: every_percent.max(1),
             every_percent: every_percent.max(1),
@@ -523,6 +530,9 @@ impl Progress {
     fn record(&mut self, result: &ShardResult) {
         self.completed_games += result.manifest.game_count;
         self.sampled_positions += result.manifest.sampled_positions;
+        if !result.reused {
+            self.generated_games += result.manifest.game_count;
+        }
         let percent = if self.total_games == 0 {
             100
         } else {
@@ -536,15 +546,17 @@ impl Progress {
 
     fn print_line(&self, percent: u32) {
         let elapsed = self.started.elapsed();
+        // Throughput and ETA reflect freshly generated games only; restored
+        // (resumed) shards complete instantly and would otherwise inflate them.
         let games_per_minute = if elapsed.as_secs_f64() > 0.0 {
-            f64::from(self.completed_games) / elapsed.as_secs_f64() * 60.0
+            f64::from(self.generated_games) / elapsed.as_secs_f64() * 60.0
         } else {
             0.0
         };
-        let eta = if self.completed_games == 0 || self.total_games == 0 {
+        let eta = if self.generated_games == 0 || self.total_games == 0 {
             None
         } else {
-            let seconds_per_game = elapsed.as_secs_f64() / f64::from(self.completed_games);
+            let seconds_per_game = elapsed.as_secs_f64() / f64::from(self.generated_games);
             let remaining_games = self.total_games.saturating_sub(self.completed_games);
             Some(Duration::from_secs_f64(
                 seconds_per_game * f64::from(remaining_games),
