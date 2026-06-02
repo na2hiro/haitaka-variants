@@ -22,7 +22,11 @@ struct ExportMetadata {
     config_hash: String,
 }
 
-pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
+pub fn train(
+    loaded: &LoadedConfig,
+    resume_override: Option<bool>,
+    source_checkpoint: Option<PathBuf>,
+) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -31,8 +35,16 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
     ensure_file_exists(&artifacts.validation_bin, "validation dataset")?;
 
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
-    let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
-    let resume_checkpoint = if should_resume {
+    let resume_checkpoint = if let Some(checkpoint) = source_checkpoint {
+        if resume_override == Some(false) {
+            bail!("--checkpoint cannot be used with --no-resume");
+        }
+        ensure_file_exists(&checkpoint, "checkpoint")?;
+        if !is_valid_checkpoint(&checkpoint, &loaded.config.paths.python, &trainer_checkout)? {
+            bail!("checkpoint is not loadable: {}", checkpoint.display());
+        }
+        Some(checkpoint)
+    } else if resume_override.unwrap_or(loaded.config.training.resume) {
         find_latest_valid_checkpoint(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
