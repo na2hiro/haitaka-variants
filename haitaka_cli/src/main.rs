@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::str::FromStr;
@@ -623,7 +623,15 @@ const STATUS_LINES: usize = 8;
 
 /// Redraw the status block in place. On every call after the first, the cursor
 /// is moved up over the previous block so the same lines are overwritten.
+///
+/// When stdout is not a terminal (redirected to a file or running under CI), the
+/// in-place redraw is skipped and the block is printed as plain lines, so logs
+/// stay readable and are not corrupted by ANSI cursor/clear escapes.
 fn render_status(block: &str, first: bool) {
+    if !io::stdout().is_terminal() {
+        println!("{block}");
+        return;
+    }
     let mut out = String::new();
     if !first {
         out.push_str(&format!("\x1b[{STATUS_LINES}A"));
