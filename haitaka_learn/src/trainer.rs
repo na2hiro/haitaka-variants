@@ -259,18 +259,41 @@ fn materialize_bootstrap_pt(
     ensure_file_exists(&bootstrap_nnue, "bootstrap NNUE")?;
 
     let artifacts = loaded.artifact_paths();
+    let import_features = bootstrap_import_features(loaded);
+    let training_features = loaded.training_features();
+    let imported_model_pt = if import_features == training_features {
+        artifacts.bootstrap_model_pt.clone()
+    } else {
+        bootstrap_base_model_pt_path(&artifacts.bootstrap_model_pt)
+    };
     run_command(
         &loaded.config.paths.python,
         &[
             "serialize.py".to_string(),
             bootstrap_nnue.display().to_string(),
-            artifacts.bootstrap_model_pt.display().to_string(),
+            imported_model_pt.display().to_string(),
             "--features".to_string(),
-            bootstrap_import_features(loaded).to_string(),
+            import_features.to_string(),
         ],
         trainer_checkout,
         "convert bootstrap NNUE to torch checkpoint",
     )?;
+
+    if import_features != training_features {
+        run_command(
+            &loaded.config.paths.python,
+            &[
+                "-c".to_string(),
+                bootstrap_feature_expansion_script().to_string(),
+                imported_model_pt.display().to_string(),
+                artifacts.bootstrap_model_pt.display().to_string(),
+                training_features.to_string(),
+            ],
+            trainer_checkout,
+            "expand bootstrap torch checkpoint feature set",
+        )?;
+        let _ = fs::remove_file(&imported_model_pt);
+    }
 
     Ok(Some(artifacts.bootstrap_model_pt))
 }
@@ -282,6 +305,22 @@ fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
         }
         features => features,
     }
+}
+
+fn bootstrap_base_model_pt_path(path: &Path) -> PathBuf {
+    let mut path = path.to_path_buf();
+    path.set_extension("base.pt");
+    path
+}
+
+fn bootstrap_feature_expansion_script() -> &'static str {
+    r#"import sys, torch, features
+source, target, feature_name = sys.argv[1:4]
+feature_set = features.get_feature_set_from_name(feature_name)
+model = torch.load(source, map_location="cpu", weights_only=False)
+model.set_feature_set(feature_set)
+torch.save(model, target)
+"#
 }
 
 fn run_command(program: &str, args: &[String], cwd: &Path, label: &str) -> Result<()> {
@@ -463,6 +502,12 @@ mod tests {
         let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
         loaded.config.training.features = Some(FEATURE_SET_DONOR_PAIR.to_string());
         assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_SINGLE.to_string());
+        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_KNIGHT8.to_string());
+        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
     }
 
     #[test]
@@ -470,6 +515,23 @@ mod tests {
         let mut loaded = loaded_config_for_tests(Ruleset::Standard);
         loaded.config.training.features = Some(FEATURE_SET_HALFKAV2.to_string());
         assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+    }
+
+    #[test]
+    fn donor_bootstrap_uses_intermediate_base_model_path() {
+        let path = PathBuf::from("/tmp/bootstrap.pt");
+        assert_eq!(
+            bootstrap_base_model_pt_path(&path),
+            PathBuf::from("/tmp/bootstrap.base.pt")
+        );
+    }
+
+    #[test]
+    fn bootstrap_feature_expansion_script_loads_and_resizes_model() {
+        let script = bootstrap_feature_expansion_script();
+        assert!(script.contains("weights_only=False"));
+        assert!(script.contains("model.set_feature_set(feature_set)"));
+        assert!(script.contains("torch.save(model, target)"));
     }
 
     #[test]
