@@ -733,14 +733,7 @@ fn reusable_shard(
     ) {
         return Ok(None);
     }
-    let expected_len = manifest
-        .sampled_positions
-        .checked_mul(ENTRY_BYTES as u64)
-        .ok_or_else(|| anyhow!("shard length overflow"))?;
-    let actual_len = fs::metadata(bin_path)
-        .with_context(|| format!("failed to stat {}", bin_path.display()))?
-        .len();
-    if actual_len != expected_len {
+    if !shard_bin_matches(bin_path, &manifest) {
         return Ok(None);
     }
     Ok(Some(ShardResult {
@@ -748,6 +741,17 @@ fn reusable_shard(
         manifest,
         reused: true,
     }))
+}
+
+/// Whether `bin_path` exists and has the exact byte length implied by the manifest.
+/// A missing, partially written, or unreadable file is treated as not reusable.
+fn shard_bin_matches(bin_path: &Path, manifest: &ShardManifest) -> bool {
+    let Some(expected_len) = manifest.sampled_positions.checked_mul(ENTRY_BYTES as u64) else {
+        return false;
+    };
+    fs::metadata(bin_path)
+        .map(|meta| meta.len() == expected_len)
+        .unwrap_or(false)
 }
 
 fn shard_manifest_matches(
@@ -865,6 +869,13 @@ fn detect_identity_mismatch(
             let Ok(manifest) = serde_json::from_slice::<ShardManifest>(&bytes) else {
                 continue;
             };
+            // A shard is only reusable if its .bin sibling matches the manifest, same as
+            // the reuse path; otherwise generate_or_reuse_shard regenerates it regardless
+            // of identity, so it must not count toward a mismatch that blocks the run.
+            let bin_path = shards_dir.join(format!("shard-{:06}.bin", plan.shard_index));
+            if !shard_bin_matches(&bin_path, &manifest) {
+                continue;
+            }
             let strict =
                 shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, false)?
                     && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
@@ -1833,6 +1844,25 @@ run_search_smoke = false
         )
         .unwrap();
         assert!(after > 0);
+
+        // A mismatched manifest whose .bin is missing/wrong-length is not reusable, so it
+        // must not count toward a mismatch that would block a non-interactive resumed run.
+        let bin_path = artifacts
+            .datasets_dir
+            .join("shards")
+            .join("train")
+            .join("shard-000000.bin");
+        fs::write(&bin_path, b"truncated").unwrap();
+        let (after_bad_bin, _) = detect_identity_mismatch(
+            &loaded,
+            &artifacts,
+            &teacher,
+            &opening_sfen,
+            &engine_revision,
+            selector,
+        )
+        .unwrap();
+        assert_eq!(after_bad_bin, 0);
     }
 
     #[test]
