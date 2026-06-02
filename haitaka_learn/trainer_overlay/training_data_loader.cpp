@@ -73,7 +73,7 @@ static Square offset_square(Square sq, int file_delta, int rank_delta) {
 }
 
 static Square offset_square_from_relative(Color color, Square sq, int left, int forward) {
-    // haitaka_learn packs training squares as file = 8 - file and rank = 8 - rank,
+    // pack_board_for_training stores squares as file = 8 - file and rank = 8 - rank,
     // so runtime-relative donor offsets are negated on both axes in trainer space.
     const int file_delta = color == Color::White ? left : -left;
     const int rank_delta = color == Color::White ? -forward : forward;
@@ -107,8 +107,8 @@ static Square single_donor_square(Color color, Square sq) {
 }
 
 static std::array<Square, DONOR_PAIR_SLOTS> pair_donor_squares(Square sq) {
-    // Training SFEN is packed with file = 8 - haitaka_file, so trainer file -1
-    // corresponds to runtime try_offset(+1, 0), the Antouzai slot-0 donor.
+    // Training SFEN is packed with mirrored files, so trainer file -1 maps to
+    // runtime try_offset(+1, 0), the Antouzai slot-0 donor.
     return {offset_square(sq, -1, 0), offset_square(sq, 1, 0)};
 }
 

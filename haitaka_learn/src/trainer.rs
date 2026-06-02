@@ -6,7 +6,10 @@ use std::time::SystemTime;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::Serialize;
 
-use crate::config::{LoadedConfig, Ruleset};
+use crate::config::{
+    FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
+    FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset,
+};
 
 #[derive(Debug, Serialize)]
 struct ExportMetadata {
@@ -263,13 +266,22 @@ fn materialize_bootstrap_pt(
             bootstrap_nnue.display().to_string(),
             artifacts.bootstrap_model_pt.display().to_string(),
             "--features".to_string(),
-            loaded.training_features().to_string(),
+            bootstrap_import_features(loaded).to_string(),
         ],
         trainer_checkout,
         "convert bootstrap NNUE to torch checkpoint",
     )?;
 
     Ok(Some(artifacts.bootstrap_model_pt))
+}
+
+fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
+    match loaded.training_features() {
+        FEATURE_SET_DONOR_SINGLE | FEATURE_SET_DONOR_PAIR | FEATURE_SET_DONOR_KNIGHT8 => {
+            FEATURE_SET_HALFKAV2
+        }
+        features => features,
+    }
 }
 
 fn run_command(program: &str, args: &[String], cwd: &Path, label: &str) -> Result<()> {
@@ -447,24 +459,22 @@ mod tests {
     }
 
     #[test]
+    fn donor_training_imports_standard_bootstrap_with_base_features() {
+        let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_PAIR.to_string());
+        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+    }
+
+    #[test]
+    fn standard_training_imports_bootstrap_with_training_features() {
+        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
+        loaded.config.training.features = Some(FEATURE_SET_HALFKAV2.to_string());
+        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+    }
+
+    #[test]
     fn variant_overlays_match_haitaka_geometry() {
-        let loaded = LoadedConfig {
-            path: PathBuf::from("/tmp/haitaka_learn.toml"),
-            hash_hex: "hash".to_string(),
-            config: LearnConfig {
-                rules: RulesConfig {
-                    ruleset: Ruleset::Anhoku,
-                    rule_id: None,
-                    handicap: None,
-                    opening_sfen: None,
-                },
-                paths: PathsConfig::default(),
-                data: DataConfig::default(),
-                training: TrainingConfig::default(),
-                export: ExportConfig::default(),
-                verify: VerifyConfig::default(),
-            },
-        };
+        let loaded = loaded_config_for_tests(Ruleset::Anhoku);
         let py = variant_py_contents(&loaded);
         let h = variant_h_contents(&loaded);
         assert!(py.contains("PIECE_TYPES = 10"));
@@ -476,5 +486,25 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+    }
+
+    fn loaded_config_for_tests(ruleset: Ruleset) -> LoadedConfig {
+        LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.toml"),
+            hash_hex: "hash".to_string(),
+            config: LearnConfig {
+                rules: RulesConfig {
+                    ruleset,
+                    rule_id: None,
+                    handicap: None,
+                    opening_sfen: None,
+                },
+                paths: PathsConfig::default(),
+                data: DataConfig::default(),
+                training: TrainingConfig::default(),
+                export: ExportConfig::default(),
+                verify: VerifyConfig::default(),
+            },
+        }
     }
 }
