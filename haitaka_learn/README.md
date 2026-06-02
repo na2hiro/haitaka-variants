@@ -15,6 +15,12 @@ It keeps Haitaka's inference side compatible with Fairy-Stockfish-style `HalfKAv
 - Anhoku shogi
 - Antouzai shogi
 
+Ruleset-to-feature-set mapping:
+
+- standard / handicap: `HalfKAv2^`
+- Annan / Anhoku: `HalfKAv2^+DonorSingleEff`
+- Antouzai: `HalfKAv2^+DonorPairSlots`
+
 ## What Is Already Prepared
 
 The example config expects the upstream trainer checkout at:
@@ -98,7 +104,10 @@ Key fields:
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions
 - `[training]`
-  - `features` must stay `HalfKAv2^`
+  - `features` defaults to the recommended family for the selected ruleset
+  - standard / handicap keep `HalfKAv2^`
+  - Annan / Anhoku use `HalfKAv2^+DonorSingleEff`
+  - Antouzai uses `HalfKAv2^+DonorPairSlots`
   - upstream trainer args like batch size and epoch count
 - `[export]`
   - output name and description string
@@ -184,7 +193,7 @@ cargo run -p haitaka_learn --release -- pipeline --config haitaka_learn.toml
 
 ## Variant Workflows
 
-Annan, Anhoku, and Antouzai use the same NNUE feature geometry, but each workflow must be built with the matching Haitaka feature enabled.
+Annan, Anhoku, and Antouzai share the same `HalfKAv2^` base block, but donor-rule runs add ruleset-specific donor geometry and must be built with the matching Haitaka feature enabled.
 
 ### 1. Switch config
 
@@ -195,6 +204,9 @@ Set:
 ruleset = "annan"   # or "anhoku" / "antouzai"
 # rule_id is only needed for a custom registry value, or for handicap+opening_sfen without a preset.
 rule_id = 26
+
+[training]
+features = "HalfKAv2^+DonorSingleEff" # Antouzai uses HalfKAv2^+DonorPairSlots
 ```
 
 ### 2. Generate variant data

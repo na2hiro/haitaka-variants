@@ -3,7 +3,14 @@ use std::fmt;
 use haitaka::{Board, Color, Move, Piece, Square};
 
 const VERSION: u32 = 0x7AF32F20;
-const FEATURE_SET_HASH: u32 = 0x5f234cb8;
+const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
+const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
+#[cfg(feature = "annan")]
+const DONOR_SINGLE_ANNAN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9e37_79b1;
+#[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+const DONOR_SINGLE_ANHOKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x3c6e_f362;
+const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
+const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
 const FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS: usize = TRANSFORMED_FEATURE_DIMENSIONS * 2;
 const PSQT_BUCKETS: usize = 8;
@@ -15,13 +22,20 @@ const OUTPUT_SCALE: i32 = 16;
 const WEIGHT_SCALE_BITS: i32 = 6;
 const SQUARES: usize = 81;
 const POCKETS: usize = 18;
-const MAX_ACTIVE_FEATURES: usize = 128;
+const MAX_ACTIVE_FEATURES: usize = 512;
 const MAX_DELTA_FEATURES: usize = 4;
 const MAX_PIECES: usize = 40;
 const PIECE_TYPE_COUNT: usize = 10;
 const NON_DROP_PIECE_INDICES: usize = (2 * PIECE_TYPE_COUNT - 1) * SQUARES;
 const PIECE_INDICES: usize = NON_DROP_PIECE_INDICES + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS;
-const NNUE_DIMENSIONS: usize = SQUARES * PIECE_INDICES;
+const HALFKAV2_REAL_FEATURES: usize = SQUARES * PIECE_INDICES;
+const DONOR_SINGLE_REAL_FEATURES: usize = SQUARES * PIECE_TYPE_COUNT * Color::NUM;
+const DONOR_PAIR_SLOT_COUNT: usize = 2;
+const DONOR_PAIR_REAL_FEATURES: usize =
+    SQUARES * PIECE_TYPE_COUNT * Color::NUM * DONOR_PAIR_SLOT_COUNT;
+const DONOR_KNIGHT8_SLOT_COUNT: usize = 8;
+const DONOR_KNIGHT8_REAL_FEATURES: usize =
+    SQUARES * PIECE_TYPE_COUNT * Color::NUM * DONOR_KNIGHT8_SLOT_COUNT;
 const PADDED_HIDDEN_LAYER_1_INPUT_DIMENSIONS: usize = FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS;
 const PADDED_HIDDEN_LAYER_2_INPUT_DIMENSIONS: usize = 32;
 const PADDED_OUTPUT_INPUT_DIMENSIONS: usize = 32;
@@ -51,8 +65,6 @@ const fn clipped_relu_hash(previous_hash: u32) -> u32 {
     0x538D24C7u32.wrapping_add(previous_hash)
 }
 
-const FEATURE_TRANSFORMER_HASH: u32 =
-    FEATURE_SET_HASH ^ FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS as u32;
 const INPUT_LAYER_HASH: u32 = input_slice_hash(FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS as u32, 0);
 const HIDDEN_LAYER_1_AFFINE_HASH: u32 =
     affine_hash(INPUT_LAYER_HASH, HIDDEN_LAYER_1_DIMENSIONS as u32);
@@ -61,11 +73,100 @@ const HIDDEN_LAYER_2_AFFINE_HASH: u32 =
     affine_hash(HIDDEN_LAYER_1_HASH, HIDDEN_LAYER_2_DIMENSIONS as u32);
 const HIDDEN_LAYER_2_HASH: u32 = clipped_relu_hash(HIDDEN_LAYER_2_AFFINE_HASH);
 const OUTPUT_LAYER_HASH: u32 = affine_hash(HIDDEN_LAYER_2_HASH, OUTPUT_LAYER_DIMENSIONS as u32);
-const NETWORK_HASH: u32 = FEATURE_TRANSFORMER_HASH ^ OUTPUT_LAYER_HASH;
+
+const fn feature_transformer_hash(feature_set_hash: u32) -> u32 {
+    feature_set_hash ^ FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS as u32
+}
+
+const fn composite_feature_set_hash(head: u32, tail: u32) -> u32 {
+    head ^ tail.wrapping_shl(1) ^ tail.wrapping_shr(1)
+}
+
+const fn network_hash(feature_set_hash: u32) -> u32 {
+    feature_transformer_hash(feature_set_hash) ^ OUTPUT_LAYER_HASH
+}
+
+const HALFKAV2_NETWORK_HASH: u32 = network_hash(HALFKAV2_FEATURE_SET_HASH);
+#[cfg(feature = "annan")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANNAN_BLOCK_HASH;
+#[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANHOKU_BLOCK_HASH;
+#[cfg(not(any(feature = "annan", feature = "anhoku")))]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
+const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
+const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_PAIR_BLOCK_HASH);
+const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_BLOCK_HASH);
+const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
+    network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
+const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 =
+    network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
+const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
+    network_hash(HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+enum FeatureFamily {
+    HalfKAv2,
+    HalfKAv2DonorSingle,
+    HalfKAv2DonorPair,
+    HalfKAv2DonorKnight8,
+}
+
+impl FeatureFamily {
+    fn from_network_hash(hash: u32) -> Option<Self> {
+        match hash {
+            HALFKAV2_NETWORK_HASH => Some(Self::HalfKAv2),
+            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
+            HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
+            HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
+            _ => None,
+        }
+    }
+
+    const fn feature_set_hash(self) -> u32 {
+        match self {
+            Self::HalfKAv2 => HALFKAV2_FEATURE_SET_HASH,
+            Self::HalfKAv2DonorSingle => HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH,
+            Self::HalfKAv2DonorPair => HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH,
+            Self::HalfKAv2DonorKnight8 => HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH,
+        }
+    }
+
+    const fn feature_transformer_hash(self) -> u32 {
+        feature_transformer_hash(self.feature_set_hash())
+    }
+
+    const fn num_real_features(self) -> usize {
+        match self {
+            Self::HalfKAv2 => HALFKAV2_REAL_FEATURES,
+            Self::HalfKAv2DonorSingle => HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES,
+            Self::HalfKAv2DonorPair => HALFKAV2_REAL_FEATURES + DONOR_PAIR_REAL_FEATURES,
+            Self::HalfKAv2DonorKnight8 => HALFKAV2_REAL_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
+        }
+    }
+
+    const fn max_active_features(self) -> usize {
+        match self {
+            Self::HalfKAv2 => 128,
+            Self::HalfKAv2DonorSingle => 192,
+            Self::HalfKAv2DonorPair => 256,
+            Self::HalfKAv2DonorKnight8 => 512,
+        }
+    }
+
+    const fn supports_incremental(self) -> bool {
+        matches!(self, Self::HalfKAv2)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NnueModel {
     description: String,
+    family: FeatureFamily,
     transformer: FeatureTransformer,
     buckets: Vec<BucketNetwork>,
 }
@@ -103,17 +204,25 @@ impl NnueModel {
         }
 
         let hash = reader.read_u32()?;
-        if hash != NETWORK_HASH {
+        let family = FeatureFamily::from_network_hash(hash).ok_or_else(|| {
+            NnueError::new(format!(
+                "unexpected NNUE hash: expected one of 0x{HALFKAV2_NETWORK_HASH:08x}, \
+0x{HALFKAV2_DONOR_SINGLE_NETWORK_HASH:08x}, 0x{HALFKAV2_DONOR_PAIR_NETWORK_HASH:08x}, \
+0x{HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH:08x}, got 0x{hash:08x}"
+            ))
+        })?;
+        if !family_supported_by_build(family) {
             return Err(NnueError::new(format!(
-                "unexpected NNUE hash: expected 0x{NETWORK_HASH:08x}, got 0x{hash:08x}"
+                "NNUE family {:?} is not supported by this build configuration",
+                family
             )));
         }
 
         let description_length = reader.read_u32()? as usize;
         let description = reader.read_string(description_length)?;
 
-        reader.read_section_header(FEATURE_TRANSFORMER_HASH)?;
-        let transformer = FeatureTransformer::read(&mut reader)?;
+        reader.read_section_header(family.feature_transformer_hash())?;
+        let transformer = FeatureTransformer::read(&mut reader, family)?;
 
         let mut buckets = Vec::with_capacity(LAYER_STACKS);
         for _ in 0..LAYER_STACKS {
@@ -125,6 +234,7 @@ impl NnueModel {
 
         Ok(Self {
             description,
+            family,
             transformer,
             buckets,
         })
@@ -142,9 +252,9 @@ impl NnueModel {
         NnuePositionState {
             perspectives: [
                 self.transformer
-                    .build_perspective_accumulator(board, Color::Black),
+                    .build_perspective_accumulator(board, Color::Black, self.family),
                 self.transformer
-                    .build_perspective_accumulator(board, Color::White),
+                    .build_perspective_accumulator(board, Color::White, self.family),
             ],
         }
     }
@@ -197,6 +307,10 @@ impl NnueModel {
     ) -> NnuePositionState {
         debug_assert_eq!(child_board.side_to_move(), !parent_board.side_to_move());
 
+        if !self.family.supports_incremental() {
+            return self.build_position_state_full(child_board);
+        }
+
         let mut child_state = *parent_state;
         for &perspective in &[Color::Black, Color::White] {
             let new_king_square = child_board.king(perspective);
@@ -205,7 +319,7 @@ impl NnueModel {
             if new_king_square != parent_accumulator.king_square {
                 *child_state.perspective_mut(perspective) = self
                     .transformer
-                    .build_perspective_accumulator(child_board, perspective);
+                    .build_perspective_accumulator(child_board, perspective, self.family);
             } else {
                 let delta = build_feature_delta(parent_board, perspective, parent_accumulator, mv);
                 let perspective_accumulator = child_state.perspective_mut(perspective);
@@ -227,11 +341,12 @@ struct FeatureTransformer {
 }
 
 impl FeatureTransformer {
-    fn read(reader: &mut ByteReader<'_>) -> Result<Self, NnueError> {
+    fn read(reader: &mut ByteReader<'_>, family: FeatureFamily) -> Result<Self, NnueError> {
         Ok(Self {
             biases: reader.read_i16_vec(TRANSFORMED_FEATURE_DIMENSIONS)?,
-            weights: reader.read_i16_vec(TRANSFORMED_FEATURE_DIMENSIONS * NNUE_DIMENSIONS)?,
-            psqt_weights: reader.read_i32_vec(PSQT_BUCKETS * NNUE_DIMENSIONS)?,
+            weights: reader
+                .read_i16_vec(TRANSFORMED_FEATURE_DIMENSIONS * family.num_real_features())?,
+            psqt_weights: reader.read_i32_vec(PSQT_BUCKETS * family.num_real_features())?,
         })
     }
 
@@ -239,12 +354,13 @@ impl FeatureTransformer {
         &self,
         board: &Board,
         perspective: Color,
+        family: FeatureFamily,
     ) -> PerspectiveAccumulator {
         let king_square = board.king(perspective);
         let mut sums = [0i16; TRANSFORMED_FEATURE_DIMENSIONS];
         sums.copy_from_slice(&self.biases);
         let mut psqt = [0i32; PSQT_BUCKETS];
-        let features = active_features(board, perspective, king_square);
+        let features = active_features(board, perspective, king_square, family);
 
         for &index in features.iter() {
             self.add_feature_to_arrays(&mut sums, &mut psqt, index);
@@ -428,7 +544,13 @@ struct ActiveFeatures {
 
 impl ActiveFeatures {
     fn push(&mut self, index: usize) {
+        self.push_with_limit(index, MAX_ACTIVE_FEATURES);
+    }
+
+    fn push_with_limit(&mut self, index: usize, max_len: usize) {
+        debug_assert!(max_len <= MAX_ACTIVE_FEATURES);
         debug_assert!(self.len < MAX_ACTIVE_FEATURES);
+        debug_assert!(self.len < max_len);
         self.indices[self.len] = index;
         self.len += 1;
     }
@@ -676,7 +798,12 @@ fn build_feature_delta(
     delta
 }
 
-fn active_features(board: &Board, perspective: Color, king_square: Square) -> ActiveFeatures {
+fn active_features(
+    board: &Board,
+    perspective: Color,
+    king_square: Square,
+    family: FeatureFamily,
+) -> ActiveFeatures {
     let king_offset = king_offset(king_square, perspective);
     let mut features = ActiveFeatures::default();
 
@@ -692,6 +819,15 @@ fn active_features(board: &Board, perspective: Color, king_square: Square) -> Ac
             colored_piece.piece,
             square,
         ));
+
+        append_donor_features(
+            &mut features,
+            board,
+            perspective,
+            family,
+            square,
+            colored_piece.color,
+        );
     }
 
     for &color in &[Color::Black, Color::White] {
@@ -710,6 +846,78 @@ fn active_features(board: &Board, perspective: Color, king_square: Square) -> Ac
     }
 
     features
+}
+
+fn append_donor_features(
+    features: &mut ActiveFeatures,
+    board: &Board,
+    perspective: Color,
+    family: FeatureFamily,
+    square: Square,
+    piece_color: Color,
+) {
+    match family {
+        FeatureFamily::HalfKAv2 => {}
+        FeatureFamily::HalfKAv2DonorSingle => {
+            let Some(donor_square) = single_donor_candidate_square(piece_color, square) else {
+                return;
+            };
+            let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
+                return;
+            };
+            features.push_with_limit(
+                HALFKAV2_REAL_FEATURES
+                    + donor_single_feature_index(perspective, piece_color, donor_piece, square),
+                family.max_active_features(),
+            );
+        }
+        FeatureFamily::HalfKAv2DonorPair => {
+            for (slot, donor_square) in pair_donor_candidate_squares(square).into_iter().enumerate()
+            {
+                let Some(donor_square) = donor_square else {
+                    continue;
+                };
+                let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
+                    continue;
+                };
+                features.push_with_limit(
+                    HALFKAV2_REAL_FEATURES
+                        + donor_pair_feature_index(
+                            perspective,
+                            piece_color,
+                            slot,
+                            donor_piece,
+                            square,
+                        ),
+                    family.max_active_features(),
+                );
+            }
+        }
+        FeatureFamily::HalfKAv2DonorKnight8 => {
+            for (slot, donor_square) in knight8_donor_candidate_squares(piece_color, square)
+                .into_iter()
+                .enumerate()
+            {
+                let Some(donor_square) = donor_square else {
+                    continue;
+                };
+                let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
+                    continue;
+                };
+                features.push_with_limit(
+                    HALFKAV2_REAL_FEATURES
+                        + donor_knight8_feature_index(
+                            perspective,
+                            piece_color,
+                            slot,
+                            donor_piece,
+                            square,
+                        ),
+                    family.max_active_features(),
+                );
+            }
+        }
+    }
 }
 
 fn king_offset(king_square: Square, perspective: Color) -> usize {
@@ -734,6 +942,45 @@ fn hand_feature_index(
     copy_index: usize,
 ) -> usize {
     king_offset + piece_hand_index(perspective, color, piece) + copy_index
+}
+
+fn donor_single_feature_index(
+    perspective: Color,
+    color: Color,
+    donor_piece: Piece,
+    square: Square,
+) -> usize {
+    orient_square(square, perspective)
+        + piece_slot(donor_piece) * SQUARES
+        + relative_color_index(perspective, color) * PIECE_TYPE_COUNT * SQUARES
+}
+
+fn donor_pair_feature_index(
+    perspective: Color,
+    color: Color,
+    slot: usize,
+    donor_piece: Piece,
+    square: Square,
+) -> usize {
+    orient_square(square, perspective)
+        + piece_slot(donor_piece) * SQUARES
+        + (relative_color_index(perspective, color) + slot * Color::NUM)
+            * PIECE_TYPE_COUNT
+            * SQUARES
+}
+
+fn donor_knight8_feature_index(
+    perspective: Color,
+    color: Color,
+    slot: usize,
+    donor_piece: Piece,
+    square: Square,
+) -> usize {
+    orient_square(square, perspective)
+        + piece_slot(donor_piece) * SQUARES
+        + (relative_color_index(perspective, color) + slot * Color::NUM)
+            * PIECE_TYPE_COUNT
+            * SQUARES
 }
 
 fn orient_square(square: Square, perspective: Color) -> usize {
@@ -769,8 +1016,12 @@ fn piece_square_index(perspective: Color, color: Color, piece: Piece) -> usize {
 fn piece_hand_index(perspective: Color, color: Color, piece: Piece) -> usize {
     let slot = piece_slot(piece.unpromote());
     debug_assert!(slot < PIECE_TYPE_COUNT - 1);
-    let color_offset = if color == perspective { 0 } else { 1 };
+    let color_offset = relative_color_index(perspective, color);
     NON_DROP_PIECE_INDICES + (2 * slot + color_offset) * POCKETS
+}
+
+fn relative_color_index(perspective: Color, color: Color) -> usize {
+    if color == perspective { 0 } else { 1 }
 }
 
 fn perspective_index(color: Color) -> usize {
@@ -792,6 +1043,81 @@ fn piece_slot(piece: Piece) -> usize {
         Piece::Gold | Piece::Tokin | Piece::PLance | Piece::PKnight | Piece::PSilver => 7,
         Piece::PBishop => 8,
         Piece::King => 9,
+    }
+}
+
+fn friendly_piece_on(board: &Board, color: Color, square: Square) -> Option<Piece> {
+    let colored_piece = board.colored_piece_on(square)?;
+    (colored_piece.color == color).then_some(colored_piece.piece)
+}
+
+fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square> {
+    #[cfg(feature = "annan")]
+    {
+        return match color {
+            Color::Black => square.try_offset(0, 1),
+            Color::White => square.try_offset(0, -1),
+        };
+    }
+
+    #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+    {
+        return match color {
+            Color::Black => square.try_offset(0, -1),
+            Color::White => square.try_offset(0, 1),
+        };
+    }
+
+    #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+    {
+        let _ = (color, square);
+        None
+    }
+}
+
+fn pair_donor_candidate_squares(square: Square) -> [Option<Square>; DONOR_PAIR_SLOT_COUNT] {
+    [square.try_offset(1, 0), square.try_offset(-1, 0)]
+}
+
+fn knight8_donor_candidate_squares(
+    color: Color,
+    square: Square,
+) -> [Option<Square>; DONOR_KNIGHT8_SLOT_COUNT] {
+    [
+        square_from_relative_offsets(color, square, 1, 2),
+        square_from_relative_offsets(color, square, -1, 2),
+        square_from_relative_offsets(color, square, -2, 1),
+        square_from_relative_offsets(color, square, -2, -1),
+        square_from_relative_offsets(color, square, -1, -2),
+        square_from_relative_offsets(color, square, 1, -2),
+        square_from_relative_offsets(color, square, 2, -1),
+        square_from_relative_offsets(color, square, 2, 1),
+    ]
+}
+
+fn square_from_relative_offsets(
+    color: Color,
+    square: Square,
+    left_offset: i8,
+    forward_offset: i8,
+) -> Option<Square> {
+    let file_offset = match color {
+        Color::Black => left_offset,
+        Color::White => -left_offset,
+    };
+    let rank_offset = match color {
+        Color::Black => -forward_offset,
+        Color::White => forward_offset,
+    };
+    square.try_offset(file_offset, rank_offset)
+}
+
+const fn family_supported_by_build(family: FeatureFamily) -> bool {
+    match family {
+        FeatureFamily::HalfKAv2 => true,
+        FeatureFamily::HalfKAv2DonorSingle => cfg!(any(feature = "annan", feature = "anhoku")),
+        FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
+        FeatureFamily::HalfKAv2DonorKnight8 => true,
     }
 }
 
@@ -876,8 +1202,31 @@ mod tests {
     #[test]
     fn computes_expected_piece_constants() {
         assert_eq!(PIECE_INDICES, 1_863);
-        assert_eq!(NNUE_DIMENSIONS, 150_903);
-        assert_eq!(NETWORK_HASH, 0x3c103e72);
+        assert_eq!(HALFKAV2_REAL_FEATURES, 150_903);
+        assert_eq!(HALFKAV2_NETWORK_HASH, 0x3c103e72);
+        #[cfg(feature = "annan")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1810b26d);
+        #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x0d8f62a2);
+        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
+        assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
+        assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0x5bf765a4);
+    }
+
+    #[test]
+    fn single_donor_hash_is_accepted_only_by_single_donor_builds() {
+        #[cfg(any(feature = "annan", feature = "anhoku"))]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
+            Some(FeatureFamily::HalfKAv2DonorSingle)
+        );
+
+        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
+            None
+        );
     }
 
     #[test]
@@ -894,6 +1243,103 @@ mod tests {
         assert_eq!(orient_square(Square::A9, Color::White), 0);
         assert_eq!(orient_square(Square::A1, Color::Black), 80);
         assert_eq!(orient_square(Square::A1, Color::White), 8);
+    }
+
+    #[cfg(feature = "annan")]
+    #[test]
+    fn single_donor_family_marks_annan_donor_piece() {
+        let board = Board::from_sfen("4k4/9/9/9/4R4/4B4/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn single_donor_family_marks_anhoku_donor_piece() {
+        let board = Board::from_sfen("4k4/9/9/4B4/4R4/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "antouzai")]
+    #[test]
+    fn pair_donor_family_preserves_slot_order() {
+        let board = Board::from_sfen("4k4/9/9/9/3SRB3/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorPair,
+        );
+        let left = HALFKAV2_REAL_FEATURES
+            + donor_pair_feature_index(Color::Black, Color::Black, 0, Piece::Silver, Square::E5);
+        let right = HALFKAV2_REAL_FEATURES
+            + donor_pair_feature_index(Color::Black, Color::Black, 1, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == left));
+        assert!(features.iter().any(|&index| index == right));
+    }
+
+    #[test]
+    fn pair_donor_family_uses_slot_major_stride() {
+        let own_slot0 =
+            donor_pair_feature_index(Color::Black, Color::Black, 0, Piece::Gold, Square::E5);
+        let enemy_slot0 =
+            donor_pair_feature_index(Color::Black, Color::White, 0, Piece::Gold, Square::E5);
+        let own_slot1 =
+            donor_pair_feature_index(Color::Black, Color::Black, 1, Piece::Gold, Square::E5);
+
+        assert_eq!(enemy_slot0 - own_slot0, PIECE_TYPE_COUNT * SQUARES);
+        assert_eq!(
+            own_slot1 - own_slot0,
+            PIECE_TYPE_COUNT * Color::NUM * SQUARES
+        );
+    }
+
+    #[test]
+    fn knight8_donor_family_uses_slot_major_stride() {
+        let own_slot0 =
+            donor_knight8_feature_index(Color::Black, Color::Black, 0, Piece::Gold, Square::E5);
+        let enemy_slot0 =
+            donor_knight8_feature_index(Color::Black, Color::White, 0, Piece::Gold, Square::E5);
+        let own_slot1 =
+            donor_knight8_feature_index(Color::Black, Color::Black, 1, Piece::Gold, Square::E5);
+
+        assert_eq!(enemy_slot0 - own_slot0, PIECE_TYPE_COUNT * SQUARES);
+        assert_eq!(
+            own_slot1 - own_slot0,
+            PIECE_TYPE_COUNT * Color::NUM * SQUARES
+        );
+    }
+
+    #[test]
+    fn knight8_donor_family_uses_clockwise_slot_order() {
+        assert_eq!(
+            knight8_donor_candidate_squares(Color::Black, Square::E5),
+            [
+                Some(Square::C6),
+                Some(Square::C4),
+                Some(Square::D3),
+                Some(Square::F3),
+                Some(Square::G4),
+                Some(Square::G6),
+                Some(Square::F7),
+                Some(Square::D7),
+            ]
+        );
     }
 
     #[test]

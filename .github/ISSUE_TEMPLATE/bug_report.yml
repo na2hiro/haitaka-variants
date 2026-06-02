@@ -15,7 +15,7 @@ body:
     attributes:
       label: Command
       description: The command or workflow that reproduced the issue.
-      placeholder: cargo run -p haitaka_cli -- play --human none --depth 3
+      placeholder: cargo run --release -p haitaka_cli -- play --human none --depth 3
   - type: textarea
     id: expected
     attributes:

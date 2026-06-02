@@ -61,9 +61,9 @@ cargo test -p haitaka_cli --features annan
 Local engine smoke tests:
 
 ```bash
-cargo run -p haitaka_cli -- play --human none --depth 2
-cargo run -p haitaka_cli -- self-play --games 2 --a-depth 2 --b-depth 1
-cargo run -p haitaka_cli -- package --allow-missing-wasm
+cargo run --release -phaitaka_cli -- play --human none --depth 2
+cargo run --release -phaitaka_cli -- self-play --games 2 --a-depth 2 --b-depth 1
+cargo run --release -phaitaka_cli -- package --allow-missing-wasm
 ```
 
 Benchmarks:

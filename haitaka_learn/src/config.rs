@@ -9,6 +9,11 @@ const STANDARD_STARTPOS_SFEN: &str =
     "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
 const ANNAN_STARTPOS_SFEN: &str =
     "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
+pub const FEATURE_SET_HALFKAV2: &str = "HalfKAv2^";
+pub const FEATURE_SET_DONOR_SINGLE: &str = "HalfKAv2^+DonorSingleEff";
+pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
+#[allow(dead_code)]
+pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RulesetSpec {
@@ -105,6 +110,14 @@ impl LoadedConfig {
 
     pub fn runtime_mode(&self) -> &'static str {
         active_variant_feature().unwrap_or("standard")
+    }
+
+    pub fn training_features(&self) -> &str {
+        self.config
+            .training
+            .features
+            .as_deref()
+            .unwrap_or_else(|| recommended_feature_set(self.config.rules.ruleset))
     }
 
     pub fn ruleset_requires_matching_engine(&self) -> Result<()> {
@@ -313,9 +326,14 @@ impl LearnConfig {
             (1..=100).contains(&self.data.progress_every_percent),
             "data.progress_every_percent must be between 1 and 100"
         );
+        let recommended = recommended_feature_set(self.rules.ruleset);
+        let configured = self.training.features.as_deref().unwrap_or(recommended);
+        let allowed = allowed_feature_sets(self.rules.ruleset);
         ensure!(
-            self.training.features == "HalfKAv2^",
-            "training.features must stay `HalfKAv2^` for Haitaka/Fairy-Stockfish compatibility"
+            allowed.contains(&configured),
+            "training.features=`{configured}` is not valid for ruleset={}; expected one of: {}",
+            self.rules.ruleset.as_str(),
+            allowed.join(", ")
         );
         if self.rules.ruleset == Ruleset::Handicap {
             ensure!(
@@ -453,7 +471,7 @@ impl Default for DataConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct TrainingConfig {
     #[serde(default = "default_features")]
-    pub features: String,
+    pub features: Option<String>,
     #[serde(default = "default_training_resume")]
     pub resume: bool,
     #[serde(default = "default_num_workers")]
@@ -588,8 +606,8 @@ fn default_resume() -> bool {
     true
 }
 
-fn default_features() -> String {
-    "HalfKAv2^".to_string()
+fn default_features() -> Option<String> {
+    None
 }
 
 fn default_training_resume() -> bool {
@@ -656,6 +674,22 @@ fn active_variant_feature() -> Option<&'static str> {
     }
 }
 
+pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
+    match ruleset {
+        Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
+        Ruleset::Annan | Ruleset::Anhoku => FEATURE_SET_DONOR_SINGLE,
+        Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
+    }
+}
+
+fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
+    match ruleset {
+        Ruleset::Standard | Ruleset::Handicap => vec![FEATURE_SET_HALFKAV2],
+        Ruleset::Annan | Ruleset::Anhoku => vec![FEATURE_SET_DONOR_SINGLE],
+        Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -678,7 +712,7 @@ validation_games = 1
 "#;
         let config: LearnConfig = toml::from_str(raw).unwrap();
         config.validate().unwrap();
-        assert_eq!(config.training.features, "HalfKAv2^");
+        assert_eq!(config.training.features, None);
         assert_eq!(config.export.output_name, "haitaka.nnue");
         assert_eq!(config.data.jobs, 0);
         assert_eq!(config.data.shard_games, 100);
@@ -701,6 +735,36 @@ validation_games = 1
             Some("antouzai")
         );
         assert!(Ruleset::Handicap.spec().is_none());
+    }
+
+    #[test]
+    fn resolves_recommended_feature_sets_by_ruleset() {
+        assert_eq!(recommended_feature_set(Ruleset::Standard), FEATURE_SET_HALFKAV2);
+        assert_eq!(recommended_feature_set(Ruleset::Handicap), FEATURE_SET_HALFKAV2);
+        assert_eq!(recommended_feature_set(Ruleset::Annan), FEATURE_SET_DONOR_SINGLE);
+        assert_eq!(recommended_feature_set(Ruleset::Anhoku), FEATURE_SET_DONOR_SINGLE);
+        assert_eq!(recommended_feature_set(Ruleset::Antouzai), FEATURE_SET_DONOR_PAIR);
+    }
+
+    #[test]
+    fn rejects_mismatched_feature_family_for_ruleset() {
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "anhoku"
+
+[training]
+features = "HalfKAv2^"
+
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        let err = config.validate().unwrap_err().to_string();
+        assert!(err.contains("training.features=`HalfKAv2^`"));
+        assert!(err.contains(FEATURE_SET_DONOR_SINGLE));
     }
 
     #[test]
