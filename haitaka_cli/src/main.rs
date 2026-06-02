@@ -618,6 +618,27 @@ fn read_human_move(board: &Board) -> Result<Move> {
     }
 }
 
+/// Number of lines in the live status block, used to move the cursor back up.
+const STATUS_LINES: usize = 8;
+
+/// Redraw the status block in place. On every call after the first, the cursor
+/// is moved up over the previous block so the same lines are overwritten.
+fn render_status(block: &str, first: bool) {
+    let mut out = String::new();
+    if !first {
+        out.push_str(&format!("\x1b[{STATUS_LINES}A"));
+    }
+    for line in block.lines() {
+        // Clear the whole line before rewriting so shorter lines don't leave
+        // stale characters behind.
+        out.push_str("\x1b[2K");
+        out.push_str(line);
+        out.push('\n');
+    }
+    print!("{out}");
+    let _ = io::stdout().flush();
+}
+
 fn self_play(args: SelfPlayArgs) -> Result<()> {
     let base_board = parse_board(args.sfen.as_deref())?;
     let engine_a = engine_config(
@@ -636,6 +657,7 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
     )?;
     let threads = resolve_self_play_threads(args.threads, args.games);
     let mut stats = MatchStats::default();
+    let start = Instant::now();
 
     println!("{}", describe_engine(&engine_a));
     println!("{}", describe_engine(&engine_b));
@@ -649,7 +671,6 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
 
     let next_game = AtomicU32::new(0);
     let (tx, rx) = mpsc::channel();
-    let start = Instant::now();
     let mut completed = 0_u32;
 
     thread::scope(|scope| -> Result<()> {
@@ -706,45 +727,45 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
                 elapsed * f64::from(remaining) / f64::from(completed)
             };
 
-            println!(
-                "game {} done ({}/{}): A({:?}) vs B({:?}) plies={} result={} eta={}",
-                game_index + 1,
-                completed,
-                args.games,
-                result.a_color,
-                !result.a_color,
-                result.plies,
-                outcome,
-                format_eta(eta)
+            let decided = stats.a_wins + stats.b_wins;
+            let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
+            let denom = f64::from(completed.max(1));
+            let score_rate = (a_score / denom).clamp(0.01, 0.99);
+            let elo = -400.0 * (1.0 / score_rate - 1.0).log10();
+            let nps = if stats.total_elapsed_ms > 0.0 {
+                stats.total_nodes as f64 / (stats.total_elapsed_ms / 1_000.0)
+            } else {
+                0.0
+            };
+
+            let block = format!(
+                "game ({game}) done ({completed}/{total}): A({a_color:?}) vs B({b_color:?}) \
+                 plies={plies} result={outcome} eta={eta}\n\
+                 games: {completed}\n\
+                 score: A {a_wins} - B {b_wins} - draws {draws}\n\
+                 decided games: {decided}\n\
+                 approx elo A-B: {elo:.1} (small sample estimate)\n\
+                 avg plies: {avg:.1}\n\
+                 total nodes: {nodes}\n\
+                 aggregate nps: {nps:.0}",
+                game = game_index + 1,
+                total = args.games,
+                a_color = result.a_color,
+                b_color = !result.a_color,
+                plies = result.plies,
+                eta = format_eta(eta),
+                a_wins = stats.a_wins,
+                b_wins = stats.b_wins,
+                draws = stats.draws,
+                avg = stats.total_plies as f64 / denom,
+                nodes = stats.total_nodes,
             );
-            io::stdout().flush()?;
+            render_status(&block, completed == 1);
         }
 
         Ok(())
     })?;
 
-    let decided = stats.a_wins + stats.b_wins;
-    let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
-    let games = args.games.max(1) as f64;
-    let score_rate = (a_score / games).clamp(0.01, 0.99);
-    let elo = -400.0 * (1.0 / score_rate - 1.0).log10();
-    let nps = if stats.total_elapsed_ms > 0.0 {
-        stats.total_nodes as f64 / (stats.total_elapsed_ms / 1_000.0)
-    } else {
-        0.0
-    };
-
-    println!();
-    println!("games: {}", args.games);
-    println!(
-        "score: A {} - B {} - draws {}",
-        stats.a_wins, stats.b_wins, stats.draws
-    );
-    println!("decided games: {decided}");
-    println!("approx elo A-B: {elo:.1} (small sample estimate)");
-    println!("avg plies: {:.1}", stats.total_plies as f64 / games);
-    println!("total nodes: {}", stats.total_nodes);
-    println!("aggregate nps: {nps:.0}");
     Ok(())
 }
 
