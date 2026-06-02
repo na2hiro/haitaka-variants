@@ -10,10 +10,23 @@ than an older one.
 
 Recommended sequence:
 
-- Phase 1: add a minimal USI subprocess mode
-- Phase 2: teach `self-play` to drive external engines
-- Phase 3: archive executable engine builds with identity metadata
-- Phase 4: improve rating reports and experiment tracking
+- [x] Phase 1: add a minimal USI subprocess mode
+- [x] Phase 2: teach `self-play` to drive external engines
+- [x] Phase 3: archive executable engine builds with identity metadata
+- [ ] Phase 4: improve rating reports and experiment tracking
+
+Current status:
+
+- [x] Native CLI USI mode exists.
+- [x] Native `self-play` can launch external USI subprocess engines.
+- [x] Shared WASM/CLI USI session support exists through `UsiSession`.
+- [x] WASM exposes a `UsiEngine` API for USI command strings over JS/Worker
+  transports.
+- [x] Deferred WASM USI work is documented in
+  `plans/wasm-usi-future-work.md`.
+- [x] Native engine archive workflow is implemented for `.tgz` developer
+  self-play archives.
+- [ ] Rating/report improvements are not implemented yet.
 
 This should start with the smallest reliable protocol surface. Full USI
 ecosystem compatibility is not the first goal; controlled local comparison
@@ -30,7 +43,7 @@ between Haitaka builds is.
 - Archive metadata matters only after the subprocess interface is stable enough
   to reproduce games across versions.
 
-### Phase 1
+### Phase 1 - Done
 
 Add a minimal `haitaka_cli usi` mode.
 
@@ -65,7 +78,7 @@ Implementation guidance:
 - Keep `ponder`, `stop`, hash options, and full time-control parsing out of
   scope for the first version unless they are needed by tests.
 
-### Phase 2
+### Phase 2 - Done
 
 Add external-engine support to `self-play`.
 
@@ -100,7 +113,7 @@ Out of scope for this phase:
 - persistent engine pools across unrelated commands
 - remote engine execution
 
-### Phase 3
+### Phase 3 - Done
 
 Add an engine archive workflow for reproducible comparisons.
 
@@ -151,18 +164,22 @@ are reliable. A simple Elo-style estimate is enough for early local iteration.
 
 ### Test Plan
 
-- USI smoke test launches `haitaka usi`, sends `usi`, `isready`, `position`,
+- [x] USI smoke test launches `haitaka usi`, sends `usi`, `isready`, `position`,
   and `go depth 1`, then verifies a legal `bestmove`.
-- `position ... moves ...` test verifies the engine searches from the expected
+- [x] `position ... moves ...` test verifies the engine searches from the expected
   post-move board.
-- Movetime smoke test verifies `go movetime N` returns a legal move without
-  hanging.
-- External self-play smoke test runs two local Haitaka subprocesses for a tiny
+- [x] Movetime support is covered by shared USI/session behavior and CLI search
+  budget tests.
+- [x] External self-play smoke test runs two local Haitaka subprocesses for a tiny
   match.
-- Failure tests cover missing engine path, startup timeout, search timeout,
+- [x] Failure tests cover missing engine path, startup timeout, search timeout,
   process exit, malformed `bestmove`, and illegal `bestmove`.
-- Archive test verifies the manifest records commit/ruleset/build/NNUE identity
-  and that an archived engine can be launched for a smoke search.
+- [x] Archive test verifies the manifest records commit/ruleset/build/NNUE
+  identity and that an archived engine can be launched for a smoke search.
+- [x] WASM target check verifies the shared USI session and `UsiEngine` compile
+  for `wasm32-unknown-unknown`.
+- [x] Future-work docs test verifies intentionally omitted WASM USI work is
+  named under `plans/`.
 
 ### Decision Rule
 

@@ -1,8 +1,10 @@
+use std::fs;
 use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 fn cli_exe() -> &'static str {
     env!("CARGO_BIN_EXE_haitaka_cli")
@@ -87,6 +89,67 @@ fn self_play_can_use_current_binary_as_both_external_engines() {
     assert!(stdout.contains("games: 2"));
 }
 
+#[test]
+fn self_play_can_use_current_binary_archive_as_both_engines() {
+    let temp = unique_temp_dir("archive-smoke");
+    fs::create_dir_all(&temp).expect("create temp dir");
+    let archive = temp.join("haitaka-native.tgz");
+
+    let archive_output = Command::new(cli_exe())
+        .args([
+            "archive-engine",
+            "--output",
+            archive.to_str().expect("archive path should be utf-8"),
+            "--binary",
+            cli_exe(),
+            "--profile",
+            "debug",
+            "--target",
+            "test-target",
+        ])
+        .output()
+        .expect("run archive-engine");
+    assert!(
+        archive_output.status.success(),
+        "archive-engine failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&archive_output.stdout),
+        String::from_utf8_lossy(&archive_output.stderr)
+    );
+
+    let output = Command::new(cli_exe())
+        .args([
+            "self-play",
+            "--games",
+            "2",
+            "--threads",
+            "1",
+            "--a-depth",
+            "1",
+            "--b-depth",
+            "1",
+            "--a-engine-archive",
+            archive.to_str().expect("archive path should be utf-8"),
+            "--b-engine-archive",
+            archive.to_str().expect("archive path should be utf-8"),
+            "--max-plies",
+            "4",
+        ])
+        .output()
+        .expect("run archive external self-play smoke");
+
+    assert!(
+        output.status.success(),
+        "archive self-play failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("self-play threads=1"));
+    assert!(stdout.contains("games: 2"));
+
+    fs::remove_dir_all(temp).expect("clean temp dir");
+}
+
 fn send(stdin: &mut impl Write, command: &str) {
     writeln!(stdin, "{command}").expect("write command");
     stdin.flush().expect("flush command");
@@ -109,4 +172,12 @@ fn read_prefix(rx: &mpsc::Receiver<String>, prefix: &str, timeout: Duration) -> 
             return line;
         }
     }
+}
+
+fn unique_temp_dir(name: &str) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("haitaka-cli-{name}-{}-{nonce}", std::process::id()))
 }

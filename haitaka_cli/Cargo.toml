@@ -12,6 +12,7 @@ haitaka_wasm = { path = "../haitaka_wasm" }
 rand = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+sha2 = "0.10"
 
 [features]
 annan = ["haitaka/annan", "haitaka_wasm/annan"]

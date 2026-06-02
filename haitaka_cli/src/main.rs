@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, BufRead, BufReader, IsTerminal, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command as ProcessCommand, Stdio};
 use std::str::FromStr;
@@ -14,7 +14,8 @@ use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
 use haitaka_wasm::{NnueModel, SearchEvalMode, UsiSession};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 const ENGINE_ID: &str = "haitaka-variants";
 const ENGINE_NAME: &str = "Haitaka Variants";
@@ -23,6 +24,9 @@ const ENGINE_DIR: &str = "engine";
 const WASM_BINDGEN_MODULE: &str = "engine/haitaka_wasm.js";
 const WASM_BINDGEN_WASM: &str = "engine/haitaka_wasm_bg.wasm";
 const NNUE_ARTIFACT_PATH: &str = "engine/model.nnue";
+const ENGINE_ARCHIVE_MANIFEST_FILE: &str = "haitaka-engine-archive.json";
+const ENGINE_ARCHIVE_BIN_PATH: &str = "bin/haitaka_cli";
+const ENGINE_ARCHIVE_NNUE_PATH: &str = "nnue/model.nnue";
 const REQUIRED_WASM_FILES: [&str; 2] = ["haitaka_wasm.js", "haitaka_wasm_bg.wasm"];
 const OPTIONAL_WASM_FILES: [&str; 4] = [
     "haitaka_wasm.d.ts",
@@ -53,6 +57,8 @@ enum Command {
     SelfPlay(SelfPlayArgs),
     /// Create a Shogitter-consumable engine package archive.
     Package(PackageArgs),
+    /// Create a native USI engine archive for reproducible self-play.
+    ArchiveEngine(ArchiveEngineArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -129,12 +135,18 @@ struct SelfPlayArgs {
     /// External USI engine executable for side A.
     #[arg(long = "a-engine")]
     a_engine: Option<PathBuf>,
+    /// Native engine archive for side A.
+    #[arg(long = "a-engine-archive")]
+    a_engine_archive: Option<PathBuf>,
     /// Argument appended after `usi` when launching side A's external engine.
     #[arg(long = "a-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
     a_engine_args: Vec<String>,
     /// External USI engine executable for side B.
     #[arg(long = "b-engine")]
     b_engine: Option<PathBuf>,
+    /// Native engine archive for side B.
+    #[arg(long = "b-engine-archive")]
+    b_engine_archive: Option<PathBuf>,
     /// Argument appended after `usi` when launching side B's external engine.
     #[arg(long = "b-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
     b_engine_args: Vec<String>,
@@ -175,6 +187,50 @@ struct PackageArgs {
     /// Allow metadata-only packages when wasm artifacts are not built yet.
     #[arg(long)]
     allow_missing_wasm: bool,
+}
+
+#[derive(Debug, Parser)]
+struct ArchiveEngineArgs {
+    /// Archive output path.
+    #[arg(long)]
+    output: PathBuf,
+    /// Native USI-capable haitaka_cli binary to archive.
+    #[arg(long)]
+    binary: PathBuf,
+    /// Optional NNUE file to include in the archive.
+    #[arg(long)]
+    nnue: Option<PathBuf>,
+    /// Ruleset name written into metadata.
+    #[arg(long, default_value = default_ruleset())]
+    ruleset: String,
+    /// Engine display name written into metadata.
+    #[arg(long = "engine-name", default_value = ENGINE_NAME)]
+    engine_name: String,
+    /// Build profile written into metadata.
+    #[arg(long, value_enum)]
+    profile: Option<ArchiveBuildProfile>,
+    /// Target triple or platform identifier written into metadata.
+    #[arg(long)]
+    target: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum ArchiveBuildProfile {
+    Debug,
+    Release,
+    Custom,
+    Unknown,
+}
+
+impl ArchiveBuildProfile {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Debug => "debug",
+            Self::Release => "release",
+            Self::Custom => "custom",
+            Self::Unknown => "unknown",
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -241,6 +297,50 @@ struct NnueArtifact {
     format: &'static str,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct NativeEngineArchiveManifest {
+    schema: String,
+    #[serde(rename = "schemaVersion")]
+    schema_version: u8,
+    engine: NativeArchiveEngine,
+    runtime: NativeArchiveRuntime,
+    nnue: Option<NativeArchiveNnue>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NativeArchiveEngine {
+    name: String,
+    version: String,
+    commit: String,
+    dirty: bool,
+    ruleset: String,
+    features: Vec<String>,
+    #[serde(rename = "buildProfile")]
+    build_profile: String,
+    target: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NativeArchiveRuntime {
+    protocol: String,
+    #[serde(rename = "protocolVersion")]
+    protocol_version: String,
+    executable: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NativeArchiveNnue {
+    path: String,
+    sha256: String,
+}
+
+#[derive(Debug)]
+struct ArchiveLaunch {
+    engine_path: PathBuf,
+    engine_args: Vec<String>,
+    extraction_dir: PathBuf,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Seat {
     A,
@@ -305,6 +405,7 @@ fn main() -> Result<()> {
         Command::Usi(args) => usi(args),
         Command::SelfPlay(args) => self_play(args),
         Command::Package(args) => package(args),
+        Command::ArchiveEngine(args) => archive_engine(args),
     }
 }
 
@@ -656,6 +757,14 @@ struct UsiEngineClient {
 
 impl UsiEngineClient {
     fn spawn(path: &Path, args: &[String]) -> Result<Self> {
+        Self::spawn_with_startup_timeout(path, args, USI_STARTUP_TIMEOUT)
+    }
+
+    fn spawn_with_startup_timeout(
+        path: &Path,
+        args: &[String],
+        startup_timeout: Duration,
+    ) -> Result<Self> {
         let mut child = ProcessCommand::new(path)
             .arg("usi")
             .args(args)
@@ -716,9 +825,9 @@ impl UsiEngineClient {
             stderr_lines,
         };
         client.send_command("usi")?;
-        client.read_until_exact("usiok", USI_STARTUP_TIMEOUT)?;
+        client.read_until_exact("usiok", startup_timeout)?;
         client.send_command("isready")?;
-        client.read_until_exact("readyok", USI_STARTUP_TIMEOUT)?;
+        client.read_until_exact("readyok", startup_timeout)?;
         client.send_command("usinewgame")?;
         Ok(client)
     }
@@ -1067,7 +1176,53 @@ fn render_status(block: &str, first: bool) {
 }
 
 fn self_play(args: SelfPlayArgs) -> Result<()> {
+    let mut cleanup_dirs = Vec::new();
+    let result = self_play_inner(args, &mut cleanup_dirs);
+    let cleanup = cleanup_archive_dirs(&cleanup_dirs);
+    if result.is_ok() {
+        cleanup?;
+    }
+    result
+}
+
+fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Result<()> {
     let base_board = parse_board(args.sfen.as_deref())?;
+    validate_engine_source("A", args.a_engine.as_ref(), args.a_engine_archive.as_ref())?;
+    validate_engine_source("B", args.b_engine.as_ref(), args.b_engine_archive.as_ref())?;
+    let a_archive = args
+        .a_engine_archive
+        .as_ref()
+        .map(|path| extract_engine_archive(path))
+        .transpose()?;
+    let b_archive = args
+        .b_engine_archive
+        .as_ref()
+        .map(|path| extract_engine_archive(path))
+        .transpose()?;
+    if let Some(archive) = a_archive.as_ref() {
+        cleanup_dirs.push(archive.extraction_dir.clone());
+    }
+    if let Some(archive) = b_archive.as_ref() {
+        cleanup_dirs.push(archive.extraction_dir.clone());
+    }
+    let mut a_engine_args = args.a_engine_args.clone();
+    let a_engine_path = if let Some(archive) = a_archive.as_ref() {
+        let mut archive_args = archive.engine_args.clone();
+        archive_args.extend(a_engine_args);
+        a_engine_args = archive_args;
+        Some(archive.engine_path.as_path())
+    } else {
+        args.a_engine.as_deref()
+    };
+    let mut b_engine_args = args.b_engine_args.clone();
+    let b_engine_path = if let Some(archive) = b_archive.as_ref() {
+        let mut archive_args = archive.engine_args.clone();
+        archive_args.extend(b_engine_args);
+        b_engine_args = archive_args;
+        Some(archive.engine_path.as_path())
+    } else {
+        args.b_engine.as_deref()
+    };
     let a_budget = self_play_budget(args.a_depth, args.movetime_ms);
     let b_budget = self_play_budget(args.b_depth, args.movetime_ms);
     let engine_a = engine_config(
@@ -1076,8 +1231,8 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
         args.a_eval,
         args.nnue.as_deref(),
         args.a_nnue.as_deref(),
-        args.a_engine.as_deref(),
-        &args.a_engine_args,
+        a_engine_path,
+        &a_engine_args,
     )?;
     let engine_b = engine_config(
         "B",
@@ -1085,8 +1240,8 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
         args.b_eval,
         args.nnue.as_deref(),
         args.b_nnue.as_deref(),
-        args.b_engine.as_deref(),
-        &args.b_engine_args,
+        b_engine_path,
+        &b_engine_args,
     )?;
     let threads = resolve_self_play_threads(args.threads, args.games);
     let mut stats = MatchStats::default();
@@ -1200,6 +1355,291 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
     })?;
 
     Ok(())
+}
+
+fn archive_engine(args: ArchiveEngineArgs) -> Result<()> {
+    let staging = unique_target_dir("engine-archive-staging")?;
+    let result = archive_engine_in_staging(args, &staging);
+    if staging.exists() {
+        let cleanup =
+            fs::remove_dir_all(&staging).with_context(|| format!("remove {}", staging.display()));
+        if result.is_ok() {
+            cleanup?;
+        }
+    }
+    result
+}
+
+fn archive_engine_in_staging(args: ArchiveEngineArgs, staging: &Path) -> Result<()> {
+    if staging.exists() {
+        fs::remove_dir_all(staging).with_context(|| format!("remove {}", staging.display()))?;
+    }
+    fs::create_dir_all(staging.join("bin"))?;
+
+    let archive_binary = staging.join(ENGINE_ARCHIVE_BIN_PATH);
+    fs::copy(&args.binary, &archive_binary)
+        .with_context(|| format!("copy {}", args.binary.display()))?;
+    if let Ok(metadata) = fs::metadata(&args.binary) {
+        let _ = fs::set_permissions(&archive_binary, metadata.permissions());
+    }
+
+    let nnue = if let Some(path) = args.nnue.as_ref() {
+        fs::create_dir_all(staging.join("nnue"))?;
+        fs::copy(path, staging.join(ENGINE_ARCHIVE_NNUE_PATH))
+            .with_context(|| format!("copy {}", path.display()))?;
+        Some(NativeArchiveNnue {
+            path: ENGINE_ARCHIVE_NNUE_PATH.to_string(),
+            sha256: file_sha256(path)?,
+        })
+    } else {
+        None
+    };
+
+    let manifest = archive_engine_manifest(&args, nnue);
+    fs::write(
+        staging.join(ENGINE_ARCHIVE_MANIFEST_FILE),
+        serde_json::to_string_pretty(&manifest)?,
+    )?;
+    fs::write(
+        staging.join("README.txt"),
+        "Haitaka native USI engine archive. See haitaka-engine-archive.json for metadata.\n",
+    )?;
+
+    if let Some(parent) = args.output.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+
+    let output = args.output.canonicalize().unwrap_or(args.output);
+    let status = ProcessCommand::new("tar")
+        .arg("-czf")
+        .arg(&output)
+        .arg("-C")
+        .arg(staging)
+        .arg(".")
+        .status()
+        .context("failed to run tar")?;
+    if !status.success() {
+        bail!("tar failed with status {status}");
+    }
+
+    println!("wrote {}", output.display());
+    Ok(())
+}
+
+fn archive_engine_manifest(
+    args: &ArchiveEngineArgs,
+    nnue: Option<NativeArchiveNnue>,
+) -> NativeEngineArchiveManifest {
+    NativeEngineArchiveManifest {
+        schema: "haitaka-engine-archive".to_string(),
+        schema_version: 1,
+        engine: NativeArchiveEngine {
+            name: args.engine_name.clone(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            commit: git_commit(),
+            dirty: git_dirty(),
+            ruleset: args.ruleset.clone(),
+            features: active_feature_names(),
+            build_profile: args
+                .profile
+                .unwrap_or_else(|| infer_build_profile(&args.binary))
+                .as_str()
+                .to_string(),
+            target: args
+                .target
+                .clone()
+                .unwrap_or_else(default_target_identifier),
+        },
+        runtime: NativeArchiveRuntime {
+            protocol: "usi".to_string(),
+            protocol_version: "minimal-v1".to_string(),
+            executable: ENGINE_ARCHIVE_BIN_PATH.to_string(),
+        },
+        nnue,
+    }
+}
+
+fn extract_engine_archive(path: &Path) -> Result<ArchiveLaunch> {
+    let extraction_dir = unique_target_dir("engine-archive-extract")?;
+    let result = extract_engine_archive_in_dir(path, &extraction_dir);
+    if result.is_err() && extraction_dir.exists() {
+        let _ = fs::remove_dir_all(&extraction_dir);
+    }
+    result
+}
+
+fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<ArchiveLaunch> {
+    fs::create_dir_all(extraction_dir)?;
+    let status = ProcessCommand::new("tar")
+        .arg("-xzf")
+        .arg(path)
+        .arg("-C")
+        .arg(extraction_dir)
+        .status()
+        .with_context(|| format!("failed to extract engine archive {}", path.display()))?;
+    if !status.success() {
+        bail!(
+            "tar failed extracting {} with status {status}",
+            path.display()
+        );
+    }
+
+    let manifest_path = extraction_dir.join(ENGINE_ARCHIVE_MANIFEST_FILE);
+    let manifest_bytes = fs::read(&manifest_path)
+        .with_context(|| format!("read archive manifest {}", manifest_path.display()))?;
+    let manifest: NativeEngineArchiveManifest = serde_json::from_slice(&manifest_bytes)
+        .with_context(|| format!("parse archive manifest {}", manifest_path.display()))?;
+    if manifest.schema != "haitaka-engine-archive" || manifest.schema_version != 1 {
+        bail!(
+            "unsupported engine archive schema {} v{}",
+            manifest.schema,
+            manifest.schema_version
+        );
+    }
+    if manifest.runtime.protocol != "usi" {
+        bail!(
+            "unsupported engine archive protocol {}",
+            manifest.runtime.protocol
+        );
+    }
+
+    let engine_path = extraction_dir.join(&manifest.runtime.executable);
+    if !engine_path.is_file() {
+        bail!(
+            "archive executable {} does not exist",
+            manifest.runtime.executable
+        );
+    }
+
+    let mut engine_args = Vec::new();
+    if let Some(nnue) = manifest.nnue {
+        let nnue_path = extraction_dir.join(&nnue.path);
+        if !nnue_path.is_file() {
+            bail!("archive NNUE {} does not exist", nnue.path);
+        }
+        engine_args.extend([
+            "--eval".to_string(),
+            "nnue".to_string(),
+            "--nnue".to_string(),
+            nnue_path.display().to_string(),
+        ]);
+    }
+
+    Ok(ArchiveLaunch {
+        engine_path,
+        engine_args,
+        extraction_dir: extraction_dir.to_path_buf(),
+    })
+}
+
+fn validate_engine_source(
+    label: &str,
+    raw_engine: Option<&PathBuf>,
+    archive: Option<&PathBuf>,
+) -> Result<()> {
+    if raw_engine.is_some() && archive.is_some() {
+        bail!(
+            "{label} cannot use both --{label_lower}-engine and --{label_lower}-engine-archive",
+            label_lower = label.to_ascii_lowercase()
+        );
+    }
+    Ok(())
+}
+
+fn cleanup_archive_dirs(dirs: &[PathBuf]) -> Result<()> {
+    for dir in dirs {
+        if dir.exists() {
+            fs::remove_dir_all(dir).with_context(|| format!("remove {}", dir.display()))?;
+        }
+    }
+    Ok(())
+}
+
+fn unique_target_dir(prefix: &str) -> Result<PathBuf> {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("system clock is before unix epoch")?
+        .as_nanos();
+    Ok(PathBuf::from(format!(
+        "target/haitaka_cli/{}-{}-{nonce}",
+        prefix,
+        std::process::id()
+    )))
+}
+
+fn file_sha256(path: &Path) -> Result<String> {
+    let mut file = fs::File::open(path).with_context(|| format!("open {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .with_context(|| format!("read {}", path.display()))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(hex_lower(&hasher.finalize()))
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
+}
+
+fn git_dirty() -> bool {
+    ProcessCommand::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .is_some_and(|output| !output.stdout.is_empty())
+}
+
+fn active_feature_names() -> Vec<String> {
+    let mut features = Vec::new();
+    if cfg!(feature = "annan") {
+        features.push("annan".to_string());
+    }
+    if cfg!(feature = "anhoku") {
+        features.push("anhoku".to_string());
+    }
+    if cfg!(feature = "antouzai") {
+        features.push("antouzai".to_string());
+    }
+    if features.is_empty() {
+        features.push("standard".to_string());
+    }
+    features
+}
+
+fn infer_build_profile(binary: &Path) -> ArchiveBuildProfile {
+    if binary
+        .components()
+        .any(|component| component.as_os_str() == "release")
+    {
+        ArchiveBuildProfile::Release
+    } else if binary
+        .components()
+        .any(|component| component.as_os_str() == "debug")
+    {
+        ArchiveBuildProfile::Debug
+    } else {
+        ArchiveBuildProfile::Unknown
+    }
+}
+
+fn default_target_identifier() -> String {
+    format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS)
 }
 
 fn package(args: PackageArgs) -> Result<()> {
@@ -1336,6 +1776,8 @@ fn git_commit() -> String {
 mod tests {
     use super::*;
     use serde_json::Value;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_package_args(wasm_dir: PathBuf, output: PathBuf) -> PackageArgs {
@@ -1346,6 +1788,22 @@ mod tests {
             rule_id: default_rule_id(),
             nnue: None,
             allow_missing_wasm: false,
+        }
+    }
+
+    fn test_archive_args(
+        binary: PathBuf,
+        output: PathBuf,
+        nnue: Option<PathBuf>,
+    ) -> ArchiveEngineArgs {
+        ArchiveEngineArgs {
+            output,
+            binary,
+            nnue,
+            ruleset: default_ruleset().to_string(),
+            engine_name: ENGINE_NAME.to_string(),
+            profile: Some(ArchiveBuildProfile::Debug),
+            target: Some("test-target".to_string()),
         }
     }
 
@@ -1377,6 +1835,14 @@ mod tests {
         .expect("write fake wasm d.ts");
         fs::write(dir.join("package.json"), "{}\n").expect("write fake package.json");
         fs::write(dir.join("README.md"), "# fake wasm package\n").expect("write fake README");
+    }
+
+    #[cfg(unix)]
+    fn write_executable_script(path: &Path, body: &str) {
+        fs::write(path, body).expect("write executable script");
+        let mut permissions = fs::metadata(path).expect("script metadata").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).expect("set script executable");
     }
 
     #[test]
@@ -1457,6 +1923,57 @@ mod tests {
     }
 
     #[test]
+    fn archive_manifest_serializes_native_engine_archive_v1() {
+        let args = test_archive_args(
+            PathBuf::from("target/debug/haitaka_cli"),
+            PathBuf::from("out.tgz"),
+            None,
+        );
+        let manifest = archive_engine_manifest(
+            &args,
+            Some(NativeArchiveNnue {
+                path: ENGINE_ARCHIVE_NNUE_PATH.to_string(),
+                sha256: "abc123".to_string(),
+            }),
+        );
+        let json = serde_json::to_value(&manifest).expect("serialize manifest");
+
+        assert_eq!(json["schema"], "haitaka-engine-archive");
+        assert_eq!(json["schemaVersion"], 1);
+        assert_eq!(json["engine"]["name"], ENGINE_NAME);
+        assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(json["engine"]["ruleset"], default_ruleset());
+        assert_eq!(json["engine"]["buildProfile"], "debug");
+        assert_eq!(json["engine"]["target"], "test-target");
+        assert_eq!(json["runtime"]["protocol"], "usi");
+        assert_eq!(json["runtime"]["protocolVersion"], "minimal-v1");
+        assert_eq!(json["runtime"]["executable"], ENGINE_ARCHIVE_BIN_PATH);
+        assert_eq!(json["nnue"]["path"], ENGINE_ARCHIVE_NNUE_PATH);
+        assert_eq!(json["nnue"]["sha256"], "abc123");
+    }
+
+    #[test]
+    fn file_sha256_hashes_small_file() {
+        let temp = unique_temp_dir("sha256");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let path = temp.join("tiny.txt");
+        fs::write(&path, b"abc").expect("write test file");
+
+        assert_eq!(
+            file_sha256(&path).expect("hash file"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn git_helpers_return_fallback_safe_values() {
+        assert!(!git_commit().is_empty());
+        let _ = git_dirty();
+    }
+
+    #[test]
     fn self_play_requires_nnue_path_for_nnue_side() {
         let err = engine_config(
             "A",
@@ -1496,6 +2013,8 @@ mod tests {
             "other.nnue",
             "--a-engine",
             "old-haitaka",
+            "--b-engine-archive",
+            "new-haitaka.tgz",
             "--a-engine-arg=--eval",
             "--a-engine-arg=nnue",
             "--movetime-ms",
@@ -1518,12 +2037,52 @@ mod tests {
                 assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
                 assert_eq!(args.b_nnue, Some(PathBuf::from("other.nnue")));
                 assert_eq!(args.a_engine, Some(PathBuf::from("old-haitaka")));
+                assert_eq!(
+                    args.b_engine_archive,
+                    Some(PathBuf::from("new-haitaka.tgz"))
+                );
                 assert_eq!(args.a_engine_args, ["--eval", "nnue"]);
                 assert_eq!(args.movetime_ms, Some(100));
                 assert_eq!(args.opening_random_plies, 4);
                 assert_eq!(args.seed, 7);
             }
             other => panic!("expected self-play command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_archive_engine_flags() {
+        let cli = Cli::try_parse_from([
+            "haitaka",
+            "archive-engine",
+            "--output",
+            "engine.tgz",
+            "--binary",
+            "target/release/haitaka_cli",
+            "--nnue",
+            "model.nnue",
+            "--ruleset",
+            "annan",
+            "--engine-name",
+            "Archived Haitaka",
+            "--profile",
+            "release",
+            "--target",
+            "aarch64-apple-darwin",
+        ])
+        .expect("CLI args should parse");
+
+        match cli.command {
+            Command::ArchiveEngine(args) => {
+                assert_eq!(args.output, PathBuf::from("engine.tgz"));
+                assert_eq!(args.binary, PathBuf::from("target/release/haitaka_cli"));
+                assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
+                assert_eq!(args.ruleset, "annan");
+                assert_eq!(args.engine_name, "Archived Haitaka");
+                assert_eq!(args.profile, Some(ArchiveBuildProfile::Release));
+                assert_eq!(args.target.as_deref(), Some("aarch64-apple-darwin"));
+            }
+            other => panic!("expected archive-engine command, got {other:?}"),
         }
     }
 
@@ -1657,6 +2216,237 @@ mod tests {
         assert!(manifest.get("artifacts").is_none());
 
         fs::remove_dir_all(temp).expect("clean temp package dir");
+    }
+
+    #[test]
+    fn archive_engine_command_writes_native_engine_archive() {
+        let temp = unique_temp_dir("engine-archive");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let binary = temp.join("haitaka_cli");
+        let nnue = temp.join("model.nnue");
+        let output = temp.join("haitaka-native.tgz");
+        fs::write(&binary, b"fake executable").expect("write fake binary");
+        fs::write(&nnue, b"abc").expect("write fake nnue");
+
+        archive_engine(test_archive_args(binary, output.clone(), Some(nnue)))
+            .expect("archive should succeed");
+
+        let list_output = ProcessCommand::new("tar")
+            .arg("-tzf")
+            .arg(&output)
+            .output()
+            .expect("run tar list");
+        assert!(
+            list_output.status.success(),
+            "tar list failed: {}",
+            String::from_utf8_lossy(&list_output.stderr)
+        );
+        let listing = String::from_utf8(list_output.stdout).expect("tar listing should be utf-8");
+        assert!(listing.contains("./haitaka-engine-archive.json"));
+        assert!(listing.contains("./bin/haitaka_cli"));
+        assert!(listing.contains("./nnue/model.nnue"));
+        assert!(listing.contains("./README.txt"));
+
+        let manifest_output = ProcessCommand::new("tar")
+            .arg("-xOzf")
+            .arg(&output)
+            .arg("./haitaka-engine-archive.json")
+            .output()
+            .expect("run tar extract manifest");
+        assert!(
+            manifest_output.status.success(),
+            "tar manifest extract failed: {}",
+            String::from_utf8_lossy(&manifest_output.stderr)
+        );
+        let manifest: Value =
+            serde_json::from_slice(&manifest_output.stdout).expect("manifest should parse");
+        assert_eq!(manifest["schema"], "haitaka-engine-archive");
+        assert_eq!(manifest["runtime"]["protocol"], "usi");
+        assert_eq!(manifest["runtime"]["executable"], ENGINE_ARCHIVE_BIN_PATH);
+        assert_eq!(manifest["nnue"]["path"], ENGINE_ARCHIVE_NNUE_PATH);
+        assert_eq!(
+            manifest["nnue"]["sha256"],
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp archive dir");
+    }
+
+    #[test]
+    fn raw_and_archive_engine_sources_conflict() {
+        let err = validate_engine_source(
+            "A",
+            Some(&PathBuf::from("engine")),
+            Some(&PathBuf::from("engine.tgz")),
+        )
+        .expect_err("raw and archive source should conflict");
+        assert!(err.to_string().contains("--a-engine"));
+        assert!(err.to_string().contains("--a-engine-archive"));
+    }
+
+    #[test]
+    fn missing_external_engine_path_fails_clearly() {
+        let err = match UsiEngineClient::spawn(Path::new("/definitely/missing/haitaka"), &[]) {
+            Ok(_) => panic!("missing engine should fail"),
+            Err(err) => err,
+        };
+        assert!(err.to_string().contains("failed to launch external engine"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_engine_startup_timeout_fails_clearly() {
+        let temp = unique_temp_dir("startup-timeout");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(&script, "#!/bin/sh\nsleep 2\n");
+
+        let err = match UsiEngineClient::spawn_with_startup_timeout(
+            &script,
+            &[],
+            Duration::from_millis(50),
+        ) {
+            Ok(_) => panic!("silent engine should time out"),
+            Err(err) => err,
+        };
+        assert!(err.to_string().contains("external engine timed out"));
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_engine_closed_stdout_fails_clearly() {
+        let temp = unique_temp_dir("closed-stdout");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(&script, "#!/bin/sh\nexit 7\n");
+
+        let err = match UsiEngineClient::spawn_with_startup_timeout(
+            &script,
+            &[],
+            Duration::from_millis(500),
+        ) {
+            Ok(_) => panic!("exited engine should fail"),
+            Err(err) => err,
+        };
+        let message = err.to_string();
+        assert!(
+            message.contains("external engine exited")
+                || message.contains("external engine closed stdout"),
+            "unexpected error: {message}"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_engine_search_timeout_fails_clearly() {
+        let temp = unique_temp_dir("search-timeout");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(
+            &script,
+            "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) sleep 2 ;;\nesac\ndone\n",
+        );
+        let mut client =
+            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(2))
+                .expect("engine should start");
+
+        client
+            .send_command(&format!("position sfen {}", haitaka::SFEN_STARTPOS))
+            .expect("send position");
+        client.send_command("go depth 1").expect("send go");
+        let err = client
+            .read_bestmove(Duration::from_millis(50))
+            .expect_err("search should time out");
+        assert!(err.to_string().contains("external engine timed out"));
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn malformed_bestmove_fails_clearly() {
+        let temp = unique_temp_dir("malformed-bestmove");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(
+            &script,
+            "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) printf 'bestmove \\n' ;;\nesac\ndone\n",
+        );
+        let mut client =
+            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(2))
+                .expect("engine should start");
+        client
+            .send_command(&format!("position sfen {}", haitaka::SFEN_STARTPOS))
+            .expect("send position");
+        client.send_command("go depth 1").expect("send go");
+
+        let err = client
+            .read_bestmove(Duration::from_millis(500))
+            .expect_err("empty bestmove should fail");
+        assert!(
+            err.to_string().contains("empty bestmove"),
+            "unexpected error: {err}"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn illegal_bestmove_fails_clearly() {
+        let temp = unique_temp_dir("illegal-bestmove");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(
+            &script,
+            "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) echo 'bestmove 1a1b' ;;\nesac\ndone\n",
+        );
+        let args = SelfPlayArgs {
+            games: 1,
+            threads: 1,
+            a_depth: 1,
+            b_depth: 1,
+            a_eval: EngineEvalKind::Handcrafted,
+            b_eval: EngineEvalKind::Handcrafted,
+            nnue: None,
+            a_nnue: None,
+            b_nnue: None,
+            a_engine: None,
+            a_engine_archive: None,
+            a_engine_args: Vec::new(),
+            b_engine: None,
+            b_engine_archive: None,
+            b_engine_args: Vec::new(),
+            movetime_ms: None,
+            sfen: None,
+            opening_random_plies: 0,
+            seed: 0,
+            max_plies: 4,
+        };
+        let base = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        let engine_a = EngineConfig {
+            label: "A",
+            budget: SearchBudget::Depth(1),
+            evaluator: EngineEvaluator::External {
+                path: script,
+                args: Vec::new(),
+            },
+        };
+        let engine_b = EngineConfig {
+            label: "B",
+            budget: SearchBudget::Depth(1),
+            evaluator: EngineEvaluator::Handcrafted,
+        };
+
+        let err = play_self_play_game(0, &args, &base, &engine_a, &engine_b)
+            .expect_err("illegal bestmove should fail");
+        assert!(err.to_string().contains("illegal move"));
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
     }
 
     #[test]
