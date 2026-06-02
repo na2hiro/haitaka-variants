@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
-use std::io::{BufWriter, IsTerminal, Read, Write, stdin};
+use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
@@ -891,21 +891,29 @@ fn detect_identity_mismatch(
 }
 
 fn prompt_identity_mismatch_choice(percent: f64) -> Result<MismatchChoice> {
-    println!(
+    // Write the prompt to stderr so it stays visible even when stdout is redirected
+    // to a log, and only prompt when both stdin and the prompt stream are terminals.
+    let mut err = stderr();
+    let _ = writeln!(
+        err,
         "Identity mismatch (git revision and/or config hash) found in existing shards \
          covering {percent:.1}% of this run's data."
     );
-    if !stdin().is_terminal() {
-        println!(
-            "  stdin is not interactive; aborting. Re-run with --ignore-identity-mismatch to reuse."
+    if !stdin().is_terminal() || !err.is_terminal() {
+        let _ = writeln!(
+            err,
+            "  not running interactively; aborting. Re-run with --ignore-identity-mismatch to reuse."
         );
         return Ok(MismatchChoice::Abort);
     }
-    println!("  1) Abort");
-    println!("  2) Resume, reusing the mismatched shards as-is");
-    println!("  3) Discard the mismatched shards and regenerate them");
-    print!("Choice [1/2/3] (default 1): ");
-    std::io::stdout().flush().ok();
+    let _ = writeln!(err, "  1) Abort");
+    let _ = writeln!(err, "  2) Resume, reusing the mismatched shards as-is");
+    let _ = writeln!(
+        err,
+        "  3) Discard the mismatched shards and regenerate them"
+    );
+    let _ = write!(err, "Choice [1/2/3] (default 1): ");
+    let _ = err.flush();
     let mut line = String::new();
     if stdin().read_line(&mut line)? == 0 {
         return Ok(MismatchChoice::Abort);
