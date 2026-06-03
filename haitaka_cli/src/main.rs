@@ -3,7 +3,7 @@ use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command as ProcessCommand, Stdio};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -27,6 +27,8 @@ const NNUE_ARTIFACT_PATH: &str = "engine/model.nnue";
 const ENGINE_ARCHIVE_MANIFEST_FILE: &str = "haitaka-engine-archive.json";
 const ENGINE_ARCHIVE_BIN_PATH: &str = "bin/haitaka_cli";
 const ENGINE_ARCHIVE_NNUE_PATH: &str = "nnue/model.nnue";
+const SELF_PLAY_REPORT_FILE: &str = "self-play-report.json";
+const SELF_PLAY_GAMES_FILE: &str = "self-play-games.jsonl";
 const REQUIRED_WASM_FILES: [&str; 2] = ["haitaka_wasm.js", "haitaka_wasm_bg.wasm"];
 const OPTIONAL_WASM_FILES: [&str; 4] = [
     "haitaka_wasm.d.ts",
@@ -38,6 +40,8 @@ const USI_STARTUP_TIMEOUT: Duration = Duration::from_secs(5);
 const USI_DEPTH_SEARCH_TIMEOUT: Duration = Duration::from_secs(30);
 const USI_SEARCH_TIMEOUT_GRACE: Duration = Duration::from_secs(5);
 const USI_STDERR_LIMIT: usize = 50;
+
+static SELF_PLAY_INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Parser)]
 #[command(name = "haitaka")]
@@ -156,6 +160,12 @@ struct SelfPlayArgs {
     /// Starting SFEN. Defaults to the ruleset start position.
     #[arg(long)]
     sfen: Option<String>,
+    /// Opening suite file. One SFEN per line; blank lines and # comments are ignored.
+    #[arg(long)]
+    openings: Option<PathBuf>,
+    /// Opening suite selection policy.
+    #[arg(long = "opening-order", value_enum, default_value = "sequential")]
+    opening_order: OpeningOrder,
     /// Number of random plies applied before each paired game to diversify openings.
     #[arg(long, default_value_t = 0)]
     opening_random_plies: u16,
@@ -165,6 +175,16 @@ struct SelfPlayArgs {
     /// Maximum plies per game before declaring a draw.
     #[arg(long, default_value_t = 200)]
     max_plies: u16,
+    /// Directory where self-play-report.json and self-play-games.jsonl are written.
+    #[arg(long = "report-dir")]
+    report_dir: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum OpeningOrder {
+    Sequential,
+    Random,
 }
 
 #[derive(Debug, Parser)]
@@ -297,7 +317,7 @@ struct NnueArtifact {
     format: &'static str,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct NativeEngineArchiveManifest {
     schema: String,
     #[serde(rename = "schemaVersion")]
@@ -307,7 +327,7 @@ struct NativeEngineArchiveManifest {
     nnue: Option<NativeArchiveNnue>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct NativeArchiveEngine {
     name: String,
     version: String,
@@ -320,7 +340,7 @@ struct NativeArchiveEngine {
     target: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct NativeArchiveRuntime {
     protocol: String,
     #[serde(rename = "protocolVersion")]
@@ -328,7 +348,7 @@ struct NativeArchiveRuntime {
     executable: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct NativeArchiveNnue {
     path: String,
     sha256: String,
@@ -339,6 +359,8 @@ struct ArchiveLaunch {
     engine_path: PathBuf,
     engine_args: Vec<String>,
     extraction_dir: PathBuf,
+    source_archive_path: PathBuf,
+    manifest: NativeEngineArchiveManifest,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -380,7 +402,7 @@ struct EngineSearchResult {
     elapsed_ms: f64,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct MatchStats {
     a_wins: u32,
     b_wins: u32,
@@ -397,6 +419,163 @@ struct GameResult {
     plies: u16,
     total_nodes: u64,
     total_elapsed_ms: f64,
+    start_sfen: String,
+    opening: OpeningRecord,
+    moves: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct OpeningPosition {
+    suite_index: usize,
+    sfen: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct OpeningRecord {
+    source: String,
+    #[serde(rename = "suiteIndex", skip_serializing_if = "Option::is_none")]
+    suite_index: Option<usize>,
+    #[serde(rename = "baseSfen")]
+    base_sfen: String,
+    #[serde(rename = "randomPlies")]
+    random_plies: u16,
+    #[serde(rename = "randomSeed", skip_serializing_if = "Option::is_none")]
+    random_seed: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct GameJsonRecord {
+    #[serde(rename = "schema")]
+    schema: &'static str,
+    #[serde(rename = "schemaVersion")]
+    schema_version: u8,
+    #[serde(rename = "gameIndex")]
+    game_index: u32,
+    #[serde(rename = "pairIndex")]
+    pair_index: u32,
+    #[serde(rename = "aColor")]
+    a_color: String,
+    #[serde(rename = "bColor")]
+    b_color: String,
+    opening: OpeningRecord,
+    #[serde(rename = "startSfen")]
+    start_sfen: String,
+    moves: Vec<String>,
+    result: String,
+    winner: Option<String>,
+    plies: u16,
+    #[serde(rename = "totalNodes")]
+    total_nodes: u64,
+    #[serde(rename = "totalElapsedMs")]
+    total_elapsed_ms: f64,
+    #[serde(rename = "failureState")]
+    failure_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SelfPlayReport {
+    schema: &'static str,
+    #[serde(rename = "schemaVersion")]
+    schema_version: u8,
+    #[serde(rename = "generatedAtUnixSeconds")]
+    generated_at_unix_seconds: u64,
+    package: ReportPackage,
+    git: ReportGit,
+    ruleset: String,
+    command: ReportCommand,
+    engines: Vec<ReportEngine>,
+    summary: RatingSummary,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReportPackage {
+    name: &'static str,
+    version: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReportGit {
+    commit: String,
+    dirty: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReportCommand {
+    games: u32,
+    threads: usize,
+    #[serde(rename = "aDepth")]
+    a_depth: u8,
+    #[serde(rename = "bDepth")]
+    b_depth: u8,
+    #[serde(rename = "movetimeMs")]
+    movetime_ms: Option<u32>,
+    sfen: Option<String>,
+    openings: Option<String>,
+    #[serde(rename = "openingOrder")]
+    opening_order: OpeningOrder,
+    #[serde(rename = "openingRandomPlies")]
+    opening_random_plies: u16,
+    seed: u64,
+    #[serde(rename = "maxPlies")]
+    max_plies: u16,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ReportEngine {
+    label: &'static str,
+    kind: String,
+    budget: String,
+    command: Option<String>,
+    args: Vec<String>,
+    nnue: Option<String>,
+    #[serde(rename = "archivePath", skip_serializing_if = "Option::is_none")]
+    archive_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    archive: Option<NativeEngineArchiveManifest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+struct RatingSummary {
+    games: u32,
+    #[serde(rename = "aWins")]
+    a_wins: u32,
+    #[serde(rename = "bWins")]
+    b_wins: u32,
+    draws: u32,
+    #[serde(rename = "decidedGames")]
+    decided_games: u32,
+    #[serde(rename = "aScore")]
+    a_score: f64,
+    #[serde(rename = "scoreRate")]
+    score_rate: f64,
+    #[serde(rename = "approxElo")]
+    approx_elo: f64,
+    #[serde(rename = "approxElo95Ci")]
+    approx_elo_95_ci: [f64; 2],
+    #[serde(rename = "avgPlies")]
+    avg_plies: f64,
+    #[serde(rename = "totalNodes")]
+    total_nodes: u64,
+    #[serde(rename = "totalElapsedMs", default)]
+    total_elapsed_ms: f64,
+    #[serde(rename = "aggregateNps")]
+    aggregate_nps: f64,
+    warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReportConflictAction {
+    Abort,
+    Merge,
+    Overwrite,
+}
+
+#[derive(Debug)]
+struct SelfPlayReportOutput {
+    games_writer: fs::File,
+    report_path: PathBuf,
+    existing_stats: MatchStats,
+    game_index_offset: u32,
 }
 
 fn main() -> Result<()> {
@@ -687,6 +866,52 @@ fn opening_seed(seed: u64, pair_index: u32, attempt: u32) -> u64 {
     seed ^ (u64::from(pair_index) << 32) ^ u64::from(attempt).wrapping_mul(0x9E37_79B9_7F4A_7C15)
 }
 
+fn load_opening_suite(path: &Path) -> Result<Vec<OpeningPosition>> {
+    let contents =
+        fs::read_to_string(path).with_context(|| format!("read openings {}", path.display()))?;
+    let mut openings = Vec::new();
+    for (line_index, raw_line) in contents.lines().enumerate() {
+        let line = raw_line.split_once('#').map_or(raw_line, |(sfen, _)| sfen);
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        Board::from_sfen(line).map_err(|err| {
+            anyhow!(
+                "failed to parse opening SFEN in {} line {}: {err}",
+                path.display(),
+                line_index + 1
+            )
+        })?;
+        openings.push(OpeningPosition {
+            suite_index: openings.len(),
+            sfen: line.to_string(),
+        });
+    }
+    if openings.is_empty() {
+        bail!(
+            "opening suite {} contains no SFEN positions",
+            path.display()
+        );
+    }
+    Ok(openings)
+}
+
+fn select_suite_opening<'a>(
+    openings: &'a [OpeningPosition],
+    order: OpeningOrder,
+    seed: u64,
+    pair_index: u32,
+) -> &'a OpeningPosition {
+    match order {
+        OpeningOrder::Sequential => &openings[pair_index as usize % openings.len()],
+        OpeningOrder::Random => {
+            let mut rng = StdRng::seed_from_u64(opening_seed(seed, pair_index, 0));
+            &openings[rng.random_range(0..openings.len())]
+        }
+    }
+}
+
 fn generate_opening_board(
     base: &Board,
     opening_random_plies: u16,
@@ -721,6 +946,54 @@ fn generate_opening_board(
         "failed to generate a non-terminal opening after {} random plies; try reducing --opening-random-plies",
         opening_random_plies
     )
+}
+
+fn game_opening(
+    base_board: &Board,
+    openings: Option<&[OpeningPosition]>,
+    args: &SelfPlayArgs,
+    pair_index: u32,
+) -> Result<(Board, OpeningRecord)> {
+    let (base, mut record) = if let Some(openings) = openings {
+        let opening = select_suite_opening(openings, args.opening_order, args.seed, pair_index);
+        let board = Board::from_sfen(&opening.sfen).map_err(|err| {
+            anyhow!(
+                "failed to parse selected opening SFEN at suite index {}: {}: {err}",
+                opening.suite_index,
+                opening.sfen
+            )
+        })?;
+        (
+            board,
+            OpeningRecord {
+                source: "suite".to_string(),
+                suite_index: Some(opening.suite_index),
+                base_sfen: opening.sfen.clone(),
+                random_plies: args.opening_random_plies,
+                random_seed: None,
+            },
+        )
+    } else {
+        (
+            base_board.clone(),
+            OpeningRecord {
+                source: "sfen".to_string(),
+                suite_index: None,
+                base_sfen: base_board.to_string(),
+                random_plies: args.opening_random_plies,
+                random_seed: None,
+            },
+        )
+    };
+    if args.opening_random_plies > 0 {
+        let random_seed = opening_seed(args.seed, pair_index, 0);
+        record.random_seed = Some(random_seed);
+        let board =
+            generate_opening_board(&base, args.opening_random_plies, args.seed, pair_index)?;
+        Ok((board, record))
+    } else {
+        Ok((base, record))
+    }
 }
 
 enum GameEngine<'a> {
@@ -952,12 +1225,13 @@ fn play_self_play_game(
     game_index: u32,
     args: &SelfPlayArgs,
     base_board: &Board,
+    openings: Option<&[OpeningPosition]>,
     engine_a: &EngineConfig,
     engine_b: &EngineConfig,
 ) -> Result<GameResult> {
     let pair_index = game_index / 2;
-    let mut board =
-        generate_opening_board(base_board, args.opening_random_plies, args.seed, pair_index)?;
+    let (mut board, opening) = game_opening(base_board, openings, args, pair_index)?;
+    let start_sfen = board.to_string();
     let a_color = if game_index % 2 == 0 {
         Color::Black
     } else {
@@ -967,6 +1241,7 @@ fn play_self_play_game(
     let mut plies = 0;
     let mut total_nodes = 0;
     let mut total_elapsed_ms = 0.0;
+    let mut moves = Vec::new();
     let mut runtime_a = GameEngine::start(engine_a)
         .map_err(|err| anyhow!("failed to start engine A in game {}: {err}", game_index + 1))?;
     let mut runtime_b = GameEngine::start(engine_b)
@@ -1010,6 +1285,7 @@ fn play_self_play_game(
         board
             .try_play(mv)
             .map_err(|_| anyhow!("engine returned illegal move {best_move}"))?;
+        moves.push(best_move);
         plies = ply + 1;
     }
 
@@ -1019,6 +1295,9 @@ fn play_self_play_game(
         plies,
         total_nodes,
         total_elapsed_ms,
+        start_sfen,
+        opening,
+        moves,
     })
 }
 
@@ -1030,6 +1309,306 @@ fn legal_moves(board: &Board) -> Vec<Move> {
     });
     moves.sort_unstable_by_key(ToString::to_string);
     moves
+}
+
+fn color_name(color: Color) -> &'static str {
+    match color {
+        Color::Black => "black",
+        Color::White => "white",
+    }
+}
+
+fn seat_name(seat: Seat) -> &'static str {
+    match seat {
+        Seat::A => "A",
+        Seat::B => "B",
+    }
+}
+
+fn result_name(winner: Option<Seat>) -> &'static str {
+    match winner {
+        Some(Seat::A) => "a-win",
+        Some(Seat::B) => "b-win",
+        None => "draw",
+    }
+}
+
+fn score_rate_to_elo(score_rate: f64) -> f64 {
+    let score_rate = score_rate.clamp(0.01, 0.99);
+    400.0 * (score_rate / (1.0 - score_rate)).log10()
+}
+
+fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
+    let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
+    let denom = f64::from(games.max(1));
+    let score_rate = (a_score / denom).clamp(0.0, 1.0);
+    let bounded_rate = score_rate.clamp(0.01, 0.99);
+    let se = (bounded_rate * (1.0 - bounded_rate) / denom).sqrt();
+    let lower_rate = (bounded_rate - 1.96 * se).clamp(0.01, 0.99);
+    let upper_rate = (bounded_rate + 1.96 * se).clamp(0.01, 0.99);
+    let aggregate_nps = if stats.total_elapsed_ms > 0.0 {
+        stats.total_nodes as f64 / (stats.total_elapsed_ms / 1_000.0)
+    } else {
+        0.0
+    };
+    let mut warnings = Vec::new();
+    if games < 30 {
+        warnings.push("low sample: Elo and confidence interval are approximate".to_string());
+    }
+    if stats.draws == games && games > 0 {
+        warnings.push("all games were drawn; estimate is uninformative".to_string());
+    }
+
+    RatingSummary {
+        games,
+        a_wins: stats.a_wins,
+        b_wins: stats.b_wins,
+        draws: stats.draws,
+        decided_games: stats.a_wins + stats.b_wins,
+        a_score,
+        score_rate,
+        approx_elo: score_rate_to_elo(bounded_rate),
+        approx_elo_95_ci: [score_rate_to_elo(lower_rate), score_rate_to_elo(upper_rate)],
+        avg_plies: stats.total_plies as f64 / denom,
+        total_nodes: stats.total_nodes,
+        total_elapsed_ms: stats.total_elapsed_ms,
+        aggregate_nps,
+        warnings,
+    }
+}
+
+fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
+    MatchStats {
+        a_wins: summary.a_wins,
+        b_wins: summary.b_wins,
+        draws: summary.draws,
+        total_nodes: summary.total_nodes,
+        total_elapsed_ms: summary.total_elapsed_ms,
+        total_plies: (summary.avg_plies * f64::from(summary.games)).round() as u64,
+    }
+}
+
+fn load_existing_report_stats(report_path: &Path) -> Result<(MatchStats, u32)> {
+    let bytes = fs::read(report_path).with_context(|| format!("read {}", report_path.display()))?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+    let summary_value = value
+        .get("summary")
+        .ok_or_else(|| anyhow!("existing report {} has no summary", report_path.display()))?;
+    let summary: RatingSummary = serde_json::from_value(summary_value.clone())
+        .with_context(|| format!("parse summary in {}", report_path.display()))?;
+    Ok((stats_from_summary(&summary), summary.games))
+}
+
+fn prompt_report_conflict_action(report_dir: &Path) -> Result<ReportConflictAction> {
+    loop {
+        println!(
+            "{} already contains a self-play report. What to do?",
+            report_dir.display()
+        );
+        println!("1. Abort");
+        println!("2. Self-play more and merge result");
+        println!("3. Discard saved and override with new result");
+        print!("choice [1/2/3]> ");
+        io::stdout().flush()?;
+
+        let mut line = String::new();
+        if io::stdin().read_line(&mut line)? == 0 {
+            bail!("self-play report already exists and no conflict choice was provided");
+        }
+        match line.trim() {
+            "1" | "abort" | "Abort" => return Ok(ReportConflictAction::Abort),
+            "2" | "merge" | "Merge" => return Ok(ReportConflictAction::Merge),
+            "3" | "overwrite" | "override" | "Overwrite" | "Override" => {
+                return Ok(ReportConflictAction::Overwrite);
+            }
+            _ => println!("enter 1, 2, or 3"),
+        }
+    }
+}
+
+fn prepare_self_play_report_output(
+    report_dir: Option<&Path>,
+) -> Result<Option<SelfPlayReportOutput>> {
+    let Some(report_dir) = report_dir else {
+        return Ok(None);
+    };
+
+    let report_path = report_dir.join(SELF_PLAY_REPORT_FILE);
+    let games_path = report_dir.join(SELF_PLAY_GAMES_FILE);
+    let has_existing_report = report_path.exists();
+    let has_existing_games = games_path.exists();
+    let action = if has_existing_report || has_existing_games {
+        prompt_report_conflict_action(report_dir)?
+    } else {
+        ReportConflictAction::Overwrite
+    };
+
+    match action {
+        ReportConflictAction::Abort => bail!("self-play report already exists"),
+        ReportConflictAction::Merge => {
+            if !has_existing_report {
+                bail!(
+                    "cannot merge {} because {} is missing",
+                    report_dir.display(),
+                    SELF_PLAY_REPORT_FILE
+                );
+            }
+            fs::create_dir_all(report_dir)?;
+            let (existing_stats, game_index_offset) = load_existing_report_stats(&report_path)?;
+            let games_writer = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&games_path)
+                .with_context(|| format!("open {}", games_path.display()))?;
+            Ok(Some(SelfPlayReportOutput {
+                games_writer,
+                report_path,
+                existing_stats,
+                game_index_offset,
+            }))
+        }
+        ReportConflictAction::Overwrite => {
+            fs::create_dir_all(report_dir)?;
+            let games_writer = fs::File::create(&games_path)
+                .with_context(|| format!("create {}", games_path.display()))?;
+            Ok(Some(SelfPlayReportOutput {
+                games_writer,
+                report_path,
+                existing_stats: MatchStats::default(),
+                game_index_offset: 0,
+            }))
+        }
+    }
+}
+
+fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
+    GameJsonRecord {
+        schema: "haitaka-self-play-game",
+        schema_version: 1,
+        game_index: game_index + 1,
+        pair_index: game_index / 2,
+        a_color: color_name(result.a_color).to_string(),
+        b_color: color_name(!result.a_color).to_string(),
+        opening: result.opening.clone(),
+        start_sfen: result.start_sfen.clone(),
+        moves: result.moves.clone(),
+        result: result_name(result.winner).to_string(),
+        winner: result.winner.map(seat_name).map(str::to_string),
+        plies: result.plies,
+        total_nodes: result.total_nodes,
+        total_elapsed_ms: result.total_elapsed_ms,
+        failure_state: None,
+    }
+}
+
+fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> ReportEngine {
+    match &engine.evaluator {
+        EngineEvaluator::Handcrafted => ReportEngine {
+            label: engine.label,
+            kind: "handcrafted".to_string(),
+            budget: describe_budget(engine.budget),
+            command: None,
+            args: Vec::new(),
+            nnue: None,
+            archive_path: None,
+            archive: None,
+        },
+        EngineEvaluator::Nnue { path, .. } => ReportEngine {
+            label: engine.label,
+            kind: "nnue".to_string(),
+            budget: describe_budget(engine.budget),
+            command: None,
+            args: Vec::new(),
+            nnue: Some(path.display().to_string()),
+            archive_path: None,
+            archive: None,
+        },
+        EngineEvaluator::External { path, args } => ReportEngine {
+            label: engine.label,
+            kind: if archive.is_some() {
+                "archive-usi".to_string()
+            } else {
+                "external-usi".to_string()
+            },
+            budget: describe_budget(engine.budget),
+            command: Some(path.display().to_string()),
+            args: args.clone(),
+            nnue: None,
+            archive_path: archive.map(|archive| archive.source_archive_path.display().to_string()),
+            archive: archive.map(|archive| archive.manifest.clone()),
+        },
+    }
+}
+
+fn report_command(args: &SelfPlayArgs, threads: usize) -> ReportCommand {
+    ReportCommand {
+        games: args.games,
+        threads,
+        a_depth: args.a_depth,
+        b_depth: args.b_depth,
+        movetime_ms: args.movetime_ms,
+        sfen: args.sfen.clone(),
+        openings: args
+            .openings
+            .as_ref()
+            .map(|path| path.display().to_string()),
+        opening_order: args.opening_order,
+        opening_random_plies: args.opening_random_plies,
+        seed: args.seed,
+        max_plies: args.max_plies,
+    }
+}
+
+fn unix_timestamp_seconds() -> Result<u64> {
+    Ok(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("system clock is before unix epoch")?
+        .as_secs())
+}
+
+fn self_play_report(
+    args: &SelfPlayArgs,
+    threads: usize,
+    engines: Vec<ReportEngine>,
+    summary: RatingSummary,
+) -> Result<SelfPlayReport> {
+    Ok(SelfPlayReport {
+        schema: "haitaka-self-play-report",
+        schema_version: 1,
+        generated_at_unix_seconds: unix_timestamp_seconds()?,
+        package: ReportPackage {
+            name: env!("CARGO_PKG_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+        },
+        git: ReportGit {
+            commit: git_commit(),
+            dirty: git_dirty(),
+        },
+        ruleset: default_ruleset().to_string(),
+        command: report_command(args, threads),
+        engines,
+        summary,
+    })
+}
+
+fn write_json_file<T: Serialize>(path: &Path, value: &T) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)?;
+        }
+    }
+    let mut file = fs::File::create(path).with_context(|| format!("create {}", path.display()))?;
+    serde_json::to_writer_pretty(&mut file, value)
+        .with_context(|| format!("write {}", path.display()))?;
+    writeln!(file).with_context(|| format!("write {}", path.display()))?;
+    Ok(())
+}
+
+fn append_jsonl<T: Serialize>(writer: &mut impl Write, value: &T) -> Result<()> {
+    serde_json::to_writer(&mut *writer, value).context("write game JSONL record")?;
+    writeln!(writer).context("write game JSONL newline")?;
+    Ok(())
 }
 
 fn play(args: PlayArgs) -> Result<()> {
@@ -1181,12 +1760,45 @@ fn self_play(args: SelfPlayArgs) -> Result<()> {
     let cleanup = cleanup_archive_dirs(&cleanup_dirs);
     if result.is_ok() {
         cleanup?;
+    } else {
+        let _ = cleanup;
     }
     result
 }
 
+#[cfg(unix)]
+extern "C" fn handle_sigint(_: libc::c_int) {
+    SELF_PLAY_INTERRUPTED.store(true, Ordering::SeqCst);
+}
+
+#[cfg(unix)]
+fn install_self_play_interrupt_handler() -> Result<()> {
+    SELF_PLAY_INTERRUPTED.store(false, Ordering::SeqCst);
+    unsafe {
+        let mut action: libc::sigaction = std::mem::zeroed();
+        action.sa_sigaction = handle_sigint as *const () as libc::sighandler_t;
+        action.sa_flags = 0;
+        libc::sigemptyset(&mut action.sa_mask);
+        if libc::sigaction(libc::SIGINT, &action, std::ptr::null_mut()) != 0 {
+            bail!("failed to install SIGINT handler");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn install_self_play_interrupt_handler() -> Result<()> {
+    SELF_PLAY_INTERRUPTED.store(false, Ordering::SeqCst);
+    Ok(())
+}
+
 fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Result<()> {
     let base_board = parse_board(args.sfen.as_deref())?;
+    let openings = args
+        .openings
+        .as_ref()
+        .map(|path| load_opening_suite(path))
+        .transpose()?;
     validate_engine_source("A", args.a_engine.as_ref(), args.a_engine_archive.as_ref())?;
     validate_engine_source("B", args.b_engine.as_ref(), args.b_engine_archive.as_ref())?;
     let a_archive = args
@@ -1243,13 +1855,46 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
         b_engine_path,
         &b_engine_args,
     )?;
+    let report_engines = vec![
+        report_engine(&engine_a, a_archive.as_ref()),
+        report_engine(&engine_b, b_archive.as_ref()),
+    ];
     let threads = resolve_self_play_threads(args.threads, args.games);
-    let mut stats = MatchStats::default();
+    let mut report_output = prepare_self_play_report_output(args.report_dir.as_deref())?;
+    let game_index_offset = report_output
+        .as_ref()
+        .map_or(0, |output| output.game_index_offset);
+    if game_index_offset > u32::MAX - args.games {
+        bail!("merged game count would overflow u32");
+    }
+    let total_target_games = game_index_offset + args.games;
+    let mut stats = report_output
+        .as_ref()
+        .map_or_else(MatchStats::default, |output| output.existing_stats.clone());
     let start = Instant::now();
 
     println!("{}", describe_engine(&engine_a));
     println!("{}", describe_engine(&engine_b));
     println!("self-play threads={threads}");
+    if let Some(path) = args.report_dir.as_ref() {
+        println!(
+            "report dir={} files={}, {}",
+            path.display(),
+            SELF_PLAY_REPORT_FILE,
+            SELF_PLAY_GAMES_FILE
+        );
+        if game_index_offset > 0 {
+            println!("merging with existing games={game_index_offset}");
+        }
+    }
+    if let Some(path) = args.openings.as_ref() {
+        println!(
+            "opening suite={} positions={} order={:?}",
+            path.display(),
+            openings.as_ref().map_or(0, Vec::len),
+            args.opening_order
+        );
+    }
     if args.opening_random_plies > 0 {
         println!(
             "paired random opening plies={} seed={}",
@@ -1257,6 +1902,7 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
         );
     }
 
+    install_self_play_interrupt_handler()?;
     let next_game = AtomicU32::new(0);
     let (tx, rx) = mpsc::channel();
     let mut completed = 0_u32;
@@ -1266,19 +1912,31 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
             let tx = tx.clone();
             let args = &args;
             let base_board = &base_board;
+            let openings = openings.as_deref();
             let engine_a = &engine_a;
             let engine_b = &engine_b;
             let next_game = &next_game;
+            let game_index_offset = game_index_offset;
 
             scope.spawn(move || {
                 loop {
+                    if SELF_PLAY_INTERRUPTED.load(Ordering::SeqCst) {
+                        break;
+                    }
                     let game_index = next_game.fetch_add(1, Ordering::Relaxed);
                     if game_index >= args.games {
                         break;
                     }
-                    let result =
-                        play_self_play_game(game_index, args, base_board, engine_a, engine_b);
-                    if tx.send((game_index, result)).is_err() {
+                    let effective_game_index = game_index_offset + game_index;
+                    let result = play_self_play_game(
+                        effective_game_index,
+                        args,
+                        base_board,
+                        openings,
+                        engine_a,
+                        engine_b,
+                    );
+                    if tx.send((effective_game_index, result)).is_err() {
                         break;
                     }
                 }
@@ -1286,10 +1944,18 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
         }
         drop(tx);
 
-        for _ in 0..args.games {
-            let (game_index, result) = rx.recv().map_err(|err| {
-                anyhow!("self-play worker exited before reporting all games: {err}")
-            })?;
+        while completed < args.games {
+            let (game_index, result) = match rx.recv() {
+                Ok(message) => message,
+                Err(err) => {
+                    if SELF_PLAY_INTERRUPTED.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    return Err(anyhow!(
+                        "self-play worker exited before reporting all games: {err}"
+                    ));
+                }
+            };
             let result = result?;
             let outcome = match result.winner {
                 Some(Seat::A) => "A win",
@@ -1306,6 +1972,12 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 Some(Seat::B) => stats.b_wins += 1,
                 None => stats.draws += 1,
             }
+            if let Some(output) = report_output.as_mut() {
+                append_jsonl(
+                    &mut output.games_writer,
+                    &game_json_record(game_index, &result),
+                )?;
+            }
 
             let elapsed = start.elapsed().as_secs_f64();
             let remaining = args.games.saturating_sub(completed);
@@ -1315,44 +1987,63 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 elapsed * f64::from(remaining) / f64::from(completed)
             };
 
-            let decided = stats.a_wins + stats.b_wins;
-            let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
-            let denom = f64::from(completed.max(1));
-            let score_rate = (a_score / denom).clamp(0.01, 0.99);
-            let elo = -400.0 * (1.0 / score_rate - 1.0).log10();
-            let nps = if stats.total_elapsed_ms > 0.0 {
-                stats.total_nodes as f64 / (stats.total_elapsed_ms / 1_000.0)
-            } else {
-                0.0
-            };
+            let total_completed = game_index_offset + completed;
+            let summary = rating_summary(&stats, total_completed);
 
             let block = format!(
-                "game ({game}) done ({completed}/{total}): A({a_color:?}) vs B({b_color:?}) \
+                "game ({game}) done (new {completed}/{new_total}): A({a_color:?}) vs B({b_color:?}) \
                  plies={plies} result={outcome} eta={eta}\n\
-                 games: {completed}\n\
+                 games: {total_completed}/{total_target} (new {completed}/{new_total})\n\
                  score: A {a_wins} - B {b_wins} - draws {draws}\n\
                  decided games: {decided}\n\
-                 approx elo A-B: {elo:.1} (small sample estimate)\n\
+                 approx elo A-B: {elo:.1} (95% CI {elo_low:.1}..{elo_high:.1})\n\
                  avg plies: {avg:.1}\n\
-                 total nodes: {nodes}\n\
+                total nodes: {nodes}\n\
                  aggregate nps: {nps:.0}",
                 game = game_index + 1,
-                total = args.games,
                 a_color = result.a_color,
                 b_color = !result.a_color,
                 plies = result.plies,
                 eta = format_eta(eta),
+                total_completed = total_completed,
+                total_target = total_target_games,
+                new_total = args.games,
                 a_wins = stats.a_wins,
                 b_wins = stats.b_wins,
                 draws = stats.draws,
-                avg = stats.total_plies as f64 / denom,
-                nodes = stats.total_nodes,
+                decided = summary.decided_games,
+                elo = summary.approx_elo,
+                elo_low = summary.approx_elo_95_ci[0],
+                elo_high = summary.approx_elo_95_ci[1],
+                avg = summary.avg_plies,
+                nodes = summary.total_nodes,
+                nps = summary.aggregate_nps,
             );
             render_status(&block, completed == 1);
         }
 
         Ok(())
     })?;
+
+    let final_completed = game_index_offset + completed;
+    if let Some(output) = report_output.as_mut() {
+        output.games_writer.flush().context("flush game JSONL")?;
+        let mut summary = rating_summary(&stats, final_completed);
+        if SELF_PLAY_INTERRUPTED.load(Ordering::SeqCst) {
+            summary.warnings.push(format!(
+                "self-play interrupted after {completed} newly completed games; requested {}",
+                args.games
+            ));
+        }
+        let report = self_play_report(&args, threads, report_engines, summary)?;
+        write_json_file(&output.report_path, &report)?;
+    }
+    if SELF_PLAY_INTERRUPTED.load(Ordering::SeqCst) {
+        bail!(
+            "self-play interrupted after {completed}/{} newly requested games; wrote partial report when --report-dir was set",
+            args.games
+        );
+    }
 
     Ok(())
 }
@@ -1514,7 +2205,7 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
     }
 
     let mut engine_args = Vec::new();
-    if let Some(nnue) = manifest.nnue {
+    if let Some(nnue) = manifest.nnue.as_ref() {
         let nnue_path = extraction_dir.join(&nnue.path);
         if !nnue_path.is_file() {
             bail!("archive NNUE {} does not exist", nnue.path);
@@ -1531,6 +2222,8 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
         engine_path,
         engine_args,
         extraction_dir: extraction_dir.to_path_buf(),
+        source_archive_path: path.to_path_buf(),
+        manifest,
     })
 }
 
@@ -2021,8 +2714,14 @@ mod tests {
             "100",
             "--opening-random-plies",
             "4",
+            "--openings",
+            "openings.sfen",
+            "--opening-order",
+            "random",
             "--seed",
             "7",
+            "--report-dir",
+            "reports/run-1",
         ])
         .expect("CLI args should parse");
 
@@ -2043,8 +2742,11 @@ mod tests {
                 );
                 assert_eq!(args.a_engine_args, ["--eval", "nnue"]);
                 assert_eq!(args.movetime_ms, Some(100));
+                assert_eq!(args.openings, Some(PathBuf::from("openings.sfen")));
+                assert_eq!(args.opening_order, OpeningOrder::Random);
                 assert_eq!(args.opening_random_plies, 4);
                 assert_eq!(args.seed, 7);
+                assert_eq!(args.report_dir, Some(PathBuf::from("reports/run-1")));
             }
             other => panic!("expected self-play command, got {other:?}"),
         }
@@ -2162,6 +2864,147 @@ mod tests {
 
         assert_eq!(opening_a.to_string(), opening_b.to_string());
         assert_ne!(opening_a.to_string(), base.to_string());
+    }
+
+    #[test]
+    fn opening_suite_parser_ignores_comments_and_blanks() {
+        let temp = unique_temp_dir("openings");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let path = temp.join("suite.sfen");
+        fs::write(
+            &path,
+            format!(
+                "\n# comment\n{} # inline comment\n\n",
+                haitaka::SFEN_STARTPOS
+            ),
+        )
+        .expect("write suite");
+
+        let openings = load_opening_suite(&path).expect("openings should parse");
+
+        assert_eq!(openings.len(), 1);
+        assert_eq!(openings[0].suite_index, 0);
+        assert_eq!(openings[0].sfen, haitaka::SFEN_STARTPOS);
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn opening_suite_parser_rejects_empty_files() {
+        let temp = unique_temp_dir("empty-openings");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let path = temp.join("suite.sfen");
+        fs::write(&path, "# no openings\n\n").expect("write suite");
+
+        let err = load_opening_suite(&path).expect_err("empty suite should fail");
+        assert!(err.to_string().contains("contains no SFEN positions"));
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn rating_summary_reports_score_elo_and_low_sample_warning() {
+        let stats = MatchStats {
+            a_wins: 2,
+            b_wins: 1,
+            draws: 1,
+            total_nodes: 1_000,
+            total_elapsed_ms: 500.0,
+            total_plies: 40,
+        };
+
+        let summary = rating_summary(&stats, 4);
+
+        assert_eq!(summary.games, 4);
+        assert_eq!(summary.decided_games, 3);
+        assert_eq!(summary.a_score, 2.5);
+        assert_eq!(summary.score_rate, 0.625);
+        assert!(summary.approx_elo > 0.0);
+        assert_eq!(summary.avg_plies, 10.0);
+        assert_eq!(summary.total_elapsed_ms, 500.0);
+        assert_eq!(summary.aggregate_nps, 2_000.0);
+        assert!(
+            summary
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("low sample"))
+        );
+    }
+
+    #[test]
+    fn existing_report_stats_loads_summary_for_merge() {
+        let temp = unique_temp_dir("existing-report");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let report_path = temp.join(SELF_PLAY_REPORT_FILE);
+        fs::write(
+            &report_path,
+            r#"{
+  "schema": "haitaka-self-play-report",
+  "schemaVersion": 1,
+  "summary": {
+    "games": 4,
+    "aWins": 2,
+    "bWins": 1,
+    "draws": 1,
+    "decidedGames": 3,
+    "aScore": 2.5,
+    "scoreRate": 0.625,
+    "approxElo": 66.7,
+    "approxElo95Ci": [-100.0, 200.0],
+    "avgPlies": 10.0,
+    "totalNodes": 1000,
+    "totalElapsedMs": 500.0,
+    "aggregateNps": 2000.0,
+    "warnings": []
+  }
+}"#,
+        )
+        .expect("write report");
+
+        let (stats, games) = load_existing_report_stats(&report_path).expect("load summary");
+
+        assert_eq!(games, 4);
+        assert_eq!(stats.a_wins, 2);
+        assert_eq!(stats.b_wins, 1);
+        assert_eq!(stats.draws, 1);
+        assert_eq!(stats.total_nodes, 1000);
+        assert_eq!(stats.total_elapsed_ms, 500.0);
+        assert_eq!(stats.total_plies, 40);
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn game_json_record_serializes_opening_and_moves() {
+        let result = GameResult {
+            a_color: Color::Black,
+            winner: Some(Seat::A),
+            plies: 2,
+            total_nodes: 10,
+            total_elapsed_ms: 1.5,
+            start_sfen: haitaka::SFEN_STARTPOS.to_string(),
+            opening: OpeningRecord {
+                source: "suite".to_string(),
+                suite_index: Some(3),
+                base_sfen: haitaka::SFEN_STARTPOS.to_string(),
+                random_plies: 0,
+                random_seed: None,
+            },
+            moves: vec!["7g7f".to_string(), "3c3d".to_string()],
+        };
+
+        let json = serde_json::to_value(game_json_record(6, &result)).expect("serialize record");
+
+        assert_eq!(json["schema"], "haitaka-self-play-game");
+        assert_eq!(json["gameIndex"], 7);
+        assert_eq!(json["pairIndex"], 3);
+        assert_eq!(json["aColor"], "black");
+        assert_eq!(json["bColor"], "white");
+        assert_eq!(json["opening"]["suiteIndex"], 3);
+        assert_eq!(json["moves"][0], "7g7f");
+        assert_eq!(json["result"], "a-win");
+        assert_eq!(json["winner"], "A");
+        assert!(json["failureState"].is_null());
     }
 
     #[test]
@@ -2320,7 +3163,7 @@ mod tests {
         let temp = unique_temp_dir("closed-stdout");
         fs::create_dir_all(&temp).expect("create temp dir");
         let script = temp.join("engine.sh");
-        write_executable_script(&script, "#!/bin/sh\nexit 7\n");
+        write_executable_script(&script, "#!/bin/sh\nexec 1>&-\nsleep 1\n");
 
         let err = match UsiEngineClient::spawn_with_startup_timeout(
             &script,
@@ -2332,8 +3175,9 @@ mod tests {
         };
         let message = err.to_string();
         assert!(
-            message.contains("external engine exited")
-                || message.contains("external engine closed stdout"),
+            message.contains("external engine closed stdout")
+                || message.contains("external engine exited")
+                || message.contains("external engine timed out"),
             "unexpected error: {message}"
         );
 
@@ -2423,9 +3267,12 @@ mod tests {
             b_engine_args: Vec::new(),
             movetime_ms: None,
             sfen: None,
+            openings: None,
+            opening_order: OpeningOrder::Sequential,
             opening_random_plies: 0,
             seed: 0,
             max_plies: 4,
+            report_dir: None,
         };
         let base = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
         let engine_a = EngineConfig {
@@ -2442,7 +3289,7 @@ mod tests {
             evaluator: EngineEvaluator::Handcrafted,
         };
 
-        let err = play_self_play_game(0, &args, &base, &engine_a, &engine_b)
+        let err = play_self_play_game(0, &args, &base, None, &engine_a, &engine_b)
             .expect_err("illegal bestmove should fail");
         assert!(err.to_string().contains("illegal move"));
 
@@ -2490,6 +3337,32 @@ mod tests {
         ] {
             assert!(
                 contents.contains(expected),
+                "future work plan should mention {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn strength_measurement_future_work_plan_documents_deferred_items() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../plans/strength-measurement-future-work.md");
+        let contents = fs::read_to_string(path).expect("future work plan should exist");
+
+        for expected in [
+            "SPRT",
+            "STC/LTC",
+            "Distributed workers",
+            "PGN or CSA",
+            "Engine crash forfeits",
+            "Multi-engine tournaments",
+            "Cross-runtime rating pools",
+            "Browser rating webapp",
+            "Resumable matches",
+        ] {
+            assert!(
+                contents
+                    .to_ascii_lowercase()
+                    .contains(&expected.to_ascii_lowercase()),
                 "future work plan should mention {expected}"
             );
         }

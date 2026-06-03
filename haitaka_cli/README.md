@@ -38,14 +38,13 @@ cargo run -p haitaka_cli --features annan -- play --human none --depth 3
 
 ### Self-Play
 
-Run a small engine-vs-engine comparison:
+Run a small engine-vs-engine comparison with a fixed time budget per move:
 
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 4 \
   --threads 0 \
-  --a-depth 3 \
-  --b-depth 2
+  --movetime-ms 100
 ```
 
 Compare an NNUE model against the handcrafted evaluator and report the Elo-style
@@ -55,8 +54,7 @@ gap as `A - B`:
 cargo run -p haitaka_cli --release -- self-play \
   --games 10 \
   --threads 0 \
-  --a-depth 4 \
-  --b-depth 4 \
+  --movetime-ms 100 \
   --a-eval nnue \
   --opening-random-plies 4 \
   --seed 1 \
@@ -65,7 +63,10 @@ cargo run -p haitaka_cli --release -- self-play \
 
 This treats engine A as `nnue` and engine B as `handcrafted`. Use `--a-nnue`
 or `--b-nnue` when each side should load a different model. `--threads 0`
-selects available parallelism automatically.
+selects available parallelism automatically. Prefer `--movetime-ms` for
+strength checks because fixed depth can miss improvements that make search
+faster. Use `--a-depth` and `--b-depth` mainly for deterministic debugging or
+quick smoke tests.
 
 `--opening-random-plies` is the important knob when matches look too
 deterministic from one fixed start position. The same randomized opening is used
@@ -73,6 +74,10 @@ for each consecutive color-swapped pair of games.
 
 The Elo output is only a small-sample estimate. It is useful for quick local
 checks, not for publishing serious engine ratings.
+
+For the complete workflow, including raw external USI engines, native engine
+archives, opening suites, and JSON reports, see
+[`docs/self-play.md`](../docs/self-play.md).
 
 ### Shogitter Engine Package v1
 

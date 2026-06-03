@@ -13,7 +13,7 @@ Recommended sequence:
 - [x] Phase 1: add a minimal USI subprocess mode
 - [x] Phase 2: teach `self-play` to drive external engines
 - [x] Phase 3: archive executable engine builds with identity metadata
-- [ ] Phase 4: improve rating reports and experiment tracking
+- [x] Phase 4: improve rating reports and experiment tracking
 
 Current status:
 
@@ -26,7 +26,9 @@ Current status:
   `plans/wasm-usi-future-work.md`.
 - [x] Native engine archive workflow is implemented for `.tgz` developer
   self-play archives.
-- [ ] Rating/report improvements are not implemented yet.
+- [x] Rating/report improvements are implemented with JSON summary reports,
+  JSONL per-game logs, opening suites, reproducibility metadata, and approximate
+  Elo confidence intervals.
 
 This should start with the smallest reliable protocol surface. Full USI
 ecosystem compatibility is not the first goal; controlled local comparison
@@ -147,20 +149,21 @@ Manifest metadata should include:
 support should extract to a temporary directory and launch the manifest-declared
 binary.
 
-### Phase 4
+### Phase 4 - Done
 
 Improve rating reports after external matches are stable.
 
 Useful additions:
 
-- per-engine identity summary in match output
-- JSONL game log with opening seed, start SFEN, moves, result, and failure state
-- aggregate CSV or JSON summary
-- confidence interval around the Elo estimate
-- separate depth-based and movetime-based report labels
+- [x] per-engine identity summary in match output and report metadata
+- [x] JSONL game log with opening source, start SFEN, moves, result, and failure
+  state
+- [x] aggregate JSON summary
+- [x] confidence interval around the Elo estimate
+- [x] separate depth-based and movetime-based report labels
 
-Do not over-invest in rating math before the subprocess and archive workflows
-are reliable. A simple Elo-style estimate is enough for early local iteration.
+Deferred statistical and product work is documented in
+`plans/strength-measurement-future-work.md`.
 
 ### Test Plan
 
