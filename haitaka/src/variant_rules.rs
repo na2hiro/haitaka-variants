@@ -130,11 +130,12 @@ impl MovementInfluence {
     #[inline(always)]
     pub fn compute(board: &Board, color: Color) -> Self {
         let friendly = board.colors(color);
+        let donor_color = donor_color(color);
         let mut influenced_by = [BitBoard::EMPTY; Piece::NUM];
         let mut has_influence = BitBoard::EMPTY;
 
         for &piece in &Piece::ALL {
-            let donors = board.colored_pieces(color, piece);
+            let donors = board.colored_pieces(donor_color, piece);
             if donors.is_empty() {
                 continue;
             }
@@ -176,11 +177,16 @@ pub fn effective_movements(board: &Board, color: Color, square: Square) -> Movem
 }
 
 /// Returns the single effective movement piece for single-donor variants.
-#[cfg(any(feature = "annan", feature = "anhoku"))]
+#[cfg(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen"
+))]
 #[inline(always)]
 pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
     if let Some(donor) = donor_candidate_square(color, square) {
-        if board.colors(color).has(donor) {
+        if board.colors(donor_color(color)).has(donor) {
             if let Some(piece) = board.piece_on(donor) {
                 return piece;
             }
@@ -189,19 +195,42 @@ pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
     board.piece_on(square).unwrap()
 }
 
-/// Returns the friendly donor squares currently influencing `square`.
+/// Returns the donor squares currently influencing `square`.
+///
+/// Donors are friendly pieces in same-side variants (annan/anhoku/antouzai) and
+/// enemy pieces in face-off variants (taimen/haimen).
 #[inline(always)]
 pub fn influencing_donor_squares(board: &Board, color: Color, square: Square) -> BitBoard {
-    donor_candidate_squares(color, square) & board.colors(color)
+    donor_candidate_squares(color, square) & board.colors(donor_color(color))
 }
 
-#[cfg(feature = "annan")]
+/// Color of the pieces that donate movement to `color`'s pieces.
+///
+/// Same-side variants (annan/anhoku/antouzai) use friendly donors; face-off
+/// variants (taimen/haimen) use enemy donors.
+#[inline(always)]
+fn donor_color(color: Color) -> Color {
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    {
+        !color
+    }
+    #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+    {
+        color
+    }
+}
+
+// `annan` (friendly behind) and `haimen` (enemy behind) share the same geometry:
+// a donor influences the piece one rank in front of it.
+#[cfg(any(feature = "annan", feature = "haimen"))]
 #[inline(always)]
 fn influence_targets_from_donors(donors: BitBoard, color: Color) -> BitBoard {
     shift_forward(donors, color)
 }
 
-#[cfg(feature = "anhoku")]
+// `anhoku` (friendly in front) and `taimen` (enemy in front) share the same
+// geometry: a donor influences the piece one rank behind it.
+#[cfg(any(feature = "anhoku", feature = "taimen"))]
 #[inline(always)]
 fn influence_targets_from_donors(donors: BitBoard, color: Color) -> BitBoard {
     shift_backward(donors, color)
@@ -213,7 +242,8 @@ fn influence_targets_from_donors(donors: BitBoard, _color: Color) -> BitBoard {
     donors.shift_east(1) | donors.shift_west(1)
 }
 
-#[cfg(feature = "annan")]
+// Donor sits behind the influenced piece (annan: friendly, haimen: enemy).
+#[cfg(any(feature = "annan", feature = "haimen"))]
 #[inline(always)]
 fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     match color {
@@ -222,13 +252,8 @@ fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     }
 }
 
-#[cfg(feature = "annan")]
-#[inline(always)]
-fn donor_candidate_squares(color: Color, square: Square) -> BitBoard {
-    donor_candidate_square(color, square).map_or(BitBoard::EMPTY, Square::bitboard)
-}
-
-#[cfg(feature = "anhoku")]
+// Donor sits in front of the influenced piece (anhoku: friendly, taimen: enemy).
+#[cfg(any(feature = "anhoku", feature = "taimen"))]
 #[inline(always)]
 fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     match color {
@@ -237,7 +262,12 @@ fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     }
 }
 
-#[cfg(feature = "anhoku")]
+#[cfg(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen"
+))]
 #[inline(always)]
 fn donor_candidate_squares(color: Color, square: Square) -> BitBoard {
     donor_candidate_square(color, square).map_or(BitBoard::EMPTY, Square::bitboard)
@@ -256,7 +286,7 @@ fn donor_candidate_squares(_color: Color, square: Square) -> BitBoard {
 }
 
 /// Shift a bitboard forward (toward the opponent) by one rank for the given color.
-#[cfg(feature = "annan")]
+#[cfg(any(feature = "annan", feature = "haimen"))]
 #[inline(always)]
 fn shift_forward(bb: BitBoard, color: Color) -> BitBoard {
     match color {
@@ -266,7 +296,7 @@ fn shift_forward(bb: BitBoard, color: Color) -> BitBoard {
 }
 
 /// Shift a bitboard backward (toward own camp) by one rank for the given color.
-#[cfg(feature = "anhoku")]
+#[cfg(any(feature = "anhoku", feature = "taimen"))]
 #[inline(always)]
 fn shift_backward(bb: BitBoard, color: Color) -> BitBoard {
     match color {

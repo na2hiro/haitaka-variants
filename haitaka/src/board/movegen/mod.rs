@@ -61,7 +61,13 @@ macro_rules! abort_if {
 }
 
 impl Board {
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
@@ -70,7 +76,13 @@ impl Board {
         checkers.is_empty()
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn variant_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
         match mv {
             Move::BoardMove {
@@ -96,7 +108,13 @@ impl Board {
         }
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn generate_variant_evasions<F: FnMut(PieceMoves) -> bool>(&self, listener: &mut F) -> bool {
         debug_assert!(!self.checkers.is_empty());
 
@@ -132,7 +150,13 @@ impl Board {
         false
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn generate_variant_board_evasions<F: FnMut(PieceMoves) -> bool>(
         &self,
         mask: BitBoard,
@@ -165,7 +189,13 @@ impl Board {
         }
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn generate_variant_drop_evasions<F: FnMut(PieceMoves) -> bool>(
         &self,
         listener: &mut F,
@@ -205,7 +235,13 @@ impl Board {
     // King is in check (and to prevent illegal capture of one's own pieces
     // ...which actually sometimes is observed in amateur tournaments...).
     //
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let targets = if IN_CHECK {
@@ -221,7 +257,13 @@ impl Board {
         targets & !self.colors(color)
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let targets = if IN_CHECK {
@@ -231,7 +273,12 @@ impl Board {
             let mut targets = get_between_rays(checker, our_king) | checker.bitboard();
 
             let them = !color;
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             {
                 // In single-donor variants, capturing the donor may resolve
                 // check only if the checker does not also attack natively.
@@ -268,7 +315,13 @@ impl Board {
     // In check, a drop can only be used to interpose. Otherwise, any empty square is ok.
     // Note that this doesn't exclude the forbidden drop ranks of Pawn, Lance and Knight.
     //
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();
@@ -290,7 +343,13 @@ impl Board {
         }
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();
@@ -299,7 +358,12 @@ impl Board {
             debug_assert!(self.checkers.len() == 1);
             let checker = self.checkers.next_square().unwrap();
             let them = !color;
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             let is_slider_check = crate::variant_rules::is_slider_movement(
                 crate::variant_rules::effective_piece(self, them, checker),
             );
@@ -331,7 +395,13 @@ impl Board {
             return false;
         }
 
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         if piece == Piece::Pawn {
             return self.emit_variant_pawn_moves(color, from, to, listener);
         }
@@ -345,7 +415,13 @@ impl Board {
         })
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn emit_variant_pawn_moves<F: FnMut(PieceMoves) -> bool>(
         &self,
         color: Color,
@@ -499,7 +575,13 @@ impl Board {
     // safety by efficient caching since this would require more work in
     // maintaining some cached data struct of 'attacks'. However...
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
         macro_rules! lazy_and {
@@ -556,7 +638,13 @@ impl Board {
     ///
     /// Checks if any opponent piece (using its effective movement) can
     /// attack the given square.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
@@ -624,9 +712,20 @@ impl Board {
             return false;
         }
 
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         let mut moves = {
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             {
                 let eff = crate::variant_rules::effective_piece(self, color, our_king);
                 crate::variant_rules::pseudo_legals_for(eff, color, our_king, self.occupied())
@@ -642,15 +741,33 @@ impl Board {
             }
         };
 
-        #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+        #[cfg(not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
 
         for to in moves {
             // removing unsafe squares should generally be more efficient than
             // adding safe squares since (until the endgame) most squares are safe
-            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+            #[cfg(not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            )))]
             let safe = self.king_safe_on(to);
-            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             let safe = self.variant_king_safe_on(to);
 
             if !safe {
@@ -669,7 +786,13 @@ impl Board {
         false
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
         mask: BitBoard,
@@ -703,7 +826,13 @@ impl Board {
     /// Splits each piece type into uninfluenced pieces with normal movement and
     /// influenced pieces with donor movement. Antouzai may produce a union of
     /// multiple donor movement types.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
         mask: BitBoard,
@@ -739,7 +868,12 @@ impl Board {
             let blockers = self.occupied();
             let has_king = self.has(color, Piece::King);
 
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             {
                 use crate::variant_rules::pseudo_legals_for;
 
@@ -914,7 +1048,13 @@ impl Board {
                 return false;
             }
 
-            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             {
                 let resolves_check = if self.checkers.is_empty() {
                     true
@@ -927,7 +1067,13 @@ impl Board {
                 return piece != Piece::Pawn || !self.is_illegal_mate_by_pawn_drop(to);
             }
 
-            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+            #[cfg(not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            )))]
             {
                 let resolves_check = match self.checkers.len() {
                     0 => true,
@@ -944,7 +1090,13 @@ impl Board {
     }
 
     /// Is this move a legal board move?
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
             from,
@@ -1044,7 +1196,13 @@ impl Board {
     }
 
     /// Variant-aware legality check for a board move.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
             from,
@@ -1064,7 +1222,12 @@ impl Board {
                 None => return false,
             };
 
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             let moves = crate::variant_rules::pseudo_legals_for(
                 crate::variant_rules::effective_piece(self, color, from),
                 color,
@@ -1122,7 +1285,13 @@ impl Board {
         false
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn king_is_legal(&self, color: Color, from: Square, to: Square) -> bool {
         if !(king_attacks(color, from) & !self.colors(color)).has(to) {
             false
@@ -1158,11 +1327,23 @@ impl Board {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -1178,7 +1359,13 @@ impl Board {
     /// });
     /// assert_eq!(total_moves, 30);
     /// ```
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         abort_if! {
             self.generate_drops(&mut listener),
@@ -1187,7 +1374,13 @@ impl Board {
         false
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         if !self.checkers.is_empty() {
             return self.generate_variant_evasions(&mut listener);
@@ -1213,11 +1406,23 @@ impl Board {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -1239,7 +1444,13 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         if !self.checkers.is_empty() {
             return self.generate_variant_board_evasions(mask, &mut listener);
         }
@@ -1280,7 +1491,13 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         if !self.checkers.is_empty() {
             return self.generate_variant_drop_evasions(&mut listener, None);
         }
@@ -1305,7 +1522,13 @@ impl Board {
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
         let num_checkers = self.checkers.len();
-        #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         if num_checkers > 0 {
             return self.generate_variant_drop_evasions(&mut listener, Some(piece));
         }
@@ -1345,7 +1568,13 @@ impl Board {
     /// This function will call the `listener` callback multiple times. The listener can interrupt
     /// further processing by returning true. Otherwise, the function will generate all remaining
     /// checks and eventually return false.
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let color = self.side_to_move();
         let their_color = !color;
@@ -1482,7 +1711,13 @@ impl Board {
     }
 
     // Helper function to handle all PromotionStatus variants
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn filter_checks_by_promotion_status(
         color: Color,
         piece: Piece,
@@ -1561,7 +1796,13 @@ impl Board {
     /// Uses a generate-and-filter approach: generates all legal moves, then plays
     /// each one to see if it results in check. Less optimized than the normal version
     /// but correct for variants where effective movement types are dynamic.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let their_color = !self.side_to_move();
         if !self.has(their_color, Piece::King) {

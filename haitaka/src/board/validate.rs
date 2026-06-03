@@ -138,7 +138,13 @@ impl Board {
     /// of all the opponent's pieces that attack `color`'s King and `pinned` is the bitboard of
     /// all pieces (of any color) that block an opponent's slider from attacking `color`'s King,
     /// assuming there is only one such blocking piece.
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
         let mut pinned = BitBoard::EMPTY;
@@ -186,12 +192,24 @@ impl Board {
     /// In influence variants, each opponent piece's effective movement depends
     /// on adjacent friendly donor pieces. We compute the opponent's influence
     /// info and then check each effective movement type.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     pub(super) fn calculate_checkers_and_pins_excluding(
         &self,
         color: Color,

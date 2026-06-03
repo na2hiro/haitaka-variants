@@ -627,16 +627,46 @@ fn mid(current: u32, target: u32) -> u32 {
 mod tests {
     use super::*;
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     const TSUME_SFEN: &str = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     const BESTSEL_LIVE_SHAPE_13_SFEN: &str = "4+B2nl/7k1/6p1p/6bN1/9/9/9/9/9 b R2GLr2g4s2n2l16p 1";
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     const BESTSEL_LIGHTNING_7_SFEN: &str = "9/9/9/4+B4/7+B1/5k3/4p1ps1/4s4/9 b 4G2r2s4n4l16p 1";
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     const BESTSEL_CONGRATS_37_SFEN: &str =
         "9/9/3+p1+p3/2+p1+p1L2/4P3k/3+B5/1G7/B5S2/5RR2 b 2S3gs4n3l13p 1";
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     const BESTSEL_SWAPPED_7_SFEN: &str = "9/9/9/7R1/7S1/5S1k1/6+psR/8L/9 b G2b3gs4n3l17p 1";
     const ONE_PLY_MATE_SFEN: &str = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
     const ONE_PLY_MATE_WHITE_SFEN: &str = "k8/9/9/9/9/9/7b1/6g2/8K w r 1";
@@ -678,7 +708,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn generated_checks_are_legal_on_sample_positions() {
         for sfen in [
             ONE_PLY_MATE_SFEN,
@@ -697,7 +733,13 @@ mod tests {
 
     #[cfg(any(
         feature = "annan",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn parse_problem_board(sfen: &str) -> Board {
         Board::from_sfen(sfen)
@@ -705,7 +747,13 @@ mod tests {
             .unwrap()
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn assert_solves_standard_regression(sfen: &str) {
         let board = parse_problem_board(sfen);
         let result = board.dfpn(&DfpnOptions {
@@ -717,7 +765,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn solves_existing_tsume_position() {
         let board = Board::tsume(TSUME_SFEN).unwrap();
         let result = board.dfpn(&DfpnOptions::default());
@@ -727,25 +781,49 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn solves_best_selection_live_shape_13_regression() {
         assert_solves_standard_regression(BESTSEL_LIVE_SHAPE_13_SFEN);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn solves_best_selection_lightning_7_regression() {
         assert_solves_standard_regression(BESTSEL_LIGHTNING_7_SFEN);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn solves_best_selection_congrats_37_regression() {
         assert_solves_standard_regression(BESTSEL_CONGRATS_37_SFEN);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn solves_best_selection_swapped_7_regression() {
         assert_solves_standard_regression(BESTSEL_SWAPPED_7_SFEN);
     }

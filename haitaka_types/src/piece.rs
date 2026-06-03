@@ -156,11 +156,23 @@ impl Piece {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// use haitaka_types::*;
@@ -182,14 +194,14 @@ impl Piece {
     /// ```
     #[inline(always)]
     pub const fn must_promote(self, color: Color, square: Square) -> bool {
-        #[cfg(any(feature = "annan", feature = "antouzai"))]
+        #[cfg(any(feature = "annan", feature = "antouzai", feature = "haimen"))]
         {
             // In piece-influence variants, pieces can gain any movement via donors,
             // so there are no stuck-piece restrictions.
             let _ = (color, square);
             false
         }
-        #[cfg(feature = "anhoku")]
+        #[cfg(any(feature = "anhoku", feature = "taimen"))]
         {
             // Anhoku still needs to forbid dead pieces on the last rank:
             // there is no square in front, so no donor can ever influence them.
@@ -203,7 +215,13 @@ impl Piece {
                 }
             }
         }
-        #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+        #[cfg(not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )))]
         {
             let rank = square.rank() as usize;
             if 1 < rank && rank < 7 {

@@ -24,7 +24,7 @@ pub struct RulesetSpec {
     pub verification_name: &'static str,
 }
 
-pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 4] = [
+pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 6] = [
     RulesetSpec {
         ruleset: Ruleset::Standard,
         required_feature: None,
@@ -52,6 +52,20 @@ pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 4] = [
         default_rule_id: 95,
         default_opening_sfen: STANDARD_STARTPOS_SFEN,
         verification_name: "antouzai_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Taimen,
+        required_feature: Some("taimen"),
+        default_rule_id: 72,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "taimen_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Haimen,
+        required_feature: Some("haimen"),
+        default_rule_id: 74,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "haimen_startpos",
     },
 ];
 
@@ -155,7 +169,12 @@ impl LoadedConfig {
         }
 
         match self.config.rules.ruleset {
-            Ruleset::Standard | Ruleset::Annan | Ruleset::Anhoku | Ruleset::Antouzai => self
+            Ruleset::Standard
+            | Ruleset::Annan
+            | Ruleset::Anhoku
+            | Ruleset::Antouzai
+            | Ruleset::Taimen
+            | Ruleset::Haimen => self
                 .config
                 .rules
                 .ruleset
@@ -364,6 +383,8 @@ pub enum Ruleset {
     Annan,
     Anhoku,
     Antouzai,
+    Taimen,
+    Haimen,
 }
 
 impl Ruleset {
@@ -374,6 +395,8 @@ impl Ruleset {
             Self::Annan => "annan",
             Self::Anhoku => "anhoku",
             Self::Antouzai => "antouzai",
+            Self::Taimen => "taimen",
+            Self::Haimen => "haimen",
         }
     }
 
@@ -669,6 +692,10 @@ fn active_variant_feature() -> Option<&'static str> {
         Some("anhoku")
     } else if cfg!(feature = "antouzai") {
         Some("antouzai")
+    } else if cfg!(feature = "taimen") {
+        Some("taimen")
+    } else if cfg!(feature = "haimen") {
+        Some("haimen")
     } else {
         None
     }
@@ -677,7 +704,9 @@ fn active_variant_feature() -> Option<&'static str> {
 pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
-        Ruleset::Annan | Ruleset::Anhoku => FEATURE_SET_DONOR_SINGLE,
+        Ruleset::Annan | Ruleset::Anhoku | Ruleset::Taimen | Ruleset::Haimen => {
+            FEATURE_SET_DONOR_SINGLE
+        }
         Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
     }
 }
@@ -685,7 +714,9 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
 fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => vec![FEATURE_SET_HALFKAV2],
-        Ruleset::Annan | Ruleset::Anhoku => vec![FEATURE_SET_DONOR_SINGLE],
+        Ruleset::Annan | Ruleset::Anhoku | Ruleset::Taimen | Ruleset::Haimen => {
+            vec![FEATURE_SET_DONOR_SINGLE]
+        }
         Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
     }
 }
@@ -726,6 +757,8 @@ validation_games = 1
         assert_eq!(Ruleset::Annan.spec().unwrap().default_rule_id, 26);
         assert_eq!(Ruleset::Anhoku.spec().unwrap().default_rule_id, 55);
         assert_eq!(Ruleset::Antouzai.spec().unwrap().default_rule_id, 95);
+        assert_eq!(Ruleset::Taimen.spec().unwrap().default_rule_id, 72);
+        assert_eq!(Ruleset::Haimen.spec().unwrap().default_rule_id, 74);
         assert_eq!(
             Ruleset::Anhoku.spec().unwrap().required_feature,
             Some("anhoku")
@@ -734,16 +767,47 @@ validation_games = 1
             Ruleset::Antouzai.spec().unwrap().required_feature,
             Some("antouzai")
         );
+        assert_eq!(
+            Ruleset::Taimen.spec().unwrap().required_feature,
+            Some("taimen")
+        );
+        assert_eq!(
+            Ruleset::Haimen.spec().unwrap().required_feature,
+            Some("haimen")
+        );
         assert!(Ruleset::Handicap.spec().is_none());
     }
 
     #[test]
     fn resolves_recommended_feature_sets_by_ruleset() {
-        assert_eq!(recommended_feature_set(Ruleset::Standard), FEATURE_SET_HALFKAV2);
-        assert_eq!(recommended_feature_set(Ruleset::Handicap), FEATURE_SET_HALFKAV2);
-        assert_eq!(recommended_feature_set(Ruleset::Annan), FEATURE_SET_DONOR_SINGLE);
-        assert_eq!(recommended_feature_set(Ruleset::Anhoku), FEATURE_SET_DONOR_SINGLE);
-        assert_eq!(recommended_feature_set(Ruleset::Antouzai), FEATURE_SET_DONOR_PAIR);
+        assert_eq!(
+            recommended_feature_set(Ruleset::Standard),
+            FEATURE_SET_HALFKAV2
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Handicap),
+            FEATURE_SET_HALFKAV2
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Annan),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Anhoku),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Antouzai),
+            FEATURE_SET_DONOR_PAIR
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Taimen),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Haimen),
+            FEATURE_SET_DONOR_SINGLE
+        );
     }
 
     #[test]
@@ -806,6 +870,8 @@ validation_games = 1
             (Ruleset::Annan, 26),
             (Ruleset::Anhoku, 55),
             (Ruleset::Antouzai, 95),
+            (Ruleset::Taimen, 72),
+            (Ruleset::Haimen, 74),
         ] {
             let loaded = LoadedConfig {
                 path: PathBuf::from("/tmp/haitaka_learn.toml"),

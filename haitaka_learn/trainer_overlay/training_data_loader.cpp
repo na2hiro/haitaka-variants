@@ -97,12 +97,26 @@ static Piece friendly_piece_at(const Position& pos, Color color, Square sq) {
 }
 
 static Square single_donor_square(Color color, Square sq) {
-#if HAITAKA_DONOR_MODE == 1
+#if HAITAKA_DONOR_MODE == 1 || HAITAKA_DONOR_MODE == 5
+    // annan (friendly behind) and haimen (enemy behind) share the same geometry.
     return color == Color::White ? offset_square(sq, 0, -1) : offset_square(sq, 0, 1);
-#elif HAITAKA_DONOR_MODE == 2
+#elif HAITAKA_DONOR_MODE == 2 || HAITAKA_DONOR_MODE == 4
+    // anhoku (friendly in front) and taimen (enemy in front) share the same geometry.
     return color == Color::White ? offset_square(sq, 0, 1) : offset_square(sq, 0, -1);
 #else
     return Square::NB;
+#endif
+}
+
+// Color of the donor piece for single-donor variants: friendly for annan/anhoku,
+// enemy for taimen/haimen.
+static Color single_donor_color(Color piece_color) {
+    const Color opponent = piece_color == Color::White ? Color::Black : Color::White;
+#if HAITAKA_DONOR_MODE == 4 || HAITAKA_DONOR_MODE == 5
+    return opponent;
+#else
+    (void)opponent;
+    return piece_color;
 #endif
 }
 
@@ -369,7 +383,8 @@ struct DonorSingleEff {
             if (p == Piece::None) {
                 continue;
             }
-            const auto donor_piece = friendly_piece_at(pos, color_of(p), single_donor_square(color_of(p), sq));
+            const auto donor_piece = friendly_piece_at(
+                pos, single_donor_color(color_of(p)), single_donor_square(color_of(p), sq));
             if (donor_piece == Piece::None) {
                 continue;
             }

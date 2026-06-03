@@ -1566,8 +1566,14 @@ mod tests {
     #[test]
     fn trainer_packing_maps_pair_donor_slots_to_overlay_order() {
         let square = Square::E5;
-        assert_eq!(packed_delta(square, square.try_offset(1, 0).unwrap()), (-1, 0));
-        assert_eq!(packed_delta(square, square.try_offset(-1, 0).unwrap()), (1, 0));
+        assert_eq!(
+            packed_delta(square, square.try_offset(1, 0).unwrap()),
+            (-1, 0)
+        );
+        assert_eq!(
+            packed_delta(square, square.try_offset(-1, 0).unwrap()),
+            (1, 0)
+        );
     }
 
     #[test]
@@ -1602,7 +1608,13 @@ mod tests {
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn generate_data_smoke_test_writes_non_empty_shards() {
         let temp = tempdir().unwrap();
@@ -1613,6 +1625,10 @@ mod tests {
             "anhoku"
         } else if cfg!(feature = "antouzai") {
             "antouzai"
+        } else if cfg!(feature = "taimen") {
+            "taimen"
+        } else if cfg!(feature = "haimen") {
+            "haimen"
         } else {
             "standard"
         };
@@ -1661,7 +1677,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn generation_is_deterministic_across_job_counts() {
         let temp = tempdir().unwrap();
@@ -1711,7 +1733,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn resume_reuses_completed_shards() {
         let temp = tempdir().unwrap();
@@ -1738,7 +1766,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn resume_regenerates_shards_when_teacher_identity_changes() {
         let temp = tempdir().unwrap();
@@ -1767,7 +1801,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn resume_reuses_mismatched_shards_when_identity_ignored() {
         let temp = tempdir().unwrap();
@@ -1808,7 +1848,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn detect_identity_mismatch_counts_mismatched_games() {
         let temp = tempdir().unwrap();
@@ -1878,7 +1924,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_data_combines_distributed_shards() {
         let temp = tempdir().unwrap();
@@ -1930,7 +1982,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_treats_empty_shard_lanes_as_empty_inputs() {
         let temp = tempdir().unwrap();
@@ -1988,7 +2046,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_rejects_shards_with_mismatched_teacher_identity() {
         let temp = tempdir().unwrap();
@@ -2016,7 +2080,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_ignores_identity_mismatch_with_flag() {
         let temp = tempdir().unwrap();
@@ -2052,7 +2122,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_allows_shards_with_different_bootstrap_paths() {
         let temp = tempdir().unwrap();
@@ -2084,7 +2160,13 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn merge_does_not_require_local_bootstrap_file() {
         let temp = tempdir().unwrap();
@@ -2116,7 +2198,13 @@ run_search_smoke = false
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn handicap_generate_data_smoke_test_writes_non_empty_shards() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("haitaka_learn.toml");
@@ -2168,6 +2256,10 @@ seed = 9
             "anhoku"
         } else if cfg!(feature = "antouzai") {
             "antouzai"
+        } else if cfg!(feature = "taimen") {
+            "taimen"
+        } else if cfg!(feature = "haimen") {
+            "haimen"
         } else {
             "standard"
         }

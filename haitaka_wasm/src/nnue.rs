@@ -9,6 +9,12 @@ const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
 const DONOR_SINGLE_ANNAN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9e37_79b1;
 #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
 const DONOR_SINGLE_ANHOKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x3c6e_f362;
+// Enemy-donor single-donor variants reuse the DonorSingleEff geometry but need
+// distinct block hashes so their trained weights are never loaded by another rule.
+#[cfg(feature = "taimen")]
+const DONOR_SINGLE_TAIMEN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x85eb_ca77;
+#[cfg(feature = "haimen")]
+const DONOR_SINGLE_HAIMEN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xc2b2_ae3d;
 const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
@@ -89,9 +95,18 @@ const fn network_hash(feature_set_hash: u32) -> u32 {
 const HALFKAV2_NETWORK_HASH: u32 = network_hash(HALFKAV2_FEATURE_SET_HASH);
 #[cfg(feature = "annan")]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANNAN_BLOCK_HASH;
-#[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+#[cfg(feature = "anhoku")]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANHOKU_BLOCK_HASH;
-#[cfg(not(any(feature = "annan", feature = "anhoku")))]
+#[cfg(feature = "taimen")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TAIMEN_BLOCK_HASH;
+#[cfg(feature = "haimen")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_HAIMEN_BLOCK_HASH;
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
@@ -101,8 +116,7 @@ const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
-const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 =
-    network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
+const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH);
 
@@ -119,7 +133,12 @@ impl FeatureFamily {
     fn from_network_hash(hash: u32) -> Option<Self> {
         match hash {
             HALFKAV2_NETWORK_HASH => Some(Self::HalfKAv2),
-            #[cfg(any(feature = "annan", feature = "anhoku"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
@@ -862,7 +881,7 @@ fn append_donor_features(
             let Some(donor_square) = single_donor_candidate_square(piece_color, square) else {
                 return;
             };
-            let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
+            let Some(donor_piece) = single_donor_piece_on(board, piece_color, donor_square) else {
                 return;
             };
             features.push_with_limit(
@@ -1051,8 +1070,25 @@ fn friendly_piece_on(board: &Board, color: Color, square: Square) -> Option<Piec
     (colored_piece.color == color).then_some(colored_piece.piece)
 }
 
+/// Returns the donor piece on `square` for the single-donor families.
+///
+/// Same-side variants (annan/anhoku) read a friendly donor; face-off variants
+/// (taimen/haimen) read an enemy donor. `color` is always the influenced piece's
+/// own color.
+fn single_donor_piece_on(board: &Board, color: Color, square: Square) -> Option<Piece> {
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    {
+        friendly_piece_on(board, !color, square)
+    }
+    #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+    {
+        friendly_piece_on(board, color, square)
+    }
+}
+
 fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square> {
-    #[cfg(feature = "annan")]
+    // annan (friendly behind) and haimen (enemy behind) look at the square behind.
+    #[cfg(any(feature = "annan", feature = "haimen"))]
     {
         return match color {
             Color::Black => square.try_offset(0, 1),
@@ -1060,7 +1096,8 @@ fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square>
         };
     }
 
-    #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+    // anhoku (friendly in front) and taimen (enemy in front) look at the square in front.
+    #[cfg(any(feature = "anhoku", feature = "taimen"))]
     {
         return match color {
             Color::Black => square.try_offset(0, -1),
@@ -1068,7 +1105,12 @@ fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square>
         };
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     {
         let _ = (color, square);
         None
@@ -1115,7 +1157,12 @@ fn square_from_relative_offsets(
 const fn family_supported_by_build(family: FeatureFamily) -> bool {
     match family {
         FeatureFamily::HalfKAv2 => true,
-        FeatureFamily::HalfKAv2DonorSingle => cfg!(any(feature = "annan", feature = "anhoku")),
+        FeatureFamily::HalfKAv2DonorSingle => cfg!(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => true,
     }
@@ -1206,9 +1253,18 @@ mod tests {
         assert_eq!(HALFKAV2_NETWORK_HASH, 0x3c103e72);
         #[cfg(feature = "annan")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1810b26d);
-        #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
+        #[cfg(feature = "anhoku")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x0d8f62a2);
-        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+        #[cfg(feature = "taimen")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x22478c02);
+        #[cfg(feature = "haimen")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x8f59f6b3);
+        #[cfg(not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        )))]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
         assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
         assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0x5bf765a4);
@@ -1216,13 +1272,23 @@ mod tests {
 
     #[test]
     fn single_donor_hash_is_accepted_only_by_single_donor_builds() {
-        #[cfg(any(feature = "annan", feature = "anhoku"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
             Some(FeatureFamily::HalfKAv2DonorSingle)
         );
 
-        #[cfg(not(any(feature = "annan", feature = "anhoku")))]
+        #[cfg(not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        )))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
             None
@@ -1264,6 +1330,40 @@ mod tests {
     #[test]
     fn single_donor_family_marks_anhoku_donor_piece() {
         let board = Board::from_sfen("4k4/9/9/4B4/4R4/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "taimen")]
+    #[test]
+    fn single_donor_family_marks_taimen_enemy_front_donor() {
+        // Black Rook on E5 with an enemy (White) Bishop directly in front: the
+        // donor feature records the Bishop's movement on the Rook's square.
+        let board = Board::from_sfen("4k4/9/9/4b4/4R4/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "haimen")]
+    #[test]
+    fn single_donor_family_marks_haimen_enemy_back_donor() {
+        // Black Rook on E5 with an enemy (White) Bishop directly behind: the
+        // donor feature records the Bishop's movement on the Rook's square.
+        let board = Board::from_sfen("4k4/9/9/9/4R4/4b4/9/9/4K4 b - 1").unwrap();
         let features = active_features(
             &board,
             Color::Black,

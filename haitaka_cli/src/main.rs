@@ -260,13 +260,33 @@ fn main() -> Result<()> {
 fn default_ruleset() -> &'static str {
     if cfg!(feature = "annan") {
         "annan"
+    } else if cfg!(feature = "anhoku") {
+        "anhoku"
+    } else if cfg!(feature = "antouzai") {
+        "antouzai"
+    } else if cfg!(feature = "taimen") {
+        "taimen"
+    } else if cfg!(feature = "haimen") {
+        "haimen"
     } else {
         "standard"
     }
 }
 
 fn default_rule_id() -> u32 {
-    if cfg!(feature = "annan") { 26 } else { 0 }
+    if cfg!(feature = "annan") {
+        26
+    } else if cfg!(feature = "anhoku") {
+        55
+    } else if cfg!(feature = "antouzai") {
+        95
+    } else if cfg!(feature = "taimen") {
+        72
+    } else if cfg!(feature = "haimen") {
+        74
+    } else {
+        0
+    }
 }
 
 fn profile_display_ruleset(ruleset: &str) -> String {
@@ -275,6 +295,8 @@ fn profile_display_ruleset(ruleset: &str) -> String {
         "annan" => "Annan".to_string(),
         "anhoku" => "Anhoku".to_string(),
         "antouzai" => "Antouzai".to_string(),
+        "taimen" => "Taimen".to_string(),
+        "haimen" => "Haimen".to_string(),
         other => {
             let mut chars = other.chars();
             let Some(first) = chars.next() else {

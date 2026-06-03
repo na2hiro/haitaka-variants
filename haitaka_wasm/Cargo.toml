@@ -25,3 +25,5 @@ harness = false
 annan = ["haitaka/annan"]
 anhoku = ["haitaka/anhoku"]
 antouzai = ["haitaka/antouzai"]
+taimen = ["haitaka/taimen"]
+haimen = ["haitaka/haimen"]
