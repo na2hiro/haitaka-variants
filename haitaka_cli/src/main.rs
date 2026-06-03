@@ -115,12 +115,12 @@ struct SelfPlayArgs {
     /// Number of worker threads. Set to 0 to use available parallelism.
     #[arg(long, default_value_t = 0)]
     threads: usize,
-    /// Engine A fixed search depth.
-    #[arg(long = "a-depth", default_value_t = 3)]
-    a_depth: u8,
-    /// Engine B fixed search depth.
-    #[arg(long = "b-depth", default_value_t = 2)]
-    b_depth: u8,
+    /// Engine A fixed search depth, or movetime depth cap when --movetime-ms is set.
+    #[arg(long = "a-depth")]
+    a_depth: Option<u8>,
+    /// Engine B fixed search depth, or movetime depth cap when --movetime-ms is set.
+    #[arg(long = "b-depth")]
+    b_depth: Option<u8>,
     /// Engine A evaluator.
     #[arg(long = "a-eval", value_enum, default_value = "handcrafted")]
     a_eval: EngineEvalKind,
@@ -392,7 +392,7 @@ enum EngineEvaluator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SearchBudget {
     Depth(u8),
-    Movetime { max_depth: u8, millis: u32 },
+    Movetime { max_depth: Option<u8>, millis: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -400,6 +400,16 @@ struct EngineSearchResult {
     best_move: Option<String>,
     total_nodes: u64,
     elapsed_ms: f64,
+}
+
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize, PartialEq)]
+struct SearchBreakdown {
+    #[serde(rename = "totalNodes", default)]
+    total_nodes: u64,
+    #[serde(rename = "totalElapsedMs", default)]
+    total_elapsed_ms: f64,
+    #[serde(rename = "aggregateNps", default)]
+    aggregate_nps: f64,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -410,6 +420,8 @@ struct MatchStats {
     total_nodes: u64,
     total_elapsed_ms: f64,
     total_plies: u64,
+    a_breakdown: SearchBreakdown,
+    b_breakdown: SearchBreakdown,
 }
 
 #[derive(Debug, Clone)]
@@ -419,6 +431,8 @@ struct GameResult {
     plies: u16,
     total_nodes: u64,
     total_elapsed_ms: f64,
+    a_breakdown: SearchBreakdown,
+    b_breakdown: SearchBreakdown,
     start_sfen: String,
     opening: OpeningRecord,
     moves: Vec<String>,
@@ -468,6 +482,10 @@ struct GameJsonRecord {
     total_nodes: u64,
     #[serde(rename = "totalElapsedMs")]
     total_elapsed_ms: f64,
+    #[serde(rename = "aBreakdown")]
+    a_breakdown: SearchBreakdown,
+    #[serde(rename = "bBreakdown")]
+    b_breakdown: SearchBreakdown,
     #[serde(rename = "failureState")]
     failure_state: Option<String>,
 }
@@ -504,9 +522,9 @@ struct ReportCommand {
     games: u32,
     threads: usize,
     #[serde(rename = "aDepth")]
-    a_depth: u8,
+    a_depth: Option<u8>,
     #[serde(rename = "bDepth")]
-    b_depth: u8,
+    b_depth: Option<u8>,
     #[serde(rename = "movetimeMs")]
     movetime_ms: Option<u32>,
     sfen: Option<String>,
@@ -560,6 +578,10 @@ struct RatingSummary {
     total_elapsed_ms: f64,
     #[serde(rename = "aggregateNps")]
     aggregate_nps: f64,
+    #[serde(rename = "aBreakdown", default)]
+    a_breakdown: SearchBreakdown,
+    #[serde(rename = "bBreakdown", default)]
+    b_breakdown: SearchBreakdown,
     warnings: Vec<String>,
 }
 
@@ -734,7 +756,7 @@ fn search_in_process_handcrafted(
         SearchBudget::Movetime { max_depth, millis } => {
             let summary = haitaka_wasm::search_iterative_deepening_impl(
                 &board.to_string(),
-                max_depth,
+                max_depth.unwrap_or(u8::MAX),
                 millis,
             )?;
             Ok(EngineSearchResult {
@@ -768,7 +790,7 @@ fn search_in_process_nnue(
         SearchBudget::Movetime { max_depth, millis } => {
             let summary = haitaka_wasm::search_iterative_deepening_impl_with_eval_mode(
                 &board.to_string(),
-                max_depth,
+                max_depth.unwrap_or(u8::MAX),
                 millis,
                 model,
                 SearchEvalMode::Incremental,
@@ -819,19 +841,27 @@ fn describe_engine(engine: &EngineConfig) -> String {
 fn describe_budget(budget: SearchBudget) -> String {
     match budget {
         SearchBudget::Depth(depth) => format!("depth={depth}"),
-        SearchBudget::Movetime { max_depth, millis } => {
-            format!("movetime_ms={millis} max_depth={max_depth}")
-        }
+        SearchBudget::Movetime { max_depth, millis } => match max_depth {
+            Some(max_depth) => format!("movetime_ms={millis} max_depth={max_depth}"),
+            None => format!("movetime_ms={millis} max_depth=unlimited"),
+        },
     }
 }
 
-fn self_play_budget(depth: u8, movetime_ms: Option<u32>) -> SearchBudget {
+const DEFAULT_SELF_PLAY_A_DEPTH: u8 = 3;
+const DEFAULT_SELF_PLAY_B_DEPTH: u8 = 2;
+
+fn self_play_budget(
+    default_depth: u8,
+    depth: Option<u8>,
+    movetime_ms: Option<u32>,
+) -> SearchBudget {
     match movetime_ms {
         Some(millis) => SearchBudget::Movetime {
-            max_depth: depth.max(1),
+            max_depth: depth.map(|depth| depth.max(1)),
             millis,
         },
-        None => SearchBudget::Depth(depth.max(1)),
+        None => SearchBudget::Depth(depth.unwrap_or(default_depth).max(1)),
     }
 }
 
@@ -1241,6 +1271,10 @@ fn play_self_play_game(
     let mut plies = 0;
     let mut total_nodes = 0;
     let mut total_elapsed_ms = 0.0;
+    let mut a_total_nodes = 0;
+    let mut a_total_elapsed_ms = 0.0;
+    let mut b_total_nodes = 0;
+    let mut b_total_elapsed_ms = 0.0;
     let mut moves = Vec::new();
     let mut runtime_a = GameEngine::start(engine_a)
         .map_err(|err| anyhow!("failed to start engine A in game {}: {err}", game_index + 1))?;
@@ -1267,11 +1301,26 @@ fn play_self_play_game(
         } else {
             &mut runtime_b
         };
-        let summary = runtime
-            .search(&board, config.budget)
-            .map_err(|err| anyhow!("search failed in game {}: {err}", game_index + 1))?;
+        let current_sfen = board.to_string();
+        let summary = runtime.search(&board, config.budget).map_err(|err| {
+            anyhow!(
+                "search failed in game {} on ply {} with {} to move (engine {}, sfen: {}): {err}",
+                game_index + 1,
+                ply + 1,
+                color_name(board.side_to_move()),
+                config.label,
+                current_sfen
+            )
+        })?;
         total_nodes += summary.total_nodes;
         total_elapsed_ms += summary.elapsed_ms;
+        if board.side_to_move() == a_color {
+            a_total_nodes += summary.total_nodes;
+            a_total_elapsed_ms += summary.elapsed_ms;
+        } else {
+            b_total_nodes += summary.total_nodes;
+            b_total_elapsed_ms += summary.elapsed_ms;
+        }
         let Some(best_move) = summary.best_move else {
             winner = Some(if config.label == "A" {
                 Seat::B
@@ -1295,6 +1344,8 @@ fn play_self_play_game(
         plies,
         total_nodes,
         total_elapsed_ms,
+        a_breakdown: search_breakdown(a_total_nodes, a_total_elapsed_ms),
+        b_breakdown: search_breakdown(b_total_nodes, b_total_elapsed_ms),
         start_sfen,
         opening,
         moves,
@@ -1338,6 +1389,20 @@ fn score_rate_to_elo(score_rate: f64) -> f64 {
     400.0 * (score_rate / (1.0 - score_rate)).log10()
 }
 
+fn search_breakdown(total_nodes: u64, total_elapsed_ms: f64) -> SearchBreakdown {
+    let aggregate_nps = if total_elapsed_ms > 0.0 {
+        total_nodes as f64 / (total_elapsed_ms / 1_000.0)
+    } else {
+        0.0
+    };
+
+    SearchBreakdown {
+        total_nodes,
+        total_elapsed_ms,
+        aggregate_nps,
+    }
+}
+
 fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
     let a_score = stats.a_wins as f64 + 0.5 * stats.draws as f64;
     let denom = f64::from(games.max(1));
@@ -1346,11 +1411,7 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
     let se = (bounded_rate * (1.0 - bounded_rate) / denom).sqrt();
     let lower_rate = (bounded_rate - 1.96 * se).clamp(0.01, 0.99);
     let upper_rate = (bounded_rate + 1.96 * se).clamp(0.01, 0.99);
-    let aggregate_nps = if stats.total_elapsed_ms > 0.0 {
-        stats.total_nodes as f64 / (stats.total_elapsed_ms / 1_000.0)
-    } else {
-        0.0
-    };
+    let total_breakdown = search_breakdown(stats.total_nodes, stats.total_elapsed_ms);
     let mut warnings = Vec::new();
     if games < 30 {
         warnings.push("low sample: Elo and confidence interval are approximate".to_string());
@@ -1372,7 +1433,15 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
         avg_plies: stats.total_plies as f64 / denom,
         total_nodes: stats.total_nodes,
         total_elapsed_ms: stats.total_elapsed_ms,
-        aggregate_nps,
+        aggregate_nps: total_breakdown.aggregate_nps,
+        a_breakdown: search_breakdown(
+            stats.a_breakdown.total_nodes,
+            stats.a_breakdown.total_elapsed_ms,
+        ),
+        b_breakdown: search_breakdown(
+            stats.b_breakdown.total_nodes,
+            stats.b_breakdown.total_elapsed_ms,
+        ),
         warnings,
     }
 }
@@ -1385,6 +1454,14 @@ fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
         total_nodes: summary.total_nodes,
         total_elapsed_ms: summary.total_elapsed_ms,
         total_plies: (summary.avg_plies * f64::from(summary.games)).round() as u64,
+        a_breakdown: search_breakdown(
+            summary.a_breakdown.total_nodes,
+            summary.a_breakdown.total_elapsed_ms,
+        ),
+        b_breakdown: search_breakdown(
+            summary.b_breakdown.total_nodes,
+            summary.b_breakdown.total_elapsed_ms,
+        ),
     }
 }
 
@@ -1498,6 +1575,8 @@ fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
         plies: result.plies,
         total_nodes: result.total_nodes,
         total_elapsed_ms: result.total_elapsed_ms,
+        a_breakdown: result.a_breakdown,
+        b_breakdown: result.b_breakdown,
         failure_state: None,
     }
 }
@@ -1835,8 +1914,8 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
     } else {
         args.b_engine.as_deref()
     };
-    let a_budget = self_play_budget(args.a_depth, args.movetime_ms);
-    let b_budget = self_play_budget(args.b_depth, args.movetime_ms);
+    let a_budget = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, args.a_depth, args.movetime_ms);
+    let b_budget = self_play_budget(DEFAULT_SELF_PLAY_B_DEPTH, args.b_depth, args.movetime_ms);
     let engine_a = engine_config(
         "A",
         a_budget,
@@ -1967,6 +2046,10 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
             stats.total_nodes += result.total_nodes;
             stats.total_elapsed_ms += result.total_elapsed_ms;
             stats.total_plies += u64::from(result.plies);
+            stats.a_breakdown.total_nodes += result.a_breakdown.total_nodes;
+            stats.a_breakdown.total_elapsed_ms += result.a_breakdown.total_elapsed_ms;
+            stats.b_breakdown.total_nodes += result.b_breakdown.total_nodes;
+            stats.b_breakdown.total_elapsed_ms += result.b_breakdown.total_elapsed_ms;
             match result.winner {
                 Some(Seat::A) => stats.a_wins += 1,
                 Some(Seat::B) => stats.b_wins += 1,
@@ -1998,8 +2081,8 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                  decided games: {decided}\n\
                  approx elo A-B: {elo:.1} (95% CI {elo_low:.1}..{elo_high:.1})\n\
                  avg plies: {avg:.1}\n\
-                total nodes: {nodes}\n\
-                 aggregate nps: {nps:.0}",
+                total nodes: {nodes} (A {a_nodes}, B {b_nodes})\n\
+                 aggregate nps: {nps:.0} (A {a_nps:.0}, B {b_nps:.0})",
                 game = game_index + 1,
                 a_color = result.a_color,
                 b_color = !result.a_color,
@@ -2018,6 +2101,10 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 avg = summary.avg_plies,
                 nodes = summary.total_nodes,
                 nps = summary.aggregate_nps,
+                a_nodes = summary.a_breakdown.total_nodes,
+                b_nodes = summary.b_breakdown.total_nodes,
+                a_nps = summary.a_breakdown.aggregate_nps,
+                b_nps = summary.b_breakdown.aggregate_nps,
             );
             render_status(&block, completed == 1);
         }
@@ -2729,8 +2816,8 @@ mod tests {
             Command::SelfPlay(args) => {
                 assert_eq!(args.games, 8);
                 assert_eq!(args.threads, 0);
-                assert_eq!(args.a_depth, 4);
-                assert_eq!(args.b_depth, 4);
+                assert_eq!(args.a_depth, Some(4));
+                assert_eq!(args.b_depth, Some(4));
                 assert_eq!(args.a_eval, EngineEvalKind::Nnue);
                 assert_eq!(args.b_eval, EngineEvalKind::Handcrafted);
                 assert_eq!(args.nnue, Some(PathBuf::from("model.nnue")));
@@ -2800,6 +2887,21 @@ mod tests {
     }
 
     #[test]
+    fn cli_leaves_self_play_depths_unset_when_omitted() {
+        let cli = Cli::try_parse_from(["haitaka", "self-play", "--movetime-ms", "100"])
+            .expect("CLI args should parse");
+
+        match cli.command {
+            Command::SelfPlay(args) => {
+                assert_eq!(args.a_depth, None);
+                assert_eq!(args.b_depth, None);
+                assert_eq!(args.movetime_ms, Some(100));
+            }
+            other => panic!("expected self-play command, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn cli_parses_usi_flags() {
         let cli = Cli::try_parse_from([
             "haitaka",
@@ -2825,11 +2927,21 @@ mod tests {
 
     #[test]
     fn self_play_budget_prefers_movetime_when_set() {
-        assert_eq!(self_play_budget(3, None), SearchBudget::Depth(3));
         assert_eq!(
-            self_play_budget(3, Some(100)),
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None),
+            SearchBudget::Depth(DEFAULT_SELF_PLAY_A_DEPTH)
+        );
+        assert_eq!(
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), Some(100)),
             SearchBudget::Movetime {
-                max_depth: 3,
+                max_depth: Some(3),
+                millis: 100
+            }
+        );
+        assert_eq!(
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(100)),
+            SearchBudget::Movetime {
+                max_depth: None,
                 millis: 100
             }
         );
@@ -2911,6 +3023,8 @@ mod tests {
             total_nodes: 1_000,
             total_elapsed_ms: 500.0,
             total_plies: 40,
+            a_breakdown: search_breakdown(600, 200.0),
+            b_breakdown: search_breakdown(400, 300.0),
         };
 
         let summary = rating_summary(&stats, 4);
@@ -2923,6 +3037,10 @@ mod tests {
         assert_eq!(summary.avg_plies, 10.0);
         assert_eq!(summary.total_elapsed_ms, 500.0);
         assert_eq!(summary.aggregate_nps, 2_000.0);
+        assert_eq!(summary.a_breakdown.total_nodes, 600);
+        assert_eq!(summary.a_breakdown.aggregate_nps, 3_000.0);
+        assert_eq!(summary.b_breakdown.total_nodes, 400);
+        assert!((summary.b_breakdown.aggregate_nps - 1_333.3333333333335).abs() < 1e-9);
         assert!(
             summary
                 .warnings
@@ -2982,6 +3100,8 @@ mod tests {
             plies: 2,
             total_nodes: 10,
             total_elapsed_ms: 1.5,
+            a_breakdown: search_breakdown(6, 0.5),
+            b_breakdown: search_breakdown(4, 1.0),
             start_sfen: haitaka::SFEN_STARTPOS.to_string(),
             opening: OpeningRecord {
                 source: "suite".to_string(),
@@ -3004,6 +3124,8 @@ mod tests {
         assert_eq!(json["moves"][0], "7g7f");
         assert_eq!(json["result"], "a-win");
         assert_eq!(json["winner"], "A");
+        assert_eq!(json["aBreakdown"]["totalNodes"], 6);
+        assert_eq!(json["bBreakdown"]["totalNodes"], 4);
         assert!(json["failureState"].is_null());
     }
 
@@ -3252,8 +3374,8 @@ mod tests {
         let args = SelfPlayArgs {
             games: 1,
             threads: 1,
-            a_depth: 1,
-            b_depth: 1,
+            a_depth: Some(1),
+            b_depth: Some(1),
             a_eval: EngineEvalKind::Handcrafted,
             b_eval: EngineEvalKind::Handcrafted,
             nnue: None,

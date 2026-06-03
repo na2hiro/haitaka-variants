@@ -32,7 +32,9 @@ cargo run -p haitaka_cli --release -- self-play \
 `--threads 0` uses available parallelism. The score and Elo estimate are
 reported as `A - B`, so positive values mean engine A outscored engine B.
 Prefer `--movetime-ms` for strength checks because fixed-depth matches can hide
-improvements that make the engine search faster.
+improvements that make the engine search faster. When movetime is set, omitted
+`--a-depth` and `--b-depth` mean uncapped iterative deepening; pass those flags
+only when you want an explicit per-side movetime depth cap.
 
 Use fixed depth as a debugging alternative when you need deterministic search
 shape or a very cheap smoke test:

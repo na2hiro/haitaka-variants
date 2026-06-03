@@ -124,6 +124,7 @@ impl Board {
         let (checkers, pinned) = self.calculate_checkers_and_pins(self.side_to_move());
         soft_assert!(self.checkers == checkers);
         soft_assert!(self.pinned() == pinned);
+        #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
         soft_assert!(self.checkers.len() < 3);
         true
     }

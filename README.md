@@ -103,7 +103,8 @@ The summary reports an approximate Elo-style difference as `A - B`, so positive
 numbers mean the NNUE side outscored the handcrafted side. `--threads 0` uses
 all available CPU threads; set an explicit value to cap parallel self-play.
 Use movetime for strength checks because fixed-depth matches can hide search
-speed improvements.
+speed improvements. When movetime is set, omitted `--a-depth` and `--b-depth`
+mean uncapped iterative deepening.
 
 For external-engine matches, native engine archives, opening suites, and JSON
 reports, see [docs/self-play.md](docs/self-play.md).

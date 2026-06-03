@@ -65,8 +65,9 @@ This treats engine A as `nnue` and engine B as `handcrafted`. Use `--a-nnue`
 or `--b-nnue` when each side should load a different model. `--threads 0`
 selects available parallelism automatically. Prefer `--movetime-ms` for
 strength checks because fixed depth can miss improvements that make search
-faster. Use `--a-depth` and `--b-depth` mainly for deterministic debugging or
-quick smoke tests.
+faster. With movetime, omitted `--a-depth` and `--b-depth` mean uncapped
+iterative deepening; use them mainly when you want an explicit cap for
+deterministic debugging or quick smoke tests.
 
 `--opening-random-plies` is the important knob when matches look too
 deterministic from one fixed start position. The same randomized opening is used
