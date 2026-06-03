@@ -30,12 +30,16 @@ enum Command {
         shard_index: Option<u32>,
         #[arg(long)]
         shard_count: Option<u32>,
+        #[arg(long)]
+        ignore_identity_mismatch: bool,
     },
     MergeData {
         #[arg(long)]
         config: PathBuf,
         #[arg(long, required = true)]
         input: Vec<PathBuf>,
+        #[arg(long)]
+        ignore_identity_mismatch: bool,
     },
     Train {
         #[arg(long)]
@@ -69,6 +73,7 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
         resume: resume_override(no_resume),
         shard_index: None,
         shard_count: None,
+        ignore_identity_mismatch: false,
     }
 }
 
@@ -81,6 +86,7 @@ fn main() -> Result<()> {
             no_resume,
             shard_index,
             shard_count,
+            ignore_identity_mismatch,
         } => {
             let loaded = LoadedConfig::from_path(&config)?;
             let output = dataset::generate_data_with_options(
@@ -90,6 +96,7 @@ fn main() -> Result<()> {
                     resume: resume_override(no_resume),
                     shard_index,
                     shard_count,
+                    ignore_identity_mismatch,
                 },
             )?;
             println!(
@@ -99,9 +106,13 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::MergeData { config, input } => {
+        Command::MergeData {
+            config,
+            input,
+            ignore_identity_mismatch,
+        } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let output = dataset::merge_data(&loaded, &input)?;
+            let output = dataset::merge_data(&loaded, &input, ignore_identity_mismatch)?;
             println!(
                 "merged {} training and {} validation samples into {}",
                 output.train_positions,
@@ -175,6 +186,7 @@ mod tests {
                 resume: None,
                 shard_index: None,
                 shard_count: None,
+                ignore_identity_mismatch: false,
             }
         );
     }
@@ -188,6 +200,7 @@ mod tests {
                 resume: Some(false),
                 shard_index: None,
                 shard_count: None,
+                ignore_identity_mismatch: false,
             }
         );
     }
