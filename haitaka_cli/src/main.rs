@@ -346,6 +346,8 @@ struct NativeArchiveRuntime {
     #[serde(rename = "protocolVersion")]
     protocol_version: String,
     executable: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2201,7 +2203,13 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                     ));
                 }
             };
-            let result = result?;
+            let result = match result {
+                Ok(result) => result,
+                Err(err) => {
+                    SELF_PLAY_INTERRUPTED.store(true, Ordering::SeqCst);
+                    return Err(err);
+                }
+            };
             let outcome = match result.winner {
                 Some(Seat::A) => "A win",
                 Some(Seat::B) => "B win",
@@ -2326,6 +2334,7 @@ fn archive_engine_in_staging(args: ArchiveEngineArgs, staging: &Path) -> Result<
     if let Ok(metadata) = fs::metadata(&args.binary) {
         let _ = fs::set_permissions(&archive_binary, metadata.permissions());
     }
+    let executable_sha256 = file_sha256(&archive_binary)?;
 
     let nnue = if let Some(path) = args.nnue.as_ref() {
         fs::create_dir_all(staging.join("nnue"))?;
@@ -2339,7 +2348,7 @@ fn archive_engine_in_staging(args: ArchiveEngineArgs, staging: &Path) -> Result<
         None
     };
 
-    let manifest = archive_engine_manifest(&args, nnue);
+    let manifest = archive_engine_manifest(&args, executable_sha256, nnue);
     fs::write(
         staging.join(ENGINE_ARCHIVE_MANIFEST_FILE),
         serde_json::to_string_pretty(&manifest)?,
@@ -2374,6 +2383,7 @@ fn archive_engine_in_staging(args: ArchiveEngineArgs, staging: &Path) -> Result<
 
 fn archive_engine_manifest(
     args: &ArchiveEngineArgs,
+    executable_sha256: String,
     nnue: Option<NativeArchiveNnue>,
 ) -> NativeEngineArchiveManifest {
     NativeEngineArchiveManifest {
@@ -2400,6 +2410,7 @@ fn archive_engine_manifest(
             protocol: "usi".to_string(),
             protocol_version: "minimal-v1".to_string(),
             executable: ENGINE_ARCHIVE_BIN_PATH.to_string(),
+            sha256: Some(executable_sha256),
         },
         nnue,
     }
@@ -2454,6 +2465,21 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
         bail!(
             "archive executable {} does not exist",
             manifest.runtime.executable
+        );
+    }
+    let expected_executable_sha256 = manifest.runtime.sha256.as_deref().ok_or_else(|| {
+        anyhow!(
+            "archive executable {} has no sha256 in manifest",
+            manifest.runtime.executable
+        )
+    })?;
+    let actual_executable_sha256 = file_sha256(&engine_path)?;
+    if actual_executable_sha256 != expected_executable_sha256 {
+        bail!(
+            "archive executable {} sha256 mismatch: manifest has {}, extracted file has {}",
+            manifest.runtime.executable,
+            expected_executable_sha256,
+            actual_executable_sha256
         );
     }
 
@@ -2837,6 +2863,7 @@ mod tests {
                 protocol: "usi".to_string(),
                 protocol_version: "minimal-v1".to_string(),
                 executable: ENGINE_ARCHIVE_BIN_PATH.to_string(),
+                sha256: Some("binary-sha256".to_string()),
             },
             nnue: Some(NativeArchiveNnue {
                 path: ENGINE_ARCHIVE_NNUE_PATH.to_string(),
@@ -3023,6 +3050,7 @@ mod tests {
         );
         let manifest = archive_engine_manifest(
             &args,
+            "def456".to_string(),
             Some(NativeArchiveNnue {
                 path: ENGINE_ARCHIVE_NNUE_PATH.to_string(),
                 sha256: "abc123".to_string(),
@@ -3040,6 +3068,7 @@ mod tests {
         assert_eq!(json["runtime"]["protocol"], "usi");
         assert_eq!(json["runtime"]["protocolVersion"], "minimal-v1");
         assert_eq!(json["runtime"]["executable"], ENGINE_ARCHIVE_BIN_PATH);
+        assert_eq!(json["runtime"]["sha256"], "def456");
         assert_eq!(json["nnue"]["path"], ENGINE_ARCHIVE_NNUE_PATH);
         assert_eq!(json["nnue"]["sha256"], "abc123");
     }
@@ -3653,6 +3682,7 @@ mod tests {
         let output = temp.join("haitaka-native.tgz");
         fs::write(&binary, b"fake executable").expect("write fake binary");
         fs::write(&nnue, b"abc").expect("write fake nnue");
+        let expected_binary_sha256 = file_sha256(&binary).expect("hash fake binary");
 
         archive_engine(test_archive_args(binary, output.clone(), Some(nnue)))
             .expect("archive should succeed");
@@ -3689,10 +3719,70 @@ mod tests {
         assert_eq!(manifest["schema"], "haitaka-engine-archive");
         assert_eq!(manifest["runtime"]["protocol"], "usi");
         assert_eq!(manifest["runtime"]["executable"], ENGINE_ARCHIVE_BIN_PATH);
+        assert_eq!(manifest["runtime"]["sha256"], expected_binary_sha256);
         assert_eq!(manifest["nnue"]["path"], ENGINE_ARCHIVE_NNUE_PATH);
         assert_eq!(
             manifest["nnue"]["sha256"],
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp archive dir");
+    }
+
+    #[test]
+    fn extract_engine_archive_rejects_executable_sha256_mismatch() {
+        let temp = unique_temp_dir("engine-archive-binary-mismatch");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let binary = temp.join("haitaka_cli");
+        let archive = temp.join("haitaka-native.tgz");
+        let unpacked = temp.join("unpacked");
+        let extraction_dir = temp.join("extracted");
+        let repacked = temp.join("tampered.tgz");
+        fs::write(&binary, b"fake executable").expect("write fake binary");
+        let original_sha256 = file_sha256(&binary).expect("hash original binary");
+
+        archive_engine(test_archive_args(binary, archive.clone(), None))
+            .expect("archive should succeed");
+
+        fs::create_dir_all(&unpacked).expect("create unpacked dir");
+        let status = ProcessCommand::new("tar")
+            .arg("-xzf")
+            .arg(&archive)
+            .arg("-C")
+            .arg(&unpacked)
+            .status()
+            .expect("extract original archive");
+        assert!(status.success(), "archive extract failed: {status}");
+
+        let tampered_binary = unpacked.join(ENGINE_ARCHIVE_BIN_PATH);
+        fs::write(&tampered_binary, b"tampered executable")
+            .expect("overwrite executable with tampered bytes");
+        let tampered_sha256 = file_sha256(&tampered_binary).expect("hash tampered binary");
+
+        let status = ProcessCommand::new("tar")
+            .arg("-czf")
+            .arg(&repacked)
+            .arg("-C")
+            .arg(&unpacked)
+            .arg(".")
+            .status()
+            .expect("create tampered archive");
+        assert!(status.success(), "archive repack failed: {status}");
+
+        let err = extract_engine_archive_in_dir(&repacked, &extraction_dir)
+            .expect_err("tampered archive should fail");
+        let message = err.to_string();
+        assert!(
+            message.contains("archive executable bin/haitaka_cli sha256 mismatch"),
+            "unexpected error: {message}"
+        );
+        assert!(
+            message.contains(&original_sha256),
+            "unexpected error: {message}"
+        );
+        assert!(
+            message.contains(&tampered_sha256),
+            "unexpected error: {message}"
         );
 
         fs::remove_dir_all(temp).expect("clean temp archive dir");
