@@ -1587,3 +1587,97 @@ fn haimen_without_enemy_back_donor_uses_native_movement() {
     assert!(!board.is_legal_board_move(rook_like));
     assert!(board.is_legal_board_move(gold_like));
 }
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_quiet_move_creating_enemy_donor_check_is_rejected() {
+    // Black is not in check. Moving the Black Rook G5->F5 places it directly in
+    // front of the White Pawn on E5, donating rook movement to that pawn, which
+    // then checks the Black King on A5 up the file. The move is not pinned and
+    // there was no checker, so it must be rejected by the post-move donor recheck.
+    let board: Board = "4K4/9/9/9/4p4/9/4R4/9/8k b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::BoardMove {
+        from: Square::G5,
+        to: Square::F5,
+        promotion: false,
+    };
+    let safe = Move::BoardMove {
+        from: Square::G5,
+        to: Square::H5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(self_check));
+    assert!(board.is_legal_board_move(safe));
+
+    // It must not be generated either.
+    let mut generated_self_check = false;
+    let mut generated_safe = false;
+    board.generate_board_moves(|mvs| {
+        generated_self_check |= mvs.has(self_check);
+        generated_safe |= mvs.has(safe);
+        false
+    });
+    assert!(!generated_self_check);
+    assert!(generated_safe);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_quiet_move_creating_enemy_donor_check_is_rejected() {
+    // Black is not in check. Moving the Black Rook C5->D5 places it directly behind
+    // the White Pawn on E5, donating rook movement to that pawn, which then checks
+    // the Black King on I5 down the file. The move is not pinned and there was no
+    // checker, so it must be rejected by the post-move donor recheck.
+    let board: Board = "8k/9/4R4/9/4p4/9/9/9/4K4 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::BoardMove {
+        from: Square::C5,
+        to: Square::D5,
+        promotion: false,
+    };
+    let safe = Move::BoardMove {
+        from: Square::C5,
+        to: Square::B5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(self_check));
+    assert!(board.is_legal_board_move(safe));
+
+    let mut generated_self_check = false;
+    let mut generated_safe = false;
+    board.generate_board_moves(|mvs| {
+        generated_self_check |= mvs.has(self_check);
+        generated_safe |= mvs.has(safe);
+        false
+    });
+    assert!(!generated_self_check);
+    assert!(generated_safe);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_drop_creating_enemy_donor_check_is_rejected() {
+    // Dropping a Black Rook in front of the White Pawn on E5 (F5) donates rook
+    // movement to it, checking the Black King on A5. Such a drop must be rejected
+    // even though Black is not currently in check.
+    let board: Board = "4K4/9/9/9/4p4/9/9/9/8k b R 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::Drop {
+        piece: Piece::Rook,
+        to: Square::F5,
+    };
+    assert!(!board.is_legal_drop(self_check));
+
+    let mut generated = false;
+    board.generate_drops(|mvs| {
+        generated |= mvs.has(self_check);
+        false
+    });
+    assert!(!generated);
+}

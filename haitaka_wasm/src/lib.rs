@@ -1337,9 +1337,11 @@ mod tests {
     }
 
     #[test]
-    // Under taimen an enemy piece directly in front donates its movement, which
-    // changes the defenders' replies, so this standard mate no longer holds.
-    #[cfg(not(feature = "taimen"))]
+    // In the enemy-donor variants (taimen/haimen) an enemy piece adjacent in the
+    // donor axis changes the defender's effective movement, so this standard-shogi
+    // mate has a different (still valid) solution and the asserted line no longer
+    // matches. The mate-solving itself is exercised by the variant tests elsewhere.
+    #[cfg(not(any(feature = "taimen", feature = "haimen")))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();

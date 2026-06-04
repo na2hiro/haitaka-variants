@@ -76,6 +76,157 @@ impl Board {
         checkers.is_empty()
     }
 
+    /// Squares directly above/below an enemy piece.
+    ///
+    /// In the enemy-donor variants (taimen/haimen) a piece's effective movement is
+    /// donated by the enemy piece one rank in front of / behind it. So moving one of
+    /// our own pieces onto—or off of—such a square changes that enemy's effective
+    /// movement, which can newly expose our king even when we are not in check.
+    /// This is a cheap, direction-agnostic superset of the exact donor squares
+    /// (the donor axis is purely vertical), so it never misses a relevant move.
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    fn enemy_donor_axis(&self) -> BitBoard {
+        let enemies = self.colors(!self.side_to_move());
+        enemies.shift_north(1) | enemies.shift_south(1)
+    }
+
+    /// Whether a non-check move is safe for our king in an enemy-donor variant.
+    ///
+    /// Moves that neither place nor remove one of our pieces on the enemy donor
+    /// axis cannot change any enemy's effective movement, so the ordinary pin/check
+    /// filtering already applied is exact. Moves that do touch the donor axis need a
+    /// full post-move recheck because they can grant an adjacent enemy new movement.
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    fn enemy_donor_move_safe(&self, mv: Move, donor_axis: BitBoard) -> bool {
+        let touches_axis = match mv {
+            Move::BoardMove { from, to, .. } => donor_axis.has(from) || donor_axis.has(to),
+            Move::Drop { to, .. } => donor_axis.has(to),
+        };
+        !touches_axis || self.variant_move_resolves_check(mv)
+    }
+
+    /// Generate not-in-check board moves for enemy-donor variants, rechecking the
+    /// post-move king safety of any move that can change an enemy's donated movement.
+    ///
+    /// Moves that touch neither end of the donor axis cannot change an enemy's
+    /// effective movement, so the whole batch is forwarded unchanged (cheap path).
+    /// Only the destinations that can change a donor are split out and rechecked
+    /// individually with a post-move recompute.
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    fn generate_enemy_donor_safe_board<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        mask: BitBoard,
+        listener: &mut F,
+    ) -> bool {
+        debug_assert!(self.checkers.is_empty());
+        let donor_axis = self.enemy_donor_axis();
+        let stm = self.side_to_move();
+        let mut filter = |mvs: PieceMoves| {
+            let PieceMoves::BoardMoves {
+                color,
+                piece,
+                from,
+                to,
+                prom_status,
+            } = mvs
+            else {
+                // `add_all_legals` only emits board moves; forward anything else.
+                return listener(mvs);
+            };
+            // Moving off the donor axis changes a donor regardless of destination;
+            // otherwise only destinations on the donor axis can change one.
+            let needs_recheck = if donor_axis.has(from) {
+                to
+            } else {
+                to & donor_axis
+            };
+            let safe = to & !needs_recheck;
+            if !safe.is_empty()
+                && listener(PieceMoves::BoardMoves {
+                    color,
+                    piece,
+                    from,
+                    to: safe,
+                    prom_status,
+                })
+            {
+                return true;
+            }
+            if needs_recheck.is_empty() {
+                return false;
+            }
+            let recheck = PieceMoves::BoardMoves {
+                color,
+                piece,
+                from,
+                to: needs_recheck,
+                prom_status,
+            };
+            for mv in recheck {
+                if self.variant_move_resolves_check(mv)
+                    && listener(Self::variant_singleton_piece_moves(mv, stm, piece))
+                {
+                    return true;
+                }
+            }
+            false
+        };
+        self.add_all_legals::<_, false>(mask, &mut filter)
+    }
+
+    /// Generate not-in-check drops for enemy-donor variants, rechecking post-move
+    /// king safety of any drop that can grant an adjacent enemy new movement.
+    ///
+    /// Drops onto squares off the donor axis are forwarded as a batch; only drops
+    /// onto the donor axis are split out and rechecked individually.
+    #[cfg(any(feature = "taimen", feature = "haimen"))]
+    fn generate_enemy_donor_safe_drops<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        piece_filter: Option<Piece>,
+        listener: &mut F,
+    ) -> bool {
+        debug_assert!(self.checkers.is_empty());
+        let donor_axis = self.enemy_donor_axis();
+        let stm = self.side_to_move();
+        let targets = !self.occupied();
+        let mut filter = |mvs: PieceMoves| {
+            let PieceMoves::Drops { color, piece, to } = mvs else {
+                return listener(mvs);
+            };
+            if piece_filter.is_some_and(|wanted| wanted != piece) {
+                return false;
+            }
+            let needs_recheck = to & donor_axis;
+            let safe = to & !needs_recheck;
+            if !safe.is_empty()
+                && listener(PieceMoves::Drops {
+                    color,
+                    piece,
+                    to: safe,
+                })
+            {
+                return true;
+            }
+            if needs_recheck.is_empty() {
+                return false;
+            }
+            let recheck = PieceMoves::Drops {
+                color,
+                piece,
+                to: needs_recheck,
+            };
+            for mv in recheck {
+                if self.variant_move_resolves_check(mv)
+                    && listener(Self::variant_singleton_piece_moves(mv, stm, piece))
+                {
+                    return true;
+                }
+            }
+            false
+        };
+        self.add_all_drops::<_, false>(&mut filter, targets)
+    }
+
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -1057,7 +1208,16 @@ impl Board {
             ))]
             {
                 let resolves_check = if self.checkers.is_empty() {
-                    true
+                    // A drop can grant an adjacent enemy new movement in the
+                    // enemy-donor variants, so recheck its post-move king safety.
+                    #[cfg(any(feature = "taimen", feature = "haimen"))]
+                    {
+                        self.enemy_donor_move_safe(mv, self.enemy_donor_axis())
+                    }
+                    #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+                    {
+                        true
+                    }
                 } else {
                     self.variant_move_resolves_check(mv)
                 };
@@ -1276,6 +1436,15 @@ impl Board {
                 return false;
             }
 
+            // When not in check, ordinary variants are already safe at this point.
+            // Enemy-donor variants still need a post-move recheck because moving our
+            // own piece can change an adjacent enemy's effective movement (and thus
+            // expose our king) even though nothing was pinned and we were not in check.
+            #[cfg(any(feature = "taimen", feature = "haimen"))]
+            if self.checkers.is_empty() {
+                return self.enemy_donor_move_safe(mv, self.enemy_donor_axis());
+            }
+            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
             if self.checkers.is_empty() {
                 return true;
             }
@@ -1455,6 +1624,12 @@ impl Board {
             return self.generate_variant_board_evasions(mask, &mut listener);
         }
 
+        // Not in check: enemy-donor variants still need per-move safety rechecks for
+        // moves that can change an adjacent enemy's effective movement.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        return self.generate_enemy_donor_safe_board(mask, &mut listener);
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         match self.checkers.len() {
             0 => self.add_all_legals::<_, false>(mask, &mut listener),
             1 => self.add_all_legals::<_, true>(mask, &mut listener),
@@ -1466,7 +1641,11 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    // Enemy-donor variants (taimen/haimen) recheck each drop individually and may
+    // reject some, so they emit singleton `Drops` batches rather than one full
+    // bitboard; skip this batching-specific example for those builds.
+    #[cfg_attr(not(any(feature = "taimen", feature = "haimen")), doc = "```")]
+    #[cfg_attr(any(feature = "taimen", feature = "haimen"), doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen: & str = "lnsgk2nl/1r4gs1/p1pppp1pp/1p4p2/7P1/2P6/PP1PPPP1P/1SG4R1/LN2KGSNL b Bb 11";
     /// let board = Board::from_sfen(sfen).unwrap();
@@ -1502,6 +1681,12 @@ impl Board {
             return self.generate_variant_drop_evasions(&mut listener, None);
         }
 
+        // Not in check: a drop can grant an adjacent enemy new movement in the
+        // enemy-donor variants, so recheck post-move king safety per drop.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        return self.generate_enemy_donor_safe_drops(None, &mut listener);
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         match self.checkers.len() {
             0 => {
                 let targets = !self.occupied();
@@ -1533,6 +1718,11 @@ impl Board {
             return self.generate_variant_drop_evasions(&mut listener, Some(piece));
         }
 
+        // Not in check: enemy-donor variants recheck post-move king safety per drop.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        return self.generate_enemy_donor_safe_drops(Some(piece), &mut listener);
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         if num_checkers == 0 {
             let dst = !self.occupied();
             match piece {
