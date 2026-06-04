@@ -3807,11 +3807,11 @@ mod tests {
         let temp = unique_temp_dir("startup-timeout");
         fs::create_dir_all(&temp).expect("create temp dir");
         let script = temp.join("engine.sh");
-        write_executable_script(&script, "#!/bin/sh\nsleep 2\n");
+        fs::write(&script, "sleep 2\n").expect("write silent engine script");
 
         let err = match UsiEngineClient::spawn_with_startup_timeout(
-            &script,
-            &[],
+            Path::new("/bin/sh"),
+            &[script.display().to_string()],
             Duration::from_millis(50),
         ) {
             Ok(_) => panic!("silent engine should time out"),
