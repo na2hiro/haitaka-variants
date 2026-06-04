@@ -613,13 +613,25 @@ fn main() -> Result<()> {
 fn default_ruleset() -> &'static str {
     if cfg!(feature = "annan") {
         "annan"
+    } else if cfg!(feature = "anhoku") {
+        "anhoku"
+    } else if cfg!(feature = "antouzai") {
+        "antouzai"
     } else {
         "standard"
     }
 }
 
 fn default_rule_id() -> u32 {
-    if cfg!(feature = "annan") { 26 } else { 0 }
+    if cfg!(feature = "annan") {
+        26
+    } else if cfg!(feature = "anhoku") {
+        55
+    } else if cfg!(feature = "antouzai") {
+        95
+    } else {
+        0
+    }
 }
 
 fn profile_display_ruleset(ruleset: &str) -> String {
@@ -1474,10 +1486,91 @@ fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
     }
 }
 
-fn load_existing_report_stats(report_path: &Path) -> Result<(MatchStats, u32)> {
+fn normalized_report_command_value(command: serde_json::Value) -> Result<serde_json::Value> {
+    let mut object = command
+        .as_object()
+        .cloned()
+        .ok_or_else(|| anyhow!("report command is not a JSON object"))?;
+    object.remove("games");
+    object.remove("threads");
+    Ok(serde_json::Value::Object(object))
+}
+
+fn compare_existing_report_field(
+    report_path: &Path,
+    field_name: &str,
+    existing: &serde_json::Value,
+    expected: &serde_json::Value,
+) -> Result<()> {
+    if existing == expected {
+        return Ok(());
+    }
+    let existing_json =
+        serde_json::to_string(existing).context("serialize existing report field for error")?;
+    let expected_json =
+        serde_json::to_string(expected).context("serialize expected report field for error")?;
+    bail!(
+        "cannot merge {} because existing report {} does not match current self-play configuration (existing={}, current={})",
+        report_path.display(),
+        field_name,
+        existing_json,
+        expected_json
+    );
+}
+
+fn validate_existing_report_merge_compatibility(
+    report_path: &Path,
+    value: &serde_json::Value,
+    expected_ruleset: &str,
+    expected_command: &ReportCommand,
+    expected_engines: &[ReportEngine],
+) -> Result<()> {
+    let existing_ruleset = value
+        .get("ruleset")
+        .ok_or_else(|| anyhow!("existing report {} has no ruleset", report_path.display()))?;
+    compare_existing_report_field(
+        report_path,
+        "ruleset",
+        existing_ruleset,
+        &serde_json::Value::String(expected_ruleset.to_string()),
+    )?;
+
+    let existing_command = value
+        .get("command")
+        .ok_or_else(|| anyhow!("existing report {} has no command", report_path.display()))?
+        .clone();
+    let expected_command = normalized_report_command_value(
+        serde_json::to_value(expected_command).context("serialize expected report command")?,
+    )?;
+    let existing_command = normalized_report_command_value(existing_command)?;
+    compare_existing_report_field(report_path, "command", &existing_command, &expected_command)?;
+
+    let existing_engines = value
+        .get("engines")
+        .ok_or_else(|| anyhow!("existing report {} has no engines", report_path.display()))?;
+    let expected_engines =
+        serde_json::to_value(expected_engines).context("serialize expected report engines")?;
+    compare_existing_report_field(report_path, "engines", existing_engines, &expected_engines)?;
+
+    Ok(())
+}
+
+fn load_existing_report_stats(
+    report_path: &Path,
+    expected_ruleset: &str,
+    expected_command: &ReportCommand,
+    expected_engines: &[ReportEngine],
+) -> Result<(MatchStats, u32)> {
     let bytes = fs::read(report_path).with_context(|| format!("read {}", report_path.display()))?;
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .with_context(|| format!("parse {}", report_path.display()))?;
+    validate_existing_report_merge_compatibility(
+        report_path,
+        &value,
+        expected_ruleset,
+        expected_command,
+        expected_engines,
+    )?;
     let summary_value = value
         .get("summary")
         .ok_or_else(|| anyhow!("existing report {} has no summary", report_path.display()))?;
@@ -1515,6 +1608,9 @@ fn prompt_report_conflict_action(report_dir: &Path) -> Result<ReportConflictActi
 
 fn prepare_self_play_report_output(
     report_dir: Option<&Path>,
+    expected_ruleset: &str,
+    expected_command: &ReportCommand,
+    expected_engines: &[ReportEngine],
 ) -> Result<Option<SelfPlayReportOutput>> {
     let Some(report_dir) = report_dir else {
         return Ok(None);
@@ -1532,28 +1628,16 @@ fn prepare_self_play_report_output(
 
     match action {
         ReportConflictAction::Abort => bail!("self-play report already exists"),
-        ReportConflictAction::Merge => {
-            if !has_existing_report {
-                bail!(
-                    "cannot merge {} because {} is missing",
-                    report_dir.display(),
-                    SELF_PLAY_REPORT_FILE
-                );
-            }
-            fs::create_dir_all(report_dir)?;
-            let (existing_stats, game_index_offset) = load_existing_report_stats(&report_path)?;
-            let games_writer = fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&games_path)
-                .with_context(|| format!("open {}", games_path.display()))?;
-            Ok(Some(SelfPlayReportOutput {
-                games_writer,
-                report_path,
-                existing_stats,
-                game_index_offset,
-            }))
-        }
+        ReportConflictAction::Merge => Ok(Some(prepare_self_play_report_merge_output(
+            report_dir,
+            &report_path,
+            &games_path,
+            has_existing_report,
+            has_existing_games,
+            expected_ruleset,
+            expected_command,
+            expected_engines,
+        )?)),
         ReportConflictAction::Overwrite => {
             fs::create_dir_all(report_dir)?;
             let games_writer = fs::File::create(&games_path)
@@ -1566,6 +1650,50 @@ fn prepare_self_play_report_output(
             }))
         }
     }
+}
+
+fn prepare_self_play_report_merge_output(
+    report_dir: &Path,
+    report_path: &Path,
+    games_path: &Path,
+    has_existing_report: bool,
+    has_existing_games: bool,
+    expected_ruleset: &str,
+    expected_command: &ReportCommand,
+    expected_engines: &[ReportEngine],
+) -> Result<SelfPlayReportOutput> {
+    if !has_existing_report {
+        bail!(
+            "cannot merge {} because {} is missing",
+            report_dir.display(),
+            SELF_PLAY_REPORT_FILE
+        );
+    }
+    if !has_existing_games {
+        bail!(
+            "cannot merge {} because {} is missing",
+            report_dir.display(),
+            SELF_PLAY_GAMES_FILE
+        );
+    }
+
+    fs::create_dir_all(report_dir)?;
+    let (existing_stats, game_index_offset) = load_existing_report_stats(
+        report_path,
+        expected_ruleset,
+        expected_command,
+        expected_engines,
+    )?;
+    let games_writer = fs::OpenOptions::new()
+        .append(true)
+        .open(games_path)
+        .with_context(|| format!("open {}", games_path.display()))?;
+    Ok(SelfPlayReportOutput {
+        games_writer,
+        report_path: report_path.to_path_buf(),
+        existing_stats,
+        game_index_offset,
+    })
 }
 
 fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
@@ -1948,7 +2076,13 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
         report_engine(&engine_b, b_archive.as_ref()),
     ];
     let threads = resolve_self_play_threads(args.threads, args.games);
-    let mut report_output = prepare_self_play_report_output(args.report_dir.as_deref())?;
+    let expected_report_command = report_command(&args, threads);
+    let mut report_output = prepare_self_play_report_output(
+        args.report_dir.as_deref(),
+        default_ruleset(),
+        &expected_report_command,
+        &report_engines,
+    )?;
     let game_index_offset = report_output
         .as_ref()
         .map_or(0, |output| output.game_index_offset);
@@ -2613,6 +2747,99 @@ mod tests {
         std::env::temp_dir().join(format!("haitaka-cli-{name}-{}-{nonce}", std::process::id()))
     }
 
+    fn test_report_command() -> ReportCommand {
+        ReportCommand {
+            games: 8,
+            threads: 4,
+            a_depth: Some(2),
+            b_depth: Some(3),
+            movetime_ms: None,
+            sfen: Some(SFEN_STARTPOS.to_string()),
+            openings: Some("fixtures/openings.sfen".to_string()),
+            opening_order: OpeningOrder::Random,
+            opening_random_plies: 2,
+            seed: 123,
+            max_plies: 200,
+        }
+    }
+
+    fn test_report_engines() -> Vec<ReportEngine> {
+        vec![
+            ReportEngine {
+                label: "A",
+                kind: "handcrafted".to_string(),
+                budget: "depth=2".to_string(),
+                command: None,
+                args: Vec::new(),
+                nnue: None,
+                archive_path: None,
+                archive: None,
+            },
+            ReportEngine {
+                label: "B",
+                kind: "external-usi".to_string(),
+                budget: "depth=3".to_string(),
+                command: Some("/tmp/engine-b".to_string()),
+                args: vec!["--fast".to_string()],
+                nnue: None,
+                archive_path: None,
+                archive: None,
+            },
+        ]
+    }
+
+    fn write_existing_self_play_report(
+        report_path: &Path,
+        ruleset: &str,
+        command: &ReportCommand,
+        engines: &[ReportEngine],
+    ) {
+        let report = serde_json::json!({
+            "schema": "haitaka-self-play-report",
+            "schemaVersion": 1,
+            "ruleset": ruleset,
+            "command": serde_json::to_value(command).expect("serialize report command"),
+            "engines": serde_json::to_value(engines).expect("serialize report engines"),
+            "summary": {
+                "games": 4,
+                "aWins": 2,
+                "bWins": 1,
+                "draws": 1,
+                "decidedGames": 3,
+                "aScore": 2.5,
+                "scoreRate": 0.625,
+                "approxElo": 66.7,
+                "approxElo95Ci": [-100.0, 200.0],
+                "avgPlies": 10.0,
+                "totalNodes": 1000,
+                "totalElapsedMs": 500.0,
+                "aggregateNps": 2000.0,
+                "warnings": []
+            }
+        });
+        fs::write(
+            report_path,
+            serde_json::to_vec_pretty(&report).expect("serialize report"),
+        )
+        .expect("write report");
+    }
+
+    #[test]
+    fn default_variant_metadata_matches_active_build_feature() {
+        let (expected_ruleset, expected_rule_id) = if cfg!(feature = "annan") {
+            ("annan", 26)
+        } else if cfg!(feature = "anhoku") {
+            ("anhoku", 55)
+        } else if cfg!(feature = "antouzai") {
+            ("antouzai", 95)
+        } else {
+            ("standard", 0)
+        };
+
+        assert_eq!(default_ruleset(), expected_ruleset);
+        assert_eq!(default_rule_id(), expected_rule_id);
+    }
+
     fn write_fake_wasm_pack_output(dir: &Path) {
         fs::create_dir_all(dir).expect("create fake wasm-pack dir");
         fs::write(
@@ -3100,32 +3327,25 @@ mod tests {
         let temp = unique_temp_dir("existing-report");
         fs::create_dir_all(&temp).expect("create temp dir");
         let report_path = temp.join(SELF_PLAY_REPORT_FILE);
-        fs::write(
+        let expected_command = test_report_command();
+        let expected_engines = test_report_engines();
+        let mut existing_command = expected_command.clone();
+        existing_command.games = 4;
+        existing_command.threads = 1;
+        write_existing_self_play_report(
             &report_path,
-            r#"{
-  "schema": "haitaka-self-play-report",
-  "schemaVersion": 1,
-  "summary": {
-    "games": 4,
-    "aWins": 2,
-    "bWins": 1,
-    "draws": 1,
-    "decidedGames": 3,
-    "aScore": 2.5,
-    "scoreRate": 0.625,
-    "approxElo": 66.7,
-    "approxElo95Ci": [-100.0, 200.0],
-    "avgPlies": 10.0,
-    "totalNodes": 1000,
-    "totalElapsedMs": 500.0,
-    "aggregateNps": 2000.0,
-    "warnings": []
-  }
-}"#,
-        )
-        .expect("write report");
+            default_ruleset(),
+            &existing_command,
+            &expected_engines,
+        );
 
-        let (stats, games) = load_existing_report_stats(&report_path).expect("load summary");
+        let (stats, games) = load_existing_report_stats(
+            &report_path,
+            default_ruleset(),
+            &expected_command,
+            &expected_engines,
+        )
+        .expect("load summary");
 
         assert_eq!(games, 4);
         assert_eq!(stats.a_wins, 2);
@@ -3134,6 +3354,75 @@ mod tests {
         assert_eq!(stats.total_nodes, 1000);
         assert_eq!(stats.total_elapsed_ms, 500.0);
         assert_eq!(stats.total_plies, 40);
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn existing_report_stats_rejects_incompatible_engine_metadata_for_merge() {
+        let temp = unique_temp_dir("existing-report-mismatch");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let report_path = temp.join(SELF_PLAY_REPORT_FILE);
+        let expected_command = test_report_command();
+        let expected_engines = test_report_engines();
+        let mut incompatible_engines = expected_engines.clone();
+        incompatible_engines[1].command = Some("/tmp/other-engine".to_string());
+        write_existing_self_play_report(
+            &report_path,
+            default_ruleset(),
+            &expected_command,
+            &incompatible_engines,
+        );
+
+        let err = load_existing_report_stats(
+            &report_path,
+            default_ruleset(),
+            &expected_command,
+            &expected_engines,
+        )
+        .expect_err("merge should reject mismatched engine metadata");
+
+        assert!(
+            err.to_string()
+                .contains("existing report engines does not match"),
+            "unexpected error: {err}"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
+    fn merge_rejects_missing_existing_game_log() {
+        let temp = unique_temp_dir("existing-report-missing-games");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let report_path = temp.join(SELF_PLAY_REPORT_FILE);
+        let games_path = temp.join(SELF_PLAY_GAMES_FILE);
+        let expected_command = test_report_command();
+        let expected_engines = test_report_engines();
+        write_existing_self_play_report(
+            &report_path,
+            default_ruleset(),
+            &expected_command,
+            &expected_engines,
+        );
+
+        let err = prepare_self_play_report_merge_output(
+            &temp,
+            &report_path,
+            &games_path,
+            true,
+            false,
+            default_ruleset(),
+            &expected_command,
+            &expected_engines,
+        )
+        .expect_err("merge should reject a missing game log");
+
+        assert!(
+            err.to_string()
+                .contains(&format!("{SELF_PLAY_GAMES_FILE} is missing")),
+            "unexpected error: {err}"
+        );
 
         fs::remove_dir_all(temp).expect("clean temp dir");
     }
