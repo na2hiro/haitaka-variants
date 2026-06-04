@@ -290,6 +290,19 @@ impl Board {
             false
         };
 
+        // In the enemy-donor variants a single check can also be resolved by
+        // changing the checker's donated movement — occupying its donor square, or
+        // moving its current donor away — and those squares lie outside the usual
+        // interpose/capture set. Generate the full move set (as the double-check
+        // case already does) and let the post-move filter decide. Same-side variants
+        // keep the cheaper between-rays/donor-capture targets.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        abort_if! {
+            self.add_all_drops::<_, false>(&mut filter, !self.occupied()),
+            self.add_all_legals::<_, false>(BitBoard::FULL, &mut filter)
+        }
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         if self.checkers.len() == 1 {
             abort_if! {
                 self.add_all_drops::<_, true>(&mut filter, self.target_drops::<true>()),
@@ -333,6 +346,12 @@ impl Board {
             false
         };
 
+        // Enemy-donor variants generate the full board-move set so donor-changing
+        // evasions outside the interpose/capture squares are considered.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        return self.add_all_legals::<_, false>(mask, &mut filter);
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         if self.checkers.len() == 1 {
             self.add_all_legals::<_, true>(mask, &mut filter)
         } else {
@@ -371,6 +390,13 @@ impl Board {
             false
         };
 
+        // Enemy-donor variants can resolve check (even a double check) by dropping a
+        // piece onto the checker's donor square, which lies outside the interpose
+        // squares, so generate drops onto every empty square and let the filter decide.
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        return self.add_all_drops::<_, false>(&mut filter, !self.occupied());
+
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
         if self.checkers.len() == 1 {
             let targets = self.target_drops::<true>();
             self.add_all_drops::<_, true>(&mut filter, targets)
@@ -494,13 +520,9 @@ impl Board {
         }
     }
 
-    #[cfg(any(
-        feature = "annan",
-        feature = "anhoku",
-        feature = "antouzai",
-        feature = "taimen",
-        feature = "haimen"
-    ))]
+    // Enemy-donor variants (taimen/haimen) generate all drops while in check and
+    // rely on the post-move filter, so they never restrict drop targets here.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
         let open_squares = !self.occupied();

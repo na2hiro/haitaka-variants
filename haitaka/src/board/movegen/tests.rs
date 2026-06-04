@@ -1681,3 +1681,98 @@ fn taimen_drop_creating_enemy_donor_check_is_rejected() {
     });
     assert!(!generated);
 }
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_check_resolved_by_drop_on_checker_donor_square() {
+    // White Rook on E5 checks the Black King on A5 up the file. Dropping a Black
+    // Gold on F5 (directly in front of the rook) turns the rook into a gold, which
+    // no longer checks. F5 is outside the between-rays {B5,C5,D5}, so it must still
+    // be generated and accepted as a legal evasion.
+    let board: Board = "4K4/9/9/9/4r4/9/9/9/8k b G 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::F5,
+    };
+    let useless_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::I9,
+    };
+
+    assert!(board.is_legal_drop(donor_drop));
+    assert!(!board.is_legal_drop(useless_drop));
+
+    let mut generated_donor = false;
+    let mut generated_useless = false;
+    board.generate_moves(|mvs| {
+        generated_donor |= mvs.has(donor_drop);
+        generated_useless |= mvs.has(useless_drop);
+        false
+    });
+    assert!(generated_donor);
+    assert!(!generated_useless);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_check_resolved_by_board_move_to_checker_donor_square() {
+    // White Rook on E5 checks the Black King on A5. The Black Gold on G5 can step
+    // forward onto F5 (the rook's donor square), turning the rook into a gold and
+    // resolving the check. F5 is outside the between-rays, so this board move must
+    // be generated and accepted.
+    let board: Board = "4K4/9/9/9/4r4/9/4G4/9/8k b - 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_move = Move::BoardMove {
+        from: Square::G5,
+        to: Square::F5,
+        promotion: false,
+    };
+    let non_resolving = Move::BoardMove {
+        from: Square::G5,
+        to: Square::G4,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(donor_move));
+    assert!(!board.is_legal_board_move(non_resolving));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(donor_move);
+        false
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_check_resolved_by_drop_on_checker_donor_square() {
+    // White Rook on E5 checks the Black King on I5 down the file. Dropping a Black
+    // Gold on D5 (directly behind the rook) turns the rook into a gold, resolving
+    // the check. D5 is outside the between-rays {F5,G5,H5}, so it must still be
+    // generated and accepted as a legal evasion.
+    let board: Board = "8k/9/9/9/4r4/9/9/9/4K4 b G 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::D5,
+    };
+    let useless_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::A1,
+    };
+
+    assert!(board.is_legal_drop(donor_drop));
+    assert!(!board.is_legal_drop(useless_drop));
+
+    let mut generated_donor = false;
+    board.generate_moves(|mvs| {
+        generated_donor |= mvs.has(donor_drop);
+        false
+    });
+    assert!(generated_donor);
+}
