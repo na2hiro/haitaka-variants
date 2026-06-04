@@ -880,13 +880,14 @@ fn self_play_budget(
     default_depth: u8,
     depth: Option<u8>,
     movetime_ms: Option<u32>,
-) -> SearchBudget {
+) -> Result<SearchBudget> {
     match movetime_ms {
-        Some(millis) => SearchBudget::Movetime {
+        Some(0) => bail!("--movetime-ms must be greater than 0"),
+        Some(millis) => Ok(SearchBudget::Movetime {
             max_depth: depth.map(|depth| depth.max(1)),
             millis,
-        },
-        None => SearchBudget::Depth(depth.unwrap_or(default_depth).max(1)),
+        }),
+        None => Ok(SearchBudget::Depth(depth.unwrap_or(default_depth).max(1))),
     }
 }
 
@@ -1284,6 +1285,14 @@ fn search_timeout(budget: SearchBudget) -> Duration {
     }
 }
 
+fn terminal_winner(board: &Board, a_color: Color) -> Option<Seat> {
+    (board.status() != GameStatus::Ongoing).then_some(if board.side_to_move() == a_color {
+        Seat::B
+    } else {
+        Seat::A
+    })
+}
+
 fn play_self_play_game(
     game_index: u32,
     args: &SelfPlayArgs,
@@ -1315,12 +1324,8 @@ fn play_self_play_game(
         .map_err(|err| anyhow!("failed to start engine B in game {}: {err}", game_index + 1))?;
 
     for ply in 0..args.max_plies {
-        if board.status() != GameStatus::Ongoing {
-            winner = Some(if board.side_to_move() == a_color {
-                Seat::B
-            } else {
-                Seat::A
-            });
+        if let Some(seat) = terminal_winner(&board, a_color) {
+            winner = Some(seat);
             break;
         }
 
@@ -1369,6 +1374,9 @@ fn play_self_play_game(
             .map_err(|_| anyhow!("engine returned illegal move {best_move}"))?;
         moves.push(best_move);
         plies = ply + 1;
+    }
+    if winner.is_none() {
+        winner = terminal_winner(&board, a_color);
     }
 
     Ok(GameResult {
@@ -2086,8 +2094,8 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
     } else {
         args.b_engine.as_deref()
     };
-    let a_budget = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, args.a_depth, args.movetime_ms);
-    let b_budget = self_play_budget(DEFAULT_SELF_PLAY_B_DEPTH, args.b_depth, args.movetime_ms);
+    let a_budget = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, args.a_depth, args.movetime_ms)?;
+    let b_budget = self_play_budget(DEFAULT_SELF_PLAY_B_DEPTH, args.b_depth, args.movetime_ms)?;
     let engine_a = engine_config(
         "A",
         a_budget,
@@ -3279,22 +3287,34 @@ mod tests {
     #[test]
     fn self_play_budget_prefers_movetime_when_set() {
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None),
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None).expect("depth budget"),
             SearchBudget::Depth(DEFAULT_SELF_PLAY_A_DEPTH)
         );
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), Some(100)),
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), Some(100))
+                .expect("movetime budget with cap"),
             SearchBudget::Movetime {
                 max_depth: Some(3),
                 millis: 100
             }
         );
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(100)),
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(100))
+                .expect("movetime budget without cap"),
             SearchBudget::Movetime {
                 max_depth: None,
                 millis: 100
             }
+        );
+    }
+
+    #[test]
+    fn self_play_budget_rejects_zero_movetime() {
+        let err = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(0))
+            .expect_err("zero movetime should be rejected");
+        assert!(
+            err.to_string()
+                .contains("--movetime-ms must be greater than 0")
         );
     }
 
@@ -3931,8 +3951,8 @@ mod tests {
         write_executable_script(&script, "#!/bin/sh\nexec 1>&-\nsleep 1\n");
 
         let err = match UsiEngineClient::spawn_with_startup_timeout(
-            &script,
-            &[],
+            Path::new("/bin/sh"),
+            &[script.display().to_string()],
             Duration::from_millis(500),
         ) {
             Ok(_) => panic!("exited engine should fail"),
@@ -4057,6 +4077,76 @@ mod tests {
         let err = play_self_play_game(0, &args, &base, None, &engine_a, &engine_b)
             .expect_err("illegal bestmove should fail");
         assert!(err.to_string().contains("illegal move"));
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn terminal_position_on_last_allowed_ply_is_reported_as_a_win() {
+        let temp = unique_temp_dir("last-ply-terminal");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        let base = Board::from_sfen("8k/6G2/7B1/9/9/9/9/9/K8 b R 1")
+            .expect("one-ply mate position should parse");
+        let mating_move = legal_moves(&base)
+            .into_iter()
+            .find(|mv| {
+                let mut next = base.clone();
+                next.try_play(*mv).is_ok() && next.status() != GameStatus::Ongoing
+            })
+            .expect("position should contain a terminal move")
+            .to_string();
+        write_executable_script(
+            &script,
+            &format!(
+                "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) echo 'bestmove {mating_move}' ;;\nesac\ndone\n"
+            ),
+        );
+
+        let args = SelfPlayArgs {
+            games: 1,
+            threads: 1,
+            a_depth: Some(1),
+            b_depth: Some(1),
+            a_eval: EngineEvalKind::Handcrafted,
+            b_eval: EngineEvalKind::Handcrafted,
+            nnue: None,
+            a_nnue: None,
+            b_nnue: None,
+            a_engine: None,
+            a_engine_archive: None,
+            a_engine_args: Vec::new(),
+            b_engine: None,
+            b_engine_archive: None,
+            b_engine_args: Vec::new(),
+            movetime_ms: None,
+            sfen: Some(base.to_string()),
+            openings: None,
+            opening_order: OpeningOrder::Sequential,
+            opening_random_plies: 0,
+            seed: 0,
+            max_plies: 1,
+            report_dir: None,
+        };
+        let engine_a = EngineConfig {
+            label: "A",
+            budget: SearchBudget::Depth(1),
+            evaluator: EngineEvaluator::External {
+                path: PathBuf::from("/bin/sh"),
+                args: vec![script.display().to_string()],
+            },
+        };
+        let engine_b = EngineConfig {
+            label: "B",
+            budget: SearchBudget::Depth(1),
+            evaluator: EngineEvaluator::Handcrafted,
+        };
+
+        let result =
+            play_self_play_game(0, &args, &base, None, &engine_a, &engine_b).expect("game");
+        assert_eq!(result.plies, 1);
+        assert_eq!(result.winner, Some(Seat::A));
 
         fs::remove_dir_all(temp).expect("clean temp dir");
     }
