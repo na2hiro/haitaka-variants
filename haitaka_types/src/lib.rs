@@ -1,9 +1,25 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc = include_str!("../README.md")]
-#[cfg(all(feature = "annan", any(feature = "anhoku", feature = "antouzai")))]
-compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
-#[cfg(all(feature = "anhoku", feature = "antouzai"))]
-compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
+#[cfg(any(
+    all(
+        feature = "annan",
+        any(
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )
+    ),
+    all(
+        feature = "anhoku",
+        any(feature = "antouzai", feature = "taimen", feature = "haimen")
+    ),
+    all(feature = "antouzai", any(feature = "taimen", feature = "haimen")),
+    all(feature = "taimen", feature = "haimen"),
+))]
+compile_error!(
+    "features `annan`, `anhoku`, `antouzai`, `taimen`, and `haimen` are mutually exclusive"
+);
 pub mod bitboard;
 pub mod color;
 pub mod file;

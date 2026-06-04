@@ -157,7 +157,13 @@ impl Board {
         }
     }
 
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
         &self,
@@ -232,11 +238,23 @@ impl Board {
     ///
     /// # Examples
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -326,11 +344,23 @@ impl Board {
     /// Get a [`BitBoard`] of all the pieces on the board.
     /// # Examples
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -356,11 +386,23 @@ impl Board {
     ///
     /// # Examples
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -382,11 +424,23 @@ impl Board {
     ///
     /// # Examples
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -415,11 +469,23 @@ impl Board {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// use haitaka::*;
@@ -443,11 +509,23 @@ impl Board {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// use haitaka::*;
@@ -477,11 +555,23 @@ impl Board {
     /// # Examples
     ///
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -743,11 +833,23 @@ impl Board {
     /// # Examples
     /// ## Legal moves
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -790,11 +892,23 @@ impl Board {
     ///
     /// # Examples
     #[cfg_attr(
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )),
         doc = "```"
     )]
     #[cfg_attr(
-        any(feature = "annan", feature = "anhoku", feature = "antouzai"),
+        any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ),
         doc = "```ignore"
     )]
     /// # use haitaka::*;
@@ -887,7 +1001,13 @@ impl Board {
         self.inner.toggle_side_to_move();
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
         self.pinned = BitBoard::EMPTY;
@@ -948,7 +1068,13 @@ impl Board {
     ///
     /// Note: called BEFORE toggle_side_to_move, so `color` is the mover.
     /// Checkers/pins are from the opponent's (the new side-to-move's) perspective.
-    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         let them = !color;
         let ignored_nifu_pawn = if piece == Piece::Pawn
@@ -999,7 +1125,13 @@ impl Board {
             board.move_number += 1;
             board.inner.toggle_side_to_move();
 
-            #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+            #[cfg(not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            )))]
             {
                 // we only need to update pinned
                 board.pinned = BitBoard::EMPTY;
@@ -1019,7 +1151,13 @@ impl Board {
                 }
             }
 
-            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
             {
                 // In influence variants, non-sliders with slider movement can also pin,
                 // so use full recalculation.

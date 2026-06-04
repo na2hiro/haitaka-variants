@@ -7,7 +7,13 @@ use super::*;
 
 // Tests the generation of board moves based on giving a subset of squares
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn subset_movegen_habu_position() {
     fn visit(board: &Board, depth: u8) {
         let random = board.hash();
@@ -75,7 +81,13 @@ fn test_is_legal(board: Board) {
     }
 }
 
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn test_forbidden_drops(board: &Board) {
     use std::collections::HashSet;
 
@@ -111,7 +123,13 @@ fn test_forbidden_drops(board: &Board) {
     }
 }
 
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn test_nifu(board: &Board) {
     let color = board.side_to_move();
 
@@ -137,7 +155,13 @@ fn test_nifu(board: &Board) {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn legality_simple() {
     test_is_legal(Board::startpos());
     test_is_legal(
@@ -148,7 +172,13 @@ fn legality_simple() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
         .parse()
@@ -197,7 +227,13 @@ fn pawn_push_mate_is_valid() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -219,7 +255,13 @@ fn discount_pawn_drop_mate_in_perft() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
     let mut board: Board = Board::tsume(sfen).unwrap();
@@ -336,7 +378,13 @@ fn tsume() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -377,7 +425,13 @@ fn generate_checks() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -425,6 +479,10 @@ fn play_tsume() {
 }
 
 #[test]
+// Under haimen an enemy piece directly behind one of these pieces donates its
+// movement, which changes whether the White King is in check, so this
+// standard-semantics assertion does not hold for that variant.
+#[cfg(not(feature = "haimen"))]
 fn invalid_tsume() {
     // invalid position: White King is in check
     let sfen = "8l/5gB2/7Gk/7p1/7sp/9/9/9/9 b R";
@@ -432,7 +490,13 @@ fn invalid_tsume() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -473,6 +537,10 @@ fn discovered_checks1() {
 }
 
 #[test]
+// Under haimen an enemy piece directly behind one of these pieces donates its
+// movement, changing the checker/pin counts asserted below, so this
+// standard-semantics test does not hold for that variant.
+#[cfg(not(feature = "haimen"))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
     let mut board = Board::tsume(sfen).unwrap();
@@ -496,7 +564,13 @@ fn pinners() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -597,7 +671,13 @@ fn discovered_checks2() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .
@@ -659,7 +739,13 @@ fn fuzzing_generate_moves() {
 }
 
 #[test]
-#[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+)))]
 fn fuzzing_checks() {
     let mut rng = rng();
 
@@ -1378,4 +1464,366 @@ fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
         resolved.checkers().is_empty(),
         "after the capture, Black should no longer be in check"
     );
+}
+
+// ========================
+// Taimen (対面将棋): enemy piece in front donates movement (mutual swap)
+// ========================
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_enemy_front_donor_changes_movement() {
+    // Black Gold on E5 with an enemy (White) Rook directly in front: the Gold
+    // moves like a Rook. Mirrors the anhoku layout, but the donor is an enemy.
+    let board: Board = "k8/9/9/4r4/4G4/9/9/9/8K b - 1".parse().unwrap();
+    // E5 -> E1 is a rook-only horizontal slide (the front donor on D5 only blocks
+    // the vertical file, so this distinguishes rook movement cleanly).
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::E1,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(rook_like));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(rook_like);
+        generated
+    });
+    assert!(generated);
+
+    // The swap is mutual: the enemy Rook in front moves like a Gold.
+    let rook_sq = board
+        .colored_pieces(Color::White, Piece::Rook)
+        .next_square()
+        .unwrap();
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::White, rook_sq),
+        Piece::Gold
+    );
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_without_enemy_front_donor_uses_native_movement() {
+    // No enemy in front: the Gold keeps its native movement.
+    let board: Board = "k8/9/9/9/4G4/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+    let gold_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(rook_like));
+    assert!(board.is_legal_board_move(gold_like));
+}
+
+// ========================
+// Haimen (背面将棋): enemy piece behind donates movement (mutual swap)
+// ========================
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_enemy_back_donor_changes_movement() {
+    // Black Gold on E5 with an enemy (White) Rook directly behind: the Gold
+    // moves like a Rook. Mirrors the annan layout, but the donor is an enemy.
+    let board: Board = "k8/9/9/9/4G4/4r4/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(rook_like));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(rook_like);
+        generated
+    });
+    assert!(generated);
+
+    // The swap is mutual: the enemy Rook behind moves like a Gold.
+    let rook_sq = board
+        .colored_pieces(Color::White, Piece::Rook)
+        .next_square()
+        .unwrap();
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::White, rook_sq),
+        Piece::Gold
+    );
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_without_enemy_back_donor_uses_native_movement() {
+    // No enemy behind: the Gold keeps its native movement.
+    let board: Board = "k8/9/9/9/4G4/9/9/9/8K b - 1".parse().unwrap();
+    let rook_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::A5,
+        promotion: false,
+    };
+    let gold_like = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(rook_like));
+    assert!(board.is_legal_board_move(gold_like));
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_quiet_move_creating_enemy_donor_check_is_rejected() {
+    // Black is not in check. Moving the Black Rook G5->F5 places it directly in
+    // front of the White Pawn on E5, donating rook movement to that pawn, which
+    // then checks the Black King on A5 up the file. The move is not pinned and
+    // there was no checker, so it must be rejected by the post-move donor recheck.
+    let board: Board = "4K4/9/9/9/4p4/9/4R4/9/8k b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::BoardMove {
+        from: Square::G5,
+        to: Square::F5,
+        promotion: false,
+    };
+    let safe = Move::BoardMove {
+        from: Square::G5,
+        to: Square::H5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(self_check));
+    assert!(board.is_legal_board_move(safe));
+
+    // It must not be generated either.
+    let mut generated_self_check = false;
+    let mut generated_safe = false;
+    board.generate_board_moves(|mvs| {
+        generated_self_check |= mvs.has(self_check);
+        generated_safe |= mvs.has(safe);
+        false
+    });
+    assert!(!generated_self_check);
+    assert!(generated_safe);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_quiet_move_creating_enemy_donor_check_is_rejected() {
+    // Black is not in check. Moving the Black Rook C5->D5 places it directly behind
+    // the White Pawn on E5, donating rook movement to that pawn, which then checks
+    // the Black King on I5 down the file. The move is not pinned and there was no
+    // checker, so it must be rejected by the post-move donor recheck.
+    let board: Board = "8k/9/4R4/9/4p4/9/9/9/4K4 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::BoardMove {
+        from: Square::C5,
+        to: Square::D5,
+        promotion: false,
+    };
+    let safe = Move::BoardMove {
+        from: Square::C5,
+        to: Square::B5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(self_check));
+    assert!(board.is_legal_board_move(safe));
+
+    let mut generated_self_check = false;
+    let mut generated_safe = false;
+    board.generate_board_moves(|mvs| {
+        generated_self_check |= mvs.has(self_check);
+        generated_safe |= mvs.has(safe);
+        false
+    });
+    assert!(!generated_self_check);
+    assert!(generated_safe);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_drop_creating_enemy_donor_check_is_rejected() {
+    // Dropping a Black Rook in front of the White Pawn on E5 (F5) donates rook
+    // movement to it, checking the Black King on A5. Such a drop must be rejected
+    // even though Black is not currently in check.
+    let board: Board = "4K4/9/9/9/4p4/9/9/9/8k b R 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let self_check = Move::Drop {
+        piece: Piece::Rook,
+        to: Square::F5,
+    };
+    assert!(!board.is_legal_drop(self_check));
+
+    let mut generated = false;
+    board.generate_drops(|mvs| {
+        generated |= mvs.has(self_check);
+        false
+    });
+    assert!(!generated);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_check_resolved_by_drop_on_checker_donor_square() {
+    // White Rook on E5 checks the Black King on A5 up the file. Dropping a Black
+    // Gold on F5 (directly in front of the rook) turns the rook into a gold, which
+    // no longer checks. F5 is outside the between-rays {B5,C5,D5}, so it must still
+    // be generated and accepted as a legal evasion.
+    let board: Board = "4K4/9/9/9/4r4/9/9/9/8k b G 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::F5,
+    };
+    let useless_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::I9,
+    };
+
+    assert!(board.is_legal_drop(donor_drop));
+    assert!(!board.is_legal_drop(useless_drop));
+
+    let mut generated_donor = false;
+    let mut generated_useless = false;
+    board.generate_moves(|mvs| {
+        generated_donor |= mvs.has(donor_drop);
+        generated_useless |= mvs.has(useless_drop);
+        false
+    });
+    assert!(generated_donor);
+    assert!(!generated_useless);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_check_resolved_by_board_move_to_checker_donor_square() {
+    // White Rook on E5 checks the Black King on A5. The Black Gold on G5 can step
+    // forward onto F5 (the rook's donor square), turning the rook into a gold and
+    // resolving the check. F5 is outside the between-rays, so this board move must
+    // be generated and accepted.
+    let board: Board = "4K4/9/9/9/4r4/9/4G4/9/8k b - 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_move = Move::BoardMove {
+        from: Square::G5,
+        to: Square::F5,
+        promotion: false,
+    };
+    let non_resolving = Move::BoardMove {
+        from: Square::G5,
+        to: Square::G4,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(donor_move));
+    assert!(!board.is_legal_board_move(non_resolving));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(donor_move);
+        false
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_check_resolved_by_drop_on_checker_donor_square() {
+    // White Rook on E5 checks the Black King on I5 down the file. Dropping a Black
+    // Gold on D5 (directly behind the rook) turns the rook into a gold, resolving
+    // the check. D5 is outside the between-rays {F5,G5,H5}, so it must still be
+    // generated and accepted as a legal evasion.
+    let board: Board = "8k/9/9/9/4r4/9/9/9/4K4 b G 1".parse().unwrap();
+    assert!(!board.checkers().is_empty());
+
+    let donor_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::D5,
+    };
+    let useless_drop = Move::Drop {
+        piece: Piece::Gold,
+        to: Square::A1,
+    };
+
+    assert!(board.is_legal_drop(donor_drop));
+    assert!(!board.is_legal_drop(useless_drop));
+
+    let mut generated_donor = false;
+    board.generate_moves(|mvs| {
+        generated_donor |= mvs.has(donor_drop);
+        false
+    });
+    assert!(generated_donor);
+}
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_false_pin_blocker_donor_can_move_off_ray() {
+    // White Gold on E5 moves like a Rook only because the Black Rook on F5 donates
+    // that movement (F5 is in front of the gold). The rook on F5 is also the sole
+    // blocker shielding the Black King on G5, so the pre-move pin test flags it.
+    // But moving F5 off the file removes the donor, the gold reverts to gold and no
+    // longer attacks the king, so F5->F4 is legal and must be generated.
+    let board: Board = "k8/9/9/9/4g4/4R4/4K4/9/9 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let off_ray = Move::BoardMove {
+        from: Square::F5,
+        to: Square::F4,
+        promotion: false,
+    };
+    assert!(board.is_legal_board_move(off_ray));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(off_ray);
+        false
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_false_pin_blocker_donor_can_move_off_ray() {
+    // White Gold on E5 moves like a Rook only because the Black Rook on D5 donates
+    // that movement (D5 is behind the gold). D5 is also the sole blocker shielding
+    // the Black King on C5; moving it off the file removes the donor, so D5->D4 is
+    // a legal escape that must be generated despite the pre-move pin test.
+    let board: Board = "k8/9/4K4/4R4/4g4/9/9/9/9 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let off_ray = Move::BoardMove {
+        from: Square::D5,
+        to: Square::D4,
+        promotion: false,
+    };
+    assert!(board.is_legal_board_move(off_ray));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(off_ray);
+        false
+    });
+    assert!(generated);
 }
