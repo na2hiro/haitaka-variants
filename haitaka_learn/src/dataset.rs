@@ -1608,6 +1608,8 @@ mod tests {
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1677,6 +1679,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1733,6 +1737,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1766,6 +1772,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1801,6 +1809,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1848,6 +1858,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1924,6 +1936,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1982,6 +1996,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -2046,6 +2062,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -2080,6 +2098,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -2122,6 +2142,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
@@ -2160,6 +2182,8 @@ run_search_smoke = false
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
         not(any(
             feature = "annan",
             feature = "anhoku",
