@@ -142,7 +142,7 @@ struct SelfPlayArgs {
     /// Native engine archive for side A.
     #[arg(long = "a-engine-archive")]
     a_engine_archive: Option<PathBuf>,
-    /// Argument appended after `usi` when launching side A's external engine.
+    /// Argument appended when launching side A's external engine.
     #[arg(long = "a-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
     a_engine_args: Vec<String>,
     /// External USI engine executable for side B.
@@ -151,7 +151,7 @@ struct SelfPlayArgs {
     /// Native engine archive for side B.
     #[arg(long = "b-engine-archive")]
     b_engine_archive: Option<PathBuf>,
-    /// Argument appended after `usi` when launching side B's external engine.
+    /// Argument appended when launching side B's external engine.
     #[arg(long = "b-engine-arg", action = clap::ArgAction::Append, allow_hyphen_values = true)]
     b_engine_args: Vec<String>,
     /// Shared movetime budget in milliseconds. If set, both sides use movetime.
@@ -358,6 +358,7 @@ struct NativeArchiveNnue {
 struct ArchiveLaunch {
     engine_path: PathBuf,
     engine_args: Vec<String>,
+    report_engine_args: Vec<String>,
     extraction_dir: PathBuf,
     source_archive_path: PathBuf,
     manifest: NativeEngineArchiveManifest,
@@ -1081,7 +1082,6 @@ impl UsiEngineClient {
         startup_timeout: Duration,
     ) -> Result<Self> {
         let mut child = ProcessCommand::new(path)
-            .arg("usi")
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -1740,21 +1740,44 @@ fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> Repo
             archive_path: None,
             archive: None,
         },
-        EngineEvaluator::External { path, args } => ReportEngine {
-            label: engine.label,
-            kind: if archive.is_some() {
-                "archive-usi".to_string()
+        EngineEvaluator::External { path, args } => {
+            if let Some(archive) = archive {
+                ReportEngine {
+                    label: engine.label,
+                    kind: "archive-usi".to_string(),
+                    budget: describe_budget(engine.budget),
+                    command: Some(archive.manifest.runtime.executable.clone()),
+                    args: archive_report_args(archive, args),
+                    nnue: None,
+                    archive_path: Some(archive.source_archive_path.display().to_string()),
+                    archive: Some(archive.manifest.clone()),
+                }
             } else {
-                "external-usi".to_string()
-            },
-            budget: describe_budget(engine.budget),
-            command: Some(path.display().to_string()),
-            args: args.clone(),
-            nnue: None,
-            archive_path: archive.map(|archive| archive.source_archive_path.display().to_string()),
-            archive: archive.map(|archive| archive.manifest.clone()),
-        },
+                ReportEngine {
+                    label: engine.label,
+                    kind: "external-usi".to_string(),
+                    budget: describe_budget(engine.budget),
+                    command: Some(path.display().to_string()),
+                    args: args.clone(),
+                    nnue: None,
+                    archive_path: None,
+                    archive: None,
+                }
+            }
+        }
     }
+}
+
+fn archive_report_args(archive: &ArchiveLaunch, launch_args: &[String]) -> Vec<String> {
+    let user_args = launch_args
+        .strip_prefix(archive.engine_args.as_slice())
+        .unwrap_or_default();
+    archive
+        .report_engine_args
+        .iter()
+        .chain(user_args)
+        .cloned()
+        .collect()
 }
 
 fn report_command(args: &SelfPlayArgs, threads: usize) -> ReportCommand {
@@ -2434,7 +2457,8 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
         );
     }
 
-    let mut engine_args = Vec::new();
+    let mut engine_args = vec!["usi".to_string()];
+    let mut report_engine_args = vec!["usi".to_string()];
     if let Some(nnue) = manifest.nnue.as_ref() {
         let nnue_path = extraction_dir.join(&nnue.path);
         if !nnue_path.is_file() {
@@ -2455,11 +2479,18 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
             "--nnue".to_string(),
             nnue_path.display().to_string(),
         ]);
+        report_engine_args.extend([
+            "--eval".to_string(),
+            "nnue".to_string(),
+            "--nnue".to_string(),
+            nnue.path.clone(),
+        ]);
     }
 
     Ok(ArchiveLaunch {
         engine_path,
         engine_args,
+        report_engine_args,
         extraction_dir: extraction_dir.to_path_buf(),
         source_archive_path: path.to_path_buf(),
         manifest,
@@ -2786,6 +2817,32 @@ mod tests {
                 archive: None,
             },
         ]
+    }
+
+    fn test_native_archive_manifest() -> NativeEngineArchiveManifest {
+        NativeEngineArchiveManifest {
+            schema: "haitaka-engine-archive".to_string(),
+            schema_version: 1,
+            engine: NativeArchiveEngine {
+                name: "Haitaka Test".to_string(),
+                version: "0.1.0".to_string(),
+                commit: "abc123".to_string(),
+                dirty: false,
+                ruleset: default_ruleset().to_string(),
+                features: active_feature_names(),
+                build_profile: "debug".to_string(),
+                target: "test-target".to_string(),
+            },
+            runtime: NativeArchiveRuntime {
+                protocol: "usi".to_string(),
+                protocol_version: "minimal-v1".to_string(),
+                executable: ENGINE_ARCHIVE_BIN_PATH.to_string(),
+            },
+            nnue: Some(NativeArchiveNnue {
+                path: ENGINE_ARCHIVE_NNUE_PATH.to_string(),
+                sha256: "abc".to_string(),
+            }),
+        }
     }
 
     fn write_existing_self_play_report(
@@ -3392,6 +3449,75 @@ mod tests {
     }
 
     #[test]
+    fn archive_report_engine_uses_stable_archive_metadata() {
+        let extraction_dir = PathBuf::from("/tmp/extracted-engine-123");
+        let archive_path = PathBuf::from("target/engines/haitaka-native.tgz");
+        let manifest = test_native_archive_manifest();
+        let archive = ArchiveLaunch {
+            engine_path: extraction_dir.join(ENGINE_ARCHIVE_BIN_PATH),
+            engine_args: vec![
+                "usi".to_string(),
+                "--eval".to_string(),
+                "nnue".to_string(),
+                "--nnue".to_string(),
+                extraction_dir
+                    .join(ENGINE_ARCHIVE_NNUE_PATH)
+                    .display()
+                    .to_string(),
+            ],
+            report_engine_args: vec![
+                "usi".to_string(),
+                "--eval".to_string(),
+                "nnue".to_string(),
+                "--nnue".to_string(),
+                ENGINE_ARCHIVE_NNUE_PATH.to_string(),
+            ],
+            extraction_dir,
+            source_archive_path: archive_path.clone(),
+            manifest,
+        };
+        let mut launch_args = archive.engine_args.clone();
+        launch_args.extend(["--movetime-max-depth".to_string(), "8".to_string()]);
+        let engine = EngineConfig {
+            label: "A",
+            budget: SearchBudget::Movetime {
+                max_depth: None,
+                millis: 100,
+            },
+            evaluator: EngineEvaluator::External {
+                path: archive.engine_path.clone(),
+                args: launch_args,
+            },
+        };
+
+        let report = report_engine(&engine, Some(&archive));
+
+        assert_eq!(report.kind, "archive-usi");
+        assert_eq!(report.command.as_deref(), Some(ENGINE_ARCHIVE_BIN_PATH));
+        assert_eq!(
+            report.archive_path,
+            Some(archive_path.display().to_string())
+        );
+        assert_eq!(
+            report.args,
+            vec![
+                "usi",
+                "--eval",
+                "nnue",
+                "--nnue",
+                ENGINE_ARCHIVE_NNUE_PATH,
+                "--movetime-max-depth",
+                "8"
+            ]
+        );
+        let encoded = serde_json::to_string(&report).expect("serialize report engine");
+        assert!(
+            !encoded.contains("/tmp/extracted-engine-123"),
+            "report should not contain transient extraction paths: {encoded}"
+        );
+    }
+
+    #[test]
     fn merge_rejects_missing_existing_game_log() {
         let temp = unique_temp_dir("existing-report-missing-games");
         fs::create_dir_all(&temp).expect("create temp dir");
@@ -3650,6 +3776,28 @@ mod tests {
             Err(err) => err,
         };
         assert!(err.to_string().contains("failed to launch external engine"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn external_engine_launches_with_exact_user_args() {
+        let temp = unique_temp_dir("exact-argv");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        write_executable_script(
+            &script,
+            "#!/bin/sh\nif [ \"$#\" -ne 1 ] || [ \"$1\" != \"--expected\" ]; then echo \"bad argv: $*\" >&2; exit 7; fi\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\nesac\ndone\n",
+        );
+
+        let mut client = UsiEngineClient::spawn_with_startup_timeout(
+            &script,
+            &["--expected".to_string()],
+            Duration::from_secs(5),
+        )
+        .expect("engine should receive exact args and start");
+        client.send_command("quit").expect("send quit");
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
     }
 
     #[cfg(unix)]

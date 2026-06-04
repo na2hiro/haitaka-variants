@@ -541,12 +541,20 @@ impl UsiSession {
 
         match result {
             Ok(Some(best_move)) => best_move,
-            Ok(None) => "resign".to_string(),
+            Ok(None) => self.fallback_bestmove(),
             Err(err) => {
                 let _ = err;
-                "resign".to_string()
+                self.fallback_bestmove()
             }
         }
+    }
+
+    fn fallback_bestmove(&self) -> String {
+        legal_moves(&self.board)
+            .into_iter()
+            .next()
+            .map(|mv| mv.to_string())
+            .unwrap_or_else(|| "resign".to_string())
     }
 
     fn evaluation_strategy(&self) -> EvaluationStrategy {
@@ -1491,6 +1499,22 @@ mod tests {
         let mut session = UsiSession::default();
         assert!(session.handle_line("position startpos").is_empty());
         let output = session.handle_line("go depth 1");
+
+        assert_eq!(output.len(), 1);
+        let best_move = output[0]
+            .strip_prefix("bestmove ")
+            .expect("expected bestmove output");
+        assert_ne!(best_move, "resign");
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        let mv = Move::from_str(best_move).expect("bestmove should parse");
+        assert!(board.is_legal(mv), "{best_move} should be legal");
+    }
+
+    #[test]
+    fn usi_session_tiny_movetime_falls_back_to_legal_move() {
+        let mut session = UsiSession::default();
+        assert!(session.handle_line("position startpos").is_empty());
+        let output = session.handle_line("go movetime 1");
 
         assert_eq!(output.len(), 1);
         let best_move = output[0]

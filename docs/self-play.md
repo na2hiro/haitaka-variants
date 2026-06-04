@@ -89,34 +89,38 @@ cargo run -p haitaka_cli --release -- self-play \
   --report-dir target/self-play/new-vs-old
 ```
 
-When an archive contains NNUE, `self-play` launches the archived executable as
-`haitaka_cli usi --eval nnue --nnue <extracted-model>`. Extracted archive
-directories are cleaned after a successful match.
+Native archives produced by `archive-engine` launch the archived executable as
+`haitaka_cli usi`, adding `--eval nnue --nnue <extracted-model>` when the archive
+contains NNUE. Extracted archive directories are cleaned after a successful
+match.
 
 ## Raw External USI Engines
 
-Use raw engine paths for quick local checks before creating archives:
+Use raw USI engine paths for quick local checks before creating archives:
 
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 20 \
   --threads 2 \
-  --a-engine path/to/new/haitaka_cli \
-  --b-engine path/to/old/haitaka_cli \
+  --a-engine path/to/new/usi-engine \
+  --b-engine path/to/old/usi-engine \
   --movetime-ms 100
 ```
 
-Arguments after `usi` can be passed per side:
+Arguments can be passed per side. For a `haitaka_cli` binary, pass the `usi`
+subcommand explicitly:
 
 ```bash
 cargo run -p haitaka_cli --release -- self-play \
   --games 20 \
   --a-engine path/to/haitaka_cli \
+  --a-engine-arg usi \
   --a-engine-arg --eval \
   --a-engine-arg nnue \
   --a-engine-arg --nnue \
   --a-engine-arg path/to/a.nnue \
   --b-engine path/to/haitaka_cli \
+  --b-engine-arg usi \
   --movetime-ms 100
 ```
 

@@ -70,8 +70,12 @@ fn self_play_can_use_current_binary_as_both_external_engines() {
             "1",
             "--a-engine",
             cli_exe(),
+            "--a-engine-arg",
+            "usi",
             "--b-engine",
             cli_exe(),
+            "--b-engine-arg",
+            "usi",
             "--max-plies",
             "4",
         ])
@@ -167,6 +171,45 @@ fn self_play_can_use_current_binary_archive_as_both_engines() {
         report["engines"][0]["archive"]["runtime"]["protocol"],
         "usi"
     );
+    assert_eq!(
+        report["engines"][0]["command"],
+        serde_json::Value::String("bin/haitaka_cli".to_string())
+    );
+    assert_eq!(report["engines"][0]["args"], serde_json::json!(["usi"]));
+
+    let merge_output = run_with_stdin(
+        &[
+            "self-play",
+            "--games",
+            "1",
+            "--threads",
+            "1",
+            "--a-depth",
+            "1",
+            "--b-depth",
+            "1",
+            "--a-engine-archive",
+            archive.to_str().expect("archive path should be utf-8"),
+            "--b-engine-archive",
+            archive.to_str().expect("archive path should be utf-8"),
+            "--max-plies",
+            "4",
+            "--report-dir",
+            report_dir.to_str().expect("report dir should be utf-8"),
+        ],
+        "2\n",
+    );
+    assert!(
+        merge_output.status.success(),
+        "archive merge failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&merge_output.stdout),
+        String::from_utf8_lossy(&merge_output.stderr)
+    );
+
+    let merged_report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&report_json).expect("read merged report json"))
+            .expect("parse merged archive report json");
+    assert_eq!(merged_report["summary"]["games"], 3);
 
     fs::remove_dir_all(temp).expect("clean temp dir");
 }
