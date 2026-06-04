@@ -884,9 +884,17 @@ fn append_donor_features(
             let Some(donor_piece) = single_donor_piece_on(board, piece_color, donor_square) else {
                 return;
             };
+            // The color plane is keyed on the donor's own color (matching the C++
+            // training overlay's `donor_piece_index`), which differs from the
+            // influenced piece's color for the enemy-donor variants.
             features.push_with_limit(
                 HALFKAV2_REAL_FEATURES
-                    + donor_single_feature_index(perspective, piece_color, donor_piece, square),
+                    + donor_single_feature_index(
+                        perspective,
+                        single_donor_color(piece_color),
+                        donor_piece,
+                        square,
+                    ),
                 family.max_active_features(),
             );
         }
@@ -963,6 +971,9 @@ fn hand_feature_index(
     king_offset + piece_hand_index(perspective, color, piece) + copy_index
 }
 
+// `color` is the donor's own color (not the influenced piece's), so the color
+// plane matches `donor_piece_index` in the C++ training overlay. They coincide for
+// friendly donors and differ for enemy donors (taimen/haimen).
 fn donor_single_feature_index(
     perspective: Color,
     color: Color,
@@ -1076,13 +1087,20 @@ fn friendly_piece_on(board: &Board, color: Color, square: Square) -> Option<Piec
 /// (taimen/haimen) read an enemy donor. `color` is always the influenced piece's
 /// own color.
 fn single_donor_piece_on(board: &Board, color: Color, square: Square) -> Option<Piece> {
+    friendly_piece_on(board, single_donor_color(color), square)
+}
+
+/// Color of the donor for the single-donor families, given the influenced piece's
+/// color: friendly for annan/anhoku, the enemy for taimen/haimen. The donor block's
+/// color plane is keyed on this color, matching the C++ training overlay.
+fn single_donor_color(piece_color: Color) -> Color {
     #[cfg(any(feature = "taimen", feature = "haimen"))]
     {
-        friendly_piece_on(board, !color, square)
+        !piece_color
     }
     #[cfg(not(any(feature = "taimen", feature = "haimen")))]
     {
-        friendly_piece_on(board, color, square)
+        piece_color
     }
 }
 
@@ -1345,7 +1363,8 @@ mod tests {
     #[test]
     fn single_donor_family_marks_taimen_enemy_front_donor() {
         // Black Rook on E5 with an enemy (White) Bishop directly in front: the
-        // donor feature records the Bishop's movement on the Rook's square.
+        // donor feature records the Bishop's movement on the Rook's square, keyed on
+        // the donor's (White) color plane to match the C++ training overlay.
         let board = Board::from_sfen("4k4/9/9/4b4/4R4/9/9/9/4K4 b - 1").unwrap();
         let features = active_features(
             &board,
@@ -1354,15 +1373,16 @@ mod tests {
             FeatureFamily::HalfKAv2DonorSingle,
         );
         let expected = HALFKAV2_REAL_FEATURES
-            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+            + donor_single_feature_index(Color::Black, Color::White, Piece::Bishop, Square::E5);
         assert!(features.iter().any(|&index| index == expected));
     }
 
     #[cfg(feature = "haimen")]
     #[test]
     fn single_donor_family_marks_haimen_enemy_back_donor() {
-        // Black Rook on E5 with an enemy (White) Bishop directly behind: the
-        // donor feature records the Bishop's movement on the Rook's square.
+        // Black Rook on E5 with an enemy (White) Bishop directly behind: the donor
+        // feature records the Bishop's movement on the Rook's square, keyed on the
+        // donor's (White) color plane to match the C++ training overlay.
         let board = Board::from_sfen("4k4/9/9/9/4R4/4b4/9/9/4K4 b - 1").unwrap();
         let features = active_features(
             &board,
@@ -1371,7 +1391,7 @@ mod tests {
             FeatureFamily::HalfKAv2DonorSingle,
         );
         let expected = HALFKAV2_REAL_FEATURES
-            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+            + donor_single_feature_index(Color::Black, Color::White, Piece::Bishop, Square::E5);
         assert!(features.iter().any(|&index| index == expected));
     }
 
