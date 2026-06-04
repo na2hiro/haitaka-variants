@@ -346,7 +346,13 @@ mod anhoku_tests {
 
 #[cfg(all(
     test,
-    not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+    not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    ))
 ))]
 mod tests {
     use super::*;

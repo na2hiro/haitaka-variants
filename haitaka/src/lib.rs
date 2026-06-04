@@ -1,6 +1,6 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(
-    not(any(feature = "annan", feature = "anhoku", feature = "antouzai")),
+    not(any(feature = "annan", feature = "anhoku", feature = "antouzai", feature = "taimen", feature = "haimen")),
     doc = include_str!("../README.md")
 )]
 
@@ -19,10 +19,26 @@
 //! cargo run --release --example perft -- 3
 //! ```
 
-#[cfg(all(feature = "annan", any(feature = "anhoku", feature = "antouzai")))]
-compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
-#[cfg(all(feature = "anhoku", feature = "antouzai"))]
-compile_error!("features `annan`, `anhoku`, and `antouzai` are mutually exclusive");
+#[cfg(any(
+    all(
+        feature = "annan",
+        any(
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        )
+    ),
+    all(
+        feature = "anhoku",
+        any(feature = "antouzai", feature = "taimen", feature = "haimen")
+    ),
+    all(feature = "antouzai", any(feature = "taimen", feature = "haimen")),
+    all(feature = "taimen", feature = "haimen"),
+))]
+compile_error!(
+    "features `annan`, `anhoku`, `antouzai`, `taimen`, and `haimen` are mutually exclusive"
+);
 
 use haitaka_types::*;
 
@@ -40,7 +56,13 @@ pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod slider_moves;
-#[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+#[cfg(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "antouzai",
+    feature = "taimen",
+    feature = "haimen"
+))]
 pub mod variant_rules;
 
 pub use attacks::*;

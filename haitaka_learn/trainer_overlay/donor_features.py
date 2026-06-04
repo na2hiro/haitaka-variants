@@ -10,6 +10,10 @@ DONOR_SINGLE_BASE_HASH = 0x23627E42
 DONOR_SINGLE_MODE_HASHES = {
     "single-behind": DONOR_SINGLE_BASE_HASH ^ 0x9E3779B1,
     "single-front": DONOR_SINGLE_BASE_HASH ^ 0x3C6EF362,
+    # Enemy-donor variants (taimen/haimen) reuse the geometry but need distinct
+    # block hashes; these must match haitaka_wasm/src/nnue.rs.
+    "single-front-enemy": DONOR_SINGLE_BASE_HASH ^ 0x85EBCA77,
+    "single-behind-enemy": DONOR_SINGLE_BASE_HASH ^ 0xC2B2AE3D,
 }
 DONOR_SINGLE_HASH = DONOR_SINGLE_MODE_HASHES.get(
     getattr(variant, "DONOR_MODE", "none"),

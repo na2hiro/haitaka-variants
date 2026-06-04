@@ -1425,9 +1425,21 @@ fn current_nnue_model() -> Option<Arc<NnueModel>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     use std::path::PathBuf;
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     use std::sync::Arc;
 
     const DFPN_MATE_SFEN: &str = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
@@ -1442,7 +1454,13 @@ mod tests {
             .unwrap()
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn load_test_nnue() -> Option<NnueModel> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
         let bytes = std::fs::read(path).ok()?;
@@ -1555,7 +1573,13 @@ mod tests {
 
     #[cfg(any(
         feature = "annan",
-        not(any(feature = "annan", feature = "anhoku", feature = "antouzai"))
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen"
+        ))
     ))]
     fn assert_legal_best_move(sfen: &str, depth: u8) {
         let board = Board::from_sfen(sfen).unwrap();
@@ -1571,7 +1595,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn returns_legal_move_for_start_position() {
         assert_legal_best_move(
             "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
@@ -1580,7 +1610,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn returns_legal_move_for_handicap_position() {
         assert_legal_best_move(
             "2sgkgs2/9/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 2",
@@ -1595,7 +1631,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn returns_none_when_side_to_move_has_no_legal_move() {
         let sfen = "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26";
         assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
@@ -1667,6 +1709,11 @@ mod tests {
     }
 
     #[test]
+    // In the enemy-donor variants (taimen/haimen) an enemy piece adjacent in the
+    // donor axis changes the defender's effective movement, so this standard-shogi
+    // mate has a different (still valid) solution and the asserted line no longer
+    // matches. The mate-solving itself is exercised by the variant tests elsewhere.
+    #[cfg(not(any(feature = "taimen", feature = "haimen")))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -1693,7 +1740,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -1732,7 +1785,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",
@@ -1812,7 +1871,13 @@ mod tests {
         );
     }
 
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn assert_search_modes_match(sfen: &str, depth: u8) {
         let Some(model) = load_test_nnue() else {
             return;
@@ -1829,25 +1894,49 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn nnue_search_modes_match_on_start_position() {
         assert_search_modes_match(haitaka::SFEN_STARTPOS, 3);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn nnue_search_modes_match_on_handicap_position() {
         assert_search_modes_match(haitaka::SFEN_6PIECE_HANDICAP, 3);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn nnue_search_modes_match_on_tactical_position() {
         assert_search_modes_match("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", 3);
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn loads_test_nnue_when_available() {
         let Some(model) = load_test_nnue() else {
             return;
@@ -1858,7 +1947,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn board_native_nnue_search_handles_live_check_positions() {
         let Some(model) = load_test_nnue() else {
             return;

@@ -19,3 +19,5 @@ sha2 = "0.10"
 annan = ["haitaka/annan", "haitaka_wasm/annan"]
 anhoku = ["haitaka/anhoku", "haitaka_wasm/anhoku"]
 antouzai = ["haitaka/antouzai", "haitaka_wasm/antouzai"]
+taimen = ["haitaka/taimen", "haitaka_wasm/taimen"]
+haimen = ["haitaka/haimen", "haitaka_wasm/haimen"]

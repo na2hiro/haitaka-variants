@@ -384,7 +384,13 @@ mod tests {
     // problematic piece; it took me several hours to debug a subtle bug the ExactSizeIterator.
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn len_handles_promotions_black_lance() {
         let mv = PieceMoves::BoardMoves {
             color: Color::Black,
@@ -422,7 +428,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn len_handles_promotions_white_lance() {
         let mv = PieceMoves::BoardMoves {
             color: Color::White,
@@ -460,7 +472,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(any(feature = "annan", feature = "anhoku", feature = "antouzai")))]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen"
+    )))]
     fn len_for_lance_handles_edge_cases() {
         // Case 1: Lance completely blocked
         let mv = PieceMoves::BoardMoves {
