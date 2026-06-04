@@ -637,6 +637,26 @@ impl Board {
 
     // Board moves
 
+    /// Pins that may be used as a hard pre-move filter.
+    ///
+    /// In the enemy-donor variants (taimen/haimen) a pin can be a *false* pin: the
+    /// blocker (or another of our pieces on the donor axis) may be what makes the
+    /// pinning enemy a slider, so moving it dissolves the pin instead of exposing
+    /// the king. Such pieces are excluded here and revalidated by the post-move
+    /// replay (`variant_move_resolves_check`) instead. A piece off the donor axis
+    /// cannot change any enemy's effective movement, so its pin is always genuine.
+    #[inline]
+    fn effective_pinned(&self) -> BitBoard {
+        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        {
+            self.pinned & !self.enemy_donor_axis()
+        }
+        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+        {
+            self.pinned
+        }
+    }
+
     // Generate legal moves for all the "commoners" (all pieces except King).
     // `mask` is used to select from-squares
     fn add_common_legals<
@@ -657,7 +677,7 @@ impl Board {
 
         let color = self.side_to_move();
         let pieces = self.colored_pieces(color, P::PIECE) & mask;
-        let pinned = self.pinned;
+        let pinned = self.effective_pinned();
         let blockers = self.occupied();
 
         for from in pieces & !pinned {
@@ -1037,7 +1057,7 @@ impl Board {
         // Generate moves for influenced non-king pieces.
         let target_squares = self.target_squares::<IN_CHECK>();
         if !(IN_CHECK && target_squares.is_empty()) {
-            let pinned = self.pinned;
+            let pinned = self.effective_pinned();
             let blockers = self.occupied();
             let has_king = self.has(color, Piece::King);
 
@@ -1448,8 +1468,10 @@ impl Board {
                 return false;
             }
 
-            // pinned piece restriction
-            if self.pinned.has(from) && !line_ray(self.king(color), from).has(to) {
+            // Pinned piece restriction. Donor-axis pieces are excluded from the
+            // hard pin filter in enemy-donor variants (the pin may be a false pin)
+            // and are revalidated by the post-move replay below instead.
+            if self.effective_pinned().has(from) && !line_ray(self.king(color), from).has(to) {
                 return false;
             }
 

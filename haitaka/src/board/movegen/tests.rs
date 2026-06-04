@@ -1776,3 +1776,54 @@ fn haimen_check_resolved_by_drop_on_checker_donor_square() {
     });
     assert!(generated_donor);
 }
+
+#[test]
+#[cfg(feature = "taimen")]
+fn taimen_false_pin_blocker_donor_can_move_off_ray() {
+    // White Gold on E5 moves like a Rook only because the Black Rook on F5 donates
+    // that movement (F5 is in front of the gold). The rook on F5 is also the sole
+    // blocker shielding the Black King on G5, so the pre-move pin test flags it.
+    // But moving F5 off the file removes the donor, the gold reverts to gold and no
+    // longer attacks the king, so F5->F4 is legal and must be generated.
+    let board: Board = "k8/9/9/9/4g4/4R4/4K4/9/9 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let off_ray = Move::BoardMove {
+        from: Square::F5,
+        to: Square::F4,
+        promotion: false,
+    };
+    assert!(board.is_legal_board_move(off_ray));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(off_ray);
+        false
+    });
+    assert!(generated);
+}
+
+#[test]
+#[cfg(feature = "haimen")]
+fn haimen_false_pin_blocker_donor_can_move_off_ray() {
+    // White Gold on E5 moves like a Rook only because the Black Rook on D5 donates
+    // that movement (D5 is behind the gold). D5 is also the sole blocker shielding
+    // the Black King on C5; moving it off the file removes the donor, so D5->D4 is
+    // a legal escape that must be generated despite the pre-move pin test.
+    let board: Board = "k8/9/4K4/4R4/4g4/9/9/9/9 b - 1".parse().unwrap();
+    assert!(board.checkers().is_empty());
+
+    let off_ray = Move::BoardMove {
+        from: Square::D5,
+        to: Square::D4,
+        promotion: false,
+    };
+    assert!(board.is_legal_board_move(off_ray));
+
+    let mut generated = false;
+    board.generate_moves(|mvs| {
+        generated |= mvs.has(off_ray);
+        false
+    });
+    assert!(generated);
+}
