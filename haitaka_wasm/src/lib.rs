@@ -645,16 +645,16 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
         index += 1;
     }
 
-    if let Some(depth) = depth {
-        return Ok(UsiSearchBudget::Depth(depth.max(1)));
-    }
     if let Some(millis) = movetime {
         return Ok(UsiSearchBudget::Movetime {
-            max_depth: movetime_max_depth.max(1),
+            max_depth: depth.unwrap_or(movetime_max_depth).max(1),
             millis,
         });
     }
-    Err("only go depth N and go movetime N are supported".to_string())
+    if let Some(depth) = depth {
+        return Ok(UsiSearchBudget::Depth(depth.max(1)));
+    }
+    Err("only go depth N, go movetime N, and go movetime N depth D are supported".to_string())
 }
 
 fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
@@ -1500,6 +1500,24 @@ mod tests {
         let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
         let mv = Move::from_str(best_move).expect("bestmove should parse");
         assert!(board.is_legal(mv), "{best_move} should be legal");
+    }
+
+    #[test]
+    fn usi_go_movetime_depth_uses_depth_as_cap() {
+        assert_eq!(
+            parse_usi_go("go movetime 100 depth 5", 64).expect("go should parse"),
+            UsiSearchBudget::Movetime {
+                max_depth: 5,
+                millis: 100
+            }
+        );
+        assert_eq!(
+            parse_usi_go("go movetime 100", 64).expect("go should parse"),
+            UsiSearchBudget::Movetime {
+                max_depth: 64,
+                millis: 100
+            }
+        );
     }
 
     #[test]

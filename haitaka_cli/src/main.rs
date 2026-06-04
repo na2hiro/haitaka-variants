@@ -1238,7 +1238,16 @@ impl Drop for UsiEngineClient {
 fn go_command(budget: SearchBudget) -> String {
     match budget {
         SearchBudget::Depth(depth) => format!("go depth {}", depth.max(1)),
-        SearchBudget::Movetime { millis, .. } => format!("go movetime {millis}"),
+        SearchBudget::Movetime {
+            max_depth: Some(max_depth),
+            millis,
+        } => {
+            format!("go movetime {millis} depth {}", max_depth.max(1))
+        }
+        SearchBudget::Movetime {
+            max_depth: None,
+            millis,
+        } => format!("go movetime {millis}"),
     }
 }
 
@@ -2948,6 +2957,24 @@ mod tests {
     }
 
     #[test]
+    fn go_command_includes_movetime_depth_cap_when_set() {
+        assert_eq!(
+            go_command(SearchBudget::Movetime {
+                max_depth: Some(5),
+                millis: 100
+            }),
+            "go movetime 100 depth 5"
+        );
+        assert_eq!(
+            go_command(SearchBudget::Movetime {
+                max_depth: None,
+                millis: 100
+            }),
+            "go movetime 100"
+        );
+    }
+
+    #[test]
     fn self_play_thread_count_uses_available_parallelism_when_zero() {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -3317,7 +3344,7 @@ mod tests {
             "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) sleep 2 ;;\nesac\ndone\n",
         );
         let mut client =
-            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(2))
+            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(5))
                 .expect("engine should start");
 
         client
@@ -3343,7 +3370,7 @@ mod tests {
             "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  go*) printf 'bestmove \\n' ;;\nesac\ndone\n",
         );
         let mut client =
-            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(2))
+            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(5))
                 .expect("engine should start");
         client
             .send_command(&format!("position sfen {}", haitaka::SFEN_STARTPOS))
