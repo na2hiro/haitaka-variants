@@ -1,6 +1,13 @@
 use std::fmt;
 
 use haitaka::{BitBoard, Board, Color, Move, Piece, Square};
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+use haitaka::{File, Rank};
 
 const VERSION: u32 = 0x7AF32F20;
 const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
@@ -15,6 +22,16 @@ const DONOR_SINGLE_ANHOKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x3c6e_f36
 const DONOR_SINGLE_TAIMEN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x85eb_ca77;
 #[cfg(feature = "haimen")]
 const DONOR_SINGLE_HAIMEN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xc2b2_ae3d;
+// The neko run-reflection variants reuse the DonorSingleEff geometry (one
+// effective piece type per influenced square) with distinct block hashes.
+#[cfg(feature = "neko")]
+const DONOR_SINGLE_NEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x27d4_eb2f;
+#[cfg(feature = "nekoneko")]
+const DONOR_SINGLE_NEKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x1656_67b1;
+#[cfg(feature = "yokoneko")]
+const DONOR_SINGLE_YOKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xff51_afd7;
+#[cfg(feature = "yokonekoneko")]
+const DONOR_SINGLE_YOKONEKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xd728_05f1;
 const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
@@ -101,11 +118,23 @@ const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_ANHOKU_BLOCK_HASH;
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TAIMEN_BLOCK_HASH;
 #[cfg(feature = "haimen")]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_HAIMEN_BLOCK_HASH;
+#[cfg(feature = "neko")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_NEKO_BLOCK_HASH;
+#[cfg(feature = "nekoneko")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_NEKONEKO_BLOCK_HASH;
+#[cfg(feature = "yokoneko")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_YOKONEKO_BLOCK_HASH;
+#[cfg(feature = "yokonekoneko")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_YOKONEKONEKO_BLOCK_HASH;
 #[cfg(not(any(
     feature = "annan",
     feature = "anhoku",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
@@ -137,7 +166,11 @@ impl FeatureFamily {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
@@ -969,20 +1002,33 @@ fn for_each_donor_feature(
     match family {
         FeatureFamily::HalfKAv2 => {}
         FeatureFamily::HalfKAv2DonorSingle => {
-            let Some(donor_square) = single_donor_candidate_square(piece_color, square) else {
-                return;
-            };
-            let Some(donor_piece) = single_donor_piece_on(board, piece_color, donor_square) else {
+            // The color plane is keyed on the donor's own color (matching the C++
+            // training overlay's `donor_piece_index`), which differs from the
+            // influenced piece's color for the enemy-donor variants: taimen/haimen
+            // (an enemy donor) and the any-color neko variants (nekoneko/yokonekoneko),
+            // whose run partner may be an enemy.
+            #[cfg(any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
+            ))]
+            let donor = neko_partner_piece(board, piece_color, square);
+            #[cfg(not(any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
+            )))]
+            let donor = single_donor_candidate_square(piece_color, square)
+                .and_then(|donor_square| single_donor_piece_on(board, piece_color, donor_square))
+                .map(|donor_piece| (single_donor_color(piece_color), donor_piece));
+            let Some((donor_color, donor_piece)) = donor else {
                 return;
             };
             emit(
                 HALFKAV2_REAL_FEATURES
-                    + donor_single_feature_index(
-                        perspective,
-                        single_donor_color(piece_color),
-                        donor_piece,
-                        square,
-                    ),
+                    + donor_single_feature_index(perspective, donor_color, donor_piece, square),
             );
         }
         FeatureFamily::HalfKAv2DonorPair => {
@@ -1086,12 +1132,50 @@ fn collect_donor_features(
 }
 
 /// Returns the set of influenced squares whose donor features can change as a
+/// result of `mv` (neko run-reflection variants).
+///
+/// A neko move only changes board occupancy on its `from`/`to` squares, but each
+/// such change re-segments the entire run *line* it sits on (a file for
+/// `neko`/`nekoneko`, a rank for `yokoneko`/`yokonekoneko`), so any piece on those
+/// lines can acquire a new run partner. Returning the whole touched line(s) is a
+/// complete superset: a square off both lines keeps its segmentation and diffs to
+/// zero. Returned as a `BitBoard` so the two lines are de-duplicated.
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+fn affected_donor_squares(_family: FeatureFamily, mv: Move) -> BitBoard {
+    let line_of = |sq: Square| -> BitBoard {
+        #[cfg(any(feature = "yokoneko", feature = "yokonekoneko"))]
+        {
+            sq.rank().bitboard()
+        }
+        #[cfg(not(any(feature = "yokoneko", feature = "yokonekoneko")))]
+        {
+            sq.file().bitboard()
+        }
+    };
+    match mv {
+        Move::Drop { to, .. } => line_of(to),
+        Move::BoardMove { from, to, .. } => line_of(from) | line_of(to),
+    }
+}
+
+/// Returns the set of influenced squares whose donor features can change as a
 /// result of `mv`.
 ///
 /// This is the move's changed squares plus, for each changed square, the
 /// squares that read it as a donor candidate (its "neighbourhood"). Returned as
 /// a `BitBoard` so overlapping neighbourhoods are de-duplicated; double-applying
 /// a square's diff would corrupt the accumulator.
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
     let mut squares = BitBoard::EMPTY;
     let add_with_neighborhood = |square: Square, squares: &mut BitBoard| {
@@ -1120,7 +1204,14 @@ fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
 /// Each family's donor-candidate offset set is symmetric under negation (the
 /// vertical pair for single-donor, the horizontal pair for pair-donor, and the
 /// negation-symmetric 8 knight offsets), so the candidate geometry is its own
-/// inverse and is colour-independent as a set.
+/// inverse and is colour-independent as a set. (The neko variants use a whole-line
+/// affected set instead; see their `affected_donor_squares`.)
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn donor_influence_neighborhood(
     family: FeatureFamily,
     square: Square,
@@ -1277,18 +1368,91 @@ fn friendly_piece_on(board: &Board, color: Color, square: Square) -> Option<Piec
     (colored_piece.color == color).then_some(colored_piece.piece)
 }
 
+/// Returns the run-reflection partner's color and piece for the neko variants.
+///
+/// Mirrors `haitaka::variant_rules::neko::run_partner_square`: each line (file for
+/// `neko`/`nekoneko`, rank for `yokoneko`/`yokonekoneko`) is segmented into maximal
+/// runs (broken by empty squares, and by a color change for the friendly-only
+/// variants) and the `i`-th piece from each end swap abilities. The effective
+/// (donor) piece for the influenced square is its partner's piece type, and the
+/// donor color plane is keyed on the partner's own color (the enemy for an
+/// any-color cross-color pairing in nekoneko/yokonekoneko).
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+fn neko_partner_piece(board: &Board, color: Color, square: Square) -> Option<(Color, Piece)> {
+    const HORIZONTAL: bool = cfg!(any(feature = "yokoneko", feature = "yokonekoneko"));
+    const ANY_COLOR: bool = cfg!(any(feature = "nekoneko", feature = "yokonekoneko"));
+
+    let line_square = |line: usize, pos: usize| -> Square {
+        if HORIZONTAL {
+            Square::new(File::index_const(pos), Rank::index_const(line))
+        } else {
+            Square::new(File::index_const(line), Rank::index_const(pos))
+        }
+    };
+    let in_run = |line: usize, pos: usize| -> bool {
+        let sq = line_square(line, pos);
+        if ANY_COLOR {
+            board.piece_on(sq).is_some()
+        } else {
+            board.color_on(sq) == Some(color)
+        }
+    };
+
+    let (line, pos) = if HORIZONTAL {
+        (square.rank() as usize, square.file() as usize)
+    } else {
+        (square.file() as usize, square.rank() as usize)
+    };
+
+    if !in_run(line, pos) {
+        return None;
+    }
+    let mut lo = pos;
+    while lo > 0 && in_run(line, lo - 1) {
+        lo -= 1;
+    }
+    let mut hi = pos;
+    while hi + 1 < 9 && in_run(line, hi + 1) {
+        hi += 1;
+    }
+    let partner = lo + hi - pos;
+    if partner == pos {
+        return None;
+    }
+    let colored = board.colored_piece_on(line_square(line, partner))?;
+    Some((colored.color, colored.piece))
+}
+
 /// Returns the donor piece on `square` for the single-donor families.
 ///
 /// Same-side variants (annan/anhoku) read a friendly donor; face-off variants
 /// (taimen/haimen) read an enemy donor. `color` is always the influenced piece's
 /// own color.
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn single_donor_piece_on(board: &Board, color: Color, square: Square) -> Option<Piece> {
     friendly_piece_on(board, single_donor_color(color), square)
 }
 
 /// Color of the donor for the single-donor families, given the influenced piece's
 /// color: friendly for annan/anhoku, the enemy for taimen/haimen. The donor block's
-/// color plane is keyed on this color, matching the C++ training overlay.
+/// color plane is keyed on this color, matching the C++ training overlay. (The neko
+/// variants read the partner's color directly from the board instead.)
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn single_donor_color(piece_color: Color) -> Color {
     #[cfg(any(feature = "taimen", feature = "haimen"))]
     {
@@ -1300,6 +1464,12 @@ fn single_donor_color(piece_color: Color) -> Color {
     }
 }
 
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     // annan (friendly behind) and haimen (enemy behind) look at the square behind.
     #[cfg(any(feature = "annan", feature = "haimen"))]
@@ -1473,11 +1643,23 @@ mod tests {
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x22478c02);
         #[cfg(feature = "haimen")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x8f59f6b3);
+        #[cfg(feature = "neko")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x37265e1e);
+        #[cfg(feature = "nekoneko")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x4ce2016d);
+        #[cfg(feature = "yokoneko")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xea6e7592);
+        #[cfg(feature = "yokonekoneko")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xaea1f4cd);
         #[cfg(not(any(
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )))]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
         assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
@@ -1490,7 +1672,11 @@ mod tests {
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
@@ -1501,7 +1687,11 @@ mod tests {
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
@@ -1580,6 +1770,75 @@ mod tests {
         // feature records the Bishop's movement on the Rook's square, keyed on the
         // donor's (White) color plane to match the C++ training overlay.
         let board = Board::from_sfen("4k4/9/9/9/4R4/4b4/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::White, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "neko")]
+    #[test]
+    fn single_donor_family_marks_neko_vertical_partner() {
+        // Black Rook (E5) above a Black Bishop (F5): a friendly vertical run, so
+        // the Rook's square records the Bishop's (its partner's) movement.
+        let board = Board::from_sfen("4k4/9/9/9/4R4/4B4/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "nekoneko")]
+    #[test]
+    fn single_donor_family_marks_nekoneko_enemy_partner() {
+        // Black Rook (E5) above a White Bishop (F5): runs span both colors, so the
+        // Rook adopts the enemy Bishop's movement, keyed on the partner's (White)
+        // color plane to match the C++ training overlay.
+        let board = Board::from_sfen("4k4/9/9/9/4R4/4b4/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::White, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "yokoneko")]
+    #[test]
+    fn single_donor_family_marks_yokoneko_horizontal_partner() {
+        // Black Rook (E5) next to a Black Bishop (E4) along rank E.
+        let board = Board::from_sfen("4k4/9/9/9/4RB3/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorSingle,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(features.iter().any(|&index| index == expected));
+    }
+
+    #[cfg(feature = "yokonekoneko")]
+    #[test]
+    fn single_donor_family_marks_yokonekoneko_enemy_partner() {
+        // Black Rook (E5) next to a White Bishop (E4) along rank E: the Rook adopts
+        // the enemy Bishop's movement, keyed on the partner's (White) color plane to
+        // match the C++ training overlay.
+        let board = Board::from_sfen("4k4/9/9/9/4Rb3/9/9/9/4K4 b - 1").unwrap();
         let features = active_features(
             &board,
             Color::Black,
@@ -1737,7 +1996,11 @@ mod tests {
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
         {
             FeatureFamily::HalfKAv2DonorSingle
@@ -1747,7 +2010,11 @@ mod tests {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )),
             feature = "antouzai"
         ))]
@@ -1759,7 +2026,11 @@ mod tests {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )),
             not(feature = "antouzai")
         ))]
@@ -1775,7 +2046,11 @@ mod tests {
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
         assert_eq!(family, FeatureFamily::HalfKAv2DonorSingle);
         #[cfg(all(
@@ -1783,7 +2058,11 @@ mod tests {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )),
             feature = "antouzai"
         ))]
@@ -1793,7 +2072,11 @@ mod tests {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )),
             not(feature = "antouzai")
         ))]

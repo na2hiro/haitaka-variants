@@ -161,7 +161,11 @@ impl Piece {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -171,7 +175,11 @@ impl Piece {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -194,7 +202,15 @@ impl Piece {
     /// ```
     #[inline(always)]
     pub const fn must_promote(self, color: Color, square: Square) -> bool {
-        #[cfg(any(feature = "annan", feature = "antouzai", feature = "haimen"))]
+        #[cfg(any(
+            feature = "annan",
+            feature = "antouzai",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        ))]
         {
             // In piece-influence variants, pieces can gain any movement via donors,
             // so there are no stuck-piece restrictions.
@@ -220,7 +236,11 @@ impl Piece {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )))]
         {
             let rank = square.rank() as usize;

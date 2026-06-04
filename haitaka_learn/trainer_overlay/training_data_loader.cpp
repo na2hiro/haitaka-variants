@@ -120,6 +120,59 @@ static Color single_donor_color(Color piece_color) {
 #endif
 }
 
+// Run-reflection partner for the neko variants (modes 6-9).
+//
+// Each line (file for vertical neko/nekoneko = modes 6/7, rank for horizontal
+// yokoneko/yokonekoneko = modes 8/9) is segmented into maximal runs of contiguous
+// occupied squares (broken by an empty square, and additionally by a color change
+// for the friendly-only modes 6/8). The i-th piece from one end swaps abilities
+// with the i-th from the other end; the middle of an odd-length run is unpaired.
+//
+// pack_board_for_training mirrors both axes, but run reflection is invariant under
+// that mirror (a reversed line yields the same {i, L-1-i} pairing and the same
+// file/rank groupings), so we segment directly in trainer space.
+static Square neko_partner_square(const Position& pos, Color color, Square sq) {
+#if HAITAKA_DONOR_MODE >= 6 && HAITAKA_DONOR_MODE <= 9
+    constexpr bool horizontal = (HAITAKA_DONOR_MODE == 8 || HAITAKA_DONOR_MODE == 9);
+    constexpr bool any_color = (HAITAKA_DONOR_MODE == 7 || HAITAKA_DONOR_MODE == 9);
+    const int file = int(sq) % FILES;
+    const int rank = int(sq) / FILES;
+    const int len = horizontal ? FILES : RANKS;
+    const int pos_idx = horizontal ? file : rank;
+    auto line_square = [&](int p) -> Square {
+        return horizontal ? Square(rank * FILES + p) : Square(p * FILES + file);
+    };
+    auto in_run = [&](int p) -> bool {
+        const Piece pc = pos.pieceAt(line_square(p));
+        if (pc == Piece::None) {
+            return false;
+        }
+        return any_color || color_of(pc) == color;
+    };
+    if (!in_run(pos_idx)) {
+        return Square::NB;
+    }
+    int lo = pos_idx;
+    while (lo > 0 && in_run(lo - 1)) {
+        --lo;
+    }
+    int hi = pos_idx;
+    while (hi + 1 < len && in_run(hi + 1)) {
+        ++hi;
+    }
+    const int partner = lo + hi - pos_idx;
+    if (partner == pos_idx) {
+        return Square::NB;
+    }
+    return line_square(partner);
+#else
+    (void)pos;
+    (void)color;
+    (void)sq;
+    return Square::NB;
+#endif
+}
+
 static std::array<Square, DONOR_PAIR_SLOTS> pair_donor_squares(Square sq) {
     // Training SFEN is packed with mirrored files, so trainer file -1 maps to
     // runtime try_offset(+1, 0), the Antouzai slot-0 donor.
@@ -383,6 +436,21 @@ struct DonorSingleEff {
             if (p == Piece::None) {
                 continue;
             }
+#if HAITAKA_DONOR_MODE >= 6 && HAITAKA_DONOR_MODE <= 9
+            // neko run-reflection: the donor is the run partner, and the feature
+            // encodes the donor's piece type keyed on the *partner's own* color
+            // (relative to perspective) via donor_piece_index — the partner may be an
+            // enemy in the any-color variants (nekoneko/yokonekoneko). This matches
+            // haitaka_wasm donor_single_feature_index, which reads the partner's color.
+            const auto partner_sq = neko_partner_square(pos, color_of(p), sq);
+            if (partner_sq == Square::NB) {
+                continue;
+            }
+            const auto donor_piece = pos.pieceAt(partner_sq);
+            values[j] = 1.0f;
+            features[j] = feature_index(perspective, sq, donor_piece);
+            ++j;
+#else
             const auto donor_piece = friendly_piece_at(
                 pos, single_donor_color(color_of(p)), single_donor_square(color_of(p), sq));
             if (donor_piece == Piece::None) {
@@ -391,6 +459,7 @@ struct DonorSingleEff {
             values[j] = 1.0f;
             features[j] = feature_index(perspective, sq, donor_piece);
             ++j;
+#endif
         }
         return {j, INPUTS};
     }

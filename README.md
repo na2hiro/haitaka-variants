@@ -47,7 +47,7 @@ Supporting docs:
 ## What Works Now
 
 - Standard shogi legal move generation.
-- Piece-influence variant support for Annan, Anhoku, Antouzai, Taimen, and Haimen.
+- Piece-influence variant support for Annan, Anhoku, Antouzai, Taimen, Haimen, and the Neko family (Neko, Nekoneko, Yokoneko, Yokonekoneko).
 - Perft, legal move generation, DFPN, and NNUE benchmark harnesses.
 - DFPN mate search in the core engine.
 - Browser-facing WASM search APIs.
@@ -144,6 +144,10 @@ See [haitaka_wasm/README.md](haitaka_wasm/README.md).
   movement.
 - `taimen`: enemy piece in front of the mover donates movement (mutual swap).
 - `haimen`: enemy piece behind the mover donates movement (mutual swap).
+- `neko`: vertical run of friendly pieces; partners swap movement by run reflection.
+- `nekoneko`: vertical run of any-color pieces; partners swap movement.
+- `yokoneko`: horizontal run of friendly pieces; partners swap movement.
+- `yokonekoneko`: horizontal run of any-color pieces; partners swap movement.
 
 The variant rule features are mutually exclusive.
 
@@ -154,6 +158,10 @@ The variant rule features are mutually exclusive.
 - `antouzai`
 - `taimen`
 - `haimen`
+- `neko`
+- `nekoneko`
+- `yokoneko`
+- `yokonekoneko`
 
 ### `haitaka_learn`
 
@@ -162,6 +170,10 @@ The variant rule features are mutually exclusive.
 - `antouzai`
 - `taimen`
 - `haimen`
+- `neko`
+- `nekoneko`
+- `yokoneko`
+- `yokonekoneko`
 
 ### `haitaka_cli`
 
@@ -170,6 +182,10 @@ The variant rule features are mutually exclusive.
 - `antouzai`
 - `taimen`
 - `haimen`
+- `neko`
+- `nekoneko`
+- `yokoneko`
+- `yokonekoneko`
 
 Use the same feature flag consistently across crates when working on a variant.
 
@@ -178,18 +194,22 @@ Use the same feature flag consistently across crates when working on a variant.
 - Standard shogi NNUE uses the same network layout as Fairy-Stockfish `HalfKAv2^`.
 - Donor-rule variants use an extra real donor block instead of overloading `^`:
   - standard / handicap: `HalfKAv2^`
-  - Annan / Anhoku / Taimen / Haimen: `HalfKAv2^+DonorSingleEff`
+  - Annan / Anhoku / Taimen / Haimen / Neko / Nekoneko / Yokoneko / Yokonekoneko: `HalfKAv2^+DonorSingleEff`
   - Antouzai: `HalfKAv2^+DonorPairSlots`
 - `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
   - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
-- `haitaka_learn` now supports standard, handicap, Annan, Anhoku, Antouzai, Taimen, and Haimen NNUE data generation / train / export / verify flows.
+- `haitaka_learn` now supports standard, handicap, Annan, Anhoku, Antouzai, Taimen, Haimen, and the Neko family (Neko, Nekoneko, Yokoneko, Yokonekoneko) NNUE data generation / train / export / verify flows.
 - Variant runs must use the matching feature build:
   - `--features annan`
   - `--features anhoku`
   - `--features antouzai`
   - `--features taimen`
   - `--features haimen`
-- `haitaka_learn` now emits a concrete `rule_id` for built-in standard, handicap, Annan, Anhoku (`55`), Antouzai (`95`), Taimen (`72`), and Haimen (`74`) runs.
+  - `--features neko`
+  - `--features nekoneko`
+  - `--features yokoneko`
+  - `--features yokonekoneko`
+- `haitaka_learn` now emits a concrete `rule_id` for built-in standard, handicap, Annan, Anhoku (`55`), Antouzai (`95`), Taimen (`72`), Haimen (`74`), Neko (`130`), Nekoneko (`131`), Yokoneko (`132`), and Yokonekoneko (`133`) runs.
 - `rules.rule_id` remains as an override when you need to match an external registry or when a custom handicap opening has no preset-based default.
 
 For training details, see:

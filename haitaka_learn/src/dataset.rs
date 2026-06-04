@@ -1615,7 +1615,11 @@ mod tests {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn generate_data_smoke_test_writes_non_empty_shards() {
@@ -1631,6 +1635,14 @@ mod tests {
             "taimen"
         } else if cfg!(feature = "haimen") {
             "haimen"
+        } else if cfg!(feature = "neko") {
+            "neko"
+        } else if cfg!(feature = "nekoneko") {
+            "nekoneko"
+        } else if cfg!(feature = "yokoneko") {
+            "yokoneko"
+        } else if cfg!(feature = "yokonekoneko") {
+            "yokonekoneko"
         } else {
             "standard"
         };
@@ -1686,7 +1698,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn generation_is_deterministic_across_job_counts() {
@@ -1744,7 +1760,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn resume_reuses_completed_shards() {
@@ -1779,7 +1799,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn resume_regenerates_shards_when_teacher_identity_changes() {
@@ -1816,7 +1840,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn resume_reuses_mismatched_shards_when_identity_ignored() {
@@ -1865,7 +1893,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn detect_identity_mismatch_counts_mismatched_games() {
@@ -1943,7 +1975,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_data_combines_distributed_shards() {
@@ -2003,7 +2039,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_treats_empty_shard_lanes_as_empty_inputs() {
@@ -2069,7 +2109,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_rejects_shards_with_mismatched_teacher_identity() {
@@ -2105,7 +2149,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_ignores_identity_mismatch_with_flag() {
@@ -2149,7 +2197,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_allows_shards_with_different_bootstrap_paths() {
@@ -2189,7 +2241,11 @@ run_search_smoke = false
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))
     ))]
     fn merge_does_not_require_local_bootstrap_file() {
@@ -2227,7 +2283,11 @@ run_search_smoke = false
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn handicap_generate_data_smoke_test_writes_non_empty_shards() {
         let temp = tempdir().unwrap();
@@ -2284,6 +2344,14 @@ seed = 9
             "taimen"
         } else if cfg!(feature = "haimen") {
             "haimen"
+        } else if cfg!(feature = "neko") {
+            "neko"
+        } else if cfg!(feature = "nekoneko") {
+            "nekoneko"
+        } else if cfg!(feature = "yokoneko") {
+            "yokoneko"
+        } else if cfg!(feature = "yokonekoneko") {
+            "yokonekoneko"
         } else {
             "standard"
         }

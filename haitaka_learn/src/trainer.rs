@@ -474,6 +474,10 @@ fn donor_mode_py_name(ruleset: Ruleset) -> &'static str {
         Ruleset::Antouzai => "pair-left-right",
         Ruleset::Taimen => "single-front-enemy",
         Ruleset::Haimen => "single-behind-enemy",
+        Ruleset::Neko => "single-neko-vertical-friendly",
+        Ruleset::Nekoneko => "single-neko-vertical-any",
+        Ruleset::Yokoneko => "single-neko-horizontal-friendly",
+        Ruleset::Yokonekoneko => "single-neko-horizontal-any",
     }
 }
 
@@ -485,6 +489,10 @@ fn donor_mode_cpp_value(ruleset: Ruleset) -> u8 {
         Ruleset::Antouzai => 3,
         Ruleset::Taimen => 4,
         Ruleset::Haimen => 5,
+        Ruleset::Neko => 6,
+        Ruleset::Nekoneko => 7,
+        Ruleset::Yokoneko => 8,
+        Ruleset::Yokonekoneko => 9,
     }
 }
 

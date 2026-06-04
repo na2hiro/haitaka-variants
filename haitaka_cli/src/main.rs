@@ -624,6 +624,14 @@ fn default_ruleset() -> &'static str {
         "taimen"
     } else if cfg!(feature = "haimen") {
         "haimen"
+    } else if cfg!(feature = "neko") {
+        "neko"
+    } else if cfg!(feature = "nekoneko") {
+        "nekoneko"
+    } else if cfg!(feature = "yokoneko") {
+        "yokoneko"
+    } else if cfg!(feature = "yokonekoneko") {
+        "yokonekoneko"
     } else {
         "standard"
     }
@@ -640,6 +648,14 @@ fn default_rule_id() -> u32 {
         72
     } else if cfg!(feature = "haimen") {
         74
+    } else if cfg!(feature = "neko") {
+        130
+    } else if cfg!(feature = "nekoneko") {
+        131
+    } else if cfg!(feature = "yokoneko") {
+        132
+    } else if cfg!(feature = "yokonekoneko") {
+        133
     } else {
         0
     }
@@ -1077,6 +1093,40 @@ impl<'a> GameEngine<'a> {
     }
 }
 
+/// Spawns a process, retrying briefly on `ETXTBSY` ("text file busy").
+///
+/// A just-written executable can transiently fail to launch on Unix with
+/// `ETXTBSY`: when another thread in this process `fork()`s (any concurrent
+/// `Command::spawn`) it inherits an open write handle to the file until that
+/// child `exec`s, and the kernel refuses to `exec` a target that is still open
+/// for writing anywhere. This race is common under the parallel test harness and
+/// can also occur right after writing/installing an engine binary, so retry a few
+/// times before giving up. On non-Unix targets this error does not arise, so we
+/// spawn once.
+fn spawn_retrying_text_file_busy(command: &mut ProcessCommand) -> std::io::Result<Child> {
+    #[cfg(unix)]
+    {
+        // ETXTBSY is 26 on Linux/macOS/BSD.
+        const ETXTBSY: i32 = 26;
+        const MAX_ATTEMPTS: u32 = 50;
+        const RETRY_DELAY: Duration = Duration::from_millis(10);
+        let mut attempts = 0;
+        loop {
+            match command.spawn() {
+                Err(err) if err.raw_os_error() == Some(ETXTBSY) && attempts < MAX_ATTEMPTS => {
+                    attempts += 1;
+                    thread::sleep(RETRY_DELAY);
+                }
+                result => return result,
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        command.spawn()
+    }
+}
+
 struct UsiEngineClient {
     child: Child,
     stdin: ChildStdin,
@@ -1094,12 +1144,13 @@ impl UsiEngineClient {
         args: &[String],
         startup_timeout: Duration,
     ) -> Result<Self> {
-        let mut child = ProcessCommand::new(path)
+        let mut command = ProcessCommand::new(path);
+        command
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
+            .stderr(Stdio::piped());
+        let mut child = spawn_retrying_text_file_busy(&mut command)
             .with_context(|| format!("failed to launch external engine {}", path.display()))?;
 
         let stdin = child
@@ -2613,20 +2664,10 @@ fn git_dirty() -> bool {
 }
 
 fn active_feature_names() -> Vec<String> {
-    let mut features = Vec::new();
-    if cfg!(feature = "annan") {
-        features.push("annan".to_string());
-    }
-    if cfg!(feature = "anhoku") {
-        features.push("anhoku".to_string());
-    }
-    if cfg!(feature = "antouzai") {
-        features.push("antouzai".to_string());
-    }
-    if features.is_empty() {
-        features.push("standard".to_string());
-    }
-    features
+    // Derived from `default_ruleset()` so a native archive's advertised `features`
+    // can never disagree with its `ruleset`. The variant features are mutually
+    // exclusive, so this is exactly the one active rule (or "standard").
+    vec![default_ruleset().to_string()]
 }
 
 fn infer_build_profile(binary: &Path) -> ArchiveBuildProfile {
@@ -2934,12 +2975,26 @@ mod tests {
             ("anhoku", 55)
         } else if cfg!(feature = "antouzai") {
             ("antouzai", 95)
+        } else if cfg!(feature = "taimen") {
+            ("taimen", 72)
+        } else if cfg!(feature = "haimen") {
+            ("haimen", 74)
+        } else if cfg!(feature = "neko") {
+            ("neko", 130)
+        } else if cfg!(feature = "nekoneko") {
+            ("nekoneko", 131)
+        } else if cfg!(feature = "yokoneko") {
+            ("yokoneko", 132)
+        } else if cfg!(feature = "yokonekoneko") {
+            ("yokonekoneko", 133)
         } else {
             ("standard", 0)
         };
 
         assert_eq!(default_ruleset(), expected_ruleset);
         assert_eq!(default_rule_id(), expected_rule_id);
+        // A native archive's advertised features must agree with its ruleset.
+        assert_eq!(active_feature_names(), vec![expected_ruleset.to_string()]);
     }
 
     fn write_fake_wasm_pack_output(dir: &Path) {

@@ -5,3 +5,7 @@ pack-anhoku = "run -p xtask -- package --ruleset anhoku --rule-id 55 --features 
 pack-antouzai = "run -p xtask -- package --ruleset antouzai --rule-id 95 --features antouzai --output target/haitaka-variants-antouzai.tgz"
 pack-taimen = "run -p xtask -- package --ruleset taimen --rule-id 72 --features taimen --output target/haitaka-variants-taimen.tgz"
 pack-haimen = "run -p xtask -- package --ruleset haimen --rule-id 74 --features haimen --output target/haitaka-variants-haimen.tgz"
+pack-neko = "run -p xtask -- package --ruleset neko --rule-id 130 --features neko --output target/haitaka-variants-neko.tgz"
+pack-nekoneko = "run -p xtask -- package --ruleset nekoneko --rule-id 131 --features nekoneko --output target/haitaka-variants-nekoneko.tgz"
+pack-yokoneko = "run -p xtask -- package --ruleset yokoneko --rule-id 132 --features yokoneko --output target/haitaka-variants-yokoneko.tgz"
+pack-yokonekoneko = "run -p xtask -- package --ruleset yokonekoneko --rule-id 133 --features yokonekoneko --output target/haitaka-variants-yokonekoneko.tgz"

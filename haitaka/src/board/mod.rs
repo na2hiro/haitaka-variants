@@ -162,7 +162,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
@@ -243,7 +247,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -253,7 +261,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -349,7 +361,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -359,7 +375,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -391,7 +411,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -401,7 +425,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -429,7 +457,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -439,7 +471,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -474,7 +510,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -484,7 +524,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -514,7 +558,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -524,7 +572,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -560,7 +612,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -570,7 +626,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -838,7 +898,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -848,7 +912,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -897,7 +965,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -907,7 +979,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -1006,7 +1082,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
@@ -1073,7 +1153,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         let them = !color;
@@ -1130,7 +1214,11 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )))]
             {
                 // we only need to update pinned
@@ -1156,7 +1244,11 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             {
                 // In influence variants, non-sliders with slider movement can also pin,

@@ -144,7 +144,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
@@ -198,7 +202,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
@@ -209,7 +217,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     pub(super) fn calculate_checkers_and_pins_excluding(
         &self,
@@ -221,6 +233,16 @@ impl Board {
         };
 
         let mut checkers = BitBoard::EMPTY;
+        // `pinned` stays empty for the neko variants (see the pin branch below).
+        #[cfg_attr(
+            any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
+            ),
+            allow(unused_mut)
+        )]
         let mut pinned = BitBoard::EMPTY;
 
         if !self.has(color, Piece::King) {
@@ -258,6 +280,15 @@ impl Board {
                     let between = get_between_rays(attacker, our_king) & occupied;
                     match between.len() {
                         0 => checkers |= attacker.bitboard(),
+                        // The neko run-reflection variants do not use pins: moving a
+                        // blocker can re-segment a run and dissolve the pinning ray,
+                        // so a blanket king-safety filter decides legality instead.
+                        #[cfg(not(any(
+                            feature = "neko",
+                            feature = "nekoneko",
+                            feature = "yokoneko",
+                            feature = "yokonekoneko"
+                        )))]
                         1 => pinned |= between,
                         _ => {}
                     }
