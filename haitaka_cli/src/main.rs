@@ -2306,6 +2306,15 @@ fn extract_engine_archive_in_dir(path: &Path, extraction_dir: &Path) -> Result<A
         if !nnue_path.is_file() {
             bail!("archive NNUE {} does not exist", nnue.path);
         }
+        let actual_sha256 = file_sha256(&nnue_path)?;
+        if actual_sha256 != nnue.sha256 {
+            bail!(
+                "archive NNUE {} sha256 mismatch: manifest has {}, extracted file has {}",
+                nnue.path,
+                nnue.sha256,
+                actual_sha256
+            );
+        }
         engine_args.extend([
             "--eval".to_string(),
             "nnue".to_string(),
@@ -3269,6 +3278,65 @@ mod tests {
         assert_eq!(
             manifest["nnue"]["sha256"],
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp archive dir");
+    }
+
+    #[test]
+    fn extract_engine_archive_rejects_nnue_sha256_mismatch() {
+        let temp = unique_temp_dir("engine-archive-nnue-mismatch");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let binary = temp.join("haitaka_cli");
+        let nnue = temp.join("model.nnue");
+        let archive = temp.join("haitaka-native.tgz");
+        let unpacked = temp.join("unpacked");
+        let extraction_dir = temp.join("extracted");
+        let repacked = temp.join("tampered.tgz");
+        fs::write(&binary, b"fake executable").expect("write fake binary");
+        fs::write(&nnue, b"abc").expect("write fake nnue");
+
+        archive_engine(test_archive_args(binary, archive.clone(), Some(nnue)))
+            .expect("archive should succeed");
+
+        fs::create_dir_all(&unpacked).expect("create unpacked dir");
+        let status = ProcessCommand::new("tar")
+            .arg("-xzf")
+            .arg(&archive)
+            .arg("-C")
+            .arg(&unpacked)
+            .status()
+            .expect("extract original archive");
+        assert!(status.success(), "archive extract failed: {status}");
+
+        let tampered_nnue = unpacked.join(ENGINE_ARCHIVE_NNUE_PATH);
+        fs::write(&tampered_nnue, b"xyz").expect("overwrite nnue with tampered bytes");
+        let tampered_sha256 = file_sha256(&tampered_nnue).expect("hash tampered nnue");
+
+        let status = ProcessCommand::new("tar")
+            .arg("-czf")
+            .arg(&repacked)
+            .arg("-C")
+            .arg(&unpacked)
+            .arg(".")
+            .status()
+            .expect("create tampered archive");
+        assert!(status.success(), "archive repack failed: {status}");
+
+        let err = extract_engine_archive_in_dir(&repacked, &extraction_dir)
+            .expect_err("tampered archive should fail");
+        let message = err.to_string();
+        assert!(
+            message.contains("archive NNUE nnue/model.nnue sha256 mismatch"),
+            "unexpected error: {message}"
+        );
+        assert!(
+            message.contains("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+            "unexpected error: {message}"
+        );
+        assert!(
+            message.contains(&tampered_sha256),
+            "unexpected error: {message}"
         );
 
         fs::remove_dir_all(temp).expect("clean temp archive dir");
