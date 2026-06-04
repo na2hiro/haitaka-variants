@@ -3784,14 +3784,15 @@ mod tests {
         let temp = unique_temp_dir("exact-argv");
         fs::create_dir_all(&temp).expect("create temp dir");
         let script = temp.join("engine.sh");
-        write_executable_script(
+        fs::write(
             &script,
             "#!/bin/sh\nif [ \"$#\" -ne 1 ] || [ \"$1\" != \"--expected\" ]; then echo \"bad argv: $*\" >&2; exit 7; fi\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\nesac\ndone\n",
-        );
+        )
+        .expect("write engine script");
 
         let mut client = UsiEngineClient::spawn_with_startup_timeout(
-            &script,
-            &["--expected".to_string()],
+            Path::new("/bin/sh"),
+            &[script.display().to_string(), "--expected".to_string()],
             Duration::from_secs(5),
         )
         .expect("engine should receive exact args and start");
