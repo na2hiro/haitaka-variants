@@ -440,9 +440,21 @@ impl FeatureTransformer {
 
         for square in affected_donor_squares(family, mv) {
             let mut parent_features = DonorFeatureBuffer::new();
-            collect_donor_features(parent_board, perspective, family, square, &mut parent_features);
+            collect_donor_features(
+                parent_board,
+                perspective,
+                family,
+                square,
+                &mut parent_features,
+            );
             let mut child_features = DonorFeatureBuffer::new();
-            collect_donor_features(child_board, perspective, family, square, &mut child_features);
+            collect_donor_features(
+                child_board,
+                perspective,
+                family,
+                square,
+                &mut child_features,
+            );
 
             for &index in parent_features.iter() {
                 if !child_features.contains(index) {
@@ -1084,7 +1096,10 @@ fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
     let mut squares = BitBoard::EMPTY;
     let add_with_neighborhood = |square: Square, squares: &mut BitBoard| {
         *squares |= square.bitboard();
-        for neighbor in donor_influence_neighborhood(family, square).into_iter().flatten() {
+        for neighbor in donor_influence_neighborhood(family, square)
+            .into_iter()
+            .flatten()
+        {
             *squares |= neighbor.bitboard();
         }
     };
@@ -1714,26 +1729,75 @@ mod tests {
         }
     }
 
-    /// The donor family compiled into this build, or `None` for the standard
-    /// (non-donor) build. Donor geometry is `cfg`-gated, so only one applies.
-    fn active_donor_family() -> Option<FeatureFamily> {
+    /// The donor family compiled into this build. Single-donor and pair-donor
+    /// families are feature-gated; knight-8 donor is available in the default
+    /// build.
+    fn active_donor_family() -> FeatureFamily {
         #[cfg(any(
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
             feature = "haimen"
         ))]
-        return Some(FeatureFamily::HalfKAv2DonorSingle);
-        #[cfg(feature = "antouzai")]
-        return Some(FeatureFamily::HalfKAv2DonorPair);
-        #[cfg(not(any(
+        {
+            FeatureFamily::HalfKAv2DonorSingle
+        }
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            feature = "antouzai"
+        ))]
+        {
+            FeatureFamily::HalfKAv2DonorPair
+        }
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            not(feature = "antouzai")
+        ))]
+        {
+            FeatureFamily::HalfKAv2DonorKnight8
+        }
+    }
+
+    #[test]
+    fn active_donor_family_matches_build() {
+        let family = active_donor_family();
+        #[cfg(any(
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen",
+            feature = "haimen"
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorSingle);
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
             feature = "antouzai"
-        )))]
-        return None;
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorPair);
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            not(feature = "antouzai")
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorKnight8);
     }
 
     /// Deterministic small-magnitude pseudo-random weight (splitmix64), kept in
@@ -1794,9 +1858,7 @@ mod tests {
 
     #[test]
     fn donor_incremental_matches_full_refresh_deterministic() {
-        let Some(family) = active_donor_family() else {
-            return;
-        };
+        let family = active_donor_family();
         let model = synthetic_donor_model(family);
 
         let mut board = Board::startpos();
@@ -1817,9 +1879,7 @@ mod tests {
 
     #[test]
     fn donor_incremental_matches_full_refresh_random_rollouts() {
-        let Some(family) = active_donor_family() else {
-            return;
-        };
+        let family = active_donor_family();
         let model = synthetic_donor_model(family);
         let mut rng = rng();
 
