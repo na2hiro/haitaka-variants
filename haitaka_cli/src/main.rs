@@ -2628,10 +2628,20 @@ mod tests {
 
     #[cfg(unix)]
     fn write_executable_script(path: &Path, body: &str) {
-        fs::write(path, body).expect("write executable script");
-        let mut permissions = fs::metadata(path).expect("script metadata").permissions();
+        let temp_path = path.with_extension("tmp");
+        {
+            let mut file = fs::File::create(&temp_path).expect("create executable script temp");
+            file.write_all(body.as_bytes())
+                .expect("write executable script temp");
+            file.flush().expect("flush executable script temp");
+            file.sync_all().expect("sync executable script temp");
+        }
+        let mut permissions = fs::metadata(&temp_path)
+            .expect("script temp metadata")
+            .permissions();
         permissions.set_mode(0o755);
-        fs::set_permissions(path, permissions).expect("set script executable");
+        fs::set_permissions(&temp_path, permissions).expect("set script executable");
+        fs::rename(&temp_path, path).expect("rename executable script into place");
     }
 
     #[test]
