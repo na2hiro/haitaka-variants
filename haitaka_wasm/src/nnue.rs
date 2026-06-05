@@ -1,6 +1,6 @@
 use std::fmt;
 
-use haitaka::{Board, Color, Move, Piece, Square};
+use haitaka::{BitBoard, Board, Color, Move, Piece, Square};
 
 const VERSION: u32 = 0x7AF32F20;
 const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
@@ -176,10 +176,6 @@ impl FeatureFamily {
             Self::HalfKAv2DonorKnight8 => 512,
         }
     }
-
-    const fn supports_incremental(self) -> bool {
-        matches!(self, Self::HalfKAv2)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -326,26 +322,47 @@ impl NnueModel {
     ) -> NnuePositionState {
         debug_assert_eq!(child_board.side_to_move(), !parent_board.side_to_move());
 
-        if !self.family.supports_incremental() {
-            return self.build_position_state_full(child_board);
-        }
-
         let mut child_state = *parent_state;
         for &perspective in &[Color::Black, Color::White] {
             let new_king_square = child_board.king(perspective);
             let parent_accumulator = parent_state.perspective(perspective);
 
             if new_king_square != parent_accumulator.king_square {
+                // The king move re-bases every base feature's king offset, so this
+                // perspective is rebuilt from scratch (which also covers its donor
+                // features via `active_features`).
                 *child_state.perspective_mut(perspective) = self
                     .transformer
                     .build_perspective_accumulator(child_board, perspective, self.family);
             } else {
+                // The base HalfKAv2 block updates exactly as before; donor blocks
+                // (disjoint feature-index range) update via a separate local delta.
                 let delta = build_feature_delta(parent_board, perspective, parent_accumulator, mv);
                 let perspective_accumulator = child_state.perspective_mut(perspective);
                 self.transformer
                     .apply_delta(perspective_accumulator, &delta);
+                self.transformer.apply_donor_delta(
+                    perspective_accumulator,
+                    parent_board,
+                    child_board,
+                    perspective,
+                    self.family,
+                    mv,
+                );
                 perspective_accumulator.king_square = new_king_square;
             }
+        }
+
+        // Correctness safety net for donor families: the incremental result must
+        // be bit-identical to a full refresh. Debug builds only, so release NPS is
+        // unaffected.
+        #[cfg(debug_assertions)]
+        if !matches!(self.family, FeatureFamily::HalfKAv2) {
+            debug_assert_eq!(
+                child_state,
+                self.build_position_state_full(child_board),
+                "incremental donor update diverged from full refresh"
+            );
         }
 
         child_state
@@ -399,6 +416,60 @@ impl FeatureTransformer {
 
         for &index in delta.added() {
             self.add_feature_to_arrays(&mut accumulator.sums, &mut accumulator.psqt, index);
+        }
+    }
+
+    /// Incrementally updates the donor feature block of one perspective.
+    ///
+    /// A move only changes board occupancy on a small set of squares, so only
+    /// the donor features of those squares and of the squares they donate to can
+    /// change. For each such influenced square we diff its donor features between
+    /// the parent and child board and apply the difference.
+    fn apply_donor_delta(
+        &self,
+        accumulator: &mut PerspectiveAccumulator,
+        parent_board: &Board,
+        child_board: &Board,
+        perspective: Color,
+        family: FeatureFamily,
+        mv: Move,
+    ) {
+        if matches!(family, FeatureFamily::HalfKAv2) {
+            return;
+        }
+
+        for square in affected_donor_squares(family, mv) {
+            let mut parent_features = DonorFeatureBuffer::new();
+            collect_donor_features(
+                parent_board,
+                perspective,
+                family,
+                square,
+                &mut parent_features,
+            );
+            let mut child_features = DonorFeatureBuffer::new();
+            collect_donor_features(
+                child_board,
+                perspective,
+                family,
+                square,
+                &mut child_features,
+            );
+
+            for &index in parent_features.iter() {
+                if !child_features.contains(index) {
+                    self.remove_feature_from_arrays(
+                        &mut accumulator.sums,
+                        &mut accumulator.psqt,
+                        index,
+                    );
+                }
+            }
+            for &index in child_features.iter() {
+                if !parent_features.contains(index) {
+                    self.add_feature_to_arrays(&mut accumulator.sums, &mut accumulator.psqt, index);
+                }
+            }
         }
     }
 
@@ -875,6 +946,26 @@ fn append_donor_features(
     square: Square,
     piece_color: Color,
 ) {
+    let max = family.max_active_features();
+    for_each_donor_feature(board, perspective, family, square, piece_color, |index| {
+        features.push_with_limit(index, max);
+    });
+}
+
+/// Enumerates the donor feature indices for the piece on `square`.
+///
+/// This is the single source of truth for donor-block geometry: both
+/// full-refresh active-feature generation ([`append_donor_features`]) and the
+/// incremental accumulator update ([`FeatureTransformer::apply_donor_delta`])
+/// call it, so they cannot diverge in slot ordering or donor geometry.
+fn for_each_donor_feature(
+    board: &Board,
+    perspective: Color,
+    family: FeatureFamily,
+    square: Square,
+    piece_color: Color,
+    mut emit: impl FnMut(usize),
+) {
     match family {
         FeatureFamily::HalfKAv2 => {}
         FeatureFamily::HalfKAv2DonorSingle => {
@@ -884,10 +975,7 @@ fn append_donor_features(
             let Some(donor_piece) = single_donor_piece_on(board, piece_color, donor_square) else {
                 return;
             };
-            // The color plane is keyed on the donor's own color (matching the C++
-            // training overlay's `donor_piece_index`), which differs from the
-            // influenced piece's color for the enemy-donor variants.
-            features.push_with_limit(
+            emit(
                 HALFKAV2_REAL_FEATURES
                     + donor_single_feature_index(
                         perspective,
@@ -895,7 +983,6 @@ fn append_donor_features(
                         donor_piece,
                         square,
                     ),
-                family.max_active_features(),
             );
         }
         FeatureFamily::HalfKAv2DonorPair => {
@@ -907,7 +994,7 @@ fn append_donor_features(
                 let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
                     continue;
                 };
-                features.push_with_limit(
+                emit(
                     HALFKAV2_REAL_FEATURES
                         + donor_pair_feature_index(
                             perspective,
@@ -916,7 +1003,6 @@ fn append_donor_features(
                             donor_piece,
                             square,
                         ),
-                    family.max_active_features(),
                 );
             }
         }
@@ -931,7 +1017,7 @@ fn append_donor_features(
                 let Some(donor_piece) = friendly_piece_on(board, piece_color, donor_square) else {
                     continue;
                 };
-                features.push_with_limit(
+                emit(
                     HALFKAV2_REAL_FEATURES
                         + donor_knight8_feature_index(
                             perspective,
@@ -940,11 +1026,121 @@ fn append_donor_features(
                             donor_piece,
                             square,
                         ),
-                    family.max_active_features(),
                 );
             }
         }
     }
+}
+
+/// Small fixed-capacity buffer for the donor features of a single square.
+///
+/// A square contributes at most one donor feature per slot, so the knight-8
+/// slot count is an upper bound across all families.
+struct DonorFeatureBuffer {
+    indices: [usize; DONOR_KNIGHT8_SLOT_COUNT],
+    len: usize,
+}
+
+impl DonorFeatureBuffer {
+    fn new() -> Self {
+        Self {
+            indices: [0; DONOR_KNIGHT8_SLOT_COUNT],
+            len: 0,
+        }
+    }
+
+    fn push(&mut self, index: usize) {
+        debug_assert!(self.len < DONOR_KNIGHT8_SLOT_COUNT);
+        self.indices[self.len] = index;
+        self.len += 1;
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &usize> {
+        self.indices[..self.len].iter()
+    }
+
+    fn contains(&self, index: usize) -> bool {
+        self.indices[..self.len].contains(&index)
+    }
+}
+
+/// Collects the donor features of the piece on `square` (if any) into `buffer`.
+fn collect_donor_features(
+    board: &Board,
+    perspective: Color,
+    family: FeatureFamily,
+    square: Square,
+    buffer: &mut DonorFeatureBuffer,
+) {
+    let Some(colored_piece) = board.colored_piece_on(square) else {
+        return;
+    };
+    for_each_donor_feature(
+        board,
+        perspective,
+        family,
+        square,
+        colored_piece.color,
+        |index| buffer.push(index),
+    );
+}
+
+/// Returns the set of influenced squares whose donor features can change as a
+/// result of `mv`.
+///
+/// This is the move's changed squares plus, for each changed square, the
+/// squares that read it as a donor candidate (its "neighbourhood"). Returned as
+/// a `BitBoard` so overlapping neighbourhoods are de-duplicated; double-applying
+/// a square's diff would corrupt the accumulator.
+fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
+    let mut squares = BitBoard::EMPTY;
+    let add_with_neighborhood = |square: Square, squares: &mut BitBoard| {
+        *squares |= square.bitboard();
+        for neighbor in donor_influence_neighborhood(family, square)
+            .into_iter()
+            .flatten()
+        {
+            *squares |= neighbor.bitboard();
+        }
+    };
+
+    match mv {
+        Move::Drop { to, .. } => add_with_neighborhood(to, &mut squares),
+        Move::BoardMove { from, to, .. } => {
+            add_with_neighborhood(from, &mut squares);
+            add_with_neighborhood(to, &mut squares);
+        }
+    }
+
+    squares
+}
+
+/// Returns the squares that read `square` as one of their donor candidates.
+///
+/// Each family's donor-candidate offset set is symmetric under negation (the
+/// vertical pair for single-donor, the horizontal pair for pair-donor, and the
+/// negation-symmetric 8 knight offsets), so the candidate geometry is its own
+/// inverse and is colour-independent as a set.
+fn donor_influence_neighborhood(
+    family: FeatureFamily,
+    square: Square,
+) -> [Option<Square>; DONOR_KNIGHT8_SLOT_COUNT] {
+    let mut neighbors = [None; DONOR_KNIGHT8_SLOT_COUNT];
+    match family {
+        FeatureFamily::HalfKAv2 => {}
+        FeatureFamily::HalfKAv2DonorSingle => {
+            neighbors[0] = square.try_offset(0, 1);
+            neighbors[1] = square.try_offset(0, -1);
+        }
+        FeatureFamily::HalfKAv2DonorPair => {
+            neighbors[0] = square.try_offset(1, 0);
+            neighbors[1] = square.try_offset(-1, 0);
+        }
+        FeatureFamily::HalfKAv2DonorKnight8 => {
+            neighbors = knight8_donor_candidate_squares(Color::Black, square);
+        }
+    }
+    neighbors
 }
 
 fn king_offset(king_square: Square, perspective: Color) -> usize {
@@ -1530,6 +1726,177 @@ mod tests {
                 board = child;
                 state = incremental;
             }
+        }
+    }
+
+    /// The donor family compiled into this build. Single-donor and pair-donor
+    /// families are feature-gated; knight-8 donor is available in the default
+    /// build.
+    fn active_donor_family() -> FeatureFamily {
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
+        {
+            FeatureFamily::HalfKAv2DonorSingle
+        }
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            feature = "antouzai"
+        ))]
+        {
+            FeatureFamily::HalfKAv2DonorPair
+        }
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            not(feature = "antouzai")
+        ))]
+        {
+            FeatureFamily::HalfKAv2DonorKnight8
+        }
+    }
+
+    #[test]
+    fn active_donor_family_matches_build() {
+        let family = active_donor_family();
+        #[cfg(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen"
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorSingle);
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            feature = "antouzai"
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorPair);
+        #[cfg(all(
+            not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen"
+            )),
+            not(feature = "antouzai")
+        ))]
+        assert_eq!(family, FeatureFamily::HalfKAv2DonorKnight8);
+    }
+
+    /// Deterministic small-magnitude pseudo-random weight (splitmix64), kept in
+    /// `[-8, 8]` so accumulator sums stay well within `i16` (the debug-only
+    /// overflow assert in `add_i16` would otherwise fire on large synthetic
+    /// weights). Distinct per index, so a wrong feature index yields a
+    /// detectably different accumulator.
+    fn pseudo_weight(x: u64) -> i16 {
+        let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^= z >> 31;
+        (z % 17) as i16 - 8
+    }
+
+    /// Builds an `NnueModel` for `family` with synthetic transformer weights.
+    /// `buckets` is empty because neither `apply_move` nor
+    /// `build_position_state_full` touches the bucket networks.
+    fn synthetic_donor_model(family: FeatureFamily) -> NnueModel {
+        let num_features = family.num_real_features();
+        let biases = (0..TRANSFORMED_FEATURE_DIMENSIONS)
+            .map(|i| pseudo_weight(i as u64))
+            .collect::<Vec<_>>();
+        let weights = (0..TRANSFORMED_FEATURE_DIMENSIONS * num_features)
+            .map(|i| pseudo_weight(0x1000_0000 ^ i as u64))
+            .collect::<Vec<_>>();
+        let psqt_weights = (0..PSQT_BUCKETS * num_features)
+            .map(|i| i32::from(pseudo_weight(0x2000_0000 ^ i as u64)))
+            .collect::<Vec<_>>();
+
+        NnueModel {
+            description: "synthetic-donor".to_string(),
+            family,
+            transformer: FeatureTransformer {
+                biases,
+                weights,
+                psqt_weights,
+            },
+            buckets: Vec::new(),
+        }
+    }
+
+    fn assert_donor_rollout_matches_full(model: &NnueModel, mut board: Board, moves: &[Move]) {
+        let mut state = model.build_position_state_full(&board);
+        for &mv in moves {
+            let mut child = board.clone();
+            child.play_unchecked(mv);
+            let incremental = model.apply_move(&board, &child, &state, mv);
+            let full = model.build_position_state_full(&child);
+            assert_eq!(
+                incremental, full,
+                "incremental donor update diverged from full refresh on move {mv}"
+            );
+            board = child;
+            state = incremental;
+        }
+    }
+
+    #[test]
+    fn donor_incremental_matches_full_refresh_deterministic() {
+        let family = active_donor_family();
+        let model = synthetic_donor_model(family);
+
+        let mut board = Board::startpos();
+        let mut moves = Vec::new();
+        for _ in 0..48 {
+            let mut legal = collect_legal_moves(&board);
+            if legal.is_empty() {
+                break;
+            }
+            legal.sort_unstable_by_key(|mv| mv.to_string());
+            let mv = legal[0];
+            moves.push(mv);
+            board.play_unchecked(mv);
+        }
+
+        assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
+    }
+
+    #[test]
+    fn donor_incremental_matches_full_refresh_random_rollouts() {
+        let family = active_donor_family();
+        let model = synthetic_donor_model(family);
+        let mut rng = rng();
+
+        for _ in 0..8 {
+            let mut board = Board::startpos();
+            let mut moves = Vec::new();
+            for _ in 0..40 {
+                let legal = collect_legal_moves(&board);
+                let Some(&mv) = legal.choose(&mut rng) else {
+                    break;
+                };
+                moves.push(mv);
+                board.play_unchecked(mv);
+            }
+            // Captures, promotions, drops, king moves, and donor adjacency all
+            // arise naturally over a deep variant rollout.
+            assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
         }
     }
 }
