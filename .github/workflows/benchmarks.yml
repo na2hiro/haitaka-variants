@@ -36,6 +36,8 @@ jobs:
       BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base_ref || 'main' }}
       HEAD_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.head_ref || github.sha }}
       HEAD_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+      BENCH_TARGET_DEFAULT: ${{ github.workspace }}/target/bench-default
+      BENCH_TARGET_ANNAN: ${{ github.workspace }}/target/bench-annan
 
     steps:
       - name: Check out base
@@ -62,11 +64,11 @@ jobs:
 
       - name: Benchmark base
         run: |
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench slider_moves -- --noplot --save-baseline base
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench legals -- --noplot --save-baseline base
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench perft -- --noplot --save-baseline base
-          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench legals -- --noplot --save-baseline base
-          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench perft -- --noplot --save-baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench slider_moves -- --noplot --save-baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench legals -- --noplot --save-baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench perft -- --noplot --save-baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_ANNAN" cargo bench -p haitaka --features annan --bench legals -- --noplot --save-baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_ANNAN" cargo bench -p haitaka --features annan --bench perft -- --noplot --save-baseline base
 
       - name: Check out head
         uses: actions/checkout@v4
@@ -77,11 +79,11 @@ jobs:
 
       - name: Benchmark head
         run: |
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench slider_moves -- --noplot --baseline base
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench legals -- --noplot --baseline base
-          CARGO_TARGET_DIR=target/bench-default cargo bench -p haitaka --bench perft -- --noplot --baseline base
-          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench legals -- --noplot --baseline base
-          CARGO_TARGET_DIR=target/bench-annan cargo bench -p haitaka --features annan --bench perft -- --noplot --baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench slider_moves -- --noplot --baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench legals -- --noplot --baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_DEFAULT" cargo bench -p haitaka --bench perft -- --noplot --baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_ANNAN" cargo bench -p haitaka --features annan --bench legals -- --noplot --baseline base
+          CARGO_TARGET_DIR="$BENCH_TARGET_ANNAN" cargo bench -p haitaka --features annan --bench perft -- --noplot --baseline base
 
       - name: Compare results
         run: |
