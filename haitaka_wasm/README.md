@@ -12,9 +12,17 @@ clients can run search, iterative deepening, perft, DFPN, and NNUE loading.
 - `perft(sfen, depth)`
 - `dfpn(sfen, max_nodes, max_time_ms, tt_megabytes, max_pv_moves)`
 - `load_nnue(bytes)`
+- `UsiEngine`
+  - `new()`
+  - `send(line)`
+  - `load_nnue(bytes)`
 
 The native Rust side also exposes hidden helper functions used by `haitaka_cli`
 and tests.
+
+`UsiEngine` speaks USI command strings through JavaScript calls. It is intended
+for browser and Worker transports where stdin/stdout are not available. The
+initial API is synchronous: `send("go ...")` returns after search completes.
 
 ## Build For Browser Use
 

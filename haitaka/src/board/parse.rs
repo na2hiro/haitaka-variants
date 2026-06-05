@@ -332,6 +332,18 @@ impl Display for Board {
     }
 }
 
+#[cfg(all(test, feature = "anhoku"))]
+mod anhoku_tests {
+    use super::*;
+
+    #[test]
+    fn parses_variant_position_with_more_than_two_checkers() {
+        let sfen = "3gks2l/1ln2r+P1n/s2pp1pp1/2p2p3/7P1/p2P2P1L/+bK1nPP3/7R1/+p1SG1GS1N b BGL3Pp 49";
+        let board = Board::from_sfen(sfen).expect("variant position should parse");
+        assert!(board.checkers().len() > 2);
+    }
+}
+
 #[cfg(all(
     test,
     not(any(
