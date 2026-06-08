@@ -2,7 +2,7 @@
 ruleset = "haimen"
 
 [paths]
-output_dir = "haitaka_learn-out/haimen-v0.4.1"
+output_dir = "out/haimen-v0.4.1"
 trainer_checkout = "../variant-nnue-pytorch"
 python = "python3"
 cmake = "cmake"

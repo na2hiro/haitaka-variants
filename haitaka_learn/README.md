@@ -41,7 +41,7 @@ Important environment note:
 
 Typical outputs go under the configured `output_dir`, by default:
 
-`./haitaka_learn-out`
+`./out`
 
 Generated artifacts:
 
@@ -274,7 +274,7 @@ Current limitation:
 
 The report is written to:
 
-`haitaka_learn-out/artifacts/verify.json`
+`out/artifacts/verify.json`
 
 ## Practical Recommendation
 

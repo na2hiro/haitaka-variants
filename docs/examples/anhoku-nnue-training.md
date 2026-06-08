@@ -10,7 +10,7 @@ Use `haitaka_learn.anhoku-v0.4.1.toml` for the new run.
 The important config choices are:
 
 - `rules.ruleset = "anhoku"`.
-- `paths.output_dir = "haitaka_learn-out/anhoku-v0.4.1"` so new datasets,
+- `paths.output_dir = "out/anhoku-v0.4.1"` so new datasets,
   checkpoints, and exports do not mix with pre-donor runs.
 - No `paths.bootstrap_nnue`. Older Anhoku `.nnue` files were trained/exported
   either without donor features or with the previous shared donor-single hash.
@@ -60,7 +60,8 @@ Resume from a Lightning `.ckpt` or a compatible `.pt` if you need continuation.
 Generate the v0.4.1 dataset:
 
 ```bash
-cargo run -p haitaka_learn --release --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.4.1.toml --jobs 0
+HV_VAR=anhoku-v0.4.1
+cargo run -p haitaka_learn --release --features anhoku -- generate-data --config haitaka_learn.${HV_VAR}.toml --jobs 0
 ```
 
 Generation is resumable. If you stop it with Ctrl-C or kill the process, rerun
@@ -73,28 +74,36 @@ on each machine:
 
 ```bash
 # M4
-cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.4.1.toml --jobs 0 --shard-index 0 --shard-count 2
+HV_VAR=anhoku-v0.4.1
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.${HV_VAR}.toml --jobs 0 --shard-index 0 --shard-count 2
 
 # Dell
-cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.anhoku-v0.4.1.toml --jobs 0 --shard-index 1 --shard-count 2
+HV_VAR=anhoku-v0.4.1
+cargo run -p haitaka_learn --features anhoku -- generate-data --config haitaka_learn.${HV_VAR}.toml --jobs 0 --shard-index 1 --shard-count 2
 ```
 
 Copy the two output directories back to the Mac with different wrapper names,
 then merge:
 
 ```bash
+HV_VAR=anhoku-v0.4.1
 cargo run -p haitaka_learn --features anhoku -- merge-data \
-  --config haitaka_learn.anhoku-v0.4.1.toml \
-  --input haitaka_learn-out/anhoku-v0.4.1-m4 \
-  --input haitaka_learn-out/anhoku-v0.4.1-dell
+  --config haitaka_learn.${HV_VAR}.toml \
+  --input out/${HV_VAR}-m4 \
+  --input out/${HV_VAR}-dell
 ```
 
 Create a transfer bundle after `datasets/train.bin` and
 `datasets/validation.bin` exist:
 
 ```bash
-HV_VAR=antouzai-v0.4.1
-tar -czf anhoku-training-input-haitaka_learn.${HV_VAR}.tgz   haitaka_learn.${HV_VAR}.toml   haitaka_learn-out/${HV_VAR}/datasets/train.bin   haitaka_learn-out/${HV_VAR}/datasets/train.json   haitaka_learn-out/${HV_VAR}/datasets/validation.bin   haitaka_learn-out/${HV_VAR}/datasets/validation.json
+HV_VAR=anhoku-v0.4.1
+tar -czf input.${HV_VAR}.tgz \
+  haitaka_learn.${HV_VAR}.toml \
+  out/${HV_VAR}/datasets/train.bin \
+  out/${HV_VAR}/datasets/train.json \
+  out/${HV_VAR}/datasets/validation.bin \
+  out/${HV_VAR}/datasets/validation.json
 ```
 
 The bundle includes the config, assembled training data, and dataset manifests.
@@ -200,7 +209,7 @@ True
 
 ## Transfer And Train
 
-Copy the local bundle beside the Haitaka checkout on Vast. 
+Copy the local bundle beside the Haitaka checkout on Vast.
 Set Vast's host and port to env vars:
 
 ```bash
@@ -212,23 +221,23 @@ VAST_PORT=13035
 then upload from the local Mac with:
 
 ```bash
-# TODO REMOVE HV_RULE necessity
-HV_RULE=anhoku
 HV_VAR=anhoku-v0.4.1
-scp -P ${VAST_PORT} ${HV_RULE}-training-input-haitaka_learn.${HV_VAR}.tgz root@${VAST_HOST}:/workspace/
+scp -P ${VAST_PORT} input.${HV_VAR}.tgz root@${VAST_HOST}:/workspace/
 ```
 
 Unpack and train on Vast:
 
 ```bash
+HV_VAR=anhoku-v0.4.1
+
 cd /workspace/haitaka
-tar -xzf ../anhoku-training-input-haitaka_learn.anhoku-v0.4.1.tgz
+tar -xzf ../input.${HV_VAR}.tgz
 
 source /workspace/variant-nnue-pytorch/env/bin/activate
 source "$HOME/.cargo/env"
 
-cargo run -p haitaka_learn --features anhoku -- train --config haitaka_learn.anhoku-v0.4.1.toml
-cargo run -p haitaka_learn --features anhoku -- export --config haitaka_learn.anhoku-v0.4.1.toml
+cargo run -p haitaka_learn --features anhoku -- train --config haitaka_learn.${HV_VAR}.toml
+cargo run -p haitaka_learn --features anhoku -- export --config haitaka_learn.${HV_VAR}.toml
 ```
 
 The config includes:
@@ -255,10 +264,10 @@ extra_args = ["--threads", "8", "--gpus", "1"]
 
 The essential outputs are:
 
-- `haitaka_learn-out/anhoku-v0.4.1/artifacts/haitaka-anhoku-v0.4.1.nnue`
-- `haitaka_learn-out/anhoku-v0.4.1/artifacts/export.json`
-- `haitaka_learn-out/anhoku-v0.4.1/datasets/train.json`
-- `haitaka_learn-out/anhoku-v0.4.1/datasets/validation.json`
+- `out/${HV_VAR}/artifacts/haitaka-${HV_VAR}.nnue`
+- `out/${HV_VAR}/artifacts/export.json`
+- `out/${HV_VAR}/datasets/train.json`
+- `out/${HV_VAR}/datasets/validation.json`
 
 Lightning checkpoints under `logs/**/*.ckpt` can be gigabytes. They are useful
 only if you plan to resume training, so do not download them for a normal model
@@ -267,26 +276,28 @@ handoff.
 Example `rsync` download from the local Mac:
 
 ```bash
+HV_VAR=anhoku-v0.4.1
+
 cd /Users/na2hiro/proj/engine/haitaka
 
-mkdir -p haitaka_learn-out/anhoku-v0.4.1/artifacts
-mkdir -p haitaka_learn-out/anhoku-v0.4.1/datasets
+mkdir -p out/${HV_VAR}/artifacts
+mkdir -p out/${HV_VAR}/datasets
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka/haitaka_learn-out/anhoku-v0.4.1/artifacts/haitaka-anhoku-v0.4.1.nnue \
-  haitaka_learn-out/anhoku-v0.4.1/artifacts/
+rsync -avP -e "ssh -p ${VAST_PORT}" \
+  root@${VAST_HOST}:/workspace/haitaka/out/${HV_VAR}/artifacts/haitaka-${HV_VAR}.nnue \
+  out/${HV_VAR}/artifacts/
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka/haitaka_learn-out/anhoku-v0.4.1/artifacts/export.json \
-  haitaka_learn-out/anhoku-v0.4.1/artifacts/
+rsync -avP -e "ssh -p ${VAST_PORT}" \
+  root@${VAST_HOST}:/workspace/haitaka/out/${HV_VAR}/artifacts/export.json \
+  out/${HV_VAR}/artifacts/
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka/haitaka_learn-out/anhoku-v0.4.1/datasets/train.json \
-  haitaka_learn-out/anhoku-v0.4.1/datasets/
+rsync -avP -e "ssh -p ${VAST_PORT}" \
+  root@${VAST_HOST}:/workspace/haitaka/out/${HV_VAR}/datasets/train.json \
+  out/${HV_VAR}/datasets/
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka/haitaka_learn-out/anhoku-v0.4.1/datasets/validation.json \
-  haitaka_learn-out/anhoku-v0.4.1/datasets/
+rsync -avP -e "ssh -p ${VAST_PORT}" \
+  root@${VAST_HOST}:/workspace/haitaka/out/${HV_VAR}/datasets/validation.json \
+  out/${HV_VAR}/datasets/
 ```
 
 After confirming the files are downloaded, destroy the Vast instance to avoid
@@ -297,7 +308,8 @@ ongoing charges.
 After downloading the artifacts into the matching local output directory:
 
 ```bash
-cargo run -p haitaka_learn --features anhoku -- verify --config haitaka_learn.anhoku-v0.4.1.toml
+HV_VAR=anhoku-v0.4.1
+cargo run -p haitaka_learn --features anhoku -- verify --config haitaka_learn.${HV_VAR}.toml
 ```
 
 For reporting or sharing, keep:

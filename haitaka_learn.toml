@@ -5,7 +5,7 @@ ruleset = "standard"
 rule_id = 0
 
 [paths]
-output_dir = "haitaka_learn-out"
+output_dir = "out/v0"
 # Point this at a local `variant-nnue-pytorch` checkout.
 trainer_checkout = "../variant-nnue-pytorch"
 bootstrap_nnue = "../shogi-878ca61334a7.nnue"
