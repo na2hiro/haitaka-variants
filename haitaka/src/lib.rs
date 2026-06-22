@@ -61,7 +61,11 @@ pub mod slider_moves;
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 ))]
 pub mod variant_rules;
 

@@ -14,6 +14,13 @@ DONOR_SINGLE_MODE_HASHES = {
     # block hashes; these must match haitaka_wasm/src/nnue.rs.
     "single-front-enemy": DONOR_SINGLE_BASE_HASH ^ 0x85EBCA77,
     "single-behind-enemy": DONOR_SINGLE_BASE_HASH ^ 0xC2B2AE3D,
+    # neko run-reflection variants: the donor is the run-reflection partner. The
+    # C++ data loader segments runs (vertical for neko/nekoneko, horizontal for
+    # yokoneko/yokonekoneko; friendly-only vs any-color) for these DONOR_MODE values.
+    "single-neko-vertical-friendly": DONOR_SINGLE_BASE_HASH ^ 0x27D4EB2F,
+    "single-neko-vertical-any": DONOR_SINGLE_BASE_HASH ^ 0x165667B1,
+    "single-neko-horizontal-friendly": DONOR_SINGLE_BASE_HASH ^ 0xFF51AFD7,
+    "single-neko-horizontal-any": DONOR_SINGLE_BASE_HASH ^ 0xD72805F1,
 }
 DONOR_SINGLE_HASH = DONOR_SINGLE_MODE_HASHES.get(
     getattr(variant, "DONOR_MODE", "none"),

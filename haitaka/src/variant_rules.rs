@@ -126,7 +126,13 @@ pub struct MovementInfluence {
 }
 
 impl MovementInfluence {
-    /// Compute movement influence for the given color.
+    /// Compute movement influence for the given color (fixed-offset donor variants).
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
     #[inline(always)]
     pub fn compute(board: &Board, color: Color) -> Self {
         let friendly = board.colors(color);
@@ -143,6 +149,59 @@ impl MovementInfluence {
             let influenced = influence_targets_from_donors(donors, color) & friendly;
             influenced_by[piece as usize] = influenced;
             has_influence |= influenced;
+        }
+
+        Self {
+            influenced_by,
+            has_influence,
+        }
+    }
+
+    /// Compute movement influence for the given color (neko run-reflection variants).
+    ///
+    /// Each line (file for `neko`/`nekoneko`, rank for `yokoneko`/`yokonekoneko`)
+    /// is segmented into maximal runs and the `i`-th piece from one end swaps
+    /// abilities with the `i`-th piece from the other end. The middle piece of an
+    /// odd-length run keeps its native movement.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))]
+    #[inline(always)]
+    pub fn compute(board: &Board, color: Color) -> Self {
+        let mut influenced_by = [BitBoard::EMPTY; Piece::NUM];
+        let mut has_influence = BitBoard::EMPTY;
+
+        for line in 0..neko::LINE_COUNT {
+            let mut pos = 0;
+            while pos < neko::LINE_LEN {
+                if !neko::in_run(board, color, line, pos) {
+                    pos += 1;
+                    continue;
+                }
+                let start = pos;
+                while pos < neko::LINE_LEN && neko::in_run(board, color, line, pos) {
+                    pos += 1;
+                }
+                let len = pos - start;
+                for i in 0..len {
+                    let j = len - 1 - i;
+                    if j == i {
+                        continue; // middle of an odd-length run keeps native movement
+                    }
+                    let sq = neko::line_square(line, start + i);
+                    // Only `color`'s own pieces have their moves generated here.
+                    if board.color_on(sq) != Some(color) {
+                        continue;
+                    }
+                    let partner_sq = neko::line_square(line, start + j);
+                    let partner_piece = board.piece_on(partner_sq).unwrap();
+                    influenced_by[partner_piece as usize] |= sq.bitboard();
+                    has_influence |= sq.bitboard();
+                }
+            }
         }
 
         Self {
@@ -176,7 +235,7 @@ pub fn effective_movements(board: &Board, color: Color, square: Square) -> Movem
     MovementInfluence::compute(board, color).effective_movements(native_piece, square)
 }
 
-/// Returns the single effective movement piece for single-donor variants.
+/// Returns the single effective movement piece for fixed-offset single-donor variants.
 #[cfg(any(
     feature = "annan",
     feature = "anhoku",
@@ -195,10 +254,32 @@ pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
     board.piece_on(square).unwrap()
 }
 
+/// Returns the single effective movement piece for neko run-reflection variants.
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+#[inline(always)]
+pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
+    if let Some(partner) = neko::run_partner_square(board, color, square) {
+        return board.piece_on(partner).unwrap();
+    }
+    board.piece_on(square).unwrap()
+}
+
 /// Returns the donor squares currently influencing `square`.
 ///
 /// Donors are friendly pieces in same-side variants (annan/anhoku/antouzai) and
-/// enemy pieces in face-off variants (taimen/haimen).
+/// enemy pieces in face-off variants (taimen/haimen). The neko run-reflection
+/// variants do not use this narrowing optimization (see `target_squares`).
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 #[inline(always)]
 pub fn influencing_donor_squares(board: &Board, color: Color, square: Square) -> BitBoard {
     donor_candidate_squares(color, square) & board.colors(donor_color(color))
@@ -207,7 +288,14 @@ pub fn influencing_donor_squares(board: &Board, color: Color, square: Square) ->
 /// Color of the pieces that donate movement to `color`'s pieces.
 ///
 /// Same-side variants (annan/anhoku/antouzai) use friendly donors; face-off
-/// variants (taimen/haimen) use enemy donors.
+/// variants (taimen/haimen) use enemy donors. Unused by the neko run-reflection
+/// variants, which look up partners by run rather than donor color.
+#[cfg(not(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 #[inline(always)]
 fn donor_color(color: Color) -> Color {
     #[cfg(any(feature = "taimen", feature = "haimen"))]
@@ -302,5 +390,92 @@ fn shift_backward(bb: BitBoard, color: Color) -> BitBoard {
     match color {
         Color::Black => bb.shift_south(1),
         Color::White => bb.shift_north(1),
+    }
+}
+
+/// Board-dependent run-reflection donors for the neko family.
+///
+/// Each "line" is segmented into maximal runs of contiguous occupied squares
+/// (broken by empty squares, and additionally by a color change for the
+/// friendly-only `neko`/`yokoneko` variants). Within a run the `i`-th piece from
+/// one end swaps abilities with the `i`-th from the other end; the middle piece
+/// of an odd-length run keeps its native movement.
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+pub(crate) mod neko {
+    use crate::*;
+
+    /// Number of lines to scan (9 files for vertical, 9 ranks for horizontal).
+    pub(crate) const LINE_COUNT: usize = 9;
+    /// Number of squares in each line.
+    pub(crate) const LINE_LEN: usize = 9;
+
+    /// Whether runs are segmented horizontally (within a rank) instead of
+    /// vertically (within a file).
+    const HORIZONTAL: bool = cfg!(any(feature = "yokoneko", feature = "yokonekoneko"));
+    /// Whether enemy pieces participate in a run (nekoneko/yokonekoneko); for the
+    /// friendly-only variants a color change breaks the run.
+    const ANY_COLOR: bool = cfg!(any(feature = "nekoneko", feature = "yokonekoneko"));
+
+    /// The square at position `pos` along line `line`.
+    #[inline(always)]
+    pub(crate) fn line_square(line: usize, pos: usize) -> Square {
+        if HORIZONTAL {
+            // line = rank, pos = file
+            Square::new(File::index_const(pos), Rank::index_const(line))
+        } else {
+            // line = file, pos = rank
+            Square::new(File::index_const(line), Rank::index_const(pos))
+        }
+    }
+
+    /// Whether the square at (`line`, `pos`) is a member of a run for `color`.
+    #[inline(always)]
+    pub(crate) fn in_run(board: &Board, color: Color, line: usize, pos: usize) -> bool {
+        let sq = line_square(line, pos);
+        if ANY_COLOR {
+            board.piece_on(sq).is_some()
+        } else {
+            board.color_on(sq) == Some(color)
+        }
+    }
+
+    /// The swap-partner square of `square` within its run for `color`, or `None`
+    /// when `square` is unpaired (the middle of an odd-length run) or not a run
+    /// member.
+    #[inline(always)]
+    pub(crate) fn run_partner_square(
+        board: &Board,
+        color: Color,
+        square: Square,
+    ) -> Option<Square> {
+        let (line, pos) = if HORIZONTAL {
+            (square.rank() as usize, square.file() as usize)
+        } else {
+            (square.file() as usize, square.rank() as usize)
+        };
+
+        if !in_run(board, color, line, pos) {
+            return None;
+        }
+
+        let mut lo = pos;
+        while lo > 0 && in_run(board, color, line, lo - 1) {
+            lo -= 1;
+        }
+        let mut hi = pos;
+        while hi + 1 < LINE_LEN && in_run(board, color, line, hi + 1) {
+            hi += 1;
+        }
+
+        let partner_pos = lo + hi - pos;
+        if partner_pos == pos {
+            return None; // middle of an odd-length run keeps native movement
+        }
+        Some(line_square(line, partner_pos))
     }
 }

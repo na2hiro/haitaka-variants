@@ -12,7 +12,11 @@ use super::*;
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn subset_movegen_habu_position() {
     fn visit(board: &Board, depth: u8) {
@@ -86,7 +90,11 @@ fn test_is_legal(board: Board) {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn test_forbidden_drops(board: &Board) {
     use std::collections::HashSet;
@@ -128,7 +136,11 @@ fn test_forbidden_drops(board: &Board) {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn test_nifu(board: &Board) {
     let color = board.side_to_move();
@@ -160,7 +172,11 @@ fn test_nifu(board: &Board) {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn legality_simple() {
     test_is_legal(Board::startpos());
@@ -177,7 +193,11 @@ fn legality_simple() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
@@ -232,7 +252,11 @@ fn pawn_push_mate_is_valid() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
@@ -260,7 +284,11 @@ fn discount_pawn_drop_mate_in_perft() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
@@ -383,7 +411,11 @@ fn tsume() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
@@ -430,7 +462,11 @@ fn generate_checks() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
@@ -481,8 +517,15 @@ fn play_tsume() {
 #[test]
 // Under haimen an enemy piece directly behind one of these pieces donates its
 // movement, which changes whether the White King is in check, so this
-// standard-semantics assertion does not hold for that variant.
-#[cfg(not(feature = "haimen"))]
+// standard-semantics assertion does not hold for that variant. The neko
+// run-reflection variants likewise alter the donor relationships.
+#[cfg(not(any(
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn invalid_tsume() {
     // invalid position: White King is in check
     let sfen = "8l/5gB2/7Gk/7p1/7sp/9/9/9/9 b R";
@@ -495,7 +538,11 @@ fn invalid_tsume() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
@@ -539,8 +586,15 @@ fn discovered_checks1() {
 #[test]
 // Under haimen an enemy piece directly behind one of these pieces donates its
 // movement, changing the checker/pin counts asserted below, so this
-// standard-semantics test does not hold for that variant.
-#[cfg(not(feature = "haimen"))]
+// standard-semantics test does not hold for that variant. The neko
+// run-reflection variants likewise alter the donor relationships.
+#[cfg(not(any(
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+)))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
     let mut board = Board::tsume(sfen).unwrap();
@@ -569,7 +623,11 @@ fn pinners() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn undiscovered_checks() {
     /*
@@ -676,7 +734,11 @@ fn discovered_checks2() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn discovered_checks3() {
     /*
@@ -744,7 +806,11 @@ fn fuzzing_generate_moves() {
     feature = "anhoku",
     feature = "antouzai",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
 )))]
 fn fuzzing_checks() {
     let mut rng = rng();
@@ -1826,4 +1892,204 @@ fn haimen_false_pin_blocker_donor_can_move_off_ray() {
         false
     });
     assert!(generated);
+}
+
+// ---------------------------------------------------------------------------
+// neko family (run-reflection donor variants)
+// ---------------------------------------------------------------------------
+
+// Cross-checks the fast generator against independent legality oracles for the
+// current position:
+//   (a) soundness: every generated move, once played, leaves our own king safe;
+//   (b) board-move and drop membership agree with `is_legal` (whose in-check path
+//       uses the authoritative clone-and-recompute `variant_move_resolves_check`).
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+fn neko_assert_consistent(board: &Board) {
+    use std::collections::HashSet;
+
+    let color = board.side_to_move();
+    let mut legals: HashSet<Move> = HashSet::new();
+    board.generate_moves(|mvs| {
+        legals.extend(mvs);
+        false
+    });
+
+    // (a) soundness
+    for &mv in &legals {
+        let mut b = board.clone();
+        b.play_unchecked(mv);
+        let (checkers, _) = b.calculate_checkers_and_pins(color);
+        assert!(
+            checkers.is_empty(),
+            "generated move leaves king in check: {mv}"
+        );
+    }
+
+    // (b) board moves. `is_legal_board_move` is permissive about the promotion
+    // flag for physically non-promotable pieces (it only checks the promotion
+    // zone, not `is_promotable`), so the generator and `is_legal` only have to
+    // agree on the canonical encodings the generator actually emits.
+    for from in Square::ALL {
+        let promotable = board
+            .piece_on(from)
+            .is_some_and(|piece| piece.is_promotable());
+        for to in Square::ALL {
+            for promotion in [false, true] {
+                if promotion && !promotable {
+                    continue;
+                }
+                let mv = Move::BoardMove {
+                    from,
+                    to,
+                    promotion,
+                };
+                assert_eq!(legals.contains(&mv), board.is_legal(mv), "board move {mv}");
+            }
+        }
+    }
+
+    // (b) drops
+    for &piece in &[
+        Piece::Pawn,
+        Piece::Lance,
+        Piece::Knight,
+        Piece::Silver,
+        Piece::Gold,
+        Piece::Bishop,
+        Piece::Rook,
+    ] {
+        if !board.has_in_hand(color, piece) {
+            continue;
+        }
+        for to in Square::ALL {
+            let mv = Move::Drop { piece, to };
+            assert_eq!(legals.contains(&mv), board.is_legal(mv), "drop {mv}");
+        }
+    }
+}
+
+#[test]
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko"
+))]
+fn neko_generated_moves_are_legal_and_consistent() {
+    let mut rng = rng();
+
+    fn rollout(board: &mut Board, depth: usize, rng: &mut ThreadRng) {
+        neko_assert_consistent(board);
+        if depth == 0 {
+            return;
+        }
+        let mut v: Vec<Move> = Vec::new();
+        board.generate_moves(|mvs| {
+            v.extend(mvs);
+            false
+        });
+        if v.is_empty() {
+            return;
+        }
+        let mv = *v.choose(rng).unwrap();
+        board.play_unchecked(mv);
+        rollout(board, depth - 1, rng);
+    }
+
+    for _ in 0..20 {
+        let mut board = Board::startpos();
+        rollout(&mut board, 24, &mut rng);
+    }
+}
+
+#[test]
+#[cfg(feature = "neko")]
+fn neko_vertical_friendly_run_swaps_abilities() {
+    use crate::variant_rules::effective_piece;
+    // Black Pawn (E5) directly above Black Rook (F5): a friendly vertical run.
+    let board: Board = "k8/9/9/9/4P4/4R4/9/9/8K b - 1".parse().unwrap();
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::F5),
+        Piece::Pawn
+    );
+
+    // The Pawn now moves as a Rook (sideways along its rank).
+    assert!(board.is_legal_board_move(Move::BoardMove {
+        from: Square::E5,
+        to: Square::E9,
+        promotion: false,
+    }));
+    // The Rook now moves as a Pawn, so it cannot slide sideways anymore.
+    assert!(!board.is_legal_board_move(Move::BoardMove {
+        from: Square::F5,
+        to: Square::F9,
+        promotion: false,
+    }));
+}
+
+#[test]
+#[cfg(feature = "neko")]
+fn neko_king_participates_in_run() {
+    use crate::variant_rules::effective_piece;
+    // Black King (E5) above Black Rook (F5): the King gains rook movement and the
+    // Rook gains king movement.
+    let board: Board = "k8/9/9/9/4K4/4R4/9/9/9 b - 1".parse().unwrap();
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::F5),
+        Piece::King
+    );
+}
+
+#[test]
+#[cfg(feature = "nekoneko")]
+fn nekoneko_vertical_enemy_run_swaps_abilities() {
+    use crate::variant_rules::effective_piece;
+    // Black Pawn (E5) above a White Rook (F5): runs include enemy pieces, so the
+    // Pawn adopts the enemy Rook's movement.
+    let board: Board = "k8/9/9/9/4P4/4r4/9/9/8K b - 1".parse().unwrap();
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+}
+
+#[test]
+#[cfg(feature = "yokoneko")]
+fn yokoneko_horizontal_friendly_run_swaps_abilities() {
+    use crate::variant_rules::effective_piece;
+    // Black Pawn (E5) next to Black Rook (E4) along rank E: a horizontal run.
+    let board: Board = "k8/9/9/9/4PR3/9/9/9/8K b - 1".parse().unwrap();
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E4),
+        Piece::Pawn
+    );
+}
+
+#[test]
+#[cfg(feature = "yokonekoneko")]
+fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
+    use crate::variant_rules::effective_piece;
+    // Black Pawn (E5) next to a White Rook (E4) along rank E.
+    let board: Board = "k8/9/9/9/4Pr3/9/9/9/8K b - 1".parse().unwrap();
+    assert_eq!(
+        effective_piece(&board, Color::Black, Square::E5),
+        Piece::Rook
+    );
 }

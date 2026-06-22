@@ -66,7 +66,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
@@ -232,7 +236,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn variant_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
         match mv {
@@ -257,6 +265,39 @@ impl Board {
                 to: to.bitboard(),
             },
         }
+    }
+
+    /// Expands `mvs` into individual moves and forwards to `listener` only those
+    /// that leave our own king safe on the actual post-move position.
+    ///
+    /// The neko run-reflection variants need this because moving (or capturing,
+    /// or dropping next to) any piece can re-segment a run and change another
+    /// piece's effective movement, so neither pins nor evasion target masks can
+    /// capture legality; only replaying the move and recomputing checkers can.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))]
+    fn neko_emit_if_safe<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        mvs: PieceMoves,
+        listener: &mut F,
+    ) -> bool {
+        for mv in mvs {
+            if self.variant_move_resolves_check(mv) {
+                let piece = match mv {
+                    Move::BoardMove { from, .. } => self.piece_on(from).unwrap(),
+                    Move::Drop { piece, .. } => piece,
+                };
+                let singleton = Self::variant_singleton_piece_moves(mv, self.side_to_move(), piece);
+                if listener(singleton) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     #[cfg(any(
@@ -417,7 +458,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
@@ -439,52 +484,80 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
-        let color = self.side_to_move();
-        let targets = if IN_CHECK {
-            debug_assert!(self.checkers.len() == 1);
-            let checker = self.checkers.next_square().unwrap();
-            let our_king = self.king(color);
-            let mut targets = get_between_rays(checker, our_king) | checker.bitboard();
+        #[cfg(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        ))]
+        {
+            // In neko run-reflection variants, capturing, relocating, or dropping
+            // any piece can re-segment a run and change a checker's effective
+            // movement. We therefore do not narrow evasion destinations here and
+            // rely on `variant_move_resolves_check` to filter the candidates.
+            let _ = IN_CHECK;
+            let color = self.side_to_move();
+            BitBoard::FULL & !self.colors(color)
+        }
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )))]
+        {
+            let color = self.side_to_move();
+            let targets = if IN_CHECK {
+                debug_assert!(self.checkers.len() == 1);
+                let checker = self.checkers.next_square().unwrap();
+                let our_king = self.king(color);
+                let mut targets = get_between_rays(checker, our_king) | checker.bitboard();
 
-            let them = !color;
-            #[cfg(any(
-                feature = "annan",
-                feature = "anhoku",
-                feature = "taimen",
-                feature = "haimen"
-            ))]
-            {
-                // In single-donor variants, capturing the donor may resolve
-                // check only if the checker does not also attack natively.
-                let donors = crate::variant_rules::influencing_donor_squares(self, them, checker);
-                if !donors.is_empty() {
-                    let native_piece = self.piece_on(checker).unwrap();
-                    let native_attacks = crate::variant_rules::pseudo_legals_for(
-                        native_piece,
-                        them,
-                        checker,
-                        self.occupied(),
-                    );
-                    if !native_attacks.has(our_king) {
-                        targets |= donors;
+                let them = !color;
+                #[cfg(any(
+                    feature = "annan",
+                    feature = "anhoku",
+                    feature = "taimen",
+                    feature = "haimen"
+                ))]
+                {
+                    // In single-donor variants, capturing the donor may resolve
+                    // check only if the checker does not also attack natively.
+                    let donors =
+                        crate::variant_rules::influencing_donor_squares(self, them, checker);
+                    if !donors.is_empty() {
+                        let native_piece = self.piece_on(checker).unwrap();
+                        let native_attacks = crate::variant_rules::pseudo_legals_for(
+                            native_piece,
+                            them,
+                            checker,
+                            self.occupied(),
+                        );
+                        if !native_attacks.has(our_king) {
+                            targets |= donors;
+                        }
                     }
                 }
-            }
-            #[cfg(feature = "antouzai")]
-            {
-                // With multiple donors, any donor capture can potentially
-                // remove one part of a union attack, so let the final legality
-                // check decide.
-                targets |= crate::variant_rules::influencing_donor_squares(self, them, checker);
-            }
-            targets
-        } else {
-            BitBoard::FULL
-        };
-        targets & !self.colors(color)
+                #[cfg(feature = "antouzai")]
+                {
+                    // With multiple donors, any donor capture can potentially
+                    // remove one part of a union attack, so let the final legality
+                    // check decide.
+                    targets |= crate::variant_rules::influencing_donor_squares(self, them, checker);
+                }
+                targets
+            } else {
+                BitBoard::FULL
+            };
+            targets & !self.colors(color)
+        }
     }
 
     // Similar to target_squares but for drop moves.
@@ -497,7 +570,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
@@ -573,7 +650,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
         if piece == Piece::Pawn {
             return self.emit_variant_pawn_moves(color, from, to, listener);
@@ -593,7 +674,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn emit_variant_pawn_moves<F: FnMut(PieceMoves) -> bool>(
         &self,
@@ -773,7 +858,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
@@ -836,7 +925,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
         let color = self.side_to_move();
@@ -910,14 +1003,22 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
         let mut moves = {
             #[cfg(any(
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             {
                 let eff = crate::variant_rules::effective_piece(self, color, our_king);
@@ -939,7 +1040,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
 
@@ -951,7 +1056,11 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )))]
             let safe = self.king_safe_on(to);
             #[cfg(any(
@@ -959,7 +1068,11 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             let safe = self.variant_king_safe_on(to);
 
@@ -984,7 +1097,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
@@ -1024,7 +1141,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
@@ -1065,7 +1186,11 @@ impl Board {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             {
                 use crate::variant_rules::pseudo_legals_for;
@@ -1246,9 +1371,28 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             {
+                // The neko variants must always verify king safety: a drop can
+                // re-segment a run and expose our king even when not in check.
+                #[cfg(any(
+                    feature = "neko",
+                    feature = "nekoneko",
+                    feature = "yokoneko",
+                    feature = "yokonekoneko"
+                ))]
+                let resolves_check = self.variant_move_resolves_check(mv);
+                #[cfg(not(any(
+                    feature = "neko",
+                    feature = "nekoneko",
+                    feature = "yokoneko",
+                    feature = "yokonekoneko"
+                )))]
                 let resolves_check = if self.checkers.is_empty() {
                     // A drop can grant an adjacent enemy new movement in the
                     // enemy-donor variants, so recheck its post-move king safety.
@@ -1274,7 +1418,11 @@ impl Board {
                 feature = "anhoku",
                 feature = "antouzai",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             )))]
             {
                 let resolves_check = match self.checkers.len() {
@@ -1297,7 +1445,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
@@ -1403,7 +1555,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
@@ -1428,7 +1584,11 @@ impl Board {
                 feature = "annan",
                 feature = "anhoku",
                 feature = "taimen",
-                feature = "haimen"
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
             ))]
             let moves = crate::variant_rules::pseudo_legals_for(
                 crate::variant_rules::effective_piece(self, color, from),
@@ -1480,20 +1640,37 @@ impl Board {
                 return false;
             }
 
-            // When not in check, ordinary variants are already safe at this point.
-            // Enemy-donor variants still need a post-move recheck because moving our
-            // own piece can change an adjacent enemy's effective movement (and thus
-            // expose our king) even though nothing was pinned and we were not in check.
-            #[cfg(any(feature = "taimen", feature = "haimen"))]
-            if self.checkers.is_empty() {
-                return self.enemy_donor_move_safe(mv, self.enemy_donor_axis());
-            }
-            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
-            if self.checkers.is_empty() {
-                return true;
-            }
-
+            // In the neko variants any move can re-segment a run and expose our
+            // king (pins are not tracked), so always verify king safety.
+            #[cfg(any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
+            ))]
             return self.variant_move_resolves_check(mv);
+
+            #[cfg(not(any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko"
+            )))]
+            {
+                // When not in check, ordinary variants are already safe at this point.
+                // Enemy-donor variants still need a post-move recheck because moving our
+                // own piece can change an adjacent enemy's effective movement (and thus
+                // expose our king) even though nothing was pinned and we were not in check.
+                #[cfg(any(feature = "taimen", feature = "haimen"))]
+                if self.checkers.is_empty() {
+                    return self.enemy_donor_move_safe(mv, self.enemy_donor_axis());
+                }
+                #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+                if self.checkers.is_empty() {
+                    return true;
+                }
+                return self.variant_move_resolves_check(mv);
+            }
         }
         false
     }
@@ -1503,7 +1680,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn king_is_legal(&self, color: Color, from: Square, to: Square) -> bool {
         if !(king_attacks(color, from) & !self.colors(color)).has(to) {
@@ -1545,7 +1726,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -1555,7 +1740,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -1577,7 +1766,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         abort_if! {
@@ -1592,9 +1785,22 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        // The neko variants always go through the king-safety-filtered drop and
+        // board-move generators (see `generate_drops`/`generate_board_moves_for`),
+        // so there is no separate in-check evasion path here.
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )))]
         if !self.checkers.is_empty() {
             return self.generate_variant_evasions(&mut listener);
         }
@@ -1624,7 +1830,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         )),
         doc = "```"
     )]
@@ -1634,7 +1844,11 @@ impl Board {
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ),
         doc = "```ignore"
     )]
@@ -1657,27 +1871,48 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        // The neko variants generate a broad superset and verify each move's king
+        // safety on the post-move position (pins are disabled for these variants).
         #[cfg(any(
-            feature = "annan",
-            feature = "anhoku",
-            feature = "antouzai",
-            feature = "taimen",
-            feature = "haimen"
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
-        if !self.checkers.is_empty() {
-            return self.generate_variant_board_evasions(mask, &mut listener);
+        {
+            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            return self.add_all_legals::<_, false>(mask, &mut filter);
         }
 
-        // Not in check: enemy-donor variants still need per-move safety rechecks for
-        // moves that can change an adjacent enemy's effective movement.
-        #[cfg(any(feature = "taimen", feature = "haimen"))]
-        return self.generate_enemy_donor_safe_board(mask, &mut listener);
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )))]
+        {
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
+            if !self.checkers.is_empty() {
+                return self.generate_variant_board_evasions(mask, &mut listener);
+            }
 
-        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
-        match self.checkers.len() {
-            0 => self.add_all_legals::<_, false>(mask, &mut listener),
-            1 => self.add_all_legals::<_, true>(mask, &mut listener),
-            _ => self.add_king_legals::<_, true>(mask, &mut listener),
+            // Not in check: enemy-donor variants still need per-move safety rechecks
+            // for moves that can change an adjacent enemy's effective movement.
+            #[cfg(any(feature = "taimen", feature = "haimen"))]
+            return self.generate_enemy_donor_safe_board(mask, &mut listener);
+
+            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+            match self.checkers.len() {
+                0 => self.add_all_legals::<_, false>(mask, &mut listener),
+                1 => self.add_all_legals::<_, true>(mask, &mut listener),
+                _ => self.add_king_legals::<_, true>(mask, &mut listener),
+            }
         }
     }
 
@@ -1686,10 +1921,31 @@ impl Board {
     /// # Examples
     ///
     // Enemy-donor variants (taimen/haimen) recheck each drop individually and may
-    // reject some, so they emit singleton `Drops` batches rather than one full
-    // bitboard; skip this batching-specific example for those builds.
-    #[cfg_attr(not(any(feature = "taimen", feature = "haimen")), doc = "```")]
-    #[cfg_attr(any(feature = "taimen", feature = "haimen"), doc = "```ignore")]
+    // reject some, and the neko variants emit king-safety-filtered singleton drops
+    // rather than one bulk `Drops` covering every empty square, so this standard
+    // batching example is ignored for all of those builds.
+    #[cfg_attr(
+        not(any(
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )),
+        doc = "```"
+    )]
+    #[cfg_attr(
+        any(
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        ),
+        doc = "```ignore"
+    )]
     /// use haitaka::*;
     /// let sfen: & str = "lnsgk2nl/1r4gs1/p1pppp1pp/1p4p2/7P1/2P6/PP1PPPP1P/1SG4R1/LN2KGSNL b Bb 11";
     /// let board = Board::from_sfen(sfen).unwrap();
@@ -1714,33 +1970,54 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
-            feature = "annan",
-            feature = "anhoku",
-            feature = "antouzai",
-            feature = "taimen",
-            feature = "haimen"
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
-        if !self.checkers.is_empty() {
-            return self.generate_variant_drop_evasions(&mut listener, None);
+        {
+            let targets = !self.occupied();
+            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            self.add_all_drops::<_, false>(&mut filter, targets)
         }
 
-        // Not in check: a drop can grant an adjacent enemy new movement in the
-        // enemy-donor variants, so recheck post-move king safety per drop.
-        #[cfg(any(feature = "taimen", feature = "haimen"))]
-        return self.generate_enemy_donor_safe_drops(None, &mut listener);
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )))]
+        {
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
+            if !self.checkers.is_empty() {
+                return self.generate_variant_drop_evasions(&mut listener, None);
+            }
 
-        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
-        match self.checkers.len() {
-            0 => {
-                let targets = !self.occupied();
-                self.add_all_drops::<_, false>(&mut listener, targets)
+            // Not in check: a drop can grant an adjacent enemy new movement in the
+            // enemy-donor variants, so recheck post-move king safety per drop.
+            #[cfg(any(feature = "taimen", feature = "haimen"))]
+            return self.generate_enemy_donor_safe_drops(None, &mut listener);
+
+            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+            match self.checkers.len() {
+                0 => {
+                    let targets = !self.occupied();
+                    self.add_all_drops::<_, false>(&mut listener, targets)
+                }
+                1 => {
+                    let targets = self.target_drops::<true>();
+                    self.add_all_drops::<_, true>(&mut listener, targets)
+                }
+                _ => false,
             }
-            1 => {
-                let targets = self.target_drops::<true>();
-                self.add_all_drops::<_, true>(&mut listener, targets)
-            }
-            _ => false,
         }
     }
 
@@ -1750,50 +2027,92 @@ impl Board {
         piece: Piece,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
-        let num_checkers = self.checkers.len();
+        // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
-            feature = "annan",
-            feature = "anhoku",
-            feature = "antouzai",
-            feature = "taimen",
-            feature = "haimen"
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
         ))]
-        if num_checkers > 0 {
-            return self.generate_variant_drop_evasions(&mut listener, Some(piece));
+        {
+            let dst = !self.occupied();
+            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            match piece {
+                Piece::Pawn => self.add_drops::<commoner::Pawn, _, false>(&mut filter, dst),
+                Piece::Lance => self.add_drops::<commoner::Lance, _, false>(&mut filter, dst),
+                Piece::Knight => self.add_drops::<commoner::Knight, _, false>(&mut filter, dst),
+                Piece::Silver => self.add_drops::<commoner::Silver, _, false>(&mut filter, dst),
+                Piece::Gold => self.add_drops::<commoner::Gold, _, false>(&mut filter, dst),
+                Piece::Rook => self.add_drops::<commoner::Rook, _, false>(&mut filter, dst),
+                Piece::Bishop => self.add_drops::<commoner::Bishop, _, false>(&mut filter, dst),
+                _ => false, // Other pieces cannot be dropped
+            }
         }
 
-        // Not in check: enemy-donor variants recheck post-move king safety per drop.
-        #[cfg(any(feature = "taimen", feature = "haimen"))]
-        return self.generate_enemy_donor_safe_drops(Some(piece), &mut listener);
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )))]
+        {
+            let num_checkers = self.checkers.len();
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            ))]
+            if num_checkers > 0 {
+                return self.generate_variant_drop_evasions(&mut listener, Some(piece));
+            }
 
-        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
-        if num_checkers == 0 {
-            let dst = !self.occupied();
-            match piece {
-                Piece::Pawn => self.add_drops::<commoner::Pawn, _, false>(&mut listener, dst),
-                Piece::Lance => self.add_drops::<commoner::Lance, _, false>(&mut listener, dst),
-                Piece::Knight => self.add_drops::<commoner::Knight, _, false>(&mut listener, dst),
-                Piece::Silver => self.add_drops::<commoner::Silver, _, false>(&mut listener, dst),
-                Piece::Gold => self.add_drops::<commoner::Gold, _, false>(&mut listener, dst),
-                Piece::Rook => self.add_drops::<commoner::Rook, _, false>(&mut listener, dst),
-                Piece::Bishop => self.add_drops::<commoner::Bishop, _, false>(&mut listener, dst),
-                _ => false, // Other pieces cannot be dropped
+            // Not in check: enemy-donor variants recheck post-move king safety per drop.
+            #[cfg(any(feature = "taimen", feature = "haimen"))]
+            return self.generate_enemy_donor_safe_drops(Some(piece), &mut listener);
+
+            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+            if num_checkers == 0 {
+                let dst = !self.occupied();
+                match piece {
+                    Piece::Pawn => self.add_drops::<commoner::Pawn, _, false>(&mut listener, dst),
+                    Piece::Lance => self.add_drops::<commoner::Lance, _, false>(&mut listener, dst),
+                    Piece::Knight => {
+                        self.add_drops::<commoner::Knight, _, false>(&mut listener, dst)
+                    }
+                    Piece::Silver => {
+                        self.add_drops::<commoner::Silver, _, false>(&mut listener, dst)
+                    }
+                    Piece::Gold => self.add_drops::<commoner::Gold, _, false>(&mut listener, dst),
+                    Piece::Rook => self.add_drops::<commoner::Rook, _, false>(&mut listener, dst),
+                    Piece::Bishop => {
+                        self.add_drops::<commoner::Bishop, _, false>(&mut listener, dst)
+                    }
+                    _ => false, // Other pieces cannot be dropped
+                }
+            } else if num_checkers == 1 {
+                let dst = self.target_drops::<true>();
+                match piece {
+                    Piece::Pawn => self.add_drops::<commoner::Pawn, _, true>(&mut listener, dst),
+                    Piece::Lance => self.add_drops::<commoner::Lance, _, true>(&mut listener, dst),
+                    Piece::Knight => {
+                        self.add_drops::<commoner::Knight, _, true>(&mut listener, dst)
+                    }
+                    Piece::Silver => {
+                        self.add_drops::<commoner::Silver, _, true>(&mut listener, dst)
+                    }
+                    Piece::Gold => self.add_drops::<commoner::Gold, _, true>(&mut listener, dst),
+                    Piece::Rook => self.add_drops::<commoner::Rook, _, true>(&mut listener, dst),
+                    Piece::Bishop => {
+                        self.add_drops::<commoner::Bishop, _, true>(&mut listener, dst)
+                    }
+                    _ => false, // Other pieces cannot be dropped
+                }
+            } else {
+                // there is more than one checker, so no drops are legal
+                false
             }
-        } else if num_checkers == 1 {
-            let dst = self.target_drops::<true>();
-            match piece {
-                Piece::Pawn => self.add_drops::<commoner::Pawn, _, true>(&mut listener, dst),
-                Piece::Lance => self.add_drops::<commoner::Lance, _, true>(&mut listener, dst),
-                Piece::Knight => self.add_drops::<commoner::Knight, _, true>(&mut listener, dst),
-                Piece::Silver => self.add_drops::<commoner::Silver, _, true>(&mut listener, dst),
-                Piece::Gold => self.add_drops::<commoner::Gold, _, true>(&mut listener, dst),
-                Piece::Rook => self.add_drops::<commoner::Rook, _, true>(&mut listener, dst),
-                Piece::Bishop => self.add_drops::<commoner::Bishop, _, true>(&mut listener, dst),
-                _ => false, // Other pieces cannot be dropped
-            }
-        } else {
-            // there is more than one checker, so no drops are legal
-            false
         }
     }
 
@@ -1807,7 +2126,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let color = self.side_to_move();
@@ -1950,7 +2273,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     fn filter_checks_by_promotion_status(
         color: Color,
@@ -2035,7 +2362,11 @@ impl Board {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let their_color = !self.side_to_move();

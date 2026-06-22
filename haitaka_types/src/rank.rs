@@ -93,7 +93,15 @@ const SOUTH_A: BitBoard = SOUTH_B.bitor(RANK_B);
 ///
 #[inline(always)]
 pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(any(feature = "annan", feature = "antouzai", feature = "haimen"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "antouzai",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
@@ -116,7 +124,11 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     {
         match piece {
@@ -143,7 +155,15 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
 /// be dropped. This is the inverse of `no_fly_zone`.
 #[inline(always)]
 pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(any(feature = "annan", feature = "antouzai", feature = "haimen"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "antouzai",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))]
     {
         let _ = (color, piece);
         BitBoard::FULL
@@ -166,7 +186,11 @@ pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     {
         match piece {
@@ -217,7 +241,15 @@ pub const fn prom_zone(color: Color) -> BitBoard {
 /// ```
 #[inline(always)]
 pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
-    #[cfg(any(feature = "annan", feature = "antouzai", feature = "haimen"))]
+    #[cfg(any(
+        feature = "annan",
+        feature = "antouzai",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))]
     {
         let _ = (color, piece);
         BitBoard::EMPTY
@@ -237,7 +269,11 @@ pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     )))]
     {
         match piece {

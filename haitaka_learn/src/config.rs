@@ -24,7 +24,7 @@ pub struct RulesetSpec {
     pub verification_name: &'static str,
 }
 
-pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 6] = [
+pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 10] = [
     RulesetSpec {
         ruleset: Ruleset::Standard,
         required_feature: None,
@@ -66,6 +66,34 @@ pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 6] = [
         default_rule_id: 74,
         default_opening_sfen: STANDARD_STARTPOS_SFEN,
         verification_name: "haimen_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Neko,
+        required_feature: Some("neko"),
+        default_rule_id: 130,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "neko_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Nekoneko,
+        required_feature: Some("nekoneko"),
+        default_rule_id: 131,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "nekoneko_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Yokoneko,
+        required_feature: Some("yokoneko"),
+        default_rule_id: 132,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "yokoneko_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Yokonekoneko,
+        required_feature: Some("yokonekoneko"),
+        default_rule_id: 133,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "yokonekoneko_startpos",
     },
 ];
 
@@ -174,7 +202,11 @@ impl LoadedConfig {
             | Ruleset::Anhoku
             | Ruleset::Antouzai
             | Ruleset::Taimen
-            | Ruleset::Haimen => self
+            | Ruleset::Haimen
+            | Ruleset::Neko
+            | Ruleset::Nekoneko
+            | Ruleset::Yokoneko
+            | Ruleset::Yokonekoneko => self
                 .config
                 .rules
                 .ruleset
@@ -385,6 +417,10 @@ pub enum Ruleset {
     Antouzai,
     Taimen,
     Haimen,
+    Neko,
+    Nekoneko,
+    Yokoneko,
+    Yokonekoneko,
 }
 
 impl Ruleset {
@@ -397,6 +433,10 @@ impl Ruleset {
             Self::Antouzai => "antouzai",
             Self::Taimen => "taimen",
             Self::Haimen => "haimen",
+            Self::Neko => "neko",
+            Self::Nekoneko => "nekoneko",
+            Self::Yokoneko => "yokoneko",
+            Self::Yokonekoneko => "yokonekoneko",
         }
     }
 
@@ -696,6 +736,14 @@ fn active_variant_feature() -> Option<&'static str> {
         Some("taimen")
     } else if cfg!(feature = "haimen") {
         Some("haimen")
+    } else if cfg!(feature = "neko") {
+        Some("neko")
+    } else if cfg!(feature = "nekoneko") {
+        Some("nekoneko")
+    } else if cfg!(feature = "yokoneko") {
+        Some("yokoneko")
+    } else if cfg!(feature = "yokonekoneko") {
+        Some("yokonekoneko")
     } else {
         None
     }
@@ -704,9 +752,14 @@ fn active_variant_feature() -> Option<&'static str> {
 pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
-        Ruleset::Annan | Ruleset::Anhoku | Ruleset::Taimen | Ruleset::Haimen => {
-            FEATURE_SET_DONOR_SINGLE
-        }
+        Ruleset::Annan
+        | Ruleset::Anhoku
+        | Ruleset::Taimen
+        | Ruleset::Haimen
+        | Ruleset::Neko
+        | Ruleset::Nekoneko
+        | Ruleset::Yokoneko
+        | Ruleset::Yokonekoneko => FEATURE_SET_DONOR_SINGLE,
         Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
     }
 }
@@ -714,9 +767,14 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
 fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => vec![FEATURE_SET_HALFKAV2],
-        Ruleset::Annan | Ruleset::Anhoku | Ruleset::Taimen | Ruleset::Haimen => {
-            vec![FEATURE_SET_DONOR_SINGLE]
-        }
+        Ruleset::Annan
+        | Ruleset::Anhoku
+        | Ruleset::Taimen
+        | Ruleset::Haimen
+        | Ruleset::Neko
+        | Ruleset::Nekoneko
+        | Ruleset::Yokoneko
+        | Ruleset::Yokonekoneko => vec![FEATURE_SET_DONOR_SINGLE],
         Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
     }
 }

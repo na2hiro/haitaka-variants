@@ -275,7 +275,11 @@ impl ZobristBoard {
         feature = "anhoku",
         feature = "antouzai",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
     ))
 ))]
 mod tests {
