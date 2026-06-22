@@ -5,7 +5,7 @@ mod verify;
 
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use config::LoadedConfig;
 
@@ -71,6 +71,15 @@ fn resume_override(no_resume: bool) -> Option<bool> {
     no_resume.then_some(false)
 }
 
+fn resolve_checkpoint(checkpoint: Option<PathBuf>) -> Result<Option<PathBuf>> {
+    checkpoint
+        .map(|path| {
+            path.canonicalize()
+                .with_context(|| format!("failed to resolve checkpoint {}", path.display()))
+        })
+        .transpose()
+}
+
 fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
     dataset::GenerateOptions {
         jobs: None,
@@ -130,12 +139,17 @@ fn main() -> Result<()> {
             no_resume,
         } => {
             let loaded = LoadedConfig::from_path(&config)?;
+            let checkpoint = if no_resume {
+                checkpoint
+            } else {
+                resolve_checkpoint(checkpoint)?
+            };
             let checkpoint = trainer::train(&loaded, resume_override(no_resume), checkpoint)?;
             println!("training finished: {}", checkpoint.display());
         }
         Command::Export { config, checkpoint } => {
             let loaded = LoadedConfig::from_path(&config)?;
-            let exported = trainer::export(&loaded, checkpoint)?;
+            let exported = trainer::export(&loaded, resolve_checkpoint(checkpoint)?)?;
             println!("exported NNUE: {}", exported.display());
         }
         Command::Verify { config } => {
@@ -172,8 +186,9 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_options, resume_override};
+    use super::{generate_options, resolve_checkpoint, resume_override};
     use crate::dataset::GenerateOptions;
+    use std::fs;
 
     #[test]
     fn resume_override_is_none_without_cli_flag() {
@@ -183,6 +198,25 @@ mod tests {
     #[test]
     fn resume_override_disables_resume_when_flag_is_set() {
         assert_eq!(resume_override(true), Some(false));
+    }
+
+    #[test]
+    fn resolve_checkpoint_canonicalizes_existing_path() {
+        let dir = std::env::temp_dir().join(format!(
+            "haitaka-learn-checkpoint-test-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let checkpoint = dir.join("epoch=4.ckpt");
+        fs::write(&checkpoint, b"checkpoint").unwrap();
+
+        assert_eq!(
+            resolve_checkpoint(Some(checkpoint.clone())).unwrap(),
+            Some(checkpoint.canonicalize().unwrap())
+        );
+
+        fs::remove_file(&checkpoint).unwrap();
+        fs::remove_dir(&dir).unwrap();
     }
 
     #[test]
