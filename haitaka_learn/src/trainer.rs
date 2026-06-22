@@ -39,7 +39,7 @@ pub fn train(
         if resume_override == Some(false) {
             bail!("--checkpoint cannot be used with --no-resume");
         }
-        ensure_file_exists(&checkpoint, "checkpoint")?;
+        let checkpoint = resolve_existing_file(checkpoint, "checkpoint")?;
         if !is_valid_checkpoint(&checkpoint, &loaded.config.paths.python, &trainer_checkout)? {
             bail!("checkpoint is not loadable: {}", checkpoint.display());
         }
@@ -118,7 +118,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     artifacts.ensure_dirs()?;
 
     let checkpoint = if let Some(path) = source_checkpoint {
-        path
+        resolve_existing_file(path, "checkpoint")?
     } else {
         find_latest_valid_checkpoint(
             &artifacts.logs_dir,
@@ -132,8 +132,6 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
             )
         })?
     };
-    ensure_file_exists(&checkpoint, "checkpoint")?;
-
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
     run_command(
         &loaded.config.paths.python,
@@ -353,6 +351,11 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     } else {
         bail!("{label} is missing: {}", path.display())
     }
+}
+
+fn resolve_existing_file(path: PathBuf, label: &str) -> Result<PathBuf> {
+    ensure_file_exists(&path, label)?;
+    fs::canonicalize(&path).with_context(|| format!("failed to resolve {label} {}", path.display()))
 }
 
 fn detect_git_revision(repo_root: &Path) -> Option<String> {

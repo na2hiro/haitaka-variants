@@ -6,10 +6,10 @@ usage() {
 Usage: scripts/export_nnue_every_5_epochs.sh [options]
 
 Exports checkpoints whose Lightning epoch is 4, 9, 14, ... to separate .nnue
-files. By default this targets the Anhoku v0.4 run.
+files. By default this targets the Anhoku v0.4.1 run.
 
 Options:
-  --config PATH          Training config. Default: haitaka_learn.anhoku-v0.4.toml
+  --config PATH          Training config. Default: haitaka_learn.anhoku-v0.4.1.toml
   --feature NAME         Cargo feature to pass to haitaka_learn. Default: anhoku
   --checkpoint-dir DIR   Checkpoint directory. Default:
                          <output_dir>/logs/lightning_logs/version_0/checkpoints
@@ -24,7 +24,7 @@ USAGE
 }
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-config="haitaka_learn.anhoku-v0.4.toml"
+config="haitaka_learn.anhoku-v0.4.1.toml"
 feature="anhoku"
 checkpoint_dir=""
 output_dir=""
