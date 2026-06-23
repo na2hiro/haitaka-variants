@@ -165,9 +165,38 @@ Artifacts from local measurement were written under
 
 Phase 2 follow-up before continuing to qsearch/selective search:
 
-- Diagnose why standard and Annan lose heavily despite searching far fewer nodes.
-  The top suspicion is that the new ordering changes which shallow or
-  collision-prone TT entries dominate short-movetime search.
+- Diagnosed: standard and Annan lose heavily at `--movetime-ms 20` mostly
+  because Phase 2 changes the completed-depth frontier, not because fixed-depth
+  scores diverge. On the first 12 standard self-play openings, current and
+  previous engines returned identical moves and scores at fixed depths 4 and 5.
+  Under `go movetime 20`, however, 10 of the first 20 sampled standard openings
+  diverged. Most divergences collapsed at `go movetime 50`.
+- Representative standard opening:
+  `lnsgk1snl/1r4gb1/pp1pppppp/2p6/9/9/PPPPPPPPP/1B2GK1R1/LNSG2SNL b - 5`.
+  Fixed-depth search oscillates by parity: depth 4 chooses `7g7f` with score
+  `-14`, depth 5 chooses `9g9f` with score `200`, depth 6 returns to `7g7f`
+  with score `-14`, and depth 7 returns to `9g9f` with score `198`. Phase 1
+  depth 5 takes about `41.6 ms` from a fresh search, while Phase 2 depth 5 takes
+  about `10.6 ms`, so the 20 ms USI search commonly returns the odd-depth
+  horizon move in Phase 2 while Phase 1 returns the even-depth move.
+- Representative Annan opening:
+  `ln1gkg1nl/1rs3sb1/p1ppppp1p/1p5p1/9/1P5PR/P1PPPPP1P/1B2K4/LNSG1GSNL b - 5`.
+  Depth 4 chooses `1f1e` with score `-650`; depth 5 chooses `9i9h` with score
+  `444`; depth 6 returns to `1f1e` with score `-244`. Phase 1 depth 5 takes
+  about `21.0 ms`, while Phase 2 depth 5 takes about `16.4 ms`, enough to flip
+  many 20 ms searches from the even-depth result to the odd-depth result.
+- Hash size sensitivity did not support the original collision hypothesis. With
+  standard openings at 20 ms, the Phase 2 vs Phase 1 move differences persisted
+  at 16 MB and 128 MB hash sizes. Tiny 1 MB hash made both engines noisier, but
+  did not explain the main regression.
+- The staged picker also resets killer/history ordering for each iterative
+  deepening iteration, because `SearchOrdering` is created inside each fixed
+  depth search. TT state carries across iterations, but killer/history learning
+  does not, so the current Phase 2 strength impact is mostly the changed
+  tactical/quiet ordering and the resulting depth-parity shift.
+- Practical conclusion: do not tune Phase 2 by 20 ms Elo alone until qsearch is
+  added or the time-control/depth-parity behavior is stabilized. The lower node
+  count is real, but without qsearch it can expose worse odd-depth horizon moves.
 - Add a TT-disabled or TT-verification-strong comparison mode so move-ordering
   changes can be tested for fixed-depth score equality without TT collision
   effects.
