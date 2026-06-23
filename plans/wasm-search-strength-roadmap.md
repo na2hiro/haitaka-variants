@@ -3,16 +3,16 @@
 ### Summary
 
 `haitaka_wasm` already has legal move generation, alpha-beta search, root DFPN
-short-circuiting, and incremental NNUE evaluation. Its search is still much
-simpler than modern Shogi engines: fixed-depth negamax, no transposition table,
+short-circuiting, incremental NNUE evaluation, and a Phase 1 transposition table.
+Its search is still much simpler than modern Shogi engines: fixed-depth negamax,
 basic move ordering, no quiescence search, and no selective pruning beyond normal
 alpha-beta cutoffs.
 
-The highest-return path is to improve the alpha-beta core before attempting a
-large architectural rewrite. Add a transposition table and stronger ordering
-first, then quiescence and selective search. Defer make/unmake until the easier
-search wins have been measured, because board mutation rollback is
-correctness-sensitive across all variants.
+The highest-return path is to keep improving the alpha-beta core before
+attempting a large architectural rewrite. Phase 1 added the transposition table;
+next add stronger ordering, then quiescence and selective search. Defer
+make/unmake until the easier search wins have been measured, because board
+mutation rollback is correctness-sensitive across all variants.
 
 ### Current Baseline
 
@@ -23,42 +23,82 @@ correctness-sensitive across all variants.
   and deterministic tie-breakers.
 - Depth-zero nodes call `evaluate_or_mate` immediately, so volatile capture,
   promotion, and check positions can be evaluated before tactics settle.
-- Iterative deepening reruns each depth without sharing search results between
+- Iterative deepening now reuses one transposition table across completed depth
   iterations.
 - `Board::hash()` already exposes an incremental Zobrist key, so a
   transposition table does not require new board hashing infrastructure.
 - NNUE evaluation already supports incremental position state. Preserve this path
   while changing search.
 
-### Phase 1: Transposition Table
+### Phase 1: Transposition Table - Done
 
-Add a bounded search-local or session-local transposition table.
+Phase 1 has been implemented in `haitaka_wasm`.
 
-Recommended entry fields:
+Implemented:
 
-- 64-bit position key or a verification fragment plus table index.
-- remaining search depth.
-- score.
-- bound type: exact, lower, or upper.
-- best move for hash-move ordering.
-- generation or age for replacement.
+- Added a compact rshogi/YaneuraOu-style clustered TT in
+  `haitaka_wasm/src/tt.rs`: 32-byte aligned clusters, 3 compact 10-byte entries,
+  16-bit key fragments, packed move storage, depth, generation, bound, score,
+  and eval fields.
+- Added replacement policy with generation aging, depth preference, collision
+  reporting, and `hashfull` telemetry.
+- Added mate-score conversion with ply adjustment before TT store/load.
+- Added legal hash-move ordering. Packed moves are never trusted directly; they
+  are unpacked and only used if present in the generated legal move list.
+- Added sufficient-depth TT cutoffs for exact/lower/upper bounds.
+- Added TT telemetry: `tt_probes`, `tt_hits`, `tt_cutoffs`, `tt_stores`,
+  `tt_collisions`, and `tt_hashfull`.
+- Reused one TT across iterative-deepening iterations and one session-local TT
+  across `UsiSession` searches.
+- Added WASM APIs `set_hash_size_mb(size_mb)` and `clear_hash()`.
+- Added USI `option name Hash type spin default 16 min 1 max 1024` and
+  `setoption name Hash value N`.
+- Kept Phase 1 single-threaded; no atomics or lock-free TT races were added.
 
-Use the table in two ways:
+Verification completed:
 
-- Cut off when an entry has sufficient depth and a compatible bound.
-- Try the stored best move before generating or sorting the rest of the moves.
+- `cargo test -p haitaka_wasm` passed: 57 tests.
+- TT packing tests cover representative board moves, drops for hand pieces, and
+  invalid packed moves.
+- TT entry behavior tests cover exact-bound overwrite, same-key empty-move
+  preservation, different-key collision reporting, and generation aging.
+- Search tests cover TT stats exposure, tiny 1 MB hash search, and iterative
+  deepening TT reuse.
+- Existing handcrafted and NNUE legal-best-move tests still pass.
+- Movetime self-play was used for Elo, not fixed-depth self-play.
 
-Start with a simple power-of-two table and depth-preferred replacement. Add
-`tt_hits`, `tt_cutoffs`, `tt_stores`, and `tt_collisions` counters to the native
-summary before tuning replacement policy.
+Measured strength and speed against clean `main`:
 
-Expected impact: high, especially depth 4 and above, and especially during
-iterative deepening.
+| Build | Movetime self-play | Score | Approx Elo | 95% CI |
+|---|---:|---:|---:|---:|
+| standard | 118-79-3 | 59.75% | +68.6 | +20.5 .. +119.5 |
+| `--features annan` | 101-97-2 | 51.0% | +6.9 | -41.4 .. +55.6 |
+| `--features nekoneko` | 85-86-29 | 49.75% | -1.7 | -50.2 .. +46.7 |
 
-Risk: moderate. Mate-distance scores need conversion to and from table storage
-using current ply so shorter mates remain preferred.
+Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
+external USI self-play currently reports `totalNodes=0` for child engines.
 
-### Phase 2: Move Picker And Ordering
+| Build | Depth | Nodes diff | NPS diff | Time diff |
+|---|---:|---:|---:|---:|
+| standard | 5 | -30.6% | -2.9% | -28.5% |
+| `--features annan` | 5 | -19.5% | +1.4% | -20.5% |
+| `--features nekoneko` | 5 | -27.1% | +8.0% | -32.5% |
+
+Phase 1 verification gaps to keep as future work:
+
+- Add an explicit TT-disabled runtime/config path so fixed-depth equality tests
+  can compare TT-enabled and TT-disabled searches inside the same binary.
+- Add larger self-play runs, ideally 1,000+ games per ruleset and at more than
+  one time control, because Annan and NekoNeko 200-game confidence intervals
+  crossed zero.
+- Teach external USI self-play to parse child-engine `info` nodes/nps so
+  movetime Elo reports can include nodes, NPS, and TT telemetry.
+- Add a reusable benchmark command or script that records the fixed-depth NPS
+  and movetime Elo artifacts outside `/tmp`.
+- Add a tactical fixture suite with exact expected scores or moves where TT
+  enabled/disabled equality can be tested safely.
+
+### Not Done Yet: Phase 2 - Move Picker And Ordering
 
 Replace full per-node sorting with a staged move picker.
 
@@ -88,7 +128,7 @@ Risk: low to moderate. The main risk is destabilizing deterministic tests if
 tie-breaks change; update tests to assert legality or clear tactical outcomes
 instead of incidental best moves where appropriate.
 
-### Phase 3: Quiescence Search
+### Not Done Yet: Phase 3 - Quiescence Search
 
 Replace direct depth-zero evaluation with a capped tactical search.
 
@@ -107,7 +147,7 @@ blunders where the engine stops immediately after an unstable capture or threat.
 Risk: moderate. Unbounded qsearch can explode in Shogi because drops and checks
 create many forcing continuations. Add node and ply caps from the first version.
 
-### Phase 4: Selective Search
+### Not Done Yet: Phase 4 - Selective Search
 
 Add these only after TT, move picker, and qsearch are stable:
 
@@ -130,21 +170,24 @@ without measurement.
 Risk: moderate to high. Every pruning rule should be added behind focused tests
 and SPRT-style self-play comparisons.
 
-### Phase 5: Time Management And USI Surface
+### Not Done Yet: Phase 5 - Time Management And USI Surface
 
 Strength in real play depends on time allocation, not only fixed-depth search.
 
-Recommended additions:
+Already covered by Phase 1:
+
+- Add `setoption name Hash value N`.
+
+Remaining additions:
 
 - Parse and honor `btime`, `wtime`, `byoyomi`, `binc`, and `winc`.
 - Add `stop` support for browser worker and native USI flows.
-- Add `setoption name Hash value N`.
 - Later: `Threads`, `MultiPV`, and ponder.
 
 This overlaps with `plans/wasm-usi-future-work.md`; keep protocol features tied
 to actual search/runtime support.
 
-### Phase 6: NNUE And Data Quality
+### Not Done Yet: Phase 6 - NNUE And Data Quality
 
 The NNUE runtime already follows the right broad design: sparse features,
 incremental update, integer inference, and variant-specific feature hashes.
@@ -185,16 +228,16 @@ Useful counters:
 
 ### Suggested Implementation Order
 
-1. Add TT data structures and telemetry without enabling cutoffs.
-2. Enable TT hash-move ordering.
-3. Enable TT bound cutoffs.
-4. Add killer and history heuristics.
-5. Replace full move sorting with a staged move picker.
-6. Add qsearch for captures/promotions and check evasions.
-7. Add PVS and aspiration windows.
-8. Add conservative LMR.
-9. Evaluate null-move pruning and futility pruning separately.
-10. Revisit make/unmake if clone overhead remains a top profiler item.
+1. Done: add TT data structures and telemetry.
+2. Done: enable TT hash-move ordering.
+3. Done: enable TT bound cutoffs.
+4. Not done: add killer and history heuristics.
+5. Not done: replace full move sorting with a staged move picker.
+6. Not done: add qsearch for captures/promotions and check evasions.
+7. Not done: add PVS and aspiration windows.
+8. Not done: add conservative LMR.
+9. Not done: evaluate null-move pruning and futility pruning separately.
+10. Not done: revisit make/unmake if clone overhead remains a top profiler item.
 
 ### References
 
