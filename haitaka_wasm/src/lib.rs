@@ -1,12 +1,13 @@
+mod movepick;
 mod nnue;
 mod tt;
 
-use std::cmp::Reverse;
 use std::str::FromStr;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
 use instant::Instant;
+use movepick::{MovePicker, MoveSource, SearchOrdering, SearchOrderingStats};
 pub use nnue::{NnueModel, NnuePositionState};
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
@@ -39,6 +40,7 @@ pub struct SearchSummary {
     pub states: u64,
     pub nps: f64,
     pub tt_stats: SearchTtStats,
+    pub ordering_stats: SearchOrderingStats,
 }
 
 #[doc(hidden)]
@@ -50,6 +52,7 @@ pub struct IterativeIterationSummary {
     pub states: u64,
     pub nps: f64,
     pub tt_stats: SearchTtStats,
+    pub ordering_stats: SearchOrderingStats,
 }
 
 #[doc(hidden)]
@@ -75,6 +78,7 @@ pub struct IterativeSearchSummary {
     pub states: u64,
     pub nps: f64,
     pub tt_stats: SearchTtStats,
+    pub ordering_stats: SearchOrderingStats,
     pub iterations: Vec<IterativeIterationSummary>,
     pub dfpn: Option<DfpnSummary>,
 }
@@ -115,6 +119,8 @@ struct SearchContext<'a> {
     deadline: Option<Instant>,
     tt: &'a mut TranspositionTable,
     tt_stats: SearchTtStats,
+    ordering: SearchOrdering,
+    ordering_stats: SearchOrderingStats,
 }
 
 impl SearchContext<'_> {
@@ -144,6 +150,7 @@ pub struct SearchResult {
     states: u64,
     nps: f64,
     tt_stats: SearchTtStats,
+    ordering_stats: SearchOrderingStats,
 }
 
 #[wasm_bindgen]
@@ -197,6 +204,46 @@ impl SearchResult {
     pub fn tt_hashfull(&self) -> f64 {
         self.tt_stats.tt_hashfull as f64
     }
+
+    #[wasm_bindgen(getter, js_name = betaCutoffs)]
+    pub fn beta_cutoffs(&self) -> f64 {
+        self.ordering_stats.beta_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = firstMoveCutoffs)]
+    pub fn first_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.first_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = hashMoveTries)]
+    pub fn hash_move_tries(&self) -> f64 {
+        self.ordering_stats.hash_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = hashMoveCutoffs)]
+    pub fn hash_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.hash_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = killerMoveTries)]
+    pub fn killer_move_tries(&self) -> f64 {
+        self.ordering_stats.killer_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = killerMoveCutoffs)]
+    pub fn killer_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.killer_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = historyMoveTries)]
+    pub fn history_move_tries(&self) -> f64 {
+        self.ordering_stats.history_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = historyMoveCutoffs)]
+    pub fn history_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.history_move_cutoffs as f64
+    }
 }
 
 #[wasm_bindgen]
@@ -208,6 +255,7 @@ pub struct IterativeSearchResult {
     states: u64,
     nps: f64,
     tt_stats: SearchTtStats,
+    ordering_stats: SearchOrderingStats,
     iterations: Vec<IterativeIterationSummary>,
     dfpn: Option<DfpnSummary>,
 }
@@ -272,6 +320,46 @@ impl IterativeSearchResult {
     #[wasm_bindgen(getter, js_name = ttHashfull)]
     pub fn tt_hashfull(&self) -> f64 {
         self.tt_stats.tt_hashfull as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = betaCutoffs)]
+    pub fn beta_cutoffs(&self) -> f64 {
+        self.ordering_stats.beta_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = firstMoveCutoffs)]
+    pub fn first_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.first_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = hashMoveTries)]
+    pub fn hash_move_tries(&self) -> f64 {
+        self.ordering_stats.hash_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = hashMoveCutoffs)]
+    pub fn hash_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.hash_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = killerMoveTries)]
+    pub fn killer_move_tries(&self) -> f64 {
+        self.ordering_stats.killer_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = killerMoveCutoffs)]
+    pub fn killer_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.killer_move_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = historyMoveTries)]
+    pub fn history_move_tries(&self) -> f64 {
+        self.ordering_stats.history_move_tries as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = historyMoveCutoffs)]
+    pub fn history_move_cutoffs(&self) -> f64 {
+        self.ordering_stats.history_move_cutoffs as f64
     }
 
     #[wasm_bindgen(getter)]
@@ -363,6 +451,46 @@ fn iterative_iteration_to_js_value(iteration: &IterativeIterationSummary) -> JsV
         &object,
         "ttHashfull",
         JsValue::from_f64(iteration.tt_stats.tt_hashfull as f64),
+    );
+    set_js_property(
+        &object,
+        "betaCutoffs",
+        JsValue::from_f64(iteration.ordering_stats.beta_cutoffs as f64),
+    );
+    set_js_property(
+        &object,
+        "firstMoveCutoffs",
+        JsValue::from_f64(iteration.ordering_stats.first_move_cutoffs as f64),
+    );
+    set_js_property(
+        &object,
+        "hashMoveTries",
+        JsValue::from_f64(iteration.ordering_stats.hash_move_tries as f64),
+    );
+    set_js_property(
+        &object,
+        "hashMoveCutoffs",
+        JsValue::from_f64(iteration.ordering_stats.hash_move_cutoffs as f64),
+    );
+    set_js_property(
+        &object,
+        "killerMoveTries",
+        JsValue::from_f64(iteration.ordering_stats.killer_move_tries as f64),
+    );
+    set_js_property(
+        &object,
+        "killerMoveCutoffs",
+        JsValue::from_f64(iteration.ordering_stats.killer_move_cutoffs as f64),
+    );
+    set_js_property(
+        &object,
+        "historyMoveTries",
+        JsValue::from_f64(iteration.ordering_stats.history_move_tries as f64),
+    );
+    set_js_property(
+        &object,
+        "historyMoveCutoffs",
+        JsValue::from_f64(iteration.ordering_stats.history_move_cutoffs as f64),
     );
     object.into()
 }
@@ -537,6 +665,8 @@ fn search_board_with_strategy_and_tt(
         deadline,
         tt,
         tt_stats: SearchTtStats::default(),
+        ordering: SearchOrdering::default(),
+        ordering_stats: SearchOrderingStats::default(),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -557,6 +687,7 @@ fn search_board_with_strategy_and_tt(
         states: ctx.states,
         nps,
         tt_stats: ctx.tt_stats,
+        ordering_stats: ctx.ordering_stats,
     })
 }
 
@@ -732,10 +863,11 @@ impl UsiSession {
     }
 
     fn fallback_bestmove(&self) -> String {
-        legal_moves(&self.board, None)
-            .into_iter()
+        let ordering = SearchOrdering::default();
+        let mut picker = MovePicker::new(&self.board, None, &ordering, 0);
+        picker
             .next()
-            .map(|mv| mv.to_string())
+            .map(|picked| picked.mv.to_string())
             .unwrap_or_else(|| "resign".to_string())
     }
 
@@ -954,6 +1086,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
                         states: 0,
                         nps: 0.0,
                         tt_stats: SearchTtStats::default(),
+                        ordering_stats: SearchOrderingStats::default(),
                         iterations: Vec::new(),
                         dfpn: Some(dfpn_summary),
                     });
@@ -976,6 +1109,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
                 states: 0,
                 nps: 0.0,
                 tt_stats: SearchTtStats::default(),
+                ordering_stats: SearchOrderingStats::default(),
                 iterations: Vec::new(),
                 dfpn: Some(dfpn_summary),
             });
@@ -987,6 +1121,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     let mut completed_depth = 0;
     let mut total_states = 0;
     let mut tt_stats = SearchTtStats::default();
+    let mut ordering_stats = SearchOrderingStats::default();
     let mut latest_best_move = None;
     let mut timed_out = false;
 
@@ -1002,6 +1137,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
                 completed_depth = depth;
                 latest_best_move = summary.best_move.clone();
                 tt_stats.add_iteration(summary.tt_stats);
+                ordering_stats.add_iteration(summary.ordering_stats);
                 iterations.push(IterativeIterationSummary {
                     depth,
                     best_move: summary.best_move,
@@ -1009,6 +1145,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
                     states: summary.states,
                     nps: summary.nps,
                     tt_stats: summary.tt_stats,
+                    ordering_stats: summary.ordering_stats,
                 });
             }
             Err(SearchInterrupted) => {
@@ -1033,6 +1170,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         states: total_states,
         nps,
         tt_stats,
+        ordering_stats,
         iterations,
         dfpn,
     })
@@ -1265,6 +1403,7 @@ pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
         states: summary.states,
         nps: summary.nps,
         tt_stats: summary.tt_stats,
+        ordering_stats: summary.ordering_stats,
     })
 }
 
@@ -1284,6 +1423,7 @@ pub fn search_iterative_deepening(
         states: summary.states,
         nps: summary.nps,
         tt_stats: summary.tt_stats,
+        ordering_stats: summary.ordering_stats,
         iterations: summary.iterations,
         dfpn: summary.dfpn,
     })
@@ -1345,8 +1485,8 @@ fn search_best_move(
         ctx.tt_stats.tt_hits += 1;
     }
 
-    let moves = legal_moves(board, tt_move);
-    if moves.is_empty() {
+    let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, 0);
+    if move_picker.is_empty() {
         return Ok(None);
     }
 
@@ -1356,7 +1496,9 @@ fn search_best_move(
     let mut best_score = -INF_SCORE;
     let mut best_move = None;
 
-    for mv in moves {
+    while let Some(picked) = move_picker.next() {
+        record_move_try(ctx, picked.source);
+        let mv = picked.mv;
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
@@ -1431,14 +1573,19 @@ fn negamax(
         }
     }
 
-    let moves = legal_moves(board, tt_move);
-    if moves.is_empty() {
+    let ply_index = usize::try_from(ply).unwrap_or(usize::MAX);
+    let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, ply_index);
+    if move_picker.is_empty() {
         return Ok(-MATE_SCORE + ply);
     }
 
     let mut best_score = -INF_SCORE;
     let mut best_move = None;
-    for mv in moves {
+    let mut move_count = 0u64;
+    while let Some(picked) = move_picker.next() {
+        move_count += 1;
+        record_move_try(ctx, picked.source);
+        let mv = picked.mv;
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
@@ -1456,6 +1603,15 @@ fn negamax(
             alpha = score;
         }
         if alpha >= beta {
+            ctx.ordering_stats.beta_cutoffs += 1;
+            if move_count == 1 {
+                ctx.ordering_stats.first_move_cutoffs += 1;
+            }
+            record_move_cutoff(ctx, picked.source);
+            if !matches!(picked.source, MoveSource::Hash | MoveSource::Tactical) {
+                ctx.ordering
+                    .record_beta_cutoff(board.side_to_move(), mv, depth, ply_index);
+            }
             break;
         }
     }
@@ -1653,61 +1809,21 @@ fn count_legal_moves(board: &Board) -> usize {
     count
 }
 
-fn legal_moves(board: &Board, tt_move: Option<Move>) -> Vec<Move> {
-    let mut moves = Vec::new();
-    board.generate_moves(|piece_moves| {
-        moves.extend(piece_moves);
-        false
-    });
-    if moves.len() > 1 {
-        moves.sort_unstable_by_key(|mv| move_order_key(board, *mv));
-    }
-    if let Some(tt_move) = tt_move
-        && let Some(index) = moves.iter().position(|mv| *mv == tt_move)
-    {
-        moves.swap(0, index);
-    }
-    moves
-}
-
-fn move_order_key(board: &Board, mv: Move) -> (Reverse<i32>, Reverse<u8>, u8, u8, u8, u8) {
-    (
-        Reverse(capture_value(board, mv)),
-        Reverse(u8::from(mv.is_promotion())),
-        u8::from(mv.is_drop()),
-        move_to_index(mv),
-        move_from_or_piece_index(mv),
-        move_piece_kind_index(mv),
-    )
-}
-
-fn move_to_index(mv: Move) -> u8 {
-    mv.to() as u8
-}
-
-fn move_from_or_piece_index(mv: Move) -> u8 {
-    match mv {
-        Move::BoardMove { from, .. } => from as u8,
-        Move::Drop { piece, .. } => piece as u8,
+fn record_move_try(ctx: &mut SearchContext<'_>, source: MoveSource) {
+    match source {
+        MoveSource::Hash => ctx.ordering_stats.hash_move_tries += 1,
+        MoveSource::Killer => ctx.ordering_stats.killer_move_tries += 1,
+        MoveSource::History => ctx.ordering_stats.history_move_tries += 1,
+        MoveSource::Tactical => {}
     }
 }
 
-fn move_piece_kind_index(mv: Move) -> u8 {
-    match mv {
-        Move::Drop { piece, .. } => piece as u8,
-        Move::BoardMove { .. } => u8::MAX,
-    }
-}
-
-fn capture_value(board: &Board, mv: Move) -> i32 {
-    match mv {
-        Move::BoardMove { to, .. } => board
-            .color_on(to)
-            .filter(|color| *color != board.side_to_move())
-            .and_then(|_| board.piece_on(to))
-            .map(piece_value)
-            .unwrap_or(0),
-        Move::Drop { .. } => 0,
+fn record_move_cutoff(ctx: &mut SearchContext<'_>, source: MoveSource) {
+    match source {
+        MoveSource::Hash => ctx.ordering_stats.hash_move_cutoffs += 1,
+        MoveSource::Killer => ctx.ordering_stats.killer_move_cutoffs += 1,
+        MoveSource::History => ctx.ordering_stats.history_move_cutoffs += 1,
+        MoveSource::Tactical => {}
     }
 }
 
@@ -2028,6 +2144,7 @@ mod tests {
         assert!(summary.tt_stats.tt_probes > 0);
         assert!(summary.tt_stats.tt_stores > 0);
         assert!(summary.tt_stats.tt_hashfull <= 1000);
+        assert!(summary.ordering_stats.history_move_tries > 0);
     }
 
     #[test]
@@ -2074,6 +2191,11 @@ mod tests {
             summary.tt_stats.tt_hits > 0,
             "expected TT hits from previous iteration, got {:?}",
             summary.tt_stats
+        );
+        assert!(
+            summary.ordering_stats.hash_move_tries > 0,
+            "expected hash move tries from previous iteration, got {:?}",
+            summary.ordering_stats
         );
     }
 

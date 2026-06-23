@@ -3,14 +3,16 @@
 ### Summary
 
 `haitaka_wasm` already has legal move generation, alpha-beta search, root DFPN
-short-circuiting, incremental NNUE evaluation, and a Phase 1 transposition table.
+short-circuiting, incremental NNUE evaluation, a Phase 1 transposition table,
+and a Phase 2 staged move picker.
 Its search is still much simpler than modern Shogi engines: fixed-depth negamax,
-basic move ordering, no quiescence search, and no selective pruning beyond normal
-alpha-beta cutoffs.
+no quiescence search, and no selective pruning beyond normal alpha-beta cutoffs.
 
 The highest-return path is to keep improving the alpha-beta core before
 attempting a large architectural rewrite. Phase 1 added the transposition table;
-next add stronger ordering, then quiescence and selective search. Defer
+Phase 2 added stronger ordering infrastructure, but the first measured build is
+weaker at short movetime and needs diagnosis before adding qsearch or selective
+search. Defer
 make/unmake until the easier search wins have been measured, because board
 mutation rollback is correctness-sensitive across all variants.
 
@@ -18,9 +20,10 @@ mutation rollback is correctness-sensitive across all variants.
 
 - `search_best_move` and `negamax` clone the board for each child and recurse
   with alpha-beta bounds.
-- `legal_moves` allocates a fresh `Vec<Move>` per node and sorts the whole list.
-- Move ordering currently prioritizes capture value, promotion, non-drop moves,
-  and deterministic tie-breakers.
+- `MovePicker` still allocates a fresh `Vec<Move>` per node, but it now consumes
+  generated moves by staged selection instead of sorting the whole list.
+- Move ordering currently prioritizes TT/hash moves, winning/equal tactical
+  moves, killer moves, history-ranked quiet moves, and losing tactical moves.
 - Depth-zero nodes call `evaluate_or_mate` immediately, so volatile capture,
   promotion, and check positions can be evaluated before tactics settle.
 - Iterative deepening now reuses one transposition table across completed depth
@@ -98,35 +101,81 @@ Phase 1 verification gaps to keep as future work:
 - Add a tactical fixture suite with exact expected scores or moves where TT
   enabled/disabled equality can be tested safely.
 
-### Not Done Yet: Phase 2 - Move Picker And Ordering
+### Phase 2: Move Picker And Ordering - Implemented, Needs Follow-Up
 
-Replace full per-node sorting with a staged move picker.
+Phase 2 has been implemented in `haitaka_wasm`, but the first measured version
+is not a strength improvement at short movetime.
 
-Recommended order:
+Implemented:
 
-1. PV move or hash move from the previous iteration / TT.
-2. Winning captures and promotions.
-3. Equal captures and promotions.
-4. Killer moves, with mate killers if useful.
-5. Quiet moves ranked by history heuristic.
-6. Losing captures.
+- Added `haitaka_wasm/src/movepick.rs` with a staged move picker.
+- Replaced full per-node move sorting with staged selection:
+  1. TT/hash move.
+  2. Winning captures and promotions.
+  3. Equal captures and promotions.
+  4. Killer moves.
+  5. Quiet moves ranked by history heuristic.
+  6. Losing captures.
+- Added two killer slots per ply and a side-aware history table.
+- Added distinct history keys for drops and board moves:
+  `(side, dropped piece, to square)` for drops and
+  `(side, from square, to square, promotion)` for board moves.
+- Added ordering telemetry:
+  `beta_cutoffs`, `first_move_cutoffs`, `hash_move_tries`,
+  `hash_move_cutoffs`, `killer_move_tries`, `killer_move_cutoffs`,
+  `history_move_tries`, and `history_move_cutoffs`.
+- Exposed ordering telemetry through native summaries, WASM getters, and
+  iterative-search JS iteration objects.
+- Kept Phase 2 exact: no qsearch, LMR, futility pruning, null-move pruning, PVS,
+  or broad checking-move generation was added.
 
-Shogi-specific additions:
+Verification completed:
 
-- Treat checking moves as tactically important, but avoid generating all checks
-  at every quiet node until benchmarks show it pays off.
-- Drops need their own history key, likely `(side, dropped piece, to square)`.
-- Board moves can use `(side, from square, to square, promotion flag)` or a
-  compact move encoding if one exists.
-- Captures should eventually move from victim-only ordering to MVV-LVA or SEE
-  when attacker identity is cheap enough.
+- `cargo check -p haitaka_wasm` passed.
+- `cargo test -p haitaka_wasm` passed: 61 tests.
+- `cargo test -p haitaka_wasm --features annan` passed: 58 tests.
+- `cargo test -p haitaka_wasm --features nekoneko` passed: 57 tests.
+- `cargo bench -p haitaka_wasm --bench nnue -- --noplot` completed.
 
-Expected impact: medium to high. This also makes later LMR and futility pruning
-safer because "late move" will mean something.
+Measured strength and speed against the previous Phase 1 commit
+`91e5120` (`Document wasm TT verification`). Phase 2 was A; Phase 1 was B.
+All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
+`--movetime-ms 20`, `--opening-random-plies 4`, 4 workers. Standard and Annan
+used 200 games with seed 1. NekoNeko 200-game attempts with seeds 1 and 2 both
+aborted because an external child engine returned an illegal move, so the row
+below is an 80-game seed-2 sample and is not directly comparable.
 
-Risk: low to moderate. The main risk is destabilizing deterministic tests if
-tie-breaks change; update tests to assert legality or clear tactical outcomes
-instead of incidental best moves where appropriate.
+| Build | Games | Result A-B-D | Score | Approx Elo | 95% CI |
+|---|---:|---:|---:|---:|---:|
+| standard | 200 | 34-166-0 | 17.0% | -275.5 | -349.5 .. -217.8 |
+| `--features annan` | 200 | 24-176-0 | 12.0% | -346.1 | -436.5 .. -281.6 |
+| `--features nekoneko` | 80 | 49-24-7 | 65.625% | +112.3 | +36.4 .. +200.6 |
+
+Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
+external USI self-play currently reports `totalNodes=0` for child engines.
+
+| Build | Depth | Nodes diff | NPS diff | Time diff |
+|---|---:|---:|---:|---:|
+| standard | 5 | -81.8% | -61.0% | -53.5% |
+| `--features annan` | 5 | -43.8% | -43.6% | -0.3% |
+| `--features nekoneko` | 5 | +38.1% | +2.6% | +34.5% |
+
+Artifacts from local measurement were written under
+`/tmp/haitaka-phase2-results/`.
+
+Phase 2 follow-up before continuing to qsearch/selective search:
+
+- Diagnose why standard and Annan lose heavily despite searching far fewer nodes.
+  The top suspicion is that the new ordering changes which shallow or
+  collision-prone TT entries dominate short-movetime search.
+- Add a TT-disabled or TT-verification-strong comparison mode so move-ordering
+  changes can be tested for fixed-depth score equality without TT collision
+  effects.
+- Investigate the NekoNeko external self-play illegal moves seen during 200-game
+  runs: seed 1 aborted on `P*1b`, seed 2 aborted on `3b2c`.
+- Reconsider tactical scoring before tuning: the current cheap
+  capture/promotion gain is not SEE and may be too disruptive for Shogi and
+  variant positions.
 
 ### Not Done Yet: Phase 3 - Quiescence Search
 
@@ -231,8 +280,8 @@ Useful counters:
 1. Done: add TT data structures and telemetry.
 2. Done: enable TT hash-move ordering.
 3. Done: enable TT bound cutoffs.
-4. Not done: add killer and history heuristics.
-5. Not done: replace full move sorting with a staged move picker.
+4. Done: add killer and history heuristics.
+5. Done: replace full move sorting with a staged move picker.
 6. Not done: add qsearch for captures/promotions and check evasions.
 7. Not done: add PVS and aspiration windows.
 8. Not done: add conservative LMR.
