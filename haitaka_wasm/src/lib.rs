@@ -1,4 +1,5 @@
 mod nnue;
+mod tt;
 
 use std::cmp::Reverse;
 use std::str::FromStr;
@@ -7,10 +8,12 @@ use std::sync::{Arc, OnceLock, RwLock};
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
 use instant::Instant;
 pub use nnue::{NnueModel, NnuePositionState};
+use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
 
-const INF_SCORE: i32 = 1_000_000;
-const MATE_SCORE: i32 = 100_000;
+const INF_SCORE: i32 = 32_000;
+const MATE_SCORE: i32 = 30_000;
+const MATE_TT_THRESHOLD: i32 = MATE_SCORE - 1024;
 const MOBILITY_WEIGHT: i32 = 2;
 const ENGINE_NAME: &str = "Haitaka Variants";
 const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
@@ -24,6 +27,7 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 ];
 
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
+static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
 
 #[doc(hidden)]
@@ -34,6 +38,7 @@ pub struct SearchSummary {
     pub elapsed_ms: f64,
     pub states: u64,
     pub nps: f64,
+    pub tt_stats: SearchTtStats,
 }
 
 #[doc(hidden)]
@@ -44,6 +49,7 @@ pub struct IterativeIterationSummary {
     pub elapsed_ms: f64,
     pub states: u64,
     pub nps: f64,
+    pub tt_stats: SearchTtStats,
 }
 
 #[doc(hidden)]
@@ -68,6 +74,7 @@ pub struct IterativeSearchSummary {
     pub elapsed_ms: f64,
     pub states: u64,
     pub nps: f64,
+    pub tt_stats: SearchTtStats,
     pub iterations: Vec<IterativeIterationSummary>,
     pub dfpn: Option<DfpnSummary>,
 }
@@ -102,14 +109,15 @@ enum EvaluationStrategy {
     },
 }
 
-#[derive(Debug)]
-struct SearchContext {
+struct SearchContext<'a> {
     states: u64,
     evaluation: EvaluationStrategy,
     deadline: Option<Instant>,
+    tt: &'a mut TranspositionTable,
+    tt_stats: SearchTtStats,
 }
 
-impl SearchContext {
+impl SearchContext<'_> {
     fn record_state(&mut self) -> Result<(), SearchInterrupted> {
         self.states += 1;
         if self.deadline.is_some() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
@@ -135,6 +143,7 @@ pub struct SearchResult {
     elapsed_ms: f64,
     states: u64,
     nps: f64,
+    tt_stats: SearchTtStats,
 }
 
 #[wasm_bindgen]
@@ -158,6 +167,36 @@ impl SearchResult {
     pub fn nps(&self) -> f64 {
         self.nps
     }
+
+    #[wasm_bindgen(getter, js_name = ttProbes)]
+    pub fn tt_probes(&self) -> f64 {
+        self.tt_stats.tt_probes as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttHits)]
+    pub fn tt_hits(&self) -> f64 {
+        self.tt_stats.tt_hits as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttCutoffs)]
+    pub fn tt_cutoffs(&self) -> f64 {
+        self.tt_stats.tt_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttStores)]
+    pub fn tt_stores(&self) -> f64 {
+        self.tt_stats.tt_stores as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    pub fn tt_collisions(&self) -> f64 {
+        self.tt_stats.tt_collisions as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttHashfull)]
+    pub fn tt_hashfull(&self) -> f64 {
+        self.tt_stats.tt_hashfull as f64
+    }
 }
 
 #[wasm_bindgen]
@@ -168,6 +207,7 @@ pub struct IterativeSearchResult {
     elapsed_ms: f64,
     states: u64,
     nps: f64,
+    tt_stats: SearchTtStats,
     iterations: Vec<IterativeIterationSummary>,
     dfpn: Option<DfpnSummary>,
 }
@@ -202,6 +242,36 @@ impl IterativeSearchResult {
     #[wasm_bindgen(getter)]
     pub fn nps(&self) -> f64 {
         self.nps
+    }
+
+    #[wasm_bindgen(getter, js_name = ttProbes)]
+    pub fn tt_probes(&self) -> f64 {
+        self.tt_stats.tt_probes as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttHits)]
+    pub fn tt_hits(&self) -> f64 {
+        self.tt_stats.tt_hits as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttCutoffs)]
+    pub fn tt_cutoffs(&self) -> f64 {
+        self.tt_stats.tt_cutoffs as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttStores)]
+    pub fn tt_stores(&self) -> f64 {
+        self.tt_stats.tt_stores as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    pub fn tt_collisions(&self) -> f64 {
+        self.tt_stats.tt_collisions as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = ttHashfull)]
+    pub fn tt_hashfull(&self) -> f64 {
+        self.tt_stats.tt_hashfull as f64
     }
 
     #[wasm_bindgen(getter)]
@@ -264,6 +334,36 @@ fn iterative_iteration_to_js_value(iteration: &IterativeIterationSummary) -> JsV
         JsValue::from_f64(iteration.states as f64),
     );
     set_js_property(&object, "nps", JsValue::from_f64(iteration.nps));
+    set_js_property(
+        &object,
+        "ttProbes",
+        JsValue::from_f64(iteration.tt_stats.tt_probes as f64),
+    );
+    set_js_property(
+        &object,
+        "ttHits",
+        JsValue::from_f64(iteration.tt_stats.tt_hits as f64),
+    );
+    set_js_property(
+        &object,
+        "ttCutoffs",
+        JsValue::from_f64(iteration.tt_stats.tt_cutoffs as f64),
+    );
+    set_js_property(
+        &object,
+        "ttStores",
+        JsValue::from_f64(iteration.tt_stats.tt_stores as f64),
+    );
+    set_js_property(
+        &object,
+        "ttCollisions",
+        JsValue::from_f64(iteration.tt_stats.tt_collisions as f64),
+    );
+    set_js_property(
+        &object,
+        "ttHashfull",
+        JsValue::from_f64(iteration.tt_stats.tt_hashfull as f64),
+    );
     object.into()
 }
 
@@ -386,6 +486,7 @@ fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
         NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
     let description = model.description().to_string();
     *nnue_model_slot().write().unwrap() = Some(Arc::new(model));
+    search_tt_slot().write().unwrap().clear();
     Ok(description)
 }
 
@@ -409,7 +510,20 @@ fn search_board_with_strategy(
     evaluation: EvaluationStrategy,
     deadline: Option<Instant>,
 ) -> Result<SearchSummary, SearchInterrupted> {
+    let mut tt = search_tt_slot().write().unwrap();
+    tt.clear();
+    search_board_with_strategy_and_tt(board, depth, evaluation, deadline, &mut tt)
+}
+
+fn search_board_with_strategy_and_tt(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+) -> Result<SearchSummary, SearchInterrupted> {
     let started_at = Instant::now();
+    tt.new_search();
     let root_state = match &evaluation {
         EvaluationStrategy::Nnue {
             model,
@@ -421,6 +535,8 @@ fn search_board_with_strategy(
         states: 0,
         evaluation,
         deadline,
+        tt,
+        tt_stats: SearchTtStats::default(),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -432,12 +548,15 @@ fn search_board_with_strategy(
         0.0
     };
 
+    ctx.tt_stats.tt_hashfull = ctx.tt.hashfull(0);
+
     Ok(SearchSummary {
         best_move,
         best_score,
         elapsed_ms,
         states: ctx.states,
         nps,
+        tt_stats: ctx.tt_stats,
     })
 }
 
@@ -447,12 +566,12 @@ enum UsiSearchBudget {
     Movetime { max_depth: u8, millis: u32 },
 }
 
-#[derive(Debug, Clone)]
 pub struct UsiSession {
     engine_name: String,
     board: Board,
     nnue_model: Option<Arc<NnueModel>>,
     movetime_max_depth: u8,
+    tt: TranspositionTable,
 }
 
 impl Default for UsiSession {
@@ -468,6 +587,7 @@ impl UsiSession {
             board: Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse"),
             nnue_model: None,
             movetime_max_depth: movetime_max_depth.max(1),
+            tt: TranspositionTable::default(),
         }
     }
 
@@ -476,6 +596,7 @@ impl UsiSession {
             NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
         let description = model.description().to_string();
         self.nnue_model = Some(Arc::new(model));
+        self.tt.clear();
         Ok(description)
     }
 
@@ -486,10 +607,29 @@ impl UsiSession {
         }
 
         match command {
-            "usi" => vec![format!("id name {}", self.engine_name), "usiok".to_string()],
-            "isready" => vec!["readyok".to_string()],
-            "usinewgame" => Vec::new(),
+            "usi" => vec![
+                format!("id name {}", self.engine_name),
+                format!(
+                    "option name Hash type spin default {} min {} max {}",
+                    tt::DEFAULT_HASH_MB,
+                    tt::MIN_HASH_MB,
+                    tt::MAX_HASH_MB
+                ),
+                "usiok".to_string(),
+            ],
+            "isready" => {
+                self.tt.clear();
+                vec!["readyok".to_string()]
+            }
+            "usinewgame" => {
+                self.tt.clear();
+                Vec::new()
+            }
             "quit" => Vec::new(),
+            command if command.starts_with("setoption ") => match self.apply_setoption(command) {
+                Ok(()) => Vec::new(),
+                Err(err) => vec![format!("info string invalid setoption command: {err}")],
+            },
             command if command.starts_with("position ") => {
                 if let Err(err) = self.apply_position(command) {
                     vec![format!("info string invalid position command: {err}")]
@@ -516,24 +656,66 @@ impl UsiSession {
         Ok(())
     }
 
-    fn bestmove_for_budget(&self, budget: UsiSearchBudget) -> String {
+    fn apply_setoption(&mut self, command: &str) -> Result<(), String> {
+        let rest = command
+            .strip_prefix("setoption ")
+            .ok_or_else(|| "expected setoption command".to_string())?;
+        let tokens = rest.split_whitespace().collect::<Vec<_>>();
+        if tokens.len() < 4 || tokens[0] != "name" {
+            return Err("expected setoption name Hash value N".to_string());
+        }
+
+        let value_index = tokens
+            .iter()
+            .position(|token| *token == "value")
+            .ok_or_else(|| "missing value".to_string())?;
+        if value_index <= 1 {
+            return Err("missing option name".to_string());
+        }
+
+        let name = tokens[1..value_index].join(" ");
+        if name != "Hash" {
+            return Err(format!("unsupported option {name}"));
+        }
+
+        let value = tokens
+            .get(value_index + 1)
+            .ok_or_else(|| "missing Hash value".to_string())?
+            .parse::<u32>()
+            .map_err(|_| "invalid Hash value".to_string())?;
+        let size = tt::validate_hash_size_mb(value)?;
+        self.tt.resize(size);
+        Ok(())
+    }
+
+    fn bestmove_for_budget(&mut self, budget: UsiSearchBudget) -> String {
         if self.board.status() != haitaka::GameStatus::Ongoing {
             return "resign".to_string();
         }
 
         let result = match budget {
-            UsiSearchBudget::Depth(depth) => {
-                search_board_with_strategy(&self.board, depth, self.evaluation_strategy(), None)
-                    .map_err(|_| "search timed out unexpectedly".to_string())
-                    .map(|summary| summary.best_move)
-            }
+            UsiSearchBudget::Depth(depth) => search_board_with_strategy_and_tt(
+                &self.board,
+                depth,
+                self.evaluation_strategy(),
+                None,
+                &mut self.tt,
+            )
+            .map_err(|_| "search timed out unexpectedly".to_string())
+            .map(|summary| summary.best_move),
             UsiSearchBudget::Movetime { max_depth, millis } => {
-                search_iterative_deepening_with_strategy(
+                search_iterative_deepening_with_strategy_and_deadline_and_tt(
                     &self.board.to_string(),
                     max_depth,
                     millis,
                     self.evaluation_strategy(),
                     IterativeSearchConfig::default(),
+                    if millis == 0 {
+                        None
+                    } else {
+                        Some(Instant::now() + std::time::Duration::from_millis(u64::from(millis)))
+                    },
+                    &mut self.tt,
                 )
                 .map(|summary| summary.best_move)
             }
@@ -550,7 +732,7 @@ impl UsiSession {
     }
 
     fn fallback_bestmove(&self) -> String {
-        legal_moves(&self.board)
+        legal_moves(&self.board, None)
             .into_iter()
             .next()
             .map(|mv| mv.to_string())
@@ -728,6 +910,22 @@ fn search_iterative_deepening_with_strategy_and_deadline(
     config: IterativeSearchConfig,
     deadline: Option<Instant>,
 ) -> Result<IterativeSearchSummary, String> {
+    let mut tt = search_tt_slot().write().unwrap();
+    tt.clear();
+    search_iterative_deepening_with_strategy_and_deadline_and_tt(
+        sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+    )
+}
+
+fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+    config: IterativeSearchConfig,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+) -> Result<IterativeSearchSummary, String> {
     let max_depth = max_depth.max(1);
     let started_at = Instant::now();
     let mut dfpn = None;
@@ -755,6 +953,7 @@ fn search_iterative_deepening_with_strategy_and_deadline(
                         elapsed_ms,
                         states: 0,
                         nps: 0.0,
+                        tt_stats: SearchTtStats::default(),
                         iterations: Vec::new(),
                         dfpn: Some(dfpn_summary),
                     });
@@ -776,6 +975,7 @@ fn search_iterative_deepening_with_strategy_and_deadline(
                 elapsed_ms,
                 states: 0,
                 nps: 0.0,
+                tt_stats: SearchTtStats::default(),
                 iterations: Vec::new(),
                 dfpn: Some(dfpn_summary),
             });
@@ -786,6 +986,7 @@ fn search_iterative_deepening_with_strategy_and_deadline(
     let mut iterations = Vec::with_capacity(max_depth as usize);
     let mut completed_depth = 0;
     let mut total_states = 0;
+    let mut tt_stats = SearchTtStats::default();
     let mut latest_best_move = None;
     let mut timed_out = false;
 
@@ -795,17 +996,19 @@ fn search_iterative_deepening_with_strategy_and_deadline(
             break;
         }
 
-        match search_board_with_strategy(&board, depth, evaluation.clone(), deadline) {
+        match search_board_with_strategy_and_tt(&board, depth, evaluation.clone(), deadline, tt) {
             Ok(summary) => {
                 total_states += summary.states;
                 completed_depth = depth;
                 latest_best_move = summary.best_move.clone();
+                tt_stats.add_iteration(summary.tt_stats);
                 iterations.push(IterativeIterationSummary {
                     depth,
                     best_move: summary.best_move,
                     elapsed_ms: summary.elapsed_ms,
                     states: summary.states,
                     nps: summary.nps,
+                    tt_stats: summary.tt_stats,
                 });
             }
             Err(SearchInterrupted) => {
@@ -829,6 +1032,7 @@ fn search_iterative_deepening_with_strategy_and_deadline(
         elapsed_ms,
         states: total_states,
         nps,
+        tt_stats,
         iterations,
         dfpn,
     })
@@ -1004,6 +1208,18 @@ pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
 }
 
+#[wasm_bindgen(js_name = set_hash_size_mb)]
+pub fn set_hash_size_mb(size_mb: u32) -> Result<(), JsValue> {
+    let size = tt::validate_hash_size_mb(size_mb).map_err(|err| JsValue::from_str(&err))?;
+    search_tt_slot().write().unwrap().resize(size);
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = clear_hash)]
+pub fn clear_hash() {
+    search_tt_slot().write().unwrap().clear();
+}
+
 #[wasm_bindgen]
 pub struct UsiEngine {
     session: UsiSession,
@@ -1048,6 +1264,7 @@ pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
         elapsed_ms: summary.elapsed_ms,
         states: summary.states,
         nps: summary.nps,
+        tt_stats: summary.tt_stats,
     })
 }
 
@@ -1066,6 +1283,7 @@ pub fn search_iterative_deepening(
         elapsed_ms: summary.elapsed_ms,
         states: summary.states,
         nps: summary.nps,
+        tt_stats: summary.tt_stats,
         iterations: summary.iterations,
         dfpn: summary.dfpn,
     })
@@ -1111,7 +1329,7 @@ pub fn dfpn(
 fn search_best_move(
     board: &Board,
     depth: u8,
-    ctx: &mut SearchContext,
+    ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<Option<(Move, i32)>, SearchInterrupted> {
     ctx.record_state()?;
@@ -1119,12 +1337,21 @@ fn search_best_move(
     if terminal_score_for_side_to_move(board, 0).is_some() {
         return Ok(None);
     }
-    let moves = legal_moves(board);
+    let key = board.hash();
+    ctx.tt_stats.tt_probes += 1;
+    let probe = ctx.tt.probe(key, board.side_to_move());
+    let tt_move = probe.data.and_then(|data| data.best_move);
+    if probe.found {
+        ctx.tt_stats.tt_hits += 1;
+    }
+
+    let moves = legal_moves(board, tt_move);
     if moves.is_empty() {
         return Ok(None);
     }
 
-    let mut alpha = -INF_SCORE;
+    let original_alpha = -INF_SCORE;
+    let mut alpha = original_alpha;
     let beta = INF_SCORE;
     let mut best_score = -INF_SCORE;
     let mut best_move = None;
@@ -1154,6 +1381,20 @@ fn search_best_move(
         alpha = alpha.max(score);
     }
 
+    store_tt_search_result(
+        ctx,
+        probe,
+        key,
+        depth,
+        0,
+        best_score,
+        original_alpha,
+        beta,
+        best_move,
+        0,
+        true,
+    );
+
     Ok(best_move.map(|mv| (mv, best_score)))
 }
 
@@ -1163,7 +1404,7 @@ fn negamax(
     mut alpha: i32,
     beta: i32,
     ply: i32,
-    ctx: &mut SearchContext,
+    ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<i32, SearchInterrupted> {
     ctx.record_state()?;
@@ -1175,12 +1416,28 @@ fn negamax(
         return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
     }
 
-    let moves = legal_moves(board);
+    let key = board.hash();
+    let original_alpha = alpha;
+    ctx.tt_stats.tt_probes += 1;
+    let probe = ctx.tt.probe(key, board.side_to_move());
+    let mut tt_move = None;
+    if let Some(data) = probe.data {
+        ctx.tt_stats.tt_hits += 1;
+        let tt_score = score_from_tt(data.score, ply);
+        tt_move = data.best_move;
+        if data.depth >= depth && tt_bound_can_cutoff(data.bound, tt_score, alpha, beta) {
+            ctx.tt_stats.tt_cutoffs += 1;
+            return Ok(tt_score);
+        }
+    }
+
+    let moves = legal_moves(board, tt_move);
     if moves.is_empty() {
         return Ok(-MATE_SCORE + ply);
     }
 
     let mut best_score = -INF_SCORE;
+    let mut best_move = None;
     for mv in moves {
         ctx.check_deadline()?;
         let mut child = board.clone();
@@ -1193,6 +1450,7 @@ fn negamax(
         };
         if score > best_score {
             best_score = score;
+            best_move = Some(mv);
         }
         if score > alpha {
             alpha = score;
@@ -1202,7 +1460,93 @@ fn negamax(
         }
     }
 
+    store_tt_search_result(
+        ctx,
+        probe,
+        key,
+        depth,
+        ply,
+        best_score,
+        original_alpha,
+        beta,
+        best_move,
+        0,
+        false,
+    );
+
     Ok(best_score)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn store_tt_search_result(
+    ctx: &mut SearchContext<'_>,
+    probe: tt::TtProbe,
+    key: u64,
+    depth: u8,
+    ply: i32,
+    score: i32,
+    original_alpha: i32,
+    beta: i32,
+    best_move: Option<Move>,
+    eval: i32,
+    is_pv: bool,
+) {
+    let bound = if score >= beta {
+        Bound::Lower
+    } else if score > original_alpha {
+        Bound::Exact
+    } else {
+        Bound::Upper
+    };
+    let stored_score = score_to_tt(score, ply);
+    if i16::try_from(stored_score).is_err() || i16::try_from(eval).is_err() {
+        return;
+    }
+    let (stored, collision) = ctx.tt.write(
+        probe,
+        key,
+        stored_score,
+        is_pv,
+        bound,
+        depth,
+        best_move,
+        eval,
+    );
+    if stored {
+        ctx.tt_stats.tt_stores += 1;
+    }
+    if collision {
+        ctx.tt_stats.tt_collisions += 1;
+    }
+}
+
+fn tt_bound_can_cutoff(bound: Bound, score: i32, alpha: i32, beta: i32) -> bool {
+    match bound {
+        Bound::Exact => true,
+        Bound::Lower => score >= beta,
+        Bound::Upper => score <= alpha,
+        Bound::None => false,
+    }
+}
+
+fn score_to_tt(score: i32, ply: i32) -> i32 {
+    if score >= MATE_TT_THRESHOLD {
+        score + ply
+    } else if score <= -MATE_TT_THRESHOLD {
+        score - ply
+    } else {
+        score
+    }
+}
+
+fn score_from_tt(score: i32, ply: i32) -> i32 {
+    if score >= MATE_TT_THRESHOLD {
+        score - ply
+    } else if score <= -MATE_TT_THRESHOLD {
+        score + ply
+    } else {
+        score
+    }
 }
 
 fn child_nnue_state(
@@ -1309,7 +1653,7 @@ fn count_legal_moves(board: &Board) -> usize {
     count
 }
 
-fn legal_moves(board: &Board) -> Vec<Move> {
+fn legal_moves(board: &Board, tt_move: Option<Move>) -> Vec<Move> {
     let mut moves = Vec::new();
     board.generate_moves(|piece_moves| {
         moves.extend(piece_moves);
@@ -1317,6 +1661,11 @@ fn legal_moves(board: &Board) -> Vec<Move> {
     });
     if moves.len() > 1 {
         moves.sort_unstable_by_key(|mv| move_order_key(board, *mv));
+    }
+    if let Some(tt_move) = tt_move
+        && let Some(index) = moves.iter().position(|mv| *mv == tt_move)
+    {
+        moves.swap(0, index);
     }
     moves
 }
@@ -1422,6 +1771,10 @@ fn current_nnue_model() -> Option<Arc<NnueModel>> {
     nnue_model_slot().read().unwrap().clone()
 }
 
+fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
+    SEARCH_TT.get_or_init(|| RwLock::new(TranspositionTable::default()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1484,7 +1837,11 @@ mod tests {
         let mut session = UsiSession::default();
         assert_eq!(
             session.handle_line("usi"),
-            vec!["id name Haitaka Variants".to_string(), "usiok".to_string()]
+            vec![
+                "id name Haitaka Variants".to_string(),
+                "option name Hash type spin default 16 min 1 max 1024".to_string(),
+                "usiok".to_string()
+            ]
         );
         assert_eq!(session.handle_line("isready"), vec!["readyok".to_string()]);
     }
@@ -1563,12 +1920,20 @@ mod tests {
     }
 
     #[test]
-    fn usi_session_reports_unsupported_command() {
+    fn usi_session_accepts_hash_option() {
         let mut session = UsiSession::default();
         let output = session.handle_line("setoption name Hash value 16");
 
+        assert!(output.is_empty(), "unexpected output: {output:?}");
+    }
+
+    #[test]
+    fn usi_session_reports_unsupported_setoption() {
+        let mut session = UsiSession::default();
+        let output = session.handle_line("setoption name Unknown value 16");
+
         assert_eq!(output.len(), 1);
-        assert!(output[0].contains("unsupported command"));
+        assert!(output[0].contains("unsupported option"));
     }
 
     #[cfg(any(
@@ -1660,6 +2025,56 @@ mod tests {
         assert!(summary.elapsed_ms >= 0.0);
         assert!(summary.nps >= 0.0);
         assert!(summary.best_move.is_some());
+        assert!(summary.tt_stats.tt_probes > 0);
+        assert!(summary.tt_stats.tt_stores > 0);
+        assert!(summary.tt_stats.tt_hashfull <= 1000);
+    }
+
+    #[test]
+    fn tt_score_conversion_round_trips() {
+        for ply in [0, 1, 17, 63] {
+            for score in [
+                0,
+                123,
+                -456,
+                MATE_SCORE - 3,
+                -MATE_SCORE + 5,
+                MATE_TT_THRESHOLD,
+                -MATE_TT_THRESHOLD,
+            ] {
+                assert_eq!(score_from_tt(score_to_tt(score, ply), ply), score);
+            }
+        }
+    }
+
+    #[test]
+    fn tiny_hash_search_returns_legal_move() {
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).unwrap();
+        let mut tt = TranspositionTable::new(1);
+        let summary = search_board_with_strategy_and_tt(
+            &board,
+            2,
+            EvaluationStrategy::Handcrafted,
+            None,
+            &mut tt,
+        )
+        .unwrap();
+        let best = summary.best_move.expect("expected best move");
+        let mv = Move::from_str(&best).expect("best move should parse");
+        assert!(board.is_legal(mv), "{best} should be legal");
+    }
+
+    #[test]
+    fn iterative_search_reuses_tt_between_depths() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(haitaka::SFEN_STARTPOS, 2, 5_000, false)
+                .unwrap();
+        assert_eq!(summary.completed_depth, 2);
+        assert!(
+            summary.tt_stats.tt_hits > 0,
+            "expected TT hits from previous iteration, got {:?}",
+            summary.tt_stats
+        );
     }
 
     #[test]
