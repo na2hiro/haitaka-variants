@@ -206,9 +206,11 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
 - Preserve and reuse `SearchOrdering` across iterative-deepening iterations.
   TT state already carries across depths, but killer/history state is recreated
   for each fixed-depth search, which limits Phase 2 upside.
-- Add a fixed-depth equivalence harness over representative openings. The first
-  sample matched at depths 4 and 5, and this should become a regression test so
-  future ordering changes prove they preserve exact alpha-beta scores.
+- Done: added a fixed-depth equivalence harness over representative openings.
+  It compares the staged-picker/TT search score against a test-only reference
+  alpha-beta search that does not use `MovePicker` or TT. The harness checks
+  depths 4 and 5 for the standard/Annan-style builds so future ordering changes
+  must preserve exact alpha-beta scores.
 - Keep a TT-disabled or TT-verification-strong comparison mode as a diagnostic
   tool, but deprioritize TT collision as the primary explanation for this
   regression because 16 MB and 128 MB hash runs showed the same 20 ms move

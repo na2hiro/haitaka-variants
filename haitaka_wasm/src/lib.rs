@@ -1895,6 +1895,13 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
 mod tests {
     use super::*;
     #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    use std::cmp::Reverse;
+    #[cfg(not(any(
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
@@ -2197,6 +2204,191 @@ mod tests {
             "expected hash move tries from previous iteration, got {:?}",
             summary.ordering_stats
         );
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_fixed_depth_score(board: &Board, depth: u8) -> Option<i32> {
+        if terminal_score_for_side_to_move(board, 0).is_some() {
+            return None;
+        }
+
+        let moves = reference_ordered_moves(board);
+        if moves.is_empty() {
+            return None;
+        }
+
+        let mut alpha = -INF_SCORE;
+        let beta = INF_SCORE;
+        let mut best_score = -INF_SCORE;
+        for mv in moves {
+            let mut child = board.clone();
+            child.play_unchecked(mv);
+            let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, 1) {
+                -terminal
+            } else {
+                -reference_negamax(&child, depth.saturating_sub(1), -beta, -alpha, 1)
+            };
+            best_score = best_score.max(score);
+            alpha = alpha.max(score);
+        }
+        Some(best_score)
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_negamax(board: &Board, depth: u8, mut alpha: i32, beta: i32, ply: i32) -> i32 {
+        if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+            return terminal;
+        }
+        if depth == 0 {
+            return reference_handcrafted_eval(board, ply);
+        }
+
+        let moves = reference_ordered_moves(board);
+        if moves.is_empty() {
+            return -MATE_SCORE + ply;
+        }
+
+        let mut best_score = -INF_SCORE;
+        for mv in moves {
+            let mut child = board.clone();
+            child.play_unchecked(mv);
+            let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+                -terminal
+            } else {
+                -reference_negamax(&child, depth - 1, -beta, -alpha, ply + 1)
+            };
+            best_score = best_score.max(score);
+            alpha = alpha.max(score);
+            if alpha >= beta {
+                break;
+            }
+        }
+        best_score
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_handcrafted_eval(board: &Board, ply: i32) -> i32 {
+        if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+            return terminal;
+        }
+        let us = board.side_to_move();
+        let our_mobility = count_legal_moves(board) as i32;
+        if our_mobility == 0 {
+            return -MATE_SCORE + ply;
+        }
+        let them = !us;
+        material_score(board, us) - material_score(board, them)
+            + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_ordered_moves(board: &Board) -> Vec<Move> {
+        let mut moves = Vec::new();
+        board.generate_moves(|piece_moves| {
+            moves.extend(piece_moves);
+            false
+        });
+        moves.sort_unstable_by_key(|mv| reference_move_order_key(board, *mv));
+        moves
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_move_order_key(
+        board: &Board,
+        mv: Move,
+    ) -> (Reverse<i32>, Reverse<u8>, u8, u8, u8) {
+        (
+            Reverse(reference_capture_value(board, mv)),
+            Reverse(u8::from(mv.is_promotion())),
+            u8::from(mv.is_drop()),
+            mv.to() as u8,
+            reference_from_or_piece_index(mv),
+        )
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn reference_capture_value(board: &Board, mv: Move) -> i32 {
+        match mv {
+            Move::BoardMove { to, .. } => board
+                .color_on(to)
+                .filter(|color| *color != board.side_to_move())
+                .and_then(|_| board.piece_on(to))
+                .map(piece_value)
+                .unwrap_or(0),
+            Move::Drop { .. } => 0,
+        }
+    }
+
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    const fn reference_from_or_piece_index(mv: Move) -> u8 {
+        match mv {
+            Move::BoardMove { from, .. } => from as u8,
+            Move::Drop { piece, .. } => piece as u8,
+        }
+    }
+
+    #[test]
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn fixed_depth_ordering_matches_reference_scores_on_representative_openings() {
+        let openings = [
+            "lnsg1gsnl/1r2k2b1/1ppppp+Bpp/p8/9/2P6/PP1PPPPPP/7R1/LNSGKGSNL b P 5",
+            "lnsgkgsnl/2r4b1/ppppp1ppp/5p3/7P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5",
+            "lnsgk1snl/1r4gb1/pp1pppppp/2p6/9/9/PPPPPPPPP/1B2GK1R1/LNSG2SNL b - 5",
+            "lns1k1snl/1r1g1g1b1/ppppppppp/9/9/9/PPPPPPPPP/1B1RK4/LNSG1GSNL b - 5",
+        ];
+
+        for sfen in openings {
+            let board = Board::from_sfen(sfen).unwrap();
+            for depth in [4, 5] {
+                let summary = search_board_impl_handcrafted(&board, depth).unwrap();
+                let reference = reference_fixed_depth_score(&board, depth);
+                assert_eq!(
+                    summary.best_score, reference,
+                    "fixed-depth score diverged at depth {depth} for {sfen}; current best move {:?}",
+                    summary.best_move
+                );
+            }
+        }
     }
 
     #[test]
