@@ -246,8 +246,10 @@ impl ScoredMove {
         let promotion = promotion_gain(board, mv);
         let attacker = attacker_value(board, mv);
         let is_tactical = capture > 0 || promotion > 0;
-        let gain = if capture > 0 || promotion > 0 {
+        let gain = if capture > 0 {
             capture + promotion - attacker
+        } else if promotion > 0 {
+            promotion
         } else {
             0
         };
@@ -421,14 +423,48 @@ mod tests {
         ordering.record_beta_cutoff(board.side_to_move(), quiet_drop, 4, 0);
 
         let moves = collect_picker_moves(&board, None, &ordering, 0);
-        assert_eq!(moves[0].mv, Move::from_str("5e4e").unwrap());
-        assert_eq!(moves[0].source, MoveSource::Tactical);
-        assert!(
-            moves
-                .iter()
-                .position(|picked| picked.mv == quiet_drop)
-                .is_some_and(|index| index > 0)
+        let capture = Move::from_str("5e4e").unwrap();
+        let capture_index = moves
+            .iter()
+            .position(|picked| picked.mv == capture)
+            .expect("capture should be legal");
+        let quiet_index = moves
+            .iter()
+            .position(|picked| picked.mv == quiet_drop)
+            .expect("quiet drop should be legal");
+        assert_eq!(moves[capture_index].source, MoveSource::Tactical);
+        assert!(capture_index < quiet_index);
+    }
+
+    #[test]
+    fn non_capture_major_promotion_is_winning_tactical() {
+        let board = Board::from_sfen("4k4/9/4B4/9/9/9/9/9/4K4 b - 1").unwrap();
+        let ordering = SearchOrdering::new();
+        let promotion = Move::from_str("5c4b+").unwrap();
+        let quiet = Move::from_str("5i5h").unwrap();
+
+        let scored = ScoredMove::new(
+            &board,
+            board.side_to_move(),
+            promotion,
+            None,
+            [None; KILLER_SLOTS],
+            0,
         );
+        assert!(scored.is_tactical());
+        assert_eq!(scored.gain, 200);
+
+        let moves = collect_picker_moves(&board, None, &ordering, 0);
+        let promotion_index = moves
+            .iter()
+            .position(|picked| picked.mv == promotion)
+            .expect("promotion should be legal");
+        let quiet_index = moves
+            .iter()
+            .position(|picked| picked.mv == quiet)
+            .expect("quiet king move should be legal");
+        assert_eq!(moves[promotion_index].source, MoveSource::Tactical);
+        assert!(promotion_index < quiet_index);
     }
 
     #[test]

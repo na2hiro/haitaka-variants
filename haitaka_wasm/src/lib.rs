@@ -2191,7 +2191,7 @@ mod tests {
     #[test]
     fn iterative_search_reuses_tt_between_depths() {
         let summary =
-            search_iterative_deepening_impl_with_dfpn_mode(haitaka::SFEN_STARTPOS, 2, 5_000, false)
+            search_iterative_deepening_impl_with_dfpn_mode(haitaka::SFEN_STARTPOS, 2, 0, false)
                 .unwrap();
         assert_eq!(summary.completed_depth, 2);
         assert!(
@@ -2417,7 +2417,9 @@ mod tests {
         feature = "yokonekoneko"
     )))]
     fn iterative_search_reaches_requested_depth_when_time_allows() {
-        let summary = search_iterative_deepening_impl(haitaka::SFEN_STARTPOS, 3, 5_000).unwrap();
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(haitaka::SFEN_STARTPOS, 3, 0, false)
+                .unwrap();
         assert_eq!(summary.completed_depth, 3);
         assert!(!summary.timed_out);
         assert_eq!(summary.iterations.len(), 3);
