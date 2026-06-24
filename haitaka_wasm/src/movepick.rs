@@ -107,7 +107,12 @@ impl Default for SearchOrdering {
 }
 
 pub struct MovePicker {
-    moves: Vec<ScoredMove>,
+    hash: MoveStage,
+    winning_tactical: MoveStage,
+    equal_tactical: MoveStage,
+    killer: MoveStage,
+    history: MoveStage,
+    losing_tactical: MoveStage,
     stage: PickStage,
 }
 
@@ -120,52 +125,76 @@ impl MovePicker {
     ) -> Self {
         let side = board.side_to_move();
         let killers = ordering.killers_for_ply(ply);
-        let mut moves = Vec::new();
+        let mut picker = Self {
+            hash: MoveStage::default(),
+            winning_tactical: MoveStage::default(),
+            equal_tactical: MoveStage::default(),
+            killer: MoveStage::default(),
+            history: MoveStage::default(),
+            losing_tactical: MoveStage::default(),
+            stage: PickStage::Hash,
+        };
+
         board.generate_moves(|piece_moves| {
-            moves.extend(piece_moves.into_iter().map(|mv| {
-                ScoredMove::new(
+            for mv in piece_moves {
+                picker.push_scored(ScoredMove::new(
                     board,
                     side,
                     mv,
                     tt_move,
                     killers,
                     ordering.history_score(side, mv),
-                )
-            }));
+                ));
+            }
             false
         });
+        picker.sort_stages();
+        picker
+    }
 
-        Self {
-            moves,
-            stage: PickStage::Hash,
+    fn push_scored(&mut self, scored: ScoredMove) {
+        if scored.is_hash {
+            self.hash.push(scored);
+        } else if scored.is_tactical() && scored.gain > 0 {
+            self.winning_tactical.push(scored);
+        } else if scored.is_tactical() && scored.gain == 0 {
+            self.equal_tactical.push(scored);
+        } else if !scored.is_tactical() && scored.killer_slot.is_some() {
+            self.killer.push(scored);
+        } else if !scored.is_tactical() {
+            self.history.push(scored);
+        } else {
+            self.losing_tactical.push(scored);
         }
     }
 
+    fn sort_stages(&mut self) {
+        self.hash.sort();
+        self.winning_tactical.sort();
+        self.equal_tactical.sort();
+        self.killer.sort();
+        self.history.sort();
+        self.losing_tactical.sort();
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.moves.is_empty()
+        self.hash.is_empty()
+            && self.winning_tactical.is_empty()
+            && self.equal_tactical.is_empty()
+            && self.killer.is_empty()
+            && self.history.is_empty()
+            && self.losing_tactical.is_empty()
     }
 
     pub fn next(&mut self) -> Option<PickedMove> {
         loop {
             let selected = match self.stage {
-                PickStage::Hash => {
-                    self.select_best(MoveSource::Hash, |candidate| candidate.is_hash)
-                }
-                PickStage::WinningTactical => self.select_best(MoveSource::Tactical, |candidate| {
-                    candidate.is_tactical() && candidate.gain > 0
-                }),
-                PickStage::EqualTactical => self.select_best(MoveSource::Tactical, |candidate| {
-                    candidate.is_tactical() && candidate.gain == 0
-                }),
-                PickStage::Killer => self.select_best(MoveSource::Killer, |candidate| {
-                    !candidate.is_tactical() && candidate.killer_slot.is_some()
-                }),
-                PickStage::History => {
-                    self.select_best(MoveSource::History, |candidate| !candidate.is_tactical())
-                }
-                PickStage::LosingTactical => self.select_best(MoveSource::Tactical, |candidate| {
-                    candidate.is_tactical() && candidate.gain < 0
-                }),
+                PickStage::Hash => self.hash.next(MoveSource::Hash),
+                PickStage::WinningTactical => self.winning_tactical.next(MoveSource::Tactical),
+                PickStage::EqualTactical => self.equal_tactical.next(MoveSource::Tactical),
+                PickStage::Killer => self.killer.next(MoveSource::Killer),
+                PickStage::History => self.history.next(MoveSource::History),
+                PickStage::LosingTactical => self.losing_tactical.next(MoveSource::Tactical),
                 PickStage::Done => return None,
             };
 
@@ -175,20 +204,30 @@ impl MovePicker {
             self.stage = self.stage.next();
         }
     }
+}
 
-    fn select_best(
-        &mut self,
-        source: MoveSource,
-        predicate: impl Fn(&ScoredMove) -> bool,
-    ) -> Option<PickedMove> {
-        let selected = self
-            .moves
-            .iter()
-            .enumerate()
-            .filter(|(_, candidate)| predicate(candidate))
-            .min_by(|(_, left), (_, right)| left.cmp_for_stage(right))
-            .map(|(index, _)| index)?;
-        let scored = self.moves.swap_remove(selected);
+#[derive(Default)]
+struct MoveStage {
+    moves: Vec<ScoredMove>,
+    next: usize,
+}
+
+impl MoveStage {
+    fn push(&mut self, scored: ScoredMove) {
+        self.moves.push(scored);
+    }
+
+    fn sort(&mut self) {
+        self.moves.sort_unstable_by(ScoredMove::cmp_for_stage);
+    }
+
+    fn is_empty(&self) -> bool {
+        self.next >= self.moves.len()
+    }
+
+    fn next(&mut self, source: MoveSource) -> Option<PickedMove> {
+        let scored = *self.moves.get(self.next)?;
+        self.next += 1;
         Some(PickedMove {
             mv: scored.mv,
             source,
