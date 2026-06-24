@@ -1255,6 +1255,11 @@ impl UsiEngineClient {
                 }
                 return Ok(Some(move_text.to_string()));
             }
+            if line.starts_with("info string invalid position command:")
+                || line.starts_with("info string invalid go command:")
+            {
+                bail!("external engine reported search setup error: {line}");
+            }
         }
     }
 
@@ -1393,12 +1398,13 @@ fn play_self_play_game(
         let current_sfen = board.to_string();
         let summary = runtime.search(&board, config.budget).map_err(|err| {
             anyhow!(
-                "search failed in game {} on ply {} with {} to move (engine {}, sfen: {}): {err}",
+                "search failed in game {} on ply {} with {} to move (engine {}, sfen: {}, moves: {}): {err}",
                 game_index + 1,
                 ply + 1,
                 color_name(board.side_to_move()),
                 config.label,
-                current_sfen
+                current_sfen,
+                moves.join(" ")
             )
         })?;
         total_nodes += summary.total_nodes;
@@ -1420,9 +1426,18 @@ fn play_self_play_game(
         };
         let mv = Move::from_str(&best_move)
             .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
-        board
-            .try_play(mv)
-            .map_err(|_| anyhow!("engine returned illegal move {best_move}"))?;
+        board.try_play(mv).map_err(|_| {
+            anyhow!(
+                "engine {} returned illegal move {} in game {} on ply {} with {} to move (sfen: {}, moves: {})",
+                config.label,
+                best_move,
+                game_index + 1,
+                ply + 1,
+                color_name(board.side_to_move()),
+                current_sfen,
+                moves.join(" ")
+            )
+        })?;
         moves.push(best_move);
         plies = ply + 1;
     }

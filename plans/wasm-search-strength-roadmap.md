@@ -163,9 +163,9 @@ external USI self-play currently reports `totalNodes=0` for child engines.
 Artifacts from local measurement were written under
 `/tmp/haitaka-phase2-results/`.
 
-Phase 2 follow-up before continuing to qsearch/selective search:
+Phase 2 diagnosis:
 
-- Diagnosed: standard and Annan lose heavily at `--movetime-ms 20` mostly
+- Done: standard and Annan lose heavily at `--movetime-ms 20` mostly
   because Phase 2 changes the completed-depth frontier, not because fixed-depth
   scores diverge. On the first 12 standard self-play openings, current and
   previous engines returned identical moves and scores at fixed depths 4 and 5.
@@ -197,14 +197,34 @@ Phase 2 follow-up before continuing to qsearch/selective search:
 - Practical conclusion: do not tune Phase 2 by 20 ms Elo alone until qsearch is
   added or the time-control/depth-parity behavior is stabilized. The lower node
   count is real, but without qsearch it can expose worse odd-depth horizon moves.
-- Add a TT-disabled or TT-verification-strong comparison mode so move-ordering
-  changes can be tested for fixed-depth score equality without TT collision
-  effects.
-- Investigate the NekoNeko external self-play illegal moves seen during 200-game
-  runs: seed 1 aborted on `P*1b`, seed 2 aborted on `3b2c`.
-- Reconsider tactical scoring before tuning: the current cheap
-  capture/promotion gain is not SEE and may be too disruptive for Shogi and
-  variant positions.
+
+Phase 2 follow-up before continuing beyond qsearch/selective search:
+
+- Add qsearch next, before judging the staged picker by short-movetime Elo. The
+  current evidence points to odd/even horizon instability as the main cause of
+  the standard and Annan regression.
+- Preserve and reuse `SearchOrdering` across iterative-deepening iterations.
+  TT state already carries across depths, but killer/history state is recreated
+  for each fixed-depth search, which limits Phase 2 upside.
+- Add a fixed-depth equivalence harness over representative openings. The first
+  sample matched at depths 4 and 5, and this should become a regression test so
+  future ordering changes prove they preserve exact alpha-beta scores.
+- Keep a TT-disabled or TT-verification-strong comparison mode as a diagnostic
+  tool, but deprioritize TT collision as the primary explanation for this
+  regression because 16 MB and 128 MB hash runs showed the same 20 ms move
+  divergences.
+- Done: investigated the NekoNeko external self-play illegal moves seen during
+  200-game runs. The root cause was not the move picker. External self-play sent
+  `position sfen ...` to a child engine after a legal NekoNeko triple-check
+  position, but `Board::from_sfen` rejected the SFEN because
+  `checkers_and_pins_are_valid` still enforced fewer than three checkers for the
+  Neko family. The child then searched its previous board and returned a move
+  that was illegal for the driver's board. The validator now exempts the Neko
+  family from the `< 3` checker assertion, and the external self-play client
+  now fails immediately if a child reports an invalid `position` or `go` command.
+- Reconsider tactical scoring after qsearch is in place. The current cheap
+  capture/promotion gain is not SEE, but tuning it before qsearch risks fitting
+  around the observed depth-parity artifact.
 
 ### Not Done Yet: Phase 3 - Quiescence Search
 
