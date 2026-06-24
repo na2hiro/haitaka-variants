@@ -235,6 +235,108 @@ impl MoveStage {
     }
 }
 
+pub struct QsearchMovePicker {
+    moves: Vec<ScoredMove>,
+    stage: QsearchPickStage,
+}
+
+impl QsearchMovePicker {
+    pub fn new_tactical(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_moves(|piece_moves| {
+            moves.extend(piece_moves.into_iter().filter_map(|mv| {
+                let scored = ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0);
+                scored.is_tactical().then_some(scored)
+            }));
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Tactical,
+        }
+    }
+
+    pub fn new_evasions(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_moves(|piece_moves| {
+            moves.extend(
+                piece_moves
+                    .into_iter()
+                    .map(|mv| ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0)),
+            );
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Tactical,
+        }
+    }
+
+    pub fn new_quiet_checks(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_checks(|piece_moves| {
+            moves.extend(piece_moves.into_iter().filter_map(|mv| {
+                let scored = ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0);
+                (!scored.is_tactical()).then_some(scored)
+            }));
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Quiet,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<Move> {
+        loop {
+            let selected = match self.stage {
+                QsearchPickStage::Tactical => self.select_best(|candidate| candidate.is_tactical()),
+                QsearchPickStage::Quiet => self.select_best(|candidate| !candidate.is_tactical()),
+                QsearchPickStage::Done => return None,
+            };
+
+            if let Some(mv) = selected {
+                return Some(mv);
+            }
+            self.stage = self.stage.next();
+        }
+    }
+
+    fn select_best(&mut self, predicate: impl Fn(&ScoredMove) -> bool) -> Option<Move> {
+        let selected = self
+            .moves
+            .iter()
+            .enumerate()
+            .filter(|(_, candidate)| predicate(candidate))
+            .min_by(|(_, left), (_, right)| left.cmp_for_stage(right))
+            .map(|(index, _)| index)?;
+        Some(self.moves.swap_remove(selected).mv)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum QsearchPickStage {
+    Tactical,
+    Quiet,
+    Done,
+}
+
+impl QsearchPickStage {
+    const fn next(self) -> Self {
+        match self {
+            Self::Tactical => Self::Quiet,
+            Self::Quiet => Self::Done,
+            Self::Done => Self::Done,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PickStage {
     Hash,

@@ -4,18 +4,19 @@
 
 `haitaka_wasm` already has legal move generation, alpha-beta search, root DFPN
 short-circuiting, incremental NNUE evaluation, a Phase 1 transposition table,
-and a Phase 2 staged move picker.
+Phase 2 staged move picker, and Phase 3 quiescence search.
 Its search is still much simpler than modern Shogi engines: fixed-depth negamax,
-no quiescence search, and no selective pruning beyond normal alpha-beta cutoffs.
+no selective pruning beyond normal alpha-beta cutoffs and capped tactical
+qsearch, and no principal variation search or aspiration windows.
 
 The highest-return path is to keep improving the alpha-beta core before
 attempting a large architectural rewrite. Phase 1 added the transposition table;
 Phase 2 added stronger ordering infrastructure and later fixed two review-found
-move-picker issues, but the measured build is still weaker than Phase 1 at short
-movetime. The remaining regression is dominated by horizon/depth-parity behavior
-and should be addressed with qsearch before selective pruning. Defer make/unmake
-until the easier search wins have been measured, because board mutation rollback
-is correctness-sensitive across all variants.
+move-picker issues; Phase 3 added qsearch and confirmed strong standard/Annan
+short-movetime gains, while leaving Neko-family qsearch performance and strength
+as the main follow-up. Defer make/unmake until the easier search wins have been
+measured, because board mutation rollback is correctness-sensitive across all
+variants.
 
 ### Current Baseline
 
@@ -26,8 +27,8 @@ is correctness-sensitive across all variants.
   move list or rescanning all moves for every pick.
 - Move ordering currently prioritizes TT/hash moves, winning/equal tactical
   moves, killer moves, history-ranked quiet moves, and losing tactical moves.
-- Depth-zero nodes call `evaluate_or_mate` immediately, so volatile capture,
-  promotion, and check positions can be evaluated before tactics settle.
+- Depth-zero alpha-beta nodes enter capped qsearch, which searches evasions,
+  captures, promotions, and a small budget of quiet checks before evaluating.
 - Iterative deepening now reuses one transposition table across completed depth
   iterations.
 - `Board::hash()` already exposes an incremental Zobrist key, so a
@@ -214,9 +215,14 @@ Phase 2 diagnosis:
 
 Phase 2 follow-up before continuing beyond qsearch/selective search:
 
-- Add qsearch next, before judging the staged picker by short-movetime Elo. The
-  current evidence points to odd/even horizon instability as the main cause of
-  the standard and Annan regression.
+- Done: added qsearch and retested the representative odd/even horizon fixtures.
+  Standard and Annan no longer show the documented depth 4/5/6/7 move
+  oscillation: the standard fixture now chooses `4h4i` at depths 4-7, and the
+  Annan fixture now chooses `1f1e` at depths 4-7. Annan also returns the stable
+  move at `go movetime 10`, `20`, and `50`; standard returns the stable move at
+  `go movetime 40+`, but `20` and `30` ms still stop at the shallow `7g7f`
+  result. So qsearch improves the odd/even horizon instability, while very
+  short standard movetime searches can still fail to reach the stabilized depth.
 - Done: added a fixed-depth equivalence harness over representative openings.
   It compares the staged-picker/TT search score against a test-only reference
   alpha-beta search that does not use `MovePicker` or TT. The harness checks
@@ -242,24 +248,114 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
   capture/promotion gain is not SEE, but tuning it before qsearch risks fitting
   around the observed depth-parity artifact.
 
-### Not Done Yet: Phase 3 - Quiescence Search
+### Phase 3: Quiescence Search - Implemented, Needs Follow-Up
 
-Replace direct depth-zero evaluation with a capped tactical search.
+Phase 3 has been implemented in `haitaka_wasm`, and it improves standard and
+Annan movetime strength after rebasing onto the Phase 2 performance-fix base.
+NekoNeko remains a problem: qsearch still loses strength at short movetime and
+is much slower at fixed depth because Neko-family legal move generation is
+especially expensive.
 
-Initial scope:
+Implemented:
 
-- Use static evaluation as stand-pat when not in check.
-- If in check, search all legal evasions and disallow stand-pat.
-- Search captures and promotions.
-- Consider checking moves only with a small qsearch depth/check budget.
-- Order qsearch moves with captures/promotions first.
-- Add simple delta pruning only after correctness tests exist.
+- Replaced direct depth-zero `evaluate_or_mate` leaves with capped quiescence
+  search.
+- Added stand-pat static evaluation when the side to move is not in check.
+- If the side to move is in check, qsearch searches all legal evasions and
+  disallows stand-pat.
+- Added tactical qsearch over captures and promotions.
+- Added a small quiet-check budget: quiet checking moves are only searched at
+  root qsearch ply while the check budget remains.
+- Added qsearch ply and node caps from the first version:
+  `QSEARCH_MAX_PLY`, `QSEARCH_CHECK_BUDGET`, and `QSEARCH_NODE_LIMIT`.
+- Added `QsearchMovePicker` for tactical moves, evasions, and quiet checks. It
+  uses local capture/promotion scoring and does not update killer or history
+  state.
+- Added qsearch telemetry: `qnodes`, `qsearch_max_ply`,
+  `qsearch_cap_hits`, and `qsearch_check_move_tries`.
+- Exposed qsearch telemetry through native summaries, WASM getters, and
+  iterative-search JS iteration objects.
+- Reused `SearchOrdering` across iterative-deepening iterations so Phase 2
+  killer/history state now survives completed depths.
+- Extended the fixed-depth equivalence harness with a reference qsearch path so
+  representative openings continue to compare exact scores against a test-only
+  search that does not use the production move picker or TT.
+- Kept Phase 3 exact aside from qsearch horizon extension. No delta pruning,
+  SEE, LMR, null-move pruning, PVS, or aspiration windows were added.
 
-Expected impact: high for tactical stability. This should reduce horizon-effect
-blunders where the engine stops immediately after an unstable capture or threat.
+Verification completed:
 
-Risk: moderate. Unbounded qsearch can explode in Shogi because drops and checks
-create many forcing continuations. Add node and ply caps from the first version.
+- `cargo test -p haitaka_wasm` passed: 68 tests.
+- `cargo test -p haitaka_wasm --features annan` passed: 65 tests.
+- `cargo test -p haitaka_wasm --features nekoneko` passed: 61 tests.
+- `cargo bench -p haitaka_wasm --bench nnue -- --noplot` completed during the
+  initial Phase 3 validation.
+- Qsearch unit tests cover quiet leaves, tactical capture expansion, in-check
+  evasions without stand-pat, quiet-check budget behavior, and cap telemetry.
+- A Neko-family runtime-only smoke test was gated out because qsearch makes the
+  DFPN-disabled mate-position test exceed its fixed 5s budget there.
+
+Measured strength and speed against the search-equivalent Phase 2 base
+`0466261` (`Reuse wasm ordering across iterative depths`). The latest stacked
+base is `591bcf7`, which only updates the Phase 2 NekoNeko performance note, so
+these Phase 3 comparison numbers are unchanged. Phase 3 was A; the base was B.
+All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
+`--movetime-ms 20`, `--opening-random-plies 4`, 4 workers, 200 games, seed 1.
+
+| Build | Games | Result A-B-D | Score | Approx Elo | 95% CI |
+|---|---:|---:|---:|---:|---:|
+| standard | 200 | 181-19-0 | 90.5% | +391.6 | +321.7 .. +496.2 |
+| `--features annan` | 200 | 162-38-0 | 81.0% | +251.9 | +196.1 .. +321.7 |
+| `--features nekoneko` | 200 | 50-94-56 | 39.0% | -77.7 | -129.0 .. -29.5 |
+
+Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
+external USI self-play currently reports `totalNodes=0` for child engines.
+
+| Build | Depth | Nodes diff | NPS diff | Time diff |
+|---|---:|---:|---:|---:|
+| standard | 5 | -57.4% | +6.6% | -60.1% |
+| `--features annan` | 5 | +36.8% | -51.4% | +181.7% |
+| `--features nekoneko` | 5 | -38.2% | -95.8% | +1364.4% |
+
+Artifacts from local measurement were written under
+`/tmp/haitaka-phase3-latest-base-results/`.
+
+Phase 3 diagnosis:
+
+- Standard and Annan now gain strongly at `--movetime-ms 20`, which supports
+  the Phase 2 diagnosis that qsearch was needed before judging the staged picker
+  by short-movetime Elo.
+- Standard also gets faster at fixed depth 5 despite qsearch, because the
+  Phase 2 move-picker fixes plus qsearch reduce the counted alpha-beta tree
+  enough to offset the added tactical leaves.
+- Annan and especially NekoNeko show lower fixed-depth NPS. Qsearch adds
+  substantial uncounted work below alpha-beta leaves, so the CLI `nodes` value
+  alone understates the real search effort.
+- Neko-family move generation remains the main risk. Run-reflection rules make
+  legal move generation and check generation much more expensive, and qsearch
+  calls those paths repeatedly for tactical moves, evasions, and quiet checks.
+- NekoNeko fixed-depth depth 5 is about `14.6x` slower by wall time against the
+  latest base despite searching fewer counted alpha-beta nodes. This means
+  unreported qsearch and move-generation work dominates the runtime.
+
+Phase 3 follow-up before continuing to broader selective search:
+
+- Expose `qnodes` and qsearch cap/check telemetry in `haitaka_cli play` and, if
+  practical, in external USI self-play reports. Current fixed-depth diagnostics
+  only show alpha-beta `nodes`, which hides qsearch cost.
+- Add variant-aware qsearch limits for Neko-family builds. First candidates are
+  disabling quiet-check qsearch for Neko-family rules and/or lowering
+  `QSEARCH_MAX_PLY`.
+- Investigate a Neko-specific qsearch move generator that avoids full legal move
+  generation when selecting captures, promotions, and quiet checks.
+- Run larger self-play, ideally 1,000+ games per ruleset and at more than one
+  time control. The NekoNeko result is clearly negative at 200 games, but
+  standard and Annan should still be validated at longer controls.
+- Add a qsearch-focused tactical fixture suite with expected best moves or exact
+  scores before adding delta pruning.
+- Consider simple delta pruning and better capture ordering only after the
+  qsearch fixture suite exists. The current capture/promotion score is still a
+  cheap local heuristic, not SEE.
 
 ### Not Done Yet: Phase 4 - Selective Search
 
