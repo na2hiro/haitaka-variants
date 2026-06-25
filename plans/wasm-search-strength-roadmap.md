@@ -149,14 +149,15 @@ working tree after iterative `SearchOrdering` reuse was A; `91e5120` was B.
 |---|---:|---:|---:|---:|---:|
 | standard | 52-148-0 / 200 | 26.0% | -181.7 | -81.7% | +24.5% |
 | `--features annan` | 41-159-0 / 200 | 20.5% | -235.4 | -43.8% | +38.4% |
-| `--features nekoneko` | 4-0-0 / 4 partial | 100.0% | +798.3 | +38.1% | +8.6% |
+| `--features nekoneko` | 95-69-25 / 189 partial | 56.9% | +48.1 | +38.1% | +8.6% |
 
-The NekoNeko self-play row is partial: the unpatched `91e5120` external engine
-aborted on game 6, after 4 completed games, by rejecting a legal NekoNeko SFEN with
-`failed to parse SFEN: The board representation is invalid`. That is the
-triple-check validation bug fixed in Phase 2, so a full 200-game NekoNeko
-comparison against the exact pre-PR revision is not valid without modifying the
-baseline.
+The NekoNeko self-play row uses `91e5120` plus only the parser/client hardening
+from `23129c2` as the B engine. That keeps the Phase 1 search behavior while
+avoiding the old external-engine SFEN abort. The run still eventually aborted on
+game 189 after rejecting another legal NekoNeko SFEN, but the 189 completed games
+are much more useful than the exact-`91e5120` 4-game run. Exact unpatched
+`91e5120` aborted on game 6, after 4 completed games, with
+`failed to parse SFEN: The board representation is invalid`.
 
 Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
 external USI self-play currently reports `totalNodes=0` for child engines.
