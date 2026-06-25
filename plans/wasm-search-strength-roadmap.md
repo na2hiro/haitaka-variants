@@ -10,18 +10,20 @@ no quiescence search, and no selective pruning beyond normal alpha-beta cutoffs.
 
 The highest-return path is to keep improving the alpha-beta core before
 attempting a large architectural rewrite. Phase 1 added the transposition table;
-Phase 2 added stronger ordering infrastructure, but the first measured build is
-weaker at short movetime and needs diagnosis before adding qsearch or selective
-search. Defer
-make/unmake until the easier search wins have been measured, because board
-mutation rollback is correctness-sensitive across all variants.
+Phase 2 added stronger ordering infrastructure and later fixed two review-found
+move-picker issues, but the measured build is still weaker than Phase 1 at short
+movetime. The remaining regression is dominated by horizon/depth-parity behavior
+and should be addressed with qsearch before selective pruning. Defer make/unmake
+until the easier search wins have been measured, because board mutation rollback
+is correctness-sensitive across all variants.
 
 ### Current Baseline
 
 - `search_best_move` and `negamax` clone the board for each child and recurse
   with alpha-beta bounds.
-- `MovePicker` still allocates a fresh `Vec<Move>` per node, but it now consumes
-  generated moves by staged selection instead of sorting the whole list.
+- `MovePicker` still allocates per node, but it now partitions legal moves into
+  staged buckets and sorts each bucket once instead of sorting the whole legal
+  move list or rescanning all moves for every pick.
 - Move ordering currently prioritizes TT/hash moves, winning/equal tactical
   moves, killer moves, history-ranked quiet moves, and losing tactical moves.
 - Depth-zero nodes call `evaluate_or_mate` immediately, so volatile capture,
@@ -132,36 +134,35 @@ Implemented:
 Verification completed:
 
 - `cargo check -p haitaka_wasm` passed.
-- `cargo test -p haitaka_wasm` passed: 61 tests.
-- `cargo test -p haitaka_wasm --features annan` passed: 58 tests.
-- `cargo test -p haitaka_wasm --features nekoneko` passed: 57 tests.
+- `cargo test -p haitaka_wasm` passed: 63 tests.
+- `cargo test -p haitaka_wasm --features annan` passed: 60 tests.
+- `cargo test -p haitaka_wasm --features nekoneko` passed: 58 tests.
 - `cargo bench -p haitaka_wasm --bench nnue -- --noplot` completed.
 
 Measured strength and speed against the previous Phase 1 commit
 `91e5120` (`Document wasm TT verification`). Phase 2 was A; Phase 1 was B.
 All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
-`--movetime-ms 20`, `--opening-random-plies 4`, 4 workers. Standard and Annan
-used 200 games with seed 1. NekoNeko 200-game attempts with seeds 1 and 2 both
-aborted because an external child engine returned an illegal move, so the row
-below is an 80-game seed-2 sample and is not directly comparable.
+`--movetime-ms 20`, `--opening-random-plies 4`, seed `1`, 4 workers. Current
+PR head `941164c` was A; `91e5120` was B.
 
-| Build | Games | Result A-B-D | Score | Approx Elo | 95% CI |
+| Build | Self-play result | Score | Approx Elo | Depth-5 nodes | Depth-5 NPS |
 |---|---:|---:|---:|---:|---:|
-| standard | 200 | 34-166-0 | 17.0% | -275.5 | -349.5 .. -217.8 |
-| `--features annan` | 200 | 24-176-0 | 12.0% | -346.1 | -436.5 .. -281.6 |
-| `--features nekoneko` | 80 | 49-24-7 | 65.625% | +112.3 | +36.4 .. +200.6 |
+| standard | 64-135-1 / 200 | 32.25% | -129.0 | -81.7% | -47.5% |
+| `--features annan` | 44-156-0 / 200 | 22.0% | -219.9 | -43.8% | -40.1% |
+| `--features nekoneko` | 13-19-9 / 41 | 42.68% | -51.2 | +38.1% | +1.7% |
+
+The NekoNeko self-play row is partial: the unpatched `91e5120` external engine
+aborted on game 42 by rejecting a legal NekoNeko SFEN with
+`failed to parse SFEN: The board representation is invalid`. That is the
+triple-check validation bug fixed in Phase 2, so a full 200-game NekoNeko
+comparison against the exact pre-PR revision is not valid without modifying the
+baseline.
 
 Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
 external USI self-play currently reports `totalNodes=0` for child engines.
 
-| Build | Depth | Nodes diff | NPS diff | Time diff |
-|---|---:|---:|---:|---:|
-| standard | 5 | -81.8% | -61.0% | -53.5% |
-| `--features annan` | 5 | -43.8% | -43.6% | -0.3% |
-| `--features nekoneko` | 5 | +38.1% | +2.6% | +34.5% |
-
 Artifacts from local measurement were written under
-`/tmp/haitaka-phase2-results/`.
+`/tmp/haitaka-pr21-strength/`.
 
 Phase 2 diagnosis:
 
@@ -194,6 +195,14 @@ Phase 2 diagnosis:
   depth search. TT state carries across iterations, but killer/history learning
   does not, so the current Phase 2 strength impact is mostly the changed
   tactical/quiet ordering and the resulting depth-parity shift.
+- Done: fixed promotion-only tactical scoring. Non-capturing promotions now use
+  only the promotion delta as tactical gain, so major-piece promotions are not
+  incorrectly classified as losing tactical moves.
+- Done: fixed the review-found picker overhead issue. `MovePicker` now
+  partitions legal moves into hash, tactical, killer, history, and losing
+  tactical buckets during construction, sorts each bucket once with the existing
+  deterministic tie-breaker, and consumes by index instead of rescanning the
+  full move vector for every pick.
 - Practical conclusion: do not tune Phase 2 by 20 ms Elo alone until qsearch is
   added or the time-control/depth-parity behavior is stabilized. The lower node
   count is real, but without qsearch it can expose worse odd-depth horizon moves.
@@ -211,6 +220,9 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
   alpha-beta search that does not use `MovePicker` or TT. The harness checks
   depths 4 and 5 for the standard/Annan-style builds so future ordering changes
   must preserve exact alpha-beta scores.
+- Done: made completed-depth iterative tests deterministic under Annan debug CI
+  by disabling DFPN for tests that specifically exercise iterative alpha-beta
+  depth completion and by using `timeout_ms = 0` for no deadline.
 - Keep a TT-disabled or TT-verification-strong comparison mode as a diagnostic
   tool, but deprioritize TT collision as the primary explanation for this
   regression because 16 MB and 128 MB hash runs showed the same 20 ms move
