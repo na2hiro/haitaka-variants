@@ -119,7 +119,7 @@ struct SearchContext<'a> {
     deadline: Option<Instant>,
     tt: &'a mut TranspositionTable,
     tt_stats: SearchTtStats,
-    ordering: SearchOrdering,
+    ordering: &'a mut SearchOrdering,
     ordering_stats: SearchOrderingStats,
 }
 
@@ -650,6 +650,25 @@ fn search_board_with_strategy_and_tt(
     deadline: Option<Instant>,
     tt: &mut TranspositionTable,
 ) -> Result<SearchSummary, SearchInterrupted> {
+    let mut ordering = SearchOrdering::default();
+    search_board_with_strategy_tt_and_ordering(
+        board,
+        depth,
+        evaluation,
+        deadline,
+        tt,
+        &mut ordering,
+    )
+}
+
+fn search_board_with_strategy_tt_and_ordering(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+) -> Result<SearchSummary, SearchInterrupted> {
     let started_at = Instant::now();
     tt.new_search();
     let root_state = match &evaluation {
@@ -665,7 +684,7 @@ fn search_board_with_strategy_and_tt(
         deadline,
         tt,
         tt_stats: SearchTtStats::default(),
-        ordering: SearchOrdering::default(),
+        ordering,
         ordering_stats: SearchOrderingStats::default(),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
@@ -1122,6 +1141,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     let mut total_states = 0;
     let mut tt_stats = SearchTtStats::default();
     let mut ordering_stats = SearchOrderingStats::default();
+    let mut ordering = SearchOrdering::default();
     let mut latest_best_move = None;
     let mut timed_out = false;
 
@@ -1131,7 +1151,14 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
             break;
         }
 
-        match search_board_with_strategy_and_tt(&board, depth, evaluation.clone(), deadline, tt) {
+        match search_board_with_strategy_tt_and_ordering(
+            &board,
+            depth,
+            evaluation.clone(),
+            deadline,
+            tt,
+            &mut ordering,
+        ) {
             Ok(summary) => {
                 total_states += summary.states;
                 completed_depth = depth;

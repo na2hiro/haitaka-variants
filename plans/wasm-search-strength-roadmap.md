@@ -143,16 +143,16 @@ Measured strength and speed against the previous Phase 1 commit
 `91e5120` (`Document wasm TT verification`). Phase 2 was A; Phase 1 was B.
 All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
 `--movetime-ms 20`, `--opening-random-plies 4`, seed `1`, 4 workers. Current
-PR head `941164c` was A; `91e5120` was B.
+working tree after iterative `SearchOrdering` reuse was A; `91e5120` was B.
 
 | Build | Self-play result | Score | Approx Elo | Depth-5 nodes | Depth-5 NPS |
 |---|---:|---:|---:|---:|---:|
-| standard | 64-135-1 / 200 | 32.25% | -129.0 | -81.7% | -47.5% |
-| `--features annan` | 44-156-0 / 200 | 22.0% | -219.9 | -43.8% | -40.1% |
-| `--features nekoneko` | 13-19-9 / 41 | 42.68% | -51.2 | +38.1% | +1.7% |
+| standard | 52-148-0 / 200 | 26.0% | -181.7 | -81.7% | +24.5% |
+| `--features annan` | 41-159-0 / 200 | 20.5% | -235.4 | -43.8% | +38.4% |
+| `--features nekoneko` | 4-0-0 / 4 partial | 100.0% | +798.3 | +38.1% | +8.6% |
 
 The NekoNeko self-play row is partial: the unpatched `91e5120` external engine
-aborted on game 42 by rejecting a legal NekoNeko SFEN with
+aborted on game 6, after 4 completed games, by rejecting a legal NekoNeko SFEN with
 `failed to parse SFEN: The board representation is invalid`. That is the
 triple-check validation bug fixed in Phase 2, so a full 200-game NekoNeko
 comparison against the exact pre-PR revision is not valid without modifying the
@@ -162,7 +162,7 @@ Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
 external USI self-play currently reports `totalNodes=0` for child engines.
 
 Artifacts from local measurement were written under
-`/tmp/haitaka-pr21-strength/`.
+`/tmp/haitaka-pr21-ordering/`.
 
 Phase 2 diagnosis:
 
@@ -195,6 +195,10 @@ Phase 2 diagnosis:
   depth search. TT state carries across iterations, but killer/history learning
   does not, so the current Phase 2 strength impact is mostly the changed
   tactical/quiet ordering and the resulting depth-parity shift.
+- Done: preserved and reused `SearchOrdering` across iterative-deepening
+  iterations. Fixed-depth searches still get a fresh ordering table, but
+  iterative search now keeps killer/history state across completed depths just
+  like it already keeps TT state.
 - Done: fixed promotion-only tactical scoring. Non-capturing promotions now use
   only the promotion delta as tactical gain, so major-piece promotions are not
   incorrectly classified as losing tactical moves.
@@ -212,9 +216,6 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
 - Add qsearch next, before judging the staged picker by short-movetime Elo. The
   current evidence points to odd/even horizon instability as the main cause of
   the standard and Annan regression.
-- Preserve and reuse `SearchOrdering` across iterative-deepening iterations.
-  TT state already carries across depths, but killer/history state is recreated
-  for each fixed-depth search, which limits Phase 2 upside.
 - Done: added a fixed-depth equivalence harness over representative openings.
   It compares the staged-picker/TT search score against a test-only reference
   alpha-beta search that does not use `MovePicker` or TT. The harness checks
