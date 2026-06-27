@@ -2635,6 +2635,94 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn qsearch_tactical_fixture_suite_pins_best_moves_and_scores() {
+        struct TacticalFixture {
+            name: &'static str,
+            sfen: &'static str,
+            expected_best_move: &'static str,
+            expected_score: i32,
+            expected_qscore: i32,
+            min_qnodes: u64,
+        }
+
+        let fixtures = [
+            TacticalFixture {
+                name: "hanging_rook_capture",
+                sfen: "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1",
+                expected_best_move: "5e4e",
+                expected_score: 1788,
+                expected_qscore: 1788,
+                min_qnodes: 2,
+            },
+            TacticalFixture {
+                name: "silver_promotion",
+                sfen: "4k4/9/4S4/9/9/9/9/9/4K4 b - 1",
+                expected_best_move: "5c4d+",
+                expected_score: 562,
+                expected_qscore: 562,
+                min_qnodes: 2,
+            },
+            TacticalFixture {
+                name: "bishop_promotion",
+                sfen: "4k4/9/4B4/9/9/9/9/9/4K4 b - 1",
+                expected_best_move: "5c4d+",
+                expected_score: 938,
+                expected_qscore: 938,
+                min_qnodes: 2,
+            },
+        ];
+
+        let limits = qsearch_limits();
+        for fixture in fixtures {
+            let board = Board::from_sfen(fixture.sfen).unwrap();
+            let summary = search_board_impl_handcrafted(&board, 1).unwrap();
+            assert_eq!(
+                summary.best_move.as_deref(),
+                Some(fixture.expected_best_move),
+                "{} best move changed",
+                fixture.name
+            );
+            assert_eq!(
+                summary.best_score,
+                Some(fixture.expected_score),
+                "{} root score changed",
+                fixture.name
+            );
+            assert!(
+                summary.qsearch_stats.qnodes >= fixture.min_qnodes,
+                "{} should exercise qsearch, got {:?}",
+                fixture.name,
+                summary.qsearch_stats
+            );
+
+            let (qscore, qstats) =
+                qsearch_handcrafted(&board, 0, limits.check_budget, limits.node_limit);
+            assert_eq!(
+                qscore, fixture.expected_qscore,
+                "{} direct qsearch score changed",
+                fixture.name
+            );
+            assert!(
+                qstats.qnodes >= fixture.min_qnodes,
+                "{} direct qsearch should search tactical leaves, got {:?}",
+                fixture.name,
+                qstats
+            );
+        }
+    }
+
+    #[test]
     fn tt_score_conversion_round_trips() {
         for ply in [0, 1, 17, 63] {
             for score in [

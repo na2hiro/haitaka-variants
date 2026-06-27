@@ -366,8 +366,10 @@ Phase 3 follow-up before continuing to broader selective search:
   time control. The tuned NekoNeko limits were not worse than current qsearch in
   the 200-game gate, but the CI is still wide and the broader Neko-family impact
   should be validated.
-- Add a qsearch-focused tactical fixture suite with expected best moves or exact
-  scores before adding delta pruning.
+- Done: added a qsearch-focused tactical fixture suite for the standard
+  handcrafted search before adding delta pruning. The suite pins exact depth-1
+  best moves, root scores, direct qsearch scores, and qnode activity for
+  capture and promotion fixtures.
 - Consider simple delta pruning and better capture ordering only after the
   qsearch fixture suite exists. The current capture/promotion score is still a
   cheap local heuristic, not SEE.
