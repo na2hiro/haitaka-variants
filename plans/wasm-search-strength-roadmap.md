@@ -360,8 +360,15 @@ Phase 3 follow-up before continuing to broader selective search:
   (`-23.8 .. +73.4` 95% CI). Candidate A reported `127325` qnodes, qmax `6`,
   `2336` cap hits, and `0` quiet-check tries; baseline B reported `77526`
   qnodes, qmax `8`, `413` cap hits, and `2699` quiet-check tries.
-- Investigate a Neko-specific qsearch move generator that avoids full legal move
-  generation when selecting captures, promotions, and quiet checks.
+- Not adopted (Only 2% improvement): added a Neko-family qsearch tactical candidate generator in
+  `haitaka_wasm` so capture/promotion selection no longer calls full legal move
+  generation. Neko-family quiet-check selection also avoids the variant
+  generate-and-filter check path under the current `check_budget=0` limits.
+  In-check evasions still use full legal generation for correctness. On the
+  NekoNeko depth-5 start-position diagnostic, the optimized picker kept the same
+  move `9i9h`, score `+24`, `29732` nodes, and `95246` qnodes, while elapsed
+  time was `9623.146 ms` versus `9854.337 ms` for the previous tuned-qsearch
+  commit in the same local rerun.
 - Run larger self-play, ideally 1,000+ games per ruleset and at more than one
   time control. The tuned NekoNeko limits were not worse than current qsearch in
   the 200-game gate, but the CI is still wide and the broader Neko-family impact
