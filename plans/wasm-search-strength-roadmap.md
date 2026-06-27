@@ -252,9 +252,10 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
 
 Phase 3 has been implemented in `haitaka_wasm`, and it improves standard and
 Annan movetime strength after rebasing onto the Phase 2 performance-fix base.
-NekoNeko remains a problem: qsearch still loses strength at short movetime and
+NekoNeko remains a problem: qsearch still trends weaker at short movetime and
 is much slower at fixed depth because Neko-family legal move generation is
-especially expensive.
+especially expensive, though the tuned Neko-family qsearch limits substantially
+reduced the first measured regression.
 
 Implemented:
 
@@ -295,10 +296,8 @@ Verification completed:
 - A Neko-family runtime-only smoke test was gated out because qsearch makes the
   DFPN-disabled mate-position test exceed its fixed 5s budget there.
 
-Measured strength and speed against the search-equivalent Phase 2 base
-`0466261` (`Reuse wasm ordering across iterative depths`). The latest stacked
-base is `591bcf7`, which only updates the Phase 2 NekoNeko performance note, so
-these Phase 3 comparison numbers are unchanged. Phase 3 was A; the base was B.
+Measured strength and speed against the latest stacked Phase 2 base `591bcf7`
+(`Update NekoNeko performance note`). Phase 3 was A; the base was B.
 All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
 `--movetime-ms 20`, `--opening-random-plies 4`, 4 workers, 200 games, seed 1.
 
@@ -306,7 +305,7 @@ All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
 |---|---:|---:|---:|---:|---:|
 | standard | 200 | 181-19-0 | 90.5% | +391.6 | +321.7 .. +496.2 |
 | `--features annan` | 200 | 162-38-0 | 81.0% | +251.9 | +196.1 .. +321.7 |
-| `--features nekoneko` | 200 | 50-94-56 | 39.0% | -77.7 | -129.0 .. -29.5 |
+| `--features nekoneko` | 200 | 61-79-60 | 45.5% | -31.4 | -80.6 .. +16.7 |
 
 Fixed-depth `play` runs were used only for NPS and tree-size diagnostics because
 external USI self-play currently reports `totalNodes=0` for child engines.
@@ -315,10 +314,10 @@ external USI self-play currently reports `totalNodes=0` for child engines.
 |---|---:|---:|---:|---:|
 | standard | 5 | -57.4% | +6.6% | -60.1% |
 | `--features annan` | 5 | +36.8% | -51.4% | +181.7% |
-| `--features nekoneko` | 5 | -38.2% | -95.8% | +1364.4% |
+| `--features nekoneko` | 5 | -22.9% | -89.8% | +655.6% |
 
 Artifacts from local measurement were written under
-`/tmp/haitaka-phase3-latest-base-results/`.
+`/tmp/haitaka-qsearch-rerun/`.
 
 Phase 3 diagnosis:
 
@@ -334,23 +333,39 @@ Phase 3 diagnosis:
 - Neko-family move generation remains the main risk. Run-reflection rules make
   legal move generation and check generation much more expensive, and qsearch
   calls those paths repeatedly for tactical moves, evasions, and quiet checks.
-- NekoNeko fixed-depth depth 5 is about `14.6x` slower by wall time against the
+- NekoNeko fixed-depth depth 5 is about `7.6x` slower by wall time against the
   latest base despite searching fewer counted alpha-beta nodes. This means
   unreported qsearch and move-generation work dominates the runtime.
 
 Phase 3 follow-up before continuing to broader selective search:
 
-- Expose `qnodes` and qsearch cap/check telemetry in `haitaka_cli play` and, if
-  practical, in external USI self-play reports. Current fixed-depth diagnostics
-  only show alpha-beta `nodes`, which hides qsearch cost.
-- Add variant-aware qsearch limits for Neko-family builds. First candidates are
-  disabling quiet-check qsearch for Neko-family rules and/or lowering
-  `QSEARCH_MAX_PLY`.
+- Done: exposed `qnodes`, QNPS, qsearch max ply, cap hits, and quiet-check
+  tries in `haitaka_cli play`, native/external USI self-play live status, and
+  self-play JSON reports. `totalNodes` remains alpha-beta nodes for
+  compatibility, while qsearch work is reported separately.
+- Done: added variant-aware qsearch limits for Neko-family builds. The selected
+  first-pass limit is `max_ply=6`, `check_budget=0`, `node_limit=250_000` for
+  `neko`, `nekoneko`, `yokoneko`, and `yokonekoneko`; standard and non-Neko
+  variants keep `max_ply=8`, `check_budget=1`, `node_limit=1_000_000`.
+- Done: used the new telemetry to tune NekoNeko limits. On the depth-5 start
+  position diagnostic, current qsearch used `143337` qnodes, reached qmax `8`,
+  hit `20052` caps, tried `24` quiet checks, and took `20152.895 ms`; the
+  selected Neko-family limits used `95246` qnodes, reached qmax `6`, hit
+  `12245` caps, tried `0` quiet checks, and took `10346.697 ms`, with the same
+  move `9i9h` and score `+24`.
+- Done: confirmed the selected Neko-family limits against current qsearch in
+  200-game NekoNeko self-play at `--movetime-ms 20`,
+  `--opening-random-plies 4`, seed `1`, 4 workers. Candidate A scored
+  `85-71-44 / 200`, score `53.5%`, about `+24.4 Elo`
+  (`-23.8 .. +73.4` 95% CI). Candidate A reported `127325` qnodes, qmax `6`,
+  `2336` cap hits, and `0` quiet-check tries; baseline B reported `77526`
+  qnodes, qmax `8`, `413` cap hits, and `2699` quiet-check tries.
 - Investigate a Neko-specific qsearch move generator that avoids full legal move
   generation when selecting captures, promotions, and quiet checks.
 - Run larger self-play, ideally 1,000+ games per ruleset and at more than one
-  time control. The NekoNeko result is clearly negative at 200 games, but
-  standard and Annan should still be validated at longer controls.
+  time control. The tuned NekoNeko limits were not worse than current qsearch in
+  the 200-game gate, but the CI is still wide and the broader Neko-family impact
+  should be validated.
 - Add a qsearch-focused tactical fixture suite with expected best moves or exact
   scores before adding delta pruning.
 - Consider simple delta pruning and better capture ordering only after the

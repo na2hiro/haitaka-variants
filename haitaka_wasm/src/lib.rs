@@ -30,9 +30,36 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
-const QSEARCH_MAX_PLY: u8 = 8;
-const QSEARCH_CHECK_BUDGET: u8 = 1;
-const QSEARCH_NODE_LIMIT: u64 = 1_000_000;
+const DEFAULT_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
+    max_ply: 8,
+    check_budget: 1,
+    node_limit: 1_000_000,
+};
+const NEKO_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
+    max_ply: 6,
+    check_budget: 0,
+    node_limit: 250_000,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct QsearchLimits {
+    max_ply: u8,
+    check_budget: u8,
+    node_limit: u64,
+}
+
+fn qsearch_limits() -> QsearchLimits {
+    if cfg!(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )) {
+        NEKO_QSEARCH_LIMITS
+    } else {
+        DEFAULT_QSEARCH_LIMITS
+    }
+}
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
@@ -146,7 +173,7 @@ struct SearchContext<'a> {
     ordering: &'a mut SearchOrdering,
     ordering_stats: SearchOrderingStats,
     qsearch_stats: SearchQsearchStats,
-    qsearch_node_limit: u64,
+    qsearch_limits: QsearchLimits,
 }
 
 impl SearchContext<'_> {
@@ -174,7 +201,7 @@ impl SearchContext<'_> {
         if self.deadline.is_some() && self.qsearch_stats.qnodes % DEADLINE_CHECK_INTERVAL == 0 {
             self.check_deadline()?;
         }
-        if self.qsearch_stats.qnodes > self.qsearch_node_limit {
+        if self.qsearch_stats.qnodes > self.qsearch_limits.node_limit {
             self.qsearch_stats.qsearch_cap_hits += 1;
             return Ok(false);
         }
@@ -788,7 +815,7 @@ fn search_board_with_strategy_tt_and_ordering(
         ordering,
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
-        qsearch_node_limit: QSEARCH_NODE_LIMIT,
+        qsearch_limits: qsearch_limits(),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -832,6 +859,28 @@ impl Default for UsiSession {
     fn default() -> Self {
         Self::new(ENGINE_NAME, 64)
     }
+}
+
+fn usi_info_line(
+    depth: u8,
+    elapsed_ms: f64,
+    nodes: u64,
+    nps: f64,
+    hashfull: u32,
+    qsearch_stats: SearchQsearchStats,
+) -> String {
+    format!(
+        "info depth {} time {:.0} nodes {} nps {:.0} hashfull {} qnodes {} qsearchMaxPly {} qsearchCapHits {} qsearchCheckMoveTries {}",
+        depth,
+        elapsed_ms.max(0.0),
+        nodes,
+        nps.max(0.0),
+        hashfull,
+        qsearch_stats.qnodes,
+        qsearch_stats.qsearch_max_ply,
+        qsearch_stats.qsearch_cap_hits,
+        qsearch_stats.qsearch_check_move_tries,
+    )
 }
 
 impl UsiSession {
@@ -893,7 +942,7 @@ impl UsiSession {
             }
             command if command.starts_with("go") => {
                 match parse_usi_go(command, self.movetime_max_depth) {
-                    Ok(budget) => vec![format!("bestmove {}", self.bestmove_for_budget(budget))],
+                    Ok(budget) => self.search_outputs_for_budget(budget),
                     Err(err) => vec![format!("info string invalid go command: {err}")],
                 }
             }
@@ -942,12 +991,12 @@ impl UsiSession {
         Ok(())
     }
 
-    fn bestmove_for_budget(&mut self, budget: UsiSearchBudget) -> String {
+    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
         if self.board.status() != haitaka::GameStatus::Ongoing {
-            return "resign".to_string();
+            return vec!["bestmove resign".to_string()];
         }
 
-        let result = match budget {
+        match budget {
             UsiSearchBudget::Depth(depth) => search_board_with_strategy_and_tt(
                 &self.board,
                 depth,
@@ -956,7 +1005,23 @@ impl UsiSession {
                 &mut self.tt,
             )
             .map_err(|_| "search timed out unexpectedly".to_string())
-            .map(|summary| summary.best_move),
+            .map(|summary| {
+                let best_move = summary
+                    .best_move
+                    .clone()
+                    .unwrap_or_else(|| self.fallback_bestmove());
+                vec![
+                    usi_info_line(
+                        depth,
+                        summary.elapsed_ms,
+                        summary.states,
+                        summary.nps,
+                        summary.tt_stats.tt_hashfull,
+                        summary.qsearch_stats,
+                    ),
+                    format!("bestmove {best_move}"),
+                ]
+            }),
             UsiSearchBudget::Movetime { max_depth, millis } => {
                 search_iterative_deepening_with_strategy_and_deadline_and_tt(
                     &self.board.to_string(),
@@ -971,18 +1036,29 @@ impl UsiSession {
                     },
                     &mut self.tt,
                 )
-                .map(|summary| summary.best_move)
-            }
-        };
-
-        match result {
-            Ok(Some(best_move)) => best_move,
-            Ok(None) => self.fallback_bestmove(),
-            Err(err) => {
-                let _ = err;
-                self.fallback_bestmove()
+                .map(|summary| {
+                    let best_move = summary
+                        .best_move
+                        .clone()
+                        .unwrap_or_else(|| self.fallback_bestmove());
+                    vec![
+                        usi_info_line(
+                            summary.completed_depth,
+                            summary.elapsed_ms,
+                            summary.states,
+                            summary.nps,
+                            summary.tt_stats.tt_hashfull,
+                            summary.qsearch_stats,
+                        ),
+                        format!("bestmove {best_move}"),
+                    ]
+                })
             }
         }
+        .unwrap_or_else(|err| {
+            let _ = err;
+            vec![format!("bestmove {}", self.fallback_bestmove())]
+        })
     }
 
     fn fallback_bestmove(&self) -> String {
@@ -1700,7 +1776,7 @@ fn negamax(
             beta,
             ply,
             0,
-            QSEARCH_CHECK_BUDGET,
+            ctx.qsearch_limits.check_budget,
             ctx,
             nnue_state,
         );
@@ -1796,8 +1872,8 @@ fn quiescence(
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
         return Ok(terminal);
     }
-    if !ctx.record_qnode(qply)? || qply >= QSEARCH_MAX_PLY {
-        ctx.qsearch_stats.qsearch_cap_hits += u64::from(qply >= QSEARCH_MAX_PLY);
+    if !ctx.record_qnode(qply)? || qply >= ctx.qsearch_limits.max_ply {
+        ctx.qsearch_stats.qsearch_cap_hits += u64::from(qply >= ctx.qsearch_limits.max_ply);
         return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
     }
 
@@ -2209,7 +2285,7 @@ mod tests {
     fn handcrafted_context<'a>(
         tt: &'a mut TranspositionTable,
         ordering: &'a mut SearchOrdering,
-        qsearch_node_limit: u64,
+        qsearch_limits: QsearchLimits,
     ) -> SearchContext<'a> {
         SearchContext {
             states: 0,
@@ -2220,14 +2296,14 @@ mod tests {
             ordering,
             ordering_stats: SearchOrderingStats::default(),
             qsearch_stats: SearchQsearchStats::default(),
-            qsearch_node_limit,
+            qsearch_limits,
         }
     }
 
     fn static_handcrafted_eval(board: &Board) -> i32 {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
-        let ctx = handcrafted_context(&mut tt, &mut ordering, QSEARCH_NODE_LIMIT);
+        let ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_limits());
         evaluate_or_mate(board, 0, &ctx, None)
     }
 
@@ -2239,7 +2315,15 @@ mod tests {
     ) -> (i32, SearchQsearchStats) {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
-        let mut ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_node_limit);
+        let mut ctx = handcrafted_context(
+            &mut tt,
+            &mut ordering,
+            QsearchLimits {
+                max_ply: qsearch_limits().max_ply,
+                check_budget,
+                node_limit: qsearch_node_limit,
+            },
+        );
         let score = quiescence(
             board,
             -INF_SCORE,
@@ -2297,8 +2381,13 @@ mod tests {
         assert!(session.handle_line("position startpos").is_empty());
         let output = session.handle_line("go depth 1");
 
-        assert_eq!(output.len(), 1);
-        let best_move = output[0]
+        assert_eq!(output.len(), 2);
+        assert!(output[0].starts_with("info "));
+        assert!(output[0].contains(" qnodes "));
+        assert!(output[0].contains(" qsearchMaxPly "));
+        assert!(output[0].contains(" qsearchCapHits "));
+        assert!(output[0].contains(" qsearchCheckMoveTries "));
+        let best_move = output[1]
             .strip_prefix("bestmove ")
             .expect("expected bestmove output");
         assert_ne!(best_move, "resign");
@@ -2313,8 +2402,9 @@ mod tests {
         assert!(session.handle_line("position startpos").is_empty());
         let output = session.handle_line("go movetime 1");
 
-        assert_eq!(output.len(), 1);
-        let best_move = output[0]
+        assert!(matches!(output.len(), 1 | 2));
+        let bestmove_output = output.last().expect("expected at least bestmove output");
+        let best_move = bestmove_output
             .strip_prefix("bestmove ")
             .expect("expected bestmove output");
         assert_ne!(best_move, "resign");
@@ -2455,11 +2545,29 @@ mod tests {
     }
 
     #[test]
+    fn qsearch_limits_match_variant_family() {
+        let limits = qsearch_limits();
+        if cfg!(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko"
+        )) {
+            assert_eq!(limits.max_ply, 6);
+            assert_eq!(limits.check_budget, 0);
+            assert_eq!(limits.node_limit, 250_000);
+        } else {
+            assert_eq!(limits, DEFAULT_QSEARCH_LIMITS);
+        }
+    }
+
+    #[test]
     fn qsearch_quiet_leaf_matches_static_eval() {
         let board = Board::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b - 1").unwrap();
         let static_eval = static_handcrafted_eval(&board);
+        let limits = qsearch_limits();
         let (qscore, stats) =
-            qsearch_handcrafted(&board, 0, QSEARCH_CHECK_BUDGET, QSEARCH_NODE_LIMIT);
+            qsearch_handcrafted(&board, 0, limits.check_budget, limits.node_limit);
 
         assert_eq!(qscore, static_eval);
         assert_eq!(stats.qnodes, 1);
@@ -2470,8 +2578,9 @@ mod tests {
     fn qsearch_expands_tactical_captures() {
         let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1").unwrap();
         let static_eval = static_handcrafted_eval(&board);
+        let limits = qsearch_limits();
         let (qscore, stats) =
-            qsearch_handcrafted(&board, 0, QSEARCH_CHECK_BUDGET, QSEARCH_NODE_LIMIT);
+            qsearch_handcrafted(&board, 0, limits.check_budget, limits.node_limit);
 
         assert!(stats.qnodes > 1, "expected qsearch to search capture nodes");
         assert!(
@@ -2485,7 +2594,8 @@ mod tests {
         let board = Board::from_sfen("4r4/9/9/9/9/9/9/9/4K3k b - 1").unwrap();
         assert!(!board.checkers().is_empty());
 
-        let (_, stats) = qsearch_handcrafted(&board, 0, QSEARCH_CHECK_BUDGET, QSEARCH_NODE_LIMIT);
+        let limits = qsearch_limits();
+        let (_, stats) = qsearch_handcrafted(&board, 0, limits.check_budget, limits.node_limit);
         assert!(stats.qnodes > 1, "expected qsearch to search evasions");
     }
 
@@ -2493,8 +2603,9 @@ mod tests {
     fn qsearch_check_budget_controls_quiet_check_search() {
         let board = Board::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b R 1").unwrap();
 
-        let (_, no_checks) = qsearch_handcrafted(&board, 0, 0, QSEARCH_NODE_LIMIT);
-        let (_, with_checks) = qsearch_handcrafted(&board, 0, 1, QSEARCH_NODE_LIMIT);
+        let limits = qsearch_limits();
+        let (_, no_checks) = qsearch_handcrafted(&board, 0, 0, limits.node_limit);
+        let (_, with_checks) = qsearch_handcrafted(&board, 0, 1, limits.node_limit);
 
         assert_eq!(no_checks.qsearch_check_move_tries, 0);
         assert!(
@@ -2508,15 +2619,16 @@ mod tests {
         let board = Board::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b - 1").unwrap();
         let static_eval = static_handcrafted_eval(&board);
 
-        let (node_capped, node_stats) = qsearch_handcrafted(&board, 0, QSEARCH_CHECK_BUDGET, 0);
+        let limits = qsearch_limits();
+        let (node_capped, node_stats) = qsearch_handcrafted(&board, 0, limits.check_budget, 0);
         assert_eq!(node_capped, static_eval);
         assert_eq!(node_stats.qsearch_cap_hits, 1);
 
         let (ply_capped, ply_stats) = qsearch_handcrafted(
             &board,
-            QSEARCH_MAX_PLY,
-            QSEARCH_CHECK_BUDGET,
-            QSEARCH_NODE_LIMIT,
+            limits.max_ply,
+            limits.check_budget,
+            limits.node_limit,
         );
         assert_eq!(ply_capped, static_eval);
         assert_eq!(ply_stats.qsearch_cap_hits, 1);
@@ -2624,7 +2736,7 @@ mod tests {
             return terminal;
         }
         if depth == 0 {
-            return reference_quiescence(board, alpha, beta, ply, 0, QSEARCH_CHECK_BUDGET);
+            return reference_quiescence(board, alpha, beta, ply, 0, qsearch_limits().check_budget);
         }
 
         let moves = reference_ordered_moves(board);
@@ -2667,7 +2779,7 @@ mod tests {
         if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
             return terminal;
         }
-        if qply >= QSEARCH_MAX_PLY {
+        if qply >= qsearch_limits().max_ply {
             return reference_handcrafted_eval(board, ply);
         }
 

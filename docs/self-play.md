@@ -187,8 +187,8 @@ cargo run -p haitaka_cli --release -- self-play \
 - ruleset
 - engine identity and launch metadata
 - embedded native archive manifest metadata for archive engines
-- score, approximate Elo, approximate 95% confidence interval, nodes, NPS, and
-  warnings
+- score, approximate Elo, approximate 95% confidence interval, nodes, NPS,
+  qsearch nodes/QNPS/cap/check telemetry, and warnings
 
 `self-play-games.jsonl` writes one JSON object per completed game:
 
@@ -197,8 +197,15 @@ cargo run -p haitaka_cli --release -- self-play \
 - opening source and start SFEN
 - played USI moves
 - result and winner
-- plies, nodes, elapsed time
+- plies, nodes, elapsed time, and qsearch telemetry
 - failure state, currently `null` because protocol failures stop the match
+
+`totalNodes` and `aggregateNps` count alpha-beta search nodes. Qsearch work is
+reported separately as `qnodes`, `aggregateQnps`, `qsearchMaxPly`,
+`qsearchCapHits`, and `qsearchCheckMoveTries`. In-process engines populate
+these fields directly. External USI engines populate them when their final
+`info` line before `bestmove` includes the matching tokens; older engines that
+omit them report zero qsearch telemetry.
 
 The Elo and confidence interval are intentionally approximate. Treat them as
 local development signals, not publishable rating claims.
