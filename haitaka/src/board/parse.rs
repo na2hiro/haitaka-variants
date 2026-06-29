@@ -345,6 +345,42 @@ mod anhoku_tests {
     }
 }
 
+#[cfg(all(test, feature = "nekoneko"))]
+mod nekoneko_tests {
+    use super::*;
+
+    #[test]
+    fn self_play_line_roundtrips_after_each_move() {
+        let mut board =
+            Board::from_sfen("lns1k1snl/1rg1g2b1/ppppppppp/9/9/9/PPPPPPPPP/1B3K2R/LNSG1GSNL b - 5")
+                .unwrap();
+        for (ply, move_text) in [
+            "4h5i", "1c1d", "7g7f", "4c4d", "9i9h", "9c9d", "9g9d", "5c5d", "9d9c+", "9a9c",
+            "9h9c+", "7c7d", "9c8b", "7a8b", "8h4d", "L*5h", "1h5h", "5b4c", "4d4c+", "3a4b",
+            "L*1b", "4b4c", "1b1a+", "2b1a", "L*1b", "1a1b", "L*1a", "1b1c", "R*1b", "1c1b",
+            "1a3c+", "2a3c", "G*5b", "4c5b", "5h9h", "1d1e", "9h9b+", "1e1f", "9b8b", "7b8b",
+            "S*4b", "5a4b", "1g1f", "1b2a", "1i1g", "2a1b", "1f1b+", "2c2d", "P*1a", "2d2e",
+            "1a2a+", "2e2f", "2g2f", "3c2e", "P*1a", "2e2f", "B*1c", "2f1h+", "1a3c+", "4b3c",
+            "1g1h", "3c2d", "P*1a", "2d2c", "1a2b+",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let mv = Move::from_str(move_text).unwrap();
+            board
+                .try_play(mv)
+                .unwrap_or_else(|_| panic!("move {move_text} should be legal at ply {}", ply + 1));
+            let sfen = board.to_string();
+            Board::from_sfen(&sfen).unwrap_or_else(|err| {
+                panic!(
+                    "round-trip failed after ply {} move {move_text}: {err}; sfen: {sfen}",
+                    ply + 1
+                )
+            });
+        }
+    }
+}
+
 #[cfg(all(
     test,
     not(any(
