@@ -1441,6 +1441,7 @@ fn merge_usi_info_telemetry(telemetry: &mut UsiInfoTelemetry, line: &str) {
         .split_whitespace();
     while let Some(token) = tokens.next() {
         match token {
+            "string" => break,
             "nodes" => {
                 if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
                     telemetry.total_nodes = value;
@@ -3884,7 +3885,10 @@ mod tests {
             &mut telemetry,
             "info depth 5 nodes 123 qnodes 456 qsearchMaxPly 3 qsearchCapHits 4 qsearchCheckMoveTries 5 qsearchDeltaPrunes 6",
         );
-        merge_usi_info_telemetry(&mut telemetry, "info string searched move 7g7f");
+        merge_usi_info_telemetry(
+            &mut telemetry,
+            "info string searched move 7g7f nodes 0 qnodes 0 qsearchDeltaPrunes 0",
+        );
 
         assert_eq!(telemetry.total_nodes, 123);
         assert_eq!(telemetry.qsearch.qnodes, 456);
