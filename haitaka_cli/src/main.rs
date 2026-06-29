@@ -416,6 +416,8 @@ struct QsearchTelemetry {
     qsearch_cap_hits: u64,
     #[serde(rename = "qsearchCheckMoveTries", default)]
     qsearch_check_move_tries: u64,
+    #[serde(rename = "qsearchDeltaPrunes", default)]
+    qsearch_delta_prunes: u64,
 }
 
 impl QsearchTelemetry {
@@ -424,6 +426,7 @@ impl QsearchTelemetry {
         self.qsearch_max_ply = self.qsearch_max_ply.max(other.qsearch_max_ply);
         self.qsearch_cap_hits += other.qsearch_cap_hits;
         self.qsearch_check_move_tries += other.qsearch_check_move_tries;
+        self.qsearch_delta_prunes += other.qsearch_delta_prunes;
     }
 }
 
@@ -434,6 +437,7 @@ impl From<haitaka_wasm::SearchQsearchStats> for QsearchTelemetry {
             qsearch_max_ply: stats.qsearch_max_ply,
             qsearch_cap_hits: stats.qsearch_cap_hits,
             qsearch_check_move_tries: stats.qsearch_check_move_tries,
+            qsearch_delta_prunes: stats.qsearch_delta_prunes,
         }
     }
 }
@@ -456,6 +460,8 @@ struct SearchBreakdown {
     qsearch_cap_hits: u64,
     #[serde(rename = "qsearchCheckMoveTries", default)]
     qsearch_check_move_tries: u64,
+    #[serde(rename = "qsearchDeltaPrunes", default)]
+    qsearch_delta_prunes: u64,
 }
 
 impl SearchBreakdown {
@@ -473,6 +479,7 @@ impl SearchBreakdown {
             qsearch_max_ply: self.qsearch_max_ply,
             qsearch_cap_hits: self.qsearch_cap_hits,
             qsearch_check_move_tries: self.qsearch_check_move_tries,
+            qsearch_delta_prunes: self.qsearch_delta_prunes,
         }
     }
 }
@@ -559,6 +566,8 @@ struct GameJsonRecord {
     qsearch_cap_hits: u64,
     #[serde(rename = "qsearchCheckMoveTries")]
     qsearch_check_move_tries: u64,
+    #[serde(rename = "qsearchDeltaPrunes")]
+    qsearch_delta_prunes: u64,
     #[serde(rename = "aBreakdown")]
     a_breakdown: SearchBreakdown,
     #[serde(rename = "bBreakdown")]
@@ -665,6 +674,8 @@ struct RatingSummary {
     qsearch_cap_hits: u64,
     #[serde(rename = "qsearchCheckMoveTries", default)]
     qsearch_check_move_tries: u64,
+    #[serde(rename = "qsearchDeltaPrunes", default)]
+    qsearch_delta_prunes: u64,
     #[serde(rename = "aBreakdown", default)]
     a_breakdown: SearchBreakdown,
     #[serde(rename = "bBreakdown", default)]
@@ -1449,6 +1460,11 @@ fn parse_usi_info_telemetry(line: &str) -> UsiInfoTelemetry {
                     telemetry.qsearch.qsearch_check_move_tries = value;
                 }
             }
+            "qsearchDeltaPrunes" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.qsearch.qsearch_delta_prunes = value;
+                }
+            }
             _ => {}
         }
     }
@@ -1667,6 +1683,7 @@ fn search_breakdown(
         qsearch_max_ply: qsearch.qsearch_max_ply,
         qsearch_cap_hits: qsearch.qsearch_cap_hits,
         qsearch_check_move_tries: qsearch.qsearch_check_move_tries,
+        qsearch_delta_prunes: qsearch.qsearch_delta_prunes,
     }
 }
 
@@ -1710,6 +1727,7 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
         qsearch_max_ply: total_breakdown.qsearch_max_ply,
         qsearch_cap_hits: total_breakdown.qsearch_cap_hits,
         qsearch_check_move_tries: total_breakdown.qsearch_check_move_tries,
+        qsearch_delta_prunes: total_breakdown.qsearch_delta_prunes,
         a_breakdown: search_breakdown(
             stats.a_breakdown.total_nodes,
             stats.a_breakdown.total_elapsed_ms,
@@ -1736,6 +1754,7 @@ fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
             qsearch_max_ply: summary.qsearch_max_ply,
             qsearch_cap_hits: summary.qsearch_cap_hits,
             qsearch_check_move_tries: summary.qsearch_check_move_tries,
+            qsearch_delta_prunes: summary.qsearch_delta_prunes,
         },
         total_plies: (summary.avg_plies * f64::from(summary.games)).round() as u64,
         a_breakdown: search_breakdown(
@@ -1987,6 +2006,7 @@ fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
         qsearch_max_ply: result.total_qsearch.qsearch_max_ply,
         qsearch_cap_hits: result.total_qsearch.qsearch_cap_hits,
         qsearch_check_move_tries: result.total_qsearch.qsearch_check_move_tries,
+        qsearch_delta_prunes: result.total_qsearch.qsearch_delta_prunes,
         a_breakdown: result.a_breakdown,
         b_breakdown: result.b_breakdown,
         failure_state: None,
@@ -2156,7 +2176,7 @@ fn play(args: PlayArgs) -> Result<()> {
                 return Ok(());
             };
             println!(
-                "engine: move={} score={:?} depth={} nodes={} nps={:.0} elapsed_ms={:.3} qnodes={} qnps={:.0} qmax={} qcap={} qchecks={}",
+                "engine: move={} score={:?} depth={} nodes={} nps={:.0} elapsed_ms={:.3} qnodes={} qnps={:.0} qmax={} qcap={} qchecks={} qdelta={}",
                 best_move,
                 summary.best_score,
                 args.depth,
@@ -2172,6 +2192,7 @@ fn play(args: PlayArgs) -> Result<()> {
                 summary.qsearch_stats.qsearch_max_ply,
                 summary.qsearch_stats.qsearch_cap_hits,
                 summary.qsearch_stats.qsearch_check_move_tries,
+                summary.qsearch_stats.qsearch_delta_prunes,
             );
             let mv = Move::from_str(&best_move)
                 .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
@@ -2540,7 +2561,7 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 aggregate nps: {nps:.0} (A {a_nps:.0}, B {b_nps:.0})\n\
                  qnodes: {qnodes} (A {a_qnodes}, B {b_qnodes})\n\
                  aggregate qnps: {qnps:.0} (A {a_qnps:.0}, B {b_qnps:.0})\n\
-                 qsearch caps/checks: caps {qcaps} (A {a_qcaps}, B {b_qcaps}) checks {qchecks} (A {a_qchecks}, B {b_qchecks})",
+                 qsearch caps/checks/delta: caps {qcaps} (A {a_qcaps}, B {b_qcaps}) checks {qchecks} (A {a_qchecks}, B {b_qchecks}) delta {qdelta} (A {a_qdelta}, B {b_qdelta})",
                 game = game_index + 1,
                 a_color = result.a_color,
                 b_color = !result.a_color,
@@ -2575,6 +2596,9 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 qchecks = summary.qsearch_check_move_tries,
                 a_qchecks = summary.a_breakdown.qsearch_check_move_tries,
                 b_qchecks = summary.b_breakdown.qsearch_check_move_tries,
+                qdelta = summary.qsearch_delta_prunes,
+                a_qdelta = summary.a_breakdown.qsearch_delta_prunes,
+                b_qdelta = summary.b_breakdown.qsearch_delta_prunes,
             );
             render_status(&block, completed == 1);
         }
@@ -3698,6 +3722,7 @@ mod tests {
                 qsearch_max_ply: 3,
                 qsearch_cap_hits: 4,
                 qsearch_check_move_tries: 5,
+                qsearch_delta_prunes: 7,
             },
             total_plies: 40,
             a_breakdown: search_breakdown(
@@ -3708,6 +3733,7 @@ mod tests {
                     qsearch_max_ply: 2,
                     qsearch_cap_hits: 1,
                     qsearch_check_move_tries: 2,
+                    qsearch_delta_prunes: 3,
                 },
             ),
             b_breakdown: search_breakdown(
@@ -3718,6 +3744,7 @@ mod tests {
                     qsearch_max_ply: 3,
                     qsearch_cap_hits: 3,
                     qsearch_check_move_tries: 3,
+                    qsearch_delta_prunes: 4,
                 },
             ),
         };
@@ -3737,13 +3764,16 @@ mod tests {
         assert_eq!(summary.qsearch_max_ply, 3);
         assert_eq!(summary.qsearch_cap_hits, 4);
         assert_eq!(summary.qsearch_check_move_tries, 5);
+        assert_eq!(summary.qsearch_delta_prunes, 7);
         assert_eq!(summary.a_breakdown.total_nodes, 600);
         assert_eq!(summary.a_breakdown.aggregate_nps, 3_000.0);
         assert_eq!(summary.a_breakdown.qnodes, 100);
+        assert_eq!(summary.a_breakdown.qsearch_delta_prunes, 3);
         assert_eq!(summary.a_breakdown.aggregate_qnps, 500.0);
         assert_eq!(summary.b_breakdown.total_nodes, 400);
         assert!((summary.b_breakdown.aggregate_nps - 1_333.3333333333335).abs() < 1e-9);
         assert_eq!(summary.b_breakdown.qnodes, 150);
+        assert_eq!(summary.b_breakdown.qsearch_delta_prunes, 4);
         assert_eq!(summary.b_breakdown.aggregate_qnps, 500.0);
         assert!(
             summary
@@ -3826,7 +3856,7 @@ mod tests {
     #[test]
     fn usi_info_parser_captures_qsearch_telemetry() {
         let telemetry = parse_usi_info_telemetry(
-            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 string ignored",
+            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 string ignored",
         );
 
         assert_eq!(telemetry.total_nodes, 12_345);
@@ -3834,6 +3864,7 @@ mod tests {
         assert_eq!(telemetry.qsearch.qsearch_max_ply, 3);
         assert_eq!(telemetry.qsearch.qsearch_cap_hits, 2);
         assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 8);
+        assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 9);
 
         let missing = parse_usi_info_telemetry("info depth 1 nodes 9 nps 1000");
         assert_eq!(missing.total_nodes, 9);
@@ -3958,6 +3989,7 @@ mod tests {
                 qsearch_max_ply: 2,
                 qsearch_cap_hits: 1,
                 qsearch_check_move_tries: 3,
+                qsearch_delta_prunes: 4,
             },
             a_breakdown: search_breakdown(
                 6,
@@ -3967,6 +3999,7 @@ mod tests {
                     qsearch_max_ply: 2,
                     qsearch_cap_hits: 1,
                     qsearch_check_move_tries: 2,
+                    qsearch_delta_prunes: 1,
                 },
             ),
             b_breakdown: search_breakdown(
@@ -3977,6 +4010,7 @@ mod tests {
                     qsearch_max_ply: 1,
                     qsearch_cap_hits: 0,
                     qsearch_check_move_tries: 1,
+                    qsearch_delta_prunes: 3,
                 },
             ),
             start_sfen: haitaka::SFEN_STARTPOS.to_string(),
@@ -4005,10 +4039,13 @@ mod tests {
         assert_eq!(json["qsearchMaxPly"], 2);
         assert_eq!(json["qsearchCapHits"], 1);
         assert_eq!(json["qsearchCheckMoveTries"], 3);
+        assert_eq!(json["qsearchDeltaPrunes"], 4);
         assert_eq!(json["aBreakdown"]["totalNodes"], 6);
         assert_eq!(json["aBreakdown"]["qnodes"], 7);
+        assert_eq!(json["aBreakdown"]["qsearchDeltaPrunes"], 1);
         assert_eq!(json["bBreakdown"]["totalNodes"], 4);
         assert_eq!(json["bBreakdown"]["qnodes"], 5);
+        assert_eq!(json["bBreakdown"]["qsearchDeltaPrunes"], 3);
         assert!(json["failureState"].is_null());
     }
 

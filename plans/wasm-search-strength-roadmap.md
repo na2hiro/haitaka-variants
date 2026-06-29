@@ -12,11 +12,12 @@ qsearch, and no principal variation search or aspiration windows.
 The highest-return path is to keep improving the alpha-beta core before
 attempting a large architectural rewrite. Phase 1 added the transposition table;
 Phase 2 added stronger ordering infrastructure and later fixed two review-found
-move-picker issues; Phase 3 added qsearch and confirmed strong standard/Annan
-short-movetime gains, while leaving Neko-family qsearch performance and strength
-as the main follow-up. Defer make/unmake until the easier search wins have been
-measured, because board mutation rollback is correctness-sensitive across all
-variants.
+move-picker issues; Phase 3 added qsearch, tactical ordering, and conservative
+delta pruning, confirming strong standard/Annan short-movetime gains while
+keeping Neko-family strength roughly neutral by disabling the risky tactical
+tie-break and delta pruning there. Defer make/unmake until the easier search
+wins have been measured, because board mutation rollback is
+correctness-sensitive across all variants.
 
 ### Current Baseline
 
@@ -29,6 +30,8 @@ variants.
   moves, killer moves, history-ranked quiet moves, and losing tactical moves.
 - Depth-zero alpha-beta nodes enter capped qsearch, which searches evasions,
   captures, promotions, and a small budget of quiet checks before evaluating.
+- Standard and non-Neko qsearch paths apply conservative delta pruning below root
+  qsearch ply. Neko-family builds keep qsearch capped but delta pruning disabled.
 - Iterative deepening now reuses one transposition table across completed depth
   iterations.
 - `Board::hash()` already exposes an incremental Zobrist key, so a
@@ -252,10 +255,10 @@ Phase 2 follow-up before continuing beyond qsearch/selective search:
 
 Phase 3 has been implemented in `haitaka_wasm`, and it improves standard and
 Annan movetime strength after rebasing onto the Phase 2 performance-fix base.
-NekoNeko remains a problem: qsearch still trends weaker at short movetime and
-is much slower at fixed depth because Neko-family legal move generation is
-especially expensive, though the tuned Neko-family qsearch limits substantially
-reduced the first measured regression.
+The latest tactical-ordering and delta-pruning follow-up adds another strong
+standard/Annan gain. Neko-family builds remain speed-sensitive, but the current
+guarded setup keeps NekoNeko strength near neutral by disabling delta pruning and
+the new MVV/LVA tactical tie-break there.
 
 Implemented:
 
@@ -272,34 +275,57 @@ Implemented:
 - Added `QsearchMovePicker` for tactical moves, evasions, and quiet checks. It
   uses local capture/promotion scoring and does not update killer or history
   state.
+- Replaced the original cheap tactical gain with `TacticalScore`, including
+  capture value, attacker value, promotion gain, material gain, and optimistic
+  delta.
+- Added MVV/LVA-style tactical tie-breaks for standard and non-Neko variants:
+  material gain descending, victim value descending, attacker value ascending,
+  promotion gain descending, then the existing deterministic fallback.
+- Kept Neko-family builds on the previous simpler tactical tie-break because the
+  new victim/attacker ordering was the source of the NekoNeko strength
+  regression in local self-play.
+- Added conservative qsearch delta pruning for standard and non-Neko variants:
+  prune only outside check, below root qsearch ply, and when
+  `stand_pat + optimistic_delta + margin <= alpha`.
+- Disabled delta pruning for Neko-family builds after testing showed the first
+  NekoNeko regression was not caused by delta pruning alone and the safer
+  guarded setup cleared the 45% acceptance gate.
 - Added qsearch telemetry: `qnodes`, `qsearch_max_ply`,
-  `qsearch_cap_hits`, and `qsearch_check_move_tries`.
+  `qsearch_cap_hits`, `qsearch_check_move_tries`, and
+  `qsearch_delta_prunes`.
 - Exposed qsearch telemetry through native summaries, WASM getters, and
-  iterative-search JS iteration objects.
+  iterative-search JS iteration objects, USI `info`, CLI `play`, and self-play
+  JSON/status reports.
 - Reused `SearchOrdering` across iterative-deepening iterations so Phase 2
   killer/history state now survives completed depths.
 - Extended the fixed-depth equivalence harness with a reference qsearch path so
   representative openings continue to compare exact scores against a test-only
   search that does not use the production move picker or TT.
-- Kept Phase 3 exact aside from qsearch horizon extension. No delta pruning,
-  SEE, LMR, null-move pruning, PVS, or aspiration windows were added.
+- Kept Phase 3 exact aside from qsearch horizon extension and the intentional
+  conservative qsearch delta pruning. No SEE, LMR, null-move pruning, PVS, or
+  aspiration windows were added.
 
 Verification completed:
 
-- `cargo test -p haitaka_wasm` passed: 68 tests.
-- `cargo test -p haitaka_wasm --features annan` passed: 65 tests.
-- `cargo test -p haitaka_wasm --features nekoneko` passed: 61 tests.
+- `cargo test -p haitaka_wasm` passed: 76 tests.
+- `cargo test -p haitaka_wasm --features annan` passed: 72 tests.
+- `cargo test -p haitaka_wasm --features nekoneko` passed: 66 tests.
 - `cargo bench -p haitaka_wasm --bench nnue -- --noplot` completed during the
   initial Phase 3 validation.
 - Qsearch unit tests cover quiet leaves, tactical capture expansion, in-check
   evasions without stand-pat, quiet-check budget behavior, and cap telemetry.
+- Tactical-ordering unit tests cover material-gain ordering, victim-value
+  tie-breaks, attacker-value tie-breaks, and stable promotion-only ordering.
+- Delta-pruning tests cover narrow-window prune telemetry, root qsearch never
+  delta-pruning at `qply = 0`, and variant-specific qsearch limits.
 - A Neko-family runtime-only smoke test was gated out because qsearch makes the
   DFPN-disabled mate-position test exceed its fixed 5s budget there.
 
-Measured strength and speed against the latest stacked Phase 2 base `591bcf7`
-(`Update NekoNeko performance note`). Phase 3 was A; the base was B.
-All Elo numbers are movetime self-play, not fixed-depth self-play. Settings:
-`--movetime-ms 20`, `--opening-random-plies 4`, 4 workers, 200 games, seed 1.
+Initial qsearch-only strength and speed were measured against the latest stacked
+Phase 2 base `591bcf7` (`Update NekoNeko performance note`). Phase 3 was A; the
+base was B. All Elo numbers are movetime self-play, not fixed-depth self-play.
+Settings: `--movetime-ms 20`, `--opening-random-plies 4`, 4 workers, 200 games,
+seed 1.
 
 | Build | Games | Result A-B-D | Score | Approx Elo | 95% CI |
 |---|---:|---:|---:|---:|---:|
@@ -319,11 +345,42 @@ external USI self-play currently reports `totalNodes=0` for child engines.
 Artifacts from local measurement were written under
 `/tmp/haitaka-qsearch-rerun/`.
 
+The later tactical-ordering and delta-pruning follow-up was measured separately
+against `4437ecb` (`Document non-adopted qsearch tactical candidate generator
+for Neko`). Current working tree was A; `4437ecb` was B. Settings:
+`--movetime-ms 20`, `--opening-random-plies 4`, seed `1`, 4 workers. NekoNeko
+used `--max-plies 120` because the `4437ecb` baseline can still abort on legal
+late-game Neko-family SFENs at the default max plies.
+
+| Build | Self-play result | Score | Approx Elo | Depth-5 nodes | Depth-5 NPS |
+|---|---:|---:|---:|---:|---:|
+| standard | 146-54-0 / 200 | 73.0% | +172.8 | +35.7% | +11.4% |
+| `--features annan` | 127-69-4 / 200 | 64.5% | +103.7 | -30.6% | +66.2% |
+| `--features nekoneko` | 43-47-110 / 200 | 49.0% | -6.9 | +0.0% | -0.6% |
+
+Artifacts from the tactical-ordering and delta-pruning measurement were written
+under `/tmp/haitaka-qdelta-checks/`.
+
+Current combined Phase 3 stack against `591bcf7`, chained from the two measured
+steps above. This is an estimate, not a direct current-vs-`591bcf7` self-play
+rerun, so it should be replaced by a direct measurement before using it as a
+release-strength claim.
+
+| Build | Implied score | Approx Elo | Depth-5 nodes | Depth-5 NPS |
+|---|---:|---:|---:|---:|
+| standard | 96.3% | +564.4 | -42.2% | +18.8% |
+| `--features annan` | 88.6% | +355.6 | -5.1% | -19.2% |
+| `--features nekoneko` | 44.5% | -38.3 | -22.9% | -89.9% |
+
 Phase 3 diagnosis:
 
 - Standard and Annan now gain strongly at `--movetime-ms 20`, which supports
   the Phase 2 diagnosis that qsearch was needed before judging the staged picker
   by short-movetime Elo.
+- The tactical-ordering and delta-pruning follow-up adds another large
+  incremental gain for standard and Annan. In the 200-game gate against
+  `4437ecb`, standard scored `73.0%` (`+172.8 Elo`) and Annan scored `64.5%`
+  (`+103.7 Elo`).
 - Standard also gets faster at fixed depth 5 despite qsearch, because the
   Phase 2 move-picker fixes plus qsearch reduce the counted alpha-beta tree
   enough to offset the added tactical leaves.
@@ -336,6 +393,10 @@ Phase 3 diagnosis:
 - NekoNeko fixed-depth depth 5 is about `7.6x` slower by wall time against the
   latest base despite searching fewer counted alpha-beta nodes. This means
   unreported qsearch and move-generation work dominates the runtime.
+- NekoNeko delta-pruning diagnosis: disabling delta pruning alone did not
+  recover the tactical-ordering follow-up regression. Keeping Neko-family builds
+  on the previous simpler tactical tie-break did recover the result, finishing
+  `43-47-110 / 200` against `4437ecb` with `qsearch_delta_prunes = 0`.
 
 Phase 3 follow-up before continuing to broader selective search:
 
@@ -377,9 +438,11 @@ Phase 3 follow-up before continuing to broader selective search:
   handcrafted search before adding delta pruning. The suite pins exact depth-1
   best moves, root scores, direct qsearch scores, and qnode activity for
   capture and promotion fixtures.
-- Consider simple delta pruning and better capture ordering only after the
-  qsearch fixture suite exists. The current capture/promotion score is still a
-  cheap local heuristic, not SEE.
+- Done: added better tactical ordering and conservative delta pruning after the
+  qsearch fixture suite existed. The implementation still uses cheap local board
+  data rather than SEE. Neko-family builds intentionally keep the simpler
+  tactical ordering and delta pruning disabled until a variant-specific ordering
+  heuristic is validated.
 
 ### Not Done Yet: Phase 4 - Selective Search
 
