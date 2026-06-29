@@ -1368,7 +1368,7 @@ impl UsiEngineClient {
                 bail!("external engine reported search setup error: {line}");
             }
             if line.starts_with("info ") {
-                telemetry = parse_usi_info_telemetry(&line);
+                merge_usi_info_telemetry(&mut telemetry, &line);
                 continue;
             }
         }
@@ -1427,8 +1427,14 @@ impl Drop for UsiEngineClient {
     }
 }
 
+#[cfg(test)]
 fn parse_usi_info_telemetry(line: &str) -> UsiInfoTelemetry {
     let mut telemetry = UsiInfoTelemetry::default();
+    merge_usi_info_telemetry(&mut telemetry, line);
+    telemetry
+}
+
+fn merge_usi_info_telemetry(telemetry: &mut UsiInfoTelemetry, line: &str) {
     let mut tokens = line
         .strip_prefix("info ")
         .unwrap_or(line)
@@ -1468,7 +1474,6 @@ fn parse_usi_info_telemetry(line: &str) -> UsiInfoTelemetry {
             _ => {}
         }
     }
-    telemetry
 }
 
 fn go_command(budget: SearchBudget) -> String {
@@ -3869,6 +3874,24 @@ mod tests {
         let missing = parse_usi_info_telemetry("info depth 1 nodes 9 nps 1000");
         assert_eq!(missing.total_nodes, 9);
         assert_eq!(missing.qsearch, QsearchTelemetry::default());
+    }
+
+    #[test]
+    fn usi_info_telemetry_merge_preserves_stats_across_string_lines() {
+        let mut telemetry = UsiInfoTelemetry::default();
+
+        merge_usi_info_telemetry(
+            &mut telemetry,
+            "info depth 5 nodes 123 qnodes 456 qsearchMaxPly 3 qsearchCapHits 4 qsearchCheckMoveTries 5 qsearchDeltaPrunes 6",
+        );
+        merge_usi_info_telemetry(&mut telemetry, "info string searched move 7g7f");
+
+        assert_eq!(telemetry.total_nodes, 123);
+        assert_eq!(telemetry.qsearch.qnodes, 456);
+        assert_eq!(telemetry.qsearch.qsearch_max_ply, 3);
+        assert_eq!(telemetry.qsearch.qsearch_cap_hits, 4);
+        assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 5);
+        assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 6);
     }
 
     #[test]
