@@ -727,6 +727,12 @@ fn default_ruleset() -> &'static str {
         "yokoneko"
     } else if cfg!(feature = "yokonekoneko") {
         "yokonekoneko"
+    } else if cfg!(feature = "tenkyo") {
+        "tenkyo"
+    } else if cfg!(feature = "tenjiku") {
+        "tenjiku"
+    } else if cfg!(feature = "anki") {
+        "anki"
     } else {
         "standard"
     }
@@ -751,6 +757,12 @@ fn default_rule_id() -> u32 {
         132
     } else if cfg!(feature = "yokonekoneko") {
         133
+    } else if cfg!(feature = "tenkyo") {
+        151
+    } else if cfg!(feature = "tenjiku") {
+        56
+    } else if cfg!(feature = "anki") {
+        94
     } else {
         0
     }
@@ -764,6 +776,9 @@ fn profile_display_ruleset(ruleset: &str) -> String {
         "antouzai" => "Antouzai".to_string(),
         "taimen" => "Taimen".to_string(),
         "haimen" => "Haimen".to_string(),
+        "tenkyo" => "Tenkyo".to_string(),
+        "tenjiku" => "Tenjiku".to_string(),
+        "anki" => "Anki".to_string(),
         other => {
             let mut chars = other.chars();
             let Some(first) = chars.next() else {
@@ -3244,6 +3259,12 @@ mod tests {
             ("yokoneko", 132)
         } else if cfg!(feature = "yokonekoneko") {
             ("yokonekoneko", 133)
+        } else if cfg!(feature = "tenkyo") {
+            ("tenkyo", 151)
+        } else if cfg!(feature = "tenjiku") {
+            ("tenjiku", 56)
+        } else if cfg!(feature = "anki") {
+            ("anki", 94)
         } else {
             ("standard", 0)
         };

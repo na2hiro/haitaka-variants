@@ -21,6 +21,8 @@ DONOR_SINGLE_MODE_HASHES = {
     "single-neko-vertical-any": DONOR_SINGLE_BASE_HASH ^ 0x165667B1,
     "single-neko-horizontal-friendly": DONOR_SINGLE_BASE_HASH ^ 0xFF51AFD7,
     "single-neko-horizontal-any": DONOR_SINGLE_BASE_HASH ^ 0xD72805F1,
+    "single-point-symmetry-any": DONOR_SINGLE_BASE_HASH ^ 0xA24BAED5,
+    "single-behind-plus-native": DONOR_SINGLE_BASE_HASH ^ 0x9FB21C65,
 }
 DONOR_SINGLE_HASH = DONOR_SINGLE_MODE_HASHES.get(
     getattr(variant, "DONOR_MODE", "none"),

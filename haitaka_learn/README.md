@@ -90,9 +90,9 @@ Start from:
 Key fields:
 
 - `[rules]`
-  - `ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai" | "taimen" | "haimen"`
+  - `ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai" | "taimen" | "haimen" | "tenkyo" | "tenjiku" | "anki"`
   - `handicap = "two-piece" | "four-piece" | "six-piece"` when `ruleset = "handicap"`
-  - `rule_id` defaults to the built-in registry for standard, handicap presets, Annan, Anhoku (`55`), Antouzai (`95`), Taimen (`72`), and Haimen (`74`)
+  - `rule_id` defaults to the built-in registry for standard, handicap presets, Annan, Anhoku (`55`), Antouzai (`95`), Taimen (`72`), Haimen (`74`), Tenkyo (`151`), Tenjiku (`56`), and Anki (`94`)
   - set `rule_id` explicitly when using a custom handicap `opening_sfen` without a named preset, or when matching an external registry
   - `opening_sfen` can override the default opening for any ruleset
 - `[paths]`
@@ -115,8 +115,9 @@ Key fields:
 - `[training]`
   - `features` defaults to the recommended family for the selected ruleset
   - standard / handicap keep `HalfKAv2^`
-  - Annan / Anhoku / Taimen / Haimen use `HalfKAv2^+DonorSingleEff`
+  - Annan / Anhoku / Taimen / Haimen / Tenkyo / Tenjiku use `HalfKAv2^+DonorSingleEff`
   - Antouzai uses `HalfKAv2^+DonorPairSlots`
+  - Anki uses `HalfKAv2^+DonorKnight8Slots`
   - upstream trainer args like batch size and epoch count
 - `[export]`
   - output name and description string
@@ -206,7 +207,7 @@ cargo run -p haitaka_learn --release -- pipeline --config haitaka_learn.toml
 
 ## Variant Workflows
 
-Annan, Anhoku, Antouzai, Taimen, and Haimen share the same `HalfKAv2^` base block, but donor-rule runs add ruleset-specific donor geometry and must be built with the matching Haitaka feature enabled. Taimen and Haimen donate movement from an enemy piece (in front / behind) rather than a friendly one.
+Annan, Anhoku, Antouzai, Taimen, Haimen, Tenkyo, Tenjiku, and Anki share the same `HalfKAv2^` base block, but donor-rule runs add ruleset-specific donor geometry and must be built with the matching Haitaka feature enabled. Taimen and Haimen donate movement from an enemy piece (in front / behind) rather than a friendly one.
 
 ### 1. Switch config
 
@@ -214,12 +215,12 @@ Set:
 
 ```toml
 [rules]
-ruleset = "annan"   # or "anhoku" / "antouzai" / "taimen" / "haimen"
+ruleset = "annan"   # or "anhoku" / "antouzai" / "taimen" / "haimen" / "tenkyo" / "tenjiku" / "anki"
 # rule_id is only needed for a custom registry value, or for handicap+opening_sfen without a preset.
 rule_id = 26
 
 [training]
-features = "HalfKAv2^+DonorSingleEff" # Antouzai uses HalfKAv2^+DonorPairSlots
+features = "HalfKAv2^+DonorSingleEff" # Antouzai uses DonorPairSlots; Anki uses DonorKnight8Slots
 ```
 
 ### 2. Generate variant data

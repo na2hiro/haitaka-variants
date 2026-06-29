@@ -1,5 +1,5 @@
 [rules]
-# ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai"
+# ruleset = "standard" | "handicap" | "annan" | "anhoku" | "antouzai" | "taimen" | "haimen" | "tenkyo" | "tenjiku" | "anki"
 ruleset = "standard"
 # Override only when you need a specific external rule registry value.
 rule_id = 0

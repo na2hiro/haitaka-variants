@@ -24,7 +24,7 @@ pub struct RulesetSpec {
     pub verification_name: &'static str,
 }
 
-pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 10] = [
+pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 13] = [
     RulesetSpec {
         ruleset: Ruleset::Standard,
         required_feature: None,
@@ -94,6 +94,27 @@ pub const DEFAULT_RULESET_SPECS: [RulesetSpec; 10] = [
         default_rule_id: 133,
         default_opening_sfen: STANDARD_STARTPOS_SFEN,
         verification_name: "yokonekoneko_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Tenkyo,
+        required_feature: Some("tenkyo"),
+        default_rule_id: 151,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "tenkyo_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Tenjiku,
+        required_feature: Some("tenjiku"),
+        default_rule_id: 56,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "tenjiku_startpos",
+    },
+    RulesetSpec {
+        ruleset: Ruleset::Anki,
+        required_feature: Some("anki"),
+        default_rule_id: 94,
+        default_opening_sfen: STANDARD_STARTPOS_SFEN,
+        verification_name: "anki_startpos",
     },
 ];
 
@@ -206,7 +227,10 @@ impl LoadedConfig {
             | Ruleset::Neko
             | Ruleset::Nekoneko
             | Ruleset::Yokoneko
-            | Ruleset::Yokonekoneko => self
+            | Ruleset::Yokonekoneko
+            | Ruleset::Tenkyo
+            | Ruleset::Tenjiku
+            | Ruleset::Anki => self
                 .config
                 .rules
                 .ruleset
@@ -421,6 +445,9 @@ pub enum Ruleset {
     Nekoneko,
     Yokoneko,
     Yokonekoneko,
+    Tenkyo,
+    Tenjiku,
+    Anki,
 }
 
 impl Ruleset {
@@ -437,6 +464,9 @@ impl Ruleset {
             Self::Nekoneko => "nekoneko",
             Self::Yokoneko => "yokoneko",
             Self::Yokonekoneko => "yokonekoneko",
+            Self::Tenkyo => "tenkyo",
+            Self::Tenjiku => "tenjiku",
+            Self::Anki => "anki",
         }
     }
 
@@ -744,6 +774,12 @@ fn active_variant_feature() -> Option<&'static str> {
         Some("yokoneko")
     } else if cfg!(feature = "yokonekoneko") {
         Some("yokonekoneko")
+    } else if cfg!(feature = "tenkyo") {
+        Some("tenkyo")
+    } else if cfg!(feature = "tenjiku") {
+        Some("tenjiku")
+    } else if cfg!(feature = "anki") {
+        Some("anki")
     } else {
         None
     }
@@ -759,8 +795,11 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
         | Ruleset::Neko
         | Ruleset::Nekoneko
         | Ruleset::Yokoneko
-        | Ruleset::Yokonekoneko => FEATURE_SET_DONOR_SINGLE,
+        | Ruleset::Yokonekoneko
+        | Ruleset::Tenkyo
+        | Ruleset::Tenjiku => FEATURE_SET_DONOR_SINGLE,
         Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
+        Ruleset::Anki => FEATURE_SET_DONOR_KNIGHT8,
     }
 }
 
@@ -774,8 +813,11 @@ fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
         | Ruleset::Neko
         | Ruleset::Nekoneko
         | Ruleset::Yokoneko
-        | Ruleset::Yokonekoneko => vec![FEATURE_SET_DONOR_SINGLE],
+        | Ruleset::Yokonekoneko
+        | Ruleset::Tenkyo
+        | Ruleset::Tenjiku => vec![FEATURE_SET_DONOR_SINGLE],
         Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
+        Ruleset::Anki => vec![FEATURE_SET_DONOR_KNIGHT8],
     }
 }
 
@@ -817,6 +859,9 @@ validation_games = 1
         assert_eq!(Ruleset::Antouzai.spec().unwrap().default_rule_id, 95);
         assert_eq!(Ruleset::Taimen.spec().unwrap().default_rule_id, 72);
         assert_eq!(Ruleset::Haimen.spec().unwrap().default_rule_id, 74);
+        assert_eq!(Ruleset::Tenkyo.spec().unwrap().default_rule_id, 151);
+        assert_eq!(Ruleset::Tenjiku.spec().unwrap().default_rule_id, 56);
+        assert_eq!(Ruleset::Anki.spec().unwrap().default_rule_id, 94);
         assert_eq!(
             Ruleset::Anhoku.spec().unwrap().required_feature,
             Some("anhoku")
@@ -865,6 +910,18 @@ validation_games = 1
         assert_eq!(
             recommended_feature_set(Ruleset::Haimen),
             FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Tenkyo),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Tenjiku),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert_eq!(
+            recommended_feature_set(Ruleset::Anki),
+            FEATURE_SET_DONOR_KNIGHT8
         );
     }
 
@@ -930,6 +987,9 @@ validation_games = 1
             (Ruleset::Antouzai, 95),
             (Ruleset::Taimen, 72),
             (Ruleset::Haimen, 74),
+            (Ruleset::Tenkyo, 151),
+            (Ruleset::Tenjiku, 56),
+            (Ruleset::Anki, 94),
         ] {
             let loaded = LoadedConfig {
                 path: PathBuf::from("/tmp/haitaka_learn.toml"),

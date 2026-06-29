@@ -16,7 +16,10 @@ use super::*;
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn subset_movegen_habu_position() {
     fn visit(board: &Board, depth: u8) {
@@ -94,7 +97,10 @@ fn test_is_legal(board: Board) {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn test_forbidden_drops(board: &Board) {
     use std::collections::HashSet;
@@ -140,7 +146,10 @@ fn test_forbidden_drops(board: &Board) {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn test_nifu(board: &Board) {
     let color = board.side_to_move();
@@ -176,7 +185,10 @@ fn test_nifu(board: &Board) {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn legality_simple() {
     test_is_legal(Board::startpos());
@@ -197,7 +209,10 @@ fn legality_simple() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn legality_drops() {
     let board: Board = "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62"
@@ -216,6 +231,7 @@ fn non_check() {
 }
 
 #[test]
+#[cfg(not(feature = "anki"))]
 fn pawn_push_mate_is_valid() {
     // White King on 1e is almost mate
     let sfen = "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7N1/PPPPPPP1P/1B7/LNSGKGSNL b BG2p 25";
@@ -256,7 +272,10 @@ fn pawn_push_mate_is_valid() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
@@ -288,7 +307,10 @@ fn discount_pawn_drop_mate_in_perft() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
@@ -415,7 +437,10 @@ fn tsume() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
@@ -466,7 +491,10 @@ fn generate_checks() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
@@ -524,7 +552,10 @@ fn play_tsume() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn invalid_tsume() {
     // invalid position: White King is in check
@@ -542,7 +573,10 @@ fn invalid_tsume() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
@@ -593,7 +627,10 @@ fn discovered_checks1() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
@@ -627,7 +664,10 @@ fn pinners() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn undiscovered_checks() {
     /*
@@ -675,6 +715,7 @@ fn undiscovered_checks() {
 }
 
 #[test]
+#[cfg(not(feature = "tenkyo"))]
 fn discovered_checks2() {
     /*
     . . . . . . . . .
@@ -738,7 +779,10 @@ fn discovered_checks2() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn discovered_checks3() {
     /*
@@ -810,7 +854,10 @@ fn fuzzing_generate_moves() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 )))]
 fn fuzzing_checks() {
     let mut rng = rng();
@@ -1150,6 +1197,127 @@ fn antouzai_effective_slider_check_is_detected() {
     let board: Board = "k8/9/9/9/9/9/3rp3K/9/9 b - 1".parse().unwrap();
     assert_eq!(board.checkers(), Square::G5.bitboard());
     test_is_legal(board);
+}
+
+#[test]
+#[cfg(feature = "tenkyo")]
+fn tenkyo_point_symmetric_enemy_donor_changes_movement() {
+    let board: Board = "1k7/9/6R2/9/9/9/2b6/9/8K b - 1".parse().unwrap();
+    let diagonal = Move::BoardMove {
+        from: Square::C3,
+        to: Square::B2,
+        promotion: false,
+    };
+    let native_rook = Move::BoardMove {
+        from: Square::C3,
+        to: Square::C2,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(diagonal));
+    assert!(!board.is_legal_board_move(native_rook));
+}
+
+#[test]
+#[cfg(feature = "tenkyo")]
+fn tenkyo_point_symmetric_friendly_donor_changes_movement() {
+    let board: Board = "1k7/9/6R2/9/9/9/2B6/9/8K b - 1".parse().unwrap();
+    let diagonal = Move::BoardMove {
+        from: Square::C3,
+        to: Square::B2,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(diagonal));
+
+    let center_board: Board = "1k7/9/9/9/4R4/9/9/9/8K b - 1".parse().unwrap();
+    assert_eq!(
+        crate::variant_rules::effective_piece(&center_board, Color::Black, Square::E5),
+        Piece::Rook
+    );
+}
+
+#[test]
+#[cfg(feature = "tenkyo")]
+fn tenkyo_quiet_move_creating_reflected_donor_check_is_rejected() {
+    let board: Board = "k8/9/9/9/6g1K/2R6/9/9/9 b - 1".parse().unwrap();
+    let creates_check = Move::BoardMove {
+        from: Square::G6,
+        to: Square::G5,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(creates_check));
+}
+
+#[test]
+#[cfg(feature = "tenjiku")]
+fn tenjiku_keeps_native_and_adds_annan_backer_movement() {
+    let board: Board = "1k7/9/9/9/4R4/4B4/9/9/K8 b - 1".parse().unwrap();
+    let donor_diagonal = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D4,
+        promotion: false,
+    };
+    let native_rook = Move::BoardMove {
+        from: Square::E5,
+        to: Square::E6,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(donor_diagonal));
+    assert!(board.is_legal_board_move(native_rook));
+}
+
+#[test]
+#[cfg(feature = "tenjiku")]
+fn tenjiku_king_move_into_donor_only_attack_is_rejected() {
+    let board: Board = "k4K3/9/9/9/4g4/4r4/9/9/9 b - 1".parse().unwrap();
+    let into_donor_attack = Move::BoardMove {
+        from: Square::D1,
+        to: Square::E1,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(into_donor_attack));
+}
+
+#[test]
+#[cfg(feature = "anki")]
+fn anki_unions_knight_square_donors_and_replaces_native_movement() {
+    let board: Board = "1k7/9/3G1B3/9/4R4/9/9/9/K8 b - 1".parse().unwrap();
+    let bishop_move = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D4,
+        promotion: false,
+    };
+    let gold_move = Move::BoardMove {
+        from: Square::E5,
+        to: Square::D5,
+        promotion: false,
+    };
+    let native_rook_move = Move::BoardMove {
+        from: Square::E5,
+        to: Square::E7,
+        promotion: false,
+    };
+
+    assert!(board.is_legal_board_move(bishop_move));
+    assert!(board.is_legal_board_move(gold_move));
+    assert!(!board.is_legal_board_move(native_rook_move));
+}
+
+#[test]
+#[cfg(feature = "anki")]
+fn anki_king_move_into_donor_only_attack_is_rejected() {
+    let board: Board = "k4K3/9/9/6r2/4g4/9/9/9/9 b - 1".parse().unwrap();
+    let into_donor_attack = Move::BoardMove {
+        from: Square::D1,
+        to: Square::E1,
+        promotion: false,
+    };
+
+    assert!(!board.is_legal_board_move(into_donor_attack));
 }
 
 // ========================
@@ -1907,7 +2075,10 @@ fn haimen_false_pin_blocker_donor_can_move_off_ray() {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 ))]
 fn neko_assert_consistent(board: &Board) {
     use std::collections::HashSet;
@@ -1978,7 +2149,10 @@ fn neko_assert_consistent(board: &Board) {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 ))]
 fn neko_generated_moves_are_legal_and_consistent() {
     let mut rng = rng();

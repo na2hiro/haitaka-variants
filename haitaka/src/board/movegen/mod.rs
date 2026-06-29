@@ -70,7 +70,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
@@ -240,7 +243,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn variant_singleton_piece_moves(mv: Move, color: Color, piece: Piece) -> PieceMoves {
         match mv {
@@ -278,7 +284,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn neko_emit_if_safe<F: FnMut(PieceMoves) -> bool>(
         &self,
@@ -462,7 +471,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
@@ -488,14 +500,20 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn target_squares<const IN_CHECK: bool>(&self) -> BitBoard {
         #[cfg(any(
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         {
             // In neko run-reflection variants, capturing, relocating, or dropping
@@ -510,7 +528,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         {
             let color = self.side_to_move();
@@ -574,7 +595,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn target_drops<const IN_CHECK: bool>(&self) -> BitBoard {
         let color = self.side_to_move();
@@ -654,7 +678,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         if piece == Piece::Pawn {
             return self.emit_variant_pawn_moves(color, from, to, listener);
@@ -678,7 +705,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn emit_variant_pawn_moves<F: FnMut(PieceMoves) -> bool>(
         &self,
@@ -732,11 +762,44 @@ impl Board {
     /// cannot change any enemy's effective movement, so its pin is always genuine.
     #[inline]
     fn effective_pinned(&self) -> BitBoard {
-        #[cfg(any(feature = "taimen", feature = "haimen"))]
+        #[cfg(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))]
+        {
+            BitBoard::EMPTY
+        }
+        #[cfg(all(
+            not(any(
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
+            )),
+            any(feature = "taimen", feature = "haimen")
+        ))]
         {
             self.pinned & !self.enemy_donor_axis()
         }
-        #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+        #[cfg(not(any(
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )))]
         {
             self.pinned
         }
@@ -862,7 +925,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     #[inline]
     fn king_safe_on(&self, square: Square) -> bool {
@@ -929,7 +995,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
         let color = self.side_to_move();
@@ -1007,7 +1076,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         let mut moves = {
             #[cfg(any(
@@ -1018,14 +1090,15 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo"
             ))]
             {
                 let eff = crate::variant_rules::effective_piece(self, color, our_king);
                 crate::variant_rules::pseudo_legals_for(eff, color, our_king, self.occupied())
                     & !our_pieces
             }
-            #[cfg(feature = "antouzai")]
+            #[cfg(any(feature = "antouzai", feature = "tenjiku", feature = "anki"))]
             {
                 crate::variant_rules::effective_movements(self, color, our_king).pseudo_legals(
                     color,
@@ -1044,7 +1117,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
 
@@ -1060,7 +1136,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )))]
             let safe = self.king_safe_on(to);
             #[cfg(any(
@@ -1072,7 +1151,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ))]
             let safe = self.variant_king_safe_on(to);
 
@@ -1101,7 +1183,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
@@ -1145,7 +1230,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn add_all_legals<F: FnMut(PieceMoves) -> bool, const IN_CHECK: bool>(
         &self,
@@ -1190,7 +1278,8 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo"
             ))]
             {
                 use crate::variant_rules::pseudo_legals_for;
@@ -1239,7 +1328,7 @@ impl Board {
                 }
             }
 
-            #[cfg(feature = "antouzai")]
+            #[cfg(any(feature = "antouzai", feature = "tenjiku", feature = "anki"))]
             {
                 for from in (influence.has_influence & mask) & self.colors(color) {
                     let actual_piece = self.piece_on(from).unwrap();
@@ -1375,7 +1464,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ))]
             {
                 // The neko variants must always verify king safety: a drop can
@@ -1384,14 +1476,20 @@ impl Board {
                     feature = "neko",
                     feature = "nekoneko",
                     feature = "yokoneko",
-                    feature = "yokonekoneko"
+                    feature = "yokonekoneko",
+                    feature = "tenkyo",
+                    feature = "tenjiku",
+                    feature = "anki"
                 ))]
                 let resolves_check = self.variant_move_resolves_check(mv);
                 #[cfg(not(any(
                     feature = "neko",
                     feature = "nekoneko",
                     feature = "yokoneko",
-                    feature = "yokonekoneko"
+                    feature = "yokonekoneko",
+                    feature = "tenkyo",
+                    feature = "tenjiku",
+                    feature = "anki"
                 )))]
                 let resolves_check = if self.checkers.is_empty() {
                     // A drop can grant an adjacent enemy new movement in the
@@ -1422,7 +1520,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )))]
             {
                 let resolves_check = match self.checkers.len() {
@@ -1449,7 +1550,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
@@ -1559,7 +1663,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
         if let Move::BoardMove {
@@ -1588,7 +1695,8 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo"
             ))]
             let moves = crate::variant_rules::pseudo_legals_for(
                 crate::variant_rules::effective_piece(self, color, from),
@@ -1596,7 +1704,7 @@ impl Board {
                 from,
                 self.occupied(),
             );
-            #[cfg(feature = "antouzai")]
+            #[cfg(any(feature = "antouzai", feature = "tenjiku", feature = "anki"))]
             let moves = crate::variant_rules::effective_movements(self, color, from).pseudo_legals(
                 color,
                 from,
@@ -1646,7 +1754,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ))]
             return self.variant_move_resolves_check(mv);
 
@@ -1654,7 +1765,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )))]
             {
                 // When not in check, ordinary variants are already safe at this point.
@@ -1684,7 +1798,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn king_is_legal(&self, color: Color, from: Square, to: Square) -> bool {
         if !(king_attacks(color, from) & !self.colors(color)).has(to) {
@@ -1730,7 +1847,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -1744,7 +1864,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -1770,7 +1893,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         abort_if! {
@@ -1789,7 +1915,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         // The neko variants always go through the king-safety-filtered drop and
@@ -1799,7 +1928,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         if !self.checkers.is_empty() {
             return self.generate_variant_evasions(&mut listener);
@@ -1834,7 +1966,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -1848,7 +1983,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -1877,7 +2015,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         {
             let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
@@ -1888,7 +2029,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         {
             #[cfg(any(
@@ -1931,7 +2075,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -1942,7 +2089,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -1975,7 +2125,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         {
             let targets = !self.occupied();
@@ -1987,7 +2140,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         {
             #[cfg(any(
@@ -2032,7 +2188,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         {
             let dst = !self.occupied();
@@ -2053,7 +2212,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         {
             let num_checkers = self.checkers.len();
@@ -2130,7 +2292,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let color = self.side_to_move();
@@ -2277,7 +2442,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn filter_checks_by_promotion_status(
         color: Color,
@@ -2366,7 +2534,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         let their_color = !self.side_to_move();

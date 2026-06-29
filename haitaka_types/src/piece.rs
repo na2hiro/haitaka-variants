@@ -165,7 +165,10 @@ impl Piece {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -179,7 +182,10 @@ impl Piece {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -209,7 +215,10 @@ impl Piece {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ))]
         {
             // In piece-influence variants, pieces can gain any movement via donors,
@@ -240,7 +249,10 @@ impl Piece {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         {
             let rank = square.rank() as usize;

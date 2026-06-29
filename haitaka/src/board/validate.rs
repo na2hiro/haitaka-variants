@@ -131,7 +131,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         soft_assert!(self.checkers.len() < 3);
         true
@@ -156,7 +159,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
@@ -214,7 +220,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
@@ -229,7 +238,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub(super) fn calculate_checkers_and_pins_excluding(
         &self,
@@ -247,7 +259,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ),
             allow(unused_mut)
         )]
@@ -295,7 +310,10 @@ impl Board {
                             feature = "neko",
                             feature = "nekoneko",
                             feature = "yokoneko",
-                            feature = "yokonekoneko"
+                            feature = "yokonekoneko",
+                            feature = "tenkyo",
+                            feature = "tenjiku",
+                            feature = "anki"
                         )))]
                         1 => pinned |= between,
                         _ => {}

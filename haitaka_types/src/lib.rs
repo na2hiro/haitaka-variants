@@ -11,7 +11,10 @@
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
@@ -23,7 +26,10 @@
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
@@ -34,7 +40,10 @@
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
@@ -44,7 +53,10 @@
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
@@ -53,22 +65,50 @@
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
         feature = "neko",
-        any(feature = "nekoneko", feature = "yokoneko", feature = "yokonekoneko")
+        any(
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
     ),
     all(
         feature = "nekoneko",
-        any(feature = "yokoneko", feature = "yokonekoneko")
+        any(
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
     ),
-    all(feature = "yokoneko", feature = "yokonekoneko"),
+    all(
+        feature = "yokoneko",
+        any(
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "yokonekoneko",
+        any(feature = "tenkyo", feature = "tenjiku", feature = "anki")
+    ),
+    all(feature = "tenkyo", any(feature = "tenjiku", feature = "anki")),
+    all(feature = "tenjiku", feature = "anki"),
 ))]
-compile_error!(
-    "features `annan`, `anhoku`, `antouzai`, `taimen`, `haimen`, `neko`, `nekoneko`, `yokoneko`, and `yokonekoneko` are mutually exclusive"
-);
+compile_error!("variant rule features are mutually exclusive");
 pub mod bitboard;
 pub mod color;
 pub mod file;

@@ -10,11 +10,16 @@
 - `nekoneko`: ネコネコ将棋. Same as `neko` but a run is any maximal vertical run of contiguous pieces **regardless of color** (only an empty square breaks a run), so a piece's partner may be an enemy.
 - `yokoneko`: 横ネコ将棋. Same as `neko` but runs are **horizontal** (within a rank): the 1st piece from the left swaps abilities with the 1st from the right, and so on.
 - `yokonekoneko`: 横ネコネコ将棋. Same as `nekoneko` but **horizontal**.
+- `tenkyo`: 天鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
+- `tenjiku`: 天竺将棋. Same behind-friendly donor geometry as Annan, but the moving piece keeps its native movement in addition to the donor movement.
+- `anki`: 暗鬼将棋. Friendly pieces on chess-knight squares donate movement. If at least one donor exists, donor movement replaces native movement.
 
 The variant feature flags are mutually exclusive compile-time engine modes. `annan` keeps its custom start position; the other variants currently use the standard shogi start position until variant-specific openings are documented.
 
 `taimen` and `haimen` are "donor" variants like `annan`/`anhoku`, but the donating piece is an enemy rather than a friendly piece, and captures, promotion, and drops still use the physical moving piece.
 
 The `neko` family is also a "donor" family — a piece adopts only its partner's movement *pattern* while moving in its own direction, and captures, promotion, and drops still use the physical piece — but the partner is found by **run reflection** (board-dependent) rather than a fixed adjacent square. Because removing, adding, or relocating any piece can re-segment a run and change another piece's effective movement, the `neko` move generator does not track pins and instead verifies king safety by replaying every candidate move. This is correctness-first; the resulting move generation is significantly slower than the fixed-offset variants and performance optimization is deferred.
+
+`tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
 `haitaka_learn` now covers NNUE data generation, training orchestration, export, and verification for all of the supported rule modes above. Use the matching Cargo feature for variant workflows.

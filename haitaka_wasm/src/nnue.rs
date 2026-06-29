@@ -32,6 +32,10 @@ const DONOR_SINGLE_NEKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x1656_6
 const DONOR_SINGLE_YOKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xff51_afd7;
 #[cfg(feature = "yokonekoneko")]
 const DONOR_SINGLE_YOKONEKONEKO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xd728_05f1;
+#[cfg(feature = "tenkyo")]
+const DONOR_SINGLE_TENKYO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xa24b_aed5;
+#[cfg(feature = "tenjiku")]
+const DONOR_SINGLE_TENJIKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9fb2_1c65;
 const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
@@ -126,6 +130,10 @@ const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_NEKONEKO_BLOCK_HASH;
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_YOKONEKO_BLOCK_HASH;
 #[cfg(feature = "yokonekoneko")]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_YOKONEKONEKO_BLOCK_HASH;
+#[cfg(feature = "tenkyo")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TENKYO_BLOCK_HASH;
+#[cfg(feature = "tenjiku")]
+const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TENJIKU_BLOCK_HASH;
 #[cfg(not(any(
     feature = "annan",
     feature = "anhoku",
@@ -134,7 +142,9 @@ const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_YOKONEKONEKO_BLOCK_HASH;
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku"
 )))]
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
@@ -170,7 +180,9 @@ impl FeatureFamily {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku"
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
@@ -1014,11 +1026,16 @@ fn for_each_donor_feature(
                 feature = "yokonekoneko"
             ))]
             let donor = neko_partner_piece(board, piece_color, square);
+            #[cfg(feature = "tenkyo")]
+            let donor = board
+                .colored_piece_on(square.flip())
+                .map(|donor| (donor.color, donor.piece));
             #[cfg(not(any(
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo"
             )))]
             let donor = single_donor_candidate_square(piece_color, square)
                 .and_then(|donor_square| single_donor_piece_on(board, piece_color, donor_square))
@@ -1163,6 +1180,23 @@ fn affected_donor_squares(_family: FeatureFamily, mv: Move) -> BitBoard {
     }
 }
 
+#[cfg(feature = "tenkyo")]
+fn affected_donor_squares(_family: FeatureFamily, mv: Move) -> BitBoard {
+    let mut squares = BitBoard::EMPTY;
+    let mut add = |square: Square| {
+        squares |= square.bitboard();
+        squares |= square.flip().bitboard();
+    };
+    match mv {
+        Move::Drop { to, .. } => add(to),
+        Move::BoardMove { from, to, .. } => {
+            add(from);
+            add(to);
+        }
+    }
+    squares
+}
+
 /// Returns the set of influenced squares whose donor features can change as a
 /// result of `mv`.
 ///
@@ -1174,7 +1208,8 @@ fn affected_donor_squares(_family: FeatureFamily, mv: Move) -> BitBoard {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
     let mut squares = BitBoard::EMPTY;
@@ -1210,7 +1245,8 @@ fn affected_donor_squares(family: FeatureFamily, mv: Move) -> BitBoard {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 fn donor_influence_neighborhood(
     family: FeatureFamily,
@@ -1437,7 +1473,8 @@ fn neko_partner_piece(board: &Board, color: Color, square: Square) -> Option<(Co
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 fn single_donor_piece_on(board: &Board, color: Color, square: Square) -> Option<Piece> {
     friendly_piece_on(board, single_donor_color(color), square)
@@ -1451,7 +1488,8 @@ fn single_donor_piece_on(board: &Board, color: Color, square: Square) -> Option<
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 fn single_donor_color(piece_color: Color) -> Color {
     #[cfg(any(feature = "taimen", feature = "haimen"))]
@@ -1468,11 +1506,12 @@ fn single_donor_color(piece_color: Color) -> Color {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     // annan (friendly behind) and haimen (enemy behind) look at the square behind.
-    #[cfg(any(feature = "annan", feature = "haimen"))]
+    #[cfg(any(feature = "annan", feature = "haimen", feature = "tenjiku"))]
     {
         return match color {
             Color::Black => square.try_offset(0, 1),
@@ -1493,7 +1532,8 @@ fn single_donor_candidate_square(color: Color, square: Square) -> Option<Square>
         feature = "annan",
         feature = "anhoku",
         feature = "taimen",
-        feature = "haimen"
+        feature = "haimen",
+        feature = "tenjiku"
     )))]
     {
         let _ = (color, square);
@@ -1545,7 +1585,13 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
             feature = "annan",
             feature = "anhoku",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         )),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => true,
@@ -1651,6 +1697,10 @@ mod tests {
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xea6e7592);
         #[cfg(feature = "yokonekoneko")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xaea1f4cd);
+        #[cfg(feature = "tenkyo")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x7ed77717);
+        #[cfg(feature = "tenjiku")]
+        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1bd8cb2f);
         #[cfg(not(any(
             feature = "annan",
             feature = "anhoku",
@@ -1659,7 +1709,9 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         )))]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
         assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
@@ -1676,7 +1728,9 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         ))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
@@ -1691,7 +1745,9 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         )))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
@@ -2000,7 +2056,9 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         ))]
         {
             FeatureFamily::HalfKAv2DonorSingle
@@ -2014,7 +2072,10 @@ mod tests {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )),
             feature = "antouzai"
         ))]
@@ -2030,7 +2091,9 @@ mod tests {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku"
             )),
             not(feature = "antouzai")
         ))]
@@ -2050,7 +2113,9 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
         ))]
         assert_eq!(family, FeatureFamily::HalfKAv2DonorSingle);
         #[cfg(all(
@@ -2062,7 +2127,10 @@ mod tests {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )),
             feature = "antouzai"
         ))]
@@ -2076,7 +2144,9 @@ mod tests {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku"
             )),
             not(feature = "antouzai")
         ))]

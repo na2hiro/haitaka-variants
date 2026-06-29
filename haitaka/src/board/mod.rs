@@ -166,7 +166,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
@@ -251,7 +254,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -265,7 +271,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -365,7 +374,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -379,7 +391,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -415,7 +430,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -429,7 +447,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -461,7 +482,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -475,7 +499,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -514,7 +541,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -528,7 +558,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -562,7 +595,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -576,7 +612,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -616,7 +655,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -630,7 +672,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -902,7 +947,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -916,7 +964,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -969,7 +1020,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )),
         doc = "```"
     )]
@@ -983,7 +1037,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         ),
         doc = "```ignore"
     )]
@@ -1086,7 +1143,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         // reset pins and checkers
@@ -1157,7 +1217,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
         let them = !color;
@@ -1218,7 +1281,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             )))]
             {
                 // we only need to update pinned
@@ -1248,7 +1314,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ))]
             {
                 // In influence variants, non-sliders with slider movement can also pin,

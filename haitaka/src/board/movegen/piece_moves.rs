@@ -393,7 +393,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn len_handles_promotions_black_lance() {
         let mv = PieceMoves::BoardMoves {
@@ -441,7 +444,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn len_handles_promotions_white_lance() {
         let mv = PieceMoves::BoardMoves {
@@ -489,7 +495,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn len_for_lance_handles_edge_cases() {
         // Case 1: Lance completely blocked

@@ -100,7 +100,10 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     {
         let _ = (color, piece);
@@ -128,7 +131,10 @@ pub const fn no_fly_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     {
         match piece {
@@ -162,7 +168,10 @@ pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     {
         let _ = (color, piece);
@@ -190,7 +199,10 @@ pub const fn drop_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     {
         match piece {
@@ -248,7 +260,10 @@ pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     {
         let _ = (color, piece);
@@ -273,7 +288,10 @@ pub const fn must_prom_zone(color: Color, piece: Piece) -> BitBoard {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     {
         match piece {

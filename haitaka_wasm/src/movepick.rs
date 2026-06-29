@@ -405,7 +405,10 @@ fn use_mvv_lva_tactical_ordering() -> bool {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))
 }
 
@@ -687,7 +690,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn equal_material_gain_uses_higher_victim_value_first() {
         let rook_takes_rook = tactical_scored_move("5e4e", 800, 800, 0);
@@ -701,7 +707,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn equal_victim_value_uses_lower_attacker_value_first() {
         let pawn_takes_rook = tactical_scored_move("5e4e", 800, 100, 0);
