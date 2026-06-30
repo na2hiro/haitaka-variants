@@ -1283,6 +1283,15 @@ fn tenjiku_king_move_into_donor_only_attack_is_rejected() {
 }
 
 #[test]
+#[cfg(feature = "tenjiku")]
+fn tenjiku_backed_slider_native_check_is_detected() {
+    let board: Board = "k8/9/9/4g4/4r4/9/9/9/4K4 b - 1".parse().unwrap();
+
+    assert_eq!(board.checkers(), Square::E5.bitboard());
+    test_is_legal(board);
+}
+
+#[test]
 #[cfg(feature = "anki")]
 fn anki_unions_knight_square_donors_and_replaces_native_movement() {
     let board: Board = "1k7/9/3G1B3/9/4R4/9/9/9/K8 b - 1".parse().unwrap();
