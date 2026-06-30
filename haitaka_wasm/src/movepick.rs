@@ -155,9 +155,9 @@ impl MovePicker {
     fn push_scored(&mut self, scored: ScoredMove) {
         if scored.is_hash {
             self.hash.push(scored);
-        } else if scored.is_tactical() && scored.gain > 0 {
+        } else if scored.is_tactical() && scored.tactical_score.material_gain > 0 {
             self.winning_tactical.push(scored);
-        } else if scored.is_tactical() && scored.gain == 0 {
+        } else if scored.is_tactical() && scored.tactical_score.material_gain == 0 {
             self.equal_tactical.push(scored);
         } else if !scored.is_tactical() && scored.killer_slot.is_some() {
             self.killer.push(scored);
@@ -235,6 +235,121 @@ impl MoveStage {
     }
 }
 
+pub struct QsearchMovePicker {
+    moves: Vec<ScoredMove>,
+    stage: QsearchPickStage,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QsearchPickedMove {
+    pub mv: Move,
+    pub tactical_score: TacticalScore,
+}
+
+impl QsearchMovePicker {
+    pub fn new_tactical(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_moves(|piece_moves| {
+            moves.extend(piece_moves.into_iter().filter_map(|mv| {
+                let scored = ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0);
+                scored.is_tactical().then_some(scored)
+            }));
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Tactical,
+        }
+    }
+
+    pub fn new_evasions(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_moves(|piece_moves| {
+            moves.extend(
+                piece_moves
+                    .into_iter()
+                    .map(|mv| ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0)),
+            );
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Tactical,
+        }
+    }
+
+    pub fn new_quiet_checks(board: &Board) -> Self {
+        let side = board.side_to_move();
+        let mut moves = Vec::new();
+        board.generate_checks(|piece_moves| {
+            moves.extend(piece_moves.into_iter().filter_map(|mv| {
+                let scored = ScoredMove::new(board, side, mv, None, [None; KILLER_SLOTS], 0);
+                (!scored.is_tactical()).then_some(scored)
+            }));
+            false
+        });
+
+        Self {
+            moves,
+            stage: QsearchPickStage::Quiet,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<QsearchPickedMove> {
+        loop {
+            let selected = match self.stage {
+                QsearchPickStage::Tactical => self.select_best(|candidate| candidate.is_tactical()),
+                QsearchPickStage::Quiet => self.select_best(|candidate| !candidate.is_tactical()),
+                QsearchPickStage::Done => return None,
+            };
+
+            if let Some(mv) = selected {
+                return Some(mv);
+            }
+            self.stage = self.stage.next();
+        }
+    }
+
+    fn select_best(
+        &mut self,
+        predicate: impl Fn(&ScoredMove) -> bool,
+    ) -> Option<QsearchPickedMove> {
+        let selected = self
+            .moves
+            .iter()
+            .enumerate()
+            .filter(|(_, candidate)| predicate(candidate))
+            .min_by(|(_, left), (_, right)| left.cmp_for_stage(right))
+            .map(|(index, _)| index)?;
+        let scored = self.moves.swap_remove(selected);
+        Some(QsearchPickedMove {
+            mv: scored.mv,
+            tactical_score: scored.tactical_score,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum QsearchPickStage {
+    Tactical,
+    Quiet,
+    Done,
+}
+
+impl QsearchPickStage {
+    const fn next(self) -> Self {
+        match self {
+            Self::Tactical => Self::Quiet,
+            Self::Quiet => Self::Done,
+            Self::Done => Self::Done,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PickStage {
     Hash,
@@ -264,11 +379,34 @@ impl PickStage {
 struct ScoredMove {
     mv: Move,
     is_hash: bool,
-    is_tactical: bool,
-    gain: i32,
+    tactical_score: TacticalScore,
     history: i32,
     killer_slot: Option<usize>,
     fallback: FallbackKey,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TacticalScore {
+    pub capture_value: i32,
+    pub attacker_value: i32,
+    pub promotion_gain: i32,
+    pub material_gain: i32,
+    pub optimistic_delta: i32,
+}
+
+impl TacticalScore {
+    const fn is_tactical(self) -> bool {
+        self.capture_value > 0 || self.promotion_gain > 0
+    }
+}
+
+fn use_mvv_lva_tactical_ordering() -> bool {
+    !cfg!(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    ))
 }
 
 impl ScoredMove {
@@ -281,23 +419,12 @@ impl ScoredMove {
         history: i32,
     ) -> Self {
         let is_hash = tt_move == Some(mv);
-        let capture = capture_value(board, side, mv);
-        let promotion = promotion_gain(board, mv);
-        let attacker = attacker_value(board, mv);
-        let is_tactical = capture > 0 || promotion > 0;
-        let gain = if capture > 0 {
-            capture + promotion - attacker
-        } else if promotion > 0 {
-            promotion
-        } else {
-            0
-        };
+        let tactical_score = tactical_score(board, side, mv);
         let killer_slot = killers.iter().position(|killer| *killer == Some(mv));
         Self {
             mv,
             is_hash,
-            is_tactical,
-            gain,
+            tactical_score,
             history,
             killer_slot,
             fallback: FallbackKey::new(mv),
@@ -305,22 +432,43 @@ impl ScoredMove {
     }
 
     const fn is_tactical(self) -> bool {
-        self.is_tactical
+        self.tactical_score.is_tactical()
     }
 
     fn cmp_for_stage(&self, other: &Self) -> Ordering {
-        (
-            Reverse(self.gain),
-            Reverse(self.history),
-            self.killer_slot.unwrap_or(KILLER_SLOTS),
-            self.fallback,
-        )
-            .cmp(&(
-                Reverse(other.gain),
-                Reverse(other.history),
-                other.killer_slot.unwrap_or(KILLER_SLOTS),
-                other.fallback,
-            ))
+        if use_mvv_lva_tactical_ordering() {
+            (
+                Reverse(self.tactical_score.material_gain),
+                Reverse(self.tactical_score.capture_value),
+                self.tactical_score.attacker_value,
+                Reverse(self.tactical_score.promotion_gain),
+                Reverse(self.history),
+                self.killer_slot.unwrap_or(KILLER_SLOTS),
+                self.fallback,
+            )
+                .cmp(&(
+                    Reverse(other.tactical_score.material_gain),
+                    Reverse(other.tactical_score.capture_value),
+                    other.tactical_score.attacker_value,
+                    Reverse(other.tactical_score.promotion_gain),
+                    Reverse(other.history),
+                    other.killer_slot.unwrap_or(KILLER_SLOTS),
+                    other.fallback,
+                ))
+        } else {
+            (
+                Reverse(self.tactical_score.material_gain),
+                Reverse(self.history),
+                self.killer_slot.unwrap_or(KILLER_SLOTS),
+                self.fallback,
+            )
+                .cmp(&(
+                    Reverse(other.tactical_score.material_gain),
+                    Reverse(other.history),
+                    other.killer_slot.unwrap_or(KILLER_SLOTS),
+                    other.fallback,
+                ))
+        }
     }
 }
 
@@ -375,6 +523,26 @@ fn capture_value(board: &Board, side: Color, mv: Move) -> i32 {
             .map(piece_value)
             .unwrap_or(0),
         Move::Drop { .. } => 0,
+    }
+}
+
+pub fn tactical_score(board: &Board, side: Color, mv: Move) -> TacticalScore {
+    let capture_value = capture_value(board, side, mv);
+    let attacker_value = attacker_value(board, mv);
+    let promotion_gain = promotion_gain(board, mv);
+    let material_gain = if capture_value > 0 {
+        capture_value + promotion_gain - attacker_value
+    } else if promotion_gain > 0 {
+        promotion_gain
+    } else {
+        0
+    };
+    TacticalScore {
+        capture_value,
+        attacker_value,
+        promotion_gain,
+        material_gain,
+        optimistic_delta: capture_value + promotion_gain,
     }
 }
 
@@ -491,7 +659,7 @@ mod tests {
             0,
         );
         assert!(scored.is_tactical());
-        assert_eq!(scored.gain, 200);
+        assert_eq!(scored.tactical_score.material_gain, 200);
 
         let moves = collect_picker_moves(&board, None, &ordering, 0);
         let promotion_index = moves
@@ -504,6 +672,50 @@ mod tests {
             .expect("quiet king move should be legal");
         assert_eq!(moves[promotion_index].source, MoveSource::Tactical);
         assert!(promotion_index < quiet_index);
+    }
+
+    #[test]
+    fn higher_material_gain_capture_sorts_first() {
+        let better = tactical_scored_move("5e4e", 800, 800, 0);
+        let worse = tactical_scored_move("5e5d", 100, 800, 0);
+
+        assert!(better.cmp_for_stage(&worse).is_lt());
+    }
+
+    #[test]
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn equal_material_gain_uses_higher_victim_value_first() {
+        let rook_takes_rook = tactical_scored_move("5e4e", 800, 800, 0);
+        let silver_takes_silver = tactical_scored_move("5e5d", 400, 400, 0);
+
+        assert!(rook_takes_rook.cmp_for_stage(&silver_takes_silver).is_lt());
+    }
+
+    #[test]
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko"
+    )))]
+    fn equal_victim_value_uses_lower_attacker_value_first() {
+        let pawn_takes_rook = tactical_scored_move("5e4e", 800, 100, 0);
+        let rook_takes_rook = tactical_scored_move("5e5d", 800, 800, 0);
+
+        assert!(pawn_takes_rook.cmp_for_stage(&rook_takes_rook).is_lt());
+    }
+
+    #[test]
+    fn promotion_only_tactical_ordering_remains_stable() {
+        let earlier_fallback = tactical_scored_move("5c4b+", 0, 400, 200);
+        let later_fallback = tactical_scored_move("5c5b+", 0, 400, 200);
+
+        assert!(earlier_fallback.cmp_for_stage(&later_fallback).is_lt());
     }
 
     #[test]
@@ -532,5 +744,32 @@ mod tests {
 
         ordering.record_beta_cutoff(Color::Black, second, 3, 5);
         assert_eq!(ordering.killers_for_ply(5), [Some(second), Some(first)]);
+    }
+
+    fn tactical_scored_move(
+        usi: &str,
+        capture_value: i32,
+        attacker_value: i32,
+        promotion_gain: i32,
+    ) -> ScoredMove {
+        let mv = Move::from_str(usi).unwrap();
+        ScoredMove {
+            mv,
+            is_hash: false,
+            tactical_score: TacticalScore {
+                capture_value,
+                attacker_value,
+                promotion_gain,
+                material_gain: if capture_value > 0 {
+                    capture_value + promotion_gain - attacker_value
+                } else {
+                    promotion_gain
+                },
+                optimistic_delta: capture_value + promotion_gain,
+            },
+            history: 0,
+            killer_slot: None,
+            fallback: FallbackKey::new(mv),
+        }
     }
 }

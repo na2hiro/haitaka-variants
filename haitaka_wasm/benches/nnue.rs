@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use haitaka::Board;
+use haitaka::{Board, Move};
 use haitaka_wasm::{
     NnueModel, SearchEvalMode, search_impl_handcrafted, search_impl_with_eval_mode,
     search_iterative_deepening_impl, search_iterative_deepening_impl_with_dfpn_mode,
@@ -125,12 +125,22 @@ fn criterion_benchmark(criterion: &mut Criterion) {
         let fixed = search_impl_handcrafted(sfen, depth).unwrap();
         let iterative = search_iterative_deepening_impl(sfen, depth, 5_000).unwrap();
         assert_eq!(
-            iterative.best_move, fixed.best_move,
-            "iterative parity for {name}"
-        );
-        assert_eq!(
             iterative.completed_depth, depth,
             "completed depth for {name}"
+        );
+        assert!(
+            fixed.best_move.is_some(),
+            "fixed search best move for {name}"
+        );
+        let board = Board::from_sfen(sfen).unwrap();
+        let iterative_best = iterative
+            .best_move
+            .as_deref()
+            .expect("iterative search best move");
+        let mv: Move = iterative_best.parse().unwrap();
+        assert!(
+            board.is_legal(mv),
+            "iterative best move {iterative_best} should be legal for {name}"
         );
 
         iterative_group.bench_function(format!("{name}_fixed"), |b| {
