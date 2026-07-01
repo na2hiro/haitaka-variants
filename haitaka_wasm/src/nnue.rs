@@ -38,6 +38,8 @@ const DONOR_SINGLE_TENKYO_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0xa24b_aed
 const DONOR_SINGLE_TENJIKU_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9fb2_1c65;
 const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
+#[cfg(feature = "anki")]
+const DONOR_KNIGHT8_ANKI_BLOCK_HASH: u32 = DONOR_KNIGHT8_BLOCK_HASH ^ 0x6a09_e667;
 const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
 const FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS: usize = TRANSFORMED_FEATURE_DIMENSIONS * 2;
 const PSQT_BUCKETS: usize = 8;
@@ -151,8 +153,12 @@ const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_PAIR_BLOCK_HASH);
+#[cfg(feature = "anki")]
+const DONOR_KNIGHT8_MODE_BLOCK_HASH: u32 = DONOR_KNIGHT8_ANKI_BLOCK_HASH;
+#[cfg(not(feature = "anki"))]
+const DONOR_KNIGHT8_MODE_BLOCK_HASH: u32 = DONOR_KNIGHT8_BLOCK_HASH;
 const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
-    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_BLOCK_HASH);
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
@@ -186,6 +192,7 @@ impl FeatureFamily {
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
+            #[cfg(feature = "anki")]
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
             _ => None,
         }
@@ -1594,7 +1601,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
             feature = "tenjiku"
         )),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
-        FeatureFamily::HalfKAv2DonorKnight8 => true,
+        FeatureFamily::HalfKAv2DonorKnight8 => cfg!(feature = "anki"),
     }
 }
 
@@ -1715,6 +1722,9 @@ mod tests {
         )))]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
         assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
+        #[cfg(feature = "anki")]
+        assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0xbae05a59);
+        #[cfg(not(feature = "anki"))]
         assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0x5bf765a4);
     }
 
@@ -1751,6 +1761,21 @@ mod tests {
         )))]
         assert_eq!(
             FeatureFamily::from_network_hash(HALFKAV2_DONOR_SINGLE_NETWORK_HASH),
+            None
+        );
+    }
+
+    #[test]
+    fn knight8_donor_hash_is_accepted_only_by_anki_builds() {
+        #[cfg(feature = "anki")]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH),
+            Some(FeatureFamily::HalfKAv2DonorKnight8)
+        );
+
+        #[cfg(not(feature = "anki"))]
+        assert_eq!(
+            FeatureFamily::from_network_hash(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH),
             None
         );
     }
