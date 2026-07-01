@@ -97,8 +97,8 @@ static Piece friendly_piece_at(const Position& pos, Color color, Square sq) {
 }
 
 static Square single_donor_square(Color color, Square sq) {
-#if HAITAKA_DONOR_MODE == 1 || HAITAKA_DONOR_MODE == 5
-    // annan (friendly behind) and haimen (enemy behind) share the same geometry.
+#if HAITAKA_DONOR_MODE == 1 || HAITAKA_DONOR_MODE == 5 || HAITAKA_DONOR_MODE == 11
+    // annan, haimen, and tenjiku share the same behind-square geometry.
     return color == Color::White ? offset_square(sq, 0, -1) : offset_square(sq, 0, 1);
 #elif HAITAKA_DONOR_MODE == 2 || HAITAKA_DONOR_MODE == 4
     // anhoku (friendly in front) and taimen (enemy in front) share the same geometry.
@@ -106,6 +106,12 @@ static Square single_donor_square(Color color, Square sq) {
 #else
     return Square::NB;
 #endif
+}
+
+static Square point_symmetric_square(Square sq) {
+    const int file = int(sq) % FILES;
+    const int rank = int(sq) / FILES;
+    return Square((RANKS - 1 - rank) * FILES + (FILES - 1 - file));
 }
 
 // Color of the donor piece for single-donor variants: friendly for annan/anhoku,
@@ -436,7 +442,15 @@ struct DonorSingleEff {
             if (p == Piece::None) {
                 continue;
             }
-#if HAITAKA_DONOR_MODE >= 6 && HAITAKA_DONOR_MODE <= 9
+#if HAITAKA_DONOR_MODE == 10
+            const auto donor_piece = pos.pieceAt(point_symmetric_square(sq));
+            if (donor_piece == Piece::None) {
+                continue;
+            }
+            values[j] = 1.0f;
+            features[j] = feature_index(perspective, sq, donor_piece);
+            ++j;
+#elif HAITAKA_DONOR_MODE >= 6 && HAITAKA_DONOR_MODE <= 9
             // neko run-reflection: the donor is the run partner, and the feature
             // encodes the donor's piece type keyed on the *partner's own* color
             // (relative to perspective) via donor_piece_index — the partner may be an

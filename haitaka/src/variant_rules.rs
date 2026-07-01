@@ -131,7 +131,8 @@ impl MovementInfluence {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo"
     )))]
     #[inline(always)]
     pub fn compute(board: &Board, color: Color) -> Self {
@@ -149,6 +150,32 @@ impl MovementInfluence {
             let influenced = influence_targets_from_donors(donors, color) & friendly;
             influenced_by[piece as usize] = influenced;
             has_influence |= influenced;
+        }
+
+        Self {
+            influenced_by,
+            has_influence,
+        }
+    }
+
+    /// Compute movement influence for the given color (neko run-reflection variants).
+    ///
+    /// Each line (file for `neko`/`nekoneko`, rank for `yokoneko`/`yokonekoneko`)
+    /// is segmented into maximal runs and the `i`-th piece from one end swaps
+    /// abilities with the `i`-th piece from the other end. The middle piece of an
+    /// odd-length run keeps its native movement.
+    #[cfg(any(feature = "tenkyo"))]
+    #[inline(always)]
+    pub fn compute(board: &Board, color: Color) -> Self {
+        let mut influenced_by = [BitBoard::EMPTY; Piece::NUM];
+        let mut has_influence = BitBoard::EMPTY;
+
+        for sq in board.colors(color) {
+            let donor_sq = sq.flip();
+            if let Some(donor_piece) = board.piece_on(donor_sq) {
+                influenced_by[donor_piece as usize] |= sq.bitboard();
+                has_influence |= sq.bitboard();
+            }
         }
 
         Self {
@@ -218,6 +245,8 @@ impl MovementInfluence {
         }
 
         let mut pieces = MovementSet::empty();
+        #[cfg(feature = "tenjiku")]
+        pieces.insert(native_piece);
         for &piece in &Piece::ALL {
             if self.influenced_by[piece as usize].has(square) {
                 pieces.insert(piece);
@@ -254,6 +283,15 @@ pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
     board.piece_on(square).unwrap()
 }
 
+/// Returns the single effective movement piece for Tenkyo point-symmetry donors.
+#[cfg(feature = "tenkyo")]
+#[inline(always)]
+pub fn effective_piece(board: &Board, _color: Color, square: Square) -> Piece {
+    board
+        .piece_on(square.flip())
+        .unwrap_or_else(|| board.piece_on(square).unwrap())
+}
+
 /// Returns the single effective movement piece for neko run-reflection variants.
 #[cfg(any(
     feature = "neko",
@@ -278,7 +316,8 @@ pub fn effective_piece(board: &Board, color: Color, square: Square) -> Piece {
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 #[inline(always)]
 pub fn influencing_donor_squares(board: &Board, color: Color, square: Square) -> BitBoard {
@@ -294,7 +333,8 @@ pub fn influencing_donor_squares(board: &Board, color: Color, square: Square) ->
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo"
 )))]
 #[inline(always)]
 fn donor_color(color: Color) -> Color {
@@ -310,7 +350,7 @@ fn donor_color(color: Color) -> Color {
 
 // `annan` (friendly behind) and `haimen` (enemy behind) share the same geometry:
 // a donor influences the piece one rank in front of it.
-#[cfg(any(feature = "annan", feature = "haimen"))]
+#[cfg(any(feature = "annan", feature = "haimen", feature = "tenjiku"))]
 #[inline(always)]
 fn influence_targets_from_donors(donors: BitBoard, color: Color) -> BitBoard {
     shift_forward(donors, color)
@@ -330,8 +370,21 @@ fn influence_targets_from_donors(donors: BitBoard, _color: Color) -> BitBoard {
     donors.shift_east(1) | donors.shift_west(1)
 }
 
+#[cfg(feature = "anki")]
+#[inline(always)]
+fn influence_targets_from_donors(donors: BitBoard, _color: Color) -> BitBoard {
+    donors.shift_east(1).shift_north(2)
+        | donors.shift_west(1).shift_north(2)
+        | donors.shift_east(2).shift_north(1)
+        | donors.shift_west(2).shift_north(1)
+        | donors.shift_east(2).shift_south(1)
+        | donors.shift_west(2).shift_south(1)
+        | donors.shift_east(1).shift_south(2)
+        | donors.shift_west(1).shift_south(2)
+}
+
 // Donor sits behind the influenced piece (annan: friendly, haimen: enemy).
-#[cfg(any(feature = "annan", feature = "haimen"))]
+#[cfg(any(feature = "annan", feature = "haimen", feature = "tenjiku"))]
 #[inline(always)]
 fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     match color {
@@ -354,7 +407,8 @@ fn donor_candidate_square(color: Color, square: Square) -> Option<Square> {
     feature = "annan",
     feature = "anhoku",
     feature = "taimen",
-    feature = "haimen"
+    feature = "haimen",
+    feature = "tenjiku"
 ))]
 #[inline(always)]
 fn donor_candidate_squares(color: Color, square: Square) -> BitBoard {
@@ -373,8 +427,30 @@ fn donor_candidate_squares(_color: Color, square: Square) -> BitBoard {
     left | right
 }
 
+#[cfg(feature = "anki")]
+#[inline(always)]
+fn donor_candidate_squares(_color: Color, square: Square) -> BitBoard {
+    const OFFSETS: [(i8, i8); 8] = [
+        (1, 2),
+        (-1, 2),
+        (-2, 1),
+        (-2, -1),
+        (-1, -2),
+        (1, -2),
+        (2, -1),
+        (2, 1),
+    ];
+    let mut donors = BitBoard::EMPTY;
+    for &(file, rank) in &OFFSETS {
+        if let Some(sq) = square.try_offset(file, rank) {
+            donors |= sq.bitboard();
+        }
+    }
+    donors
+}
+
 /// Shift a bitboard forward (toward the opponent) by one rank for the given color.
-#[cfg(any(feature = "annan", feature = "haimen"))]
+#[cfg(any(feature = "annan", feature = "haimen", feature = "tenjiku"))]
 #[inline(always)]
 fn shift_forward(bb: BitBoard, color: Color) -> BitBoard {
     match color {

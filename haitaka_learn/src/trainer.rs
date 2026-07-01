@@ -478,6 +478,9 @@ fn donor_mode_py_name(ruleset: Ruleset) -> &'static str {
         Ruleset::Nekoneko => "single-neko-vertical-any",
         Ruleset::Yokoneko => "single-neko-horizontal-friendly",
         Ruleset::Yokonekoneko => "single-neko-horizontal-any",
+        Ruleset::Tenkyo => "single-point-symmetry-any",
+        Ruleset::Tenjiku => "single-behind-plus-native",
+        Ruleset::Anki => "knight8-friendly",
     }
 }
 
@@ -493,6 +496,9 @@ fn donor_mode_cpp_value(ruleset: Ruleset) -> u8 {
         Ruleset::Nekoneko => 7,
         Ruleset::Yokoneko => 8,
         Ruleset::Yokonekoneko => 9,
+        Ruleset::Tenkyo => 10,
+        Ruleset::Tenjiku => 11,
+        Ruleset::Anki => 12,
     }
 }
 
@@ -560,6 +566,12 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+
+        let anki = loaded_config_for_tests(Ruleset::Anki);
+        assert!(variant_py_contents(&anki).contains("DONOR_MODE = \"knight8-friendly\""));
+        assert!(variant_h_contents(&anki).contains("#define HAITAKA_DONOR_MODE 12"));
+        assert!(overlay_donor_features_py_contents().contains("knight8-friendly"));
+        assert!(overlay_donor_features_py_contents().contains("0x6A09E667"));
     }
 
     fn loaded_config_for_tests(ruleset: Ruleset) -> LoadedConfig {

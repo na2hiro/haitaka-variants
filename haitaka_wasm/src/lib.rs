@@ -59,7 +59,10 @@ fn qsearch_limits() -> QsearchLimits {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )) {
         NEKO_QSEARCH_LIMITS
     } else {
@@ -2284,7 +2287,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     use std::cmp::Reverse;
     #[cfg(not(any(
@@ -2411,7 +2417,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn qsearch_limits_without_delta_pruning() -> QsearchLimits {
         QsearchLimits {
@@ -2424,7 +2433,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn search_board_impl_handcrafted_with_qsearch_limits(
         board: &Board,
@@ -2625,7 +2637,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn returns_none_when_side_to_move_has_no_legal_move() {
         let sfen = "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26";
@@ -2659,7 +2674,10 @@ mod tests {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )) {
             assert_eq!(limits.max_ply, 6);
             assert_eq!(limits.check_budget, 0);
@@ -2703,7 +2721,7 @@ mod tests {
 
     #[test]
     fn qsearch_in_check_searches_evasions_without_stand_pat() {
-        let board = Board::from_sfen("4r4/9/9/9/9/9/9/9/4K3k b - 1").unwrap();
+        let board = Board::from_sfen("9/9/9/9/9/9/9/8k/3rK4 b - 1").unwrap();
         assert!(!board.checkers().is_empty());
 
         let limits = qsearch_limits();
@@ -2799,7 +2817,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn qsearch_tactical_fixture_suite_pins_best_moves_and_scores() {
         struct TacticalFixture {
@@ -2916,7 +2937,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn iterative_search_reuses_tt_between_depths() {
         let summary =
@@ -2939,7 +2963,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_fixed_depth_score(
         board: &Board,
@@ -2983,7 +3010,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_negamax(
         board: &Board,
@@ -3027,7 +3057,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_quiescence(
         board: &Board,
@@ -3131,7 +3164,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_handcrafted_eval(board: &Board, ply: i32) -> i32 {
         if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
@@ -3151,7 +3187,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_ordered_moves(board: &Board) -> Vec<Move> {
         let mut moves = Vec::new();
@@ -3167,7 +3206,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_move_order_key(
         board: &Board,
@@ -3186,7 +3228,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn reference_capture_value(board: &Board, mv: Move) -> i32 {
         match mv {
@@ -3204,7 +3249,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     const fn reference_from_or_piece_index(mv: Move) -> u8 {
         match mv {
@@ -3218,7 +3266,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn fixed_depth_ordering_matches_reference_scores_on_representative_openings() {
         let openings = [
@@ -3282,7 +3333,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn iterative_search_reaches_requested_depth_when_time_allows() {
         let summary =
@@ -3332,7 +3386,10 @@ mod tests {
         feature = "taimen",
         feature = "haimen",
         feature = "nekoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
@@ -3353,7 +3410,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn iterative_search_can_disable_dfpn_short_circuiting() {
         let summary =
@@ -3375,7 +3435,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
@@ -3424,7 +3487,10 @@ mod tests {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(

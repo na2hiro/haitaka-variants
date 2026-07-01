@@ -1,6 +1,19 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(
-    not(any(feature = "annan", feature = "anhoku", feature = "antouzai", feature = "taimen", feature = "haimen")),
+    not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    )),
     doc = include_str!("../README.md")
 )]
 
@@ -26,19 +39,108 @@
             feature = "anhoku",
             feature = "antouzai",
             feature = "taimen",
-            feature = "haimen"
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )
     ),
     all(
         feature = "anhoku",
-        any(feature = "antouzai", feature = "taimen", feature = "haimen")
+        any(
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
     ),
-    all(feature = "antouzai", any(feature = "taimen", feature = "haimen")),
-    all(feature = "taimen", feature = "haimen"),
+    all(
+        feature = "antouzai",
+        any(
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "taimen",
+        any(
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "haimen",
+        any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "neko",
+        any(
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "nekoneko",
+        any(
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "yokoneko",
+        any(
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )
+    ),
+    all(
+        feature = "yokonekoneko",
+        any(feature = "tenkyo", feature = "tenjiku", feature = "anki")
+    ),
+    all(feature = "tenkyo", any(feature = "tenjiku", feature = "anki")),
+    all(feature = "tenjiku", feature = "anki"),
 ))]
-compile_error!(
-    "features `annan`, `anhoku`, `antouzai`, `taimen`, and `haimen` are mutually exclusive"
-);
+compile_error!("variant rule features are mutually exclusive");
 
 use haitaka_types::*;
 
@@ -65,7 +167,10 @@ pub mod slider_moves;
     feature = "neko",
     feature = "nekoneko",
     feature = "yokoneko",
-    feature = "yokonekoneko"
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
 ))]
 pub mod variant_rules;
 

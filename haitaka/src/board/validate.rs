@@ -131,7 +131,10 @@ impl Board {
             feature = "neko",
             feature = "nekoneko",
             feature = "yokoneko",
-            feature = "yokonekoneko"
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
         )))]
         soft_assert!(self.checkers.len() < 3);
         true
@@ -156,7 +159,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     )))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         let mut checkers = BitBoard::EMPTY;
@@ -214,7 +220,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub(super) fn calculate_checkers_and_pins(&self, color: Color) -> (BitBoard, BitBoard) {
         self.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY)
@@ -229,7 +238,10 @@ impl Board {
         feature = "neko",
         feature = "nekoneko",
         feature = "yokoneko",
-        feature = "yokonekoneko"
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
     ))]
     pub(super) fn calculate_checkers_and_pins_excluding(
         &self,
@@ -247,7 +259,10 @@ impl Board {
                 feature = "neko",
                 feature = "nekoneko",
                 feature = "yokoneko",
-                feature = "yokonekoneko"
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
             ),
             allow(unused_mut)
         )]
@@ -268,13 +283,16 @@ impl Board {
         // find all opponent pieces moving as that type and check for attacks on our king.
         for &eff_piece in &Piece::ALL {
             // Collect all opponent pieces effectively moving as `eff_piece`:
-            //   - pieces of type `eff_piece` that are not influenced
+            //   - pieces of type `eff_piece` with native movement
             //   - any piece influenced by `eff_piece`
-            let uninfluenced_of_type =
+            #[cfg(feature = "tenjiku")]
+            let native_of_type = self.colored_pieces(their_color, eff_piece);
+            #[cfg(not(feature = "tenjiku"))]
+            let native_of_type =
                 self.colored_pieces(their_color, eff_piece) & !influence.has_influence;
             let influenced_by_type = influence.influenced_by[eff_piece as usize];
             let movers =
-                ((uninfluenced_of_type | influenced_by_type) & their_pieces) & !excluded_attackers;
+                ((native_of_type | influenced_by_type) & their_pieces) & !excluded_attackers;
 
             if movers.is_empty() {
                 continue;
@@ -295,7 +313,10 @@ impl Board {
                             feature = "neko",
                             feature = "nekoneko",
                             feature = "yokoneko",
-                            feature = "yokonekoneko"
+                            feature = "yokonekoneko",
+                            feature = "tenkyo",
+                            feature = "tenjiku",
+                            feature = "anki"
                         )))]
                         1 => pinned |= between,
                         _ => {}

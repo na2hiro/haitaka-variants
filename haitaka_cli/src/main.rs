@@ -727,6 +727,12 @@ fn default_ruleset() -> &'static str {
         "yokoneko"
     } else if cfg!(feature = "yokonekoneko") {
         "yokonekoneko"
+    } else if cfg!(feature = "tenkyo") {
+        "tenkyo"
+    } else if cfg!(feature = "tenjiku") {
+        "tenjiku"
+    } else if cfg!(feature = "anki") {
+        "anki"
     } else {
         "standard"
     }
@@ -751,6 +757,12 @@ fn default_rule_id() -> u32 {
         132
     } else if cfg!(feature = "yokonekoneko") {
         133
+    } else if cfg!(feature = "tenkyo") {
+        151
+    } else if cfg!(feature = "tenjiku") {
+        56
+    } else if cfg!(feature = "anki") {
+        94
     } else {
         0
     }
@@ -764,6 +776,9 @@ fn profile_display_ruleset(ruleset: &str) -> String {
         "antouzai" => "Antouzai".to_string(),
         "taimen" => "Taimen".to_string(),
         "haimen" => "Haimen".to_string(),
+        "tenkyo" => "Tenkyo".to_string(),
+        "tenjiku" => "Tenjiku".to_string(),
+        "anki" => "Anki".to_string(),
         other => {
             let mut chars = other.chars();
             let Some(first) = chars.next() else {
@@ -3244,6 +3259,12 @@ mod tests {
             ("yokoneko", 132)
         } else if cfg!(feature = "yokonekoneko") {
             ("yokonekoneko", 133)
+        } else if cfg!(feature = "tenkyo") {
+            ("tenkyo", 151)
+        } else if cfg!(feature = "tenjiku") {
+            ("tenjiku", 56)
+        } else if cfg!(feature = "anki") {
+            ("anki", 94)
         } else {
             ("standard", 0)
         };
@@ -3878,24 +3899,28 @@ mod tests {
     }
 
     #[test]
-    fn usi_info_telemetry_merge_preserves_stats_across_string_lines() {
+    fn usi_info_telemetry_merges_split_lines_and_preserves_string_stats() {
         let mut telemetry = UsiInfoTelemetry::default();
 
         merge_usi_info_telemetry(
             &mut telemetry,
-            "info depth 5 nodes 123 qnodes 456 qsearchMaxPly 3 qsearchCapHits 4 qsearchCheckMoveTries 5 qsearchDeltaPrunes 6",
+            "info depth 5 nodes 12345 qnodes 456 qsearchMaxPly 3",
         );
         merge_usi_info_telemetry(
             &mut telemetry,
             "info string searched move 7g7f nodes 0 qnodes 0 qsearchDeltaPrunes 0",
         );
+        merge_usi_info_telemetry(
+            &mut telemetry,
+            "info qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9",
+        );
 
-        assert_eq!(telemetry.total_nodes, 123);
+        assert_eq!(telemetry.total_nodes, 12_345);
         assert_eq!(telemetry.qsearch.qnodes, 456);
         assert_eq!(telemetry.qsearch.qsearch_max_ply, 3);
-        assert_eq!(telemetry.qsearch.qsearch_cap_hits, 4);
-        assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 5);
-        assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 6);
+        assert_eq!(telemetry.qsearch.qsearch_cap_hits, 2);
+        assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 8);
+        assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 9);
     }
 
     #[test]

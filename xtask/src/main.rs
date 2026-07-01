@@ -98,21 +98,17 @@ fn required_value(iter: &mut impl Iterator<Item = OsString>, flag: &str) -> Resu
 fn package(args: PackageArgs) -> Result<()> {
     let rule_id = args
         .rule_id
-        .unwrap_or_else(|| if args.ruleset == "annan" { 26 } else { 0 });
+        .unwrap_or_else(|| default_rule_id(&args.ruleset));
     let output = args.output.unwrap_or_else(|| {
-        if args.ruleset == "annan" {
-            PathBuf::from("target/haitaka-variants-annan.tgz")
-        } else {
+        if args.ruleset == "standard" {
             PathBuf::from("target/haitaka-variants.tgz")
-        }
-    });
-    let features = args.features.or_else(|| {
-        if args.ruleset == "annan" {
-            Some("annan".to_string())
         } else {
-            None
+            PathBuf::from(format!("target/haitaka-variants-{}.tgz", args.ruleset))
         }
     });
+    let features = args
+        .features
+        .or_else(|| inferred_package_feature(&args.ruleset).map(str::to_string));
 
     if !args.skip_wasm_build && !args.allow_missing_wasm {
         run_command(
@@ -135,6 +131,42 @@ fn package(args: PackageArgs) -> Result<()> {
         ),
         "create Shogitter engine package",
     )
+}
+
+fn default_rule_id(ruleset: &str) -> u32 {
+    match ruleset {
+        "annan" => 26,
+        "anhoku" => 55,
+        "antouzai" => 95,
+        "taimen" => 72,
+        "haimen" => 74,
+        "neko" => 130,
+        "nekoneko" => 131,
+        "yokoneko" => 132,
+        "yokonekoneko" => 133,
+        "tenkyo" => 151,
+        "tenjiku" => 56,
+        "anki" => 94,
+        _ => 0,
+    }
+}
+
+fn inferred_package_feature(ruleset: &str) -> Option<&'static str> {
+    match ruleset {
+        "annan" => Some("annan"),
+        "anhoku" => Some("anhoku"),
+        "antouzai" => Some("antouzai"),
+        "taimen" => Some("taimen"),
+        "haimen" => Some("haimen"),
+        "neko" => Some("neko"),
+        "nekoneko" => Some("nekoneko"),
+        "yokoneko" => Some("yokoneko"),
+        "yokonekoneko" => Some("yokonekoneko"),
+        "tenkyo" => Some("tenkyo"),
+        "tenjiku" => Some("tenjiku"),
+        "anki" => Some("anki"),
+        _ => None,
+    }
 }
 
 fn wasm_pack_args(features: Option<&str>) -> Vec<OsString> {
@@ -223,4 +255,34 @@ fn print_package_usage() {
     eprintln!("  --features <features>     Cargo features for wasm and package builds");
     eprintln!("  --skip-wasm-build         Reuse existing wasm-pack output");
     eprintln!("  --allow-missing-wasm      Metadata-only package, not Shogitter-loadable");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn package_feature_inference_only_uses_real_variant_features() {
+        assert_eq!(inferred_package_feature("standard"), None);
+        assert_eq!(inferred_package_feature("handicap"), None);
+        assert_eq!(inferred_package_feature("custom"), None);
+        assert_eq!(inferred_package_feature("annan"), Some("annan"));
+        assert_eq!(inferred_package_feature("tenkyo"), Some("tenkyo"));
+        assert_eq!(inferred_package_feature("anki"), Some("anki"));
+    }
+
+    #[test]
+    fn handicap_package_args_do_not_pass_cargo_features() {
+        let args = haitaka_cli_package_args(
+            "handicap",
+            6,
+            &PathBuf::from("target/haitaka-variants-handicap.tgz"),
+            &PathBuf::from("haitaka_wasm/pkg"),
+            None,
+            inferred_package_feature("handicap"),
+            true,
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
 }
