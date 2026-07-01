@@ -106,13 +106,9 @@ fn package(args: PackageArgs) -> Result<()> {
             PathBuf::from(format!("target/haitaka-variants-{}.tgz", args.ruleset))
         }
     });
-    let features = args.features.or_else(|| {
-        if args.ruleset == "standard" {
-            None
-        } else {
-            Some(args.ruleset.clone())
-        }
-    });
+    let features = args
+        .features
+        .or_else(|| inferred_package_feature(&args.ruleset).map(str::to_string));
 
     if !args.skip_wasm_build && !args.allow_missing_wasm {
         run_command(
@@ -152,6 +148,24 @@ fn default_rule_id(ruleset: &str) -> u32 {
         "tenjiku" => 56,
         "anki" => 94,
         _ => 0,
+    }
+}
+
+fn inferred_package_feature(ruleset: &str) -> Option<&'static str> {
+    match ruleset {
+        "annan" => Some("annan"),
+        "anhoku" => Some("anhoku"),
+        "antouzai" => Some("antouzai"),
+        "taimen" => Some("taimen"),
+        "haimen" => Some("haimen"),
+        "neko" => Some("neko"),
+        "nekoneko" => Some("nekoneko"),
+        "yokoneko" => Some("yokoneko"),
+        "yokonekoneko" => Some("yokonekoneko"),
+        "tenkyo" => Some("tenkyo"),
+        "tenjiku" => Some("tenjiku"),
+        "anki" => Some("anki"),
+        _ => None,
     }
 }
 
@@ -241,4 +255,34 @@ fn print_package_usage() {
     eprintln!("  --features <features>     Cargo features for wasm and package builds");
     eprintln!("  --skip-wasm-build         Reuse existing wasm-pack output");
     eprintln!("  --allow-missing-wasm      Metadata-only package, not Shogitter-loadable");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn package_feature_inference_only_uses_real_variant_features() {
+        assert_eq!(inferred_package_feature("standard"), None);
+        assert_eq!(inferred_package_feature("handicap"), None);
+        assert_eq!(inferred_package_feature("custom"), None);
+        assert_eq!(inferred_package_feature("annan"), Some("annan"));
+        assert_eq!(inferred_package_feature("tenkyo"), Some("tenkyo"));
+        assert_eq!(inferred_package_feature("anki"), Some("anki"));
+    }
+
+    #[test]
+    fn handicap_package_args_do_not_pass_cargo_features() {
+        let args = haitaka_cli_package_args(
+            "handicap",
+            6,
+            &PathBuf::from("target/haitaka-variants-handicap.tgz"),
+            &PathBuf::from("haitaka_wasm/pkg"),
+            None,
+            inferred_package_feature("handicap"),
+            true,
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
 }
