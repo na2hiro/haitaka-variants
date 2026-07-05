@@ -17,6 +17,7 @@ train_games = 8
 validation_games = 2
 max_plies = 160
 search_depth = 2
+rollout_search_depth = 1
 opening_random_plies = 8
 sample_start_ply = 0
 sample_every_ply = 2

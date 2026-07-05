@@ -101,6 +101,8 @@ Key fields:
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters
+  - `search_depth` labels sampled positions
+  - `rollout_search_depth` chooses non-labeling self-play moves after `opening_random_plies`; keep this shallow, for example `1`, when running expensive label depths
   - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
@@ -139,7 +141,8 @@ This:
 
 - plays Haitaka self-play games
 - samples positions
-- labels them with teacher search scores
+- labels sampled positions with teacher search scores at `data.search_depth`
+- uses `data.rollout_search_depth` for post-opening self-play moves that are not sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
 

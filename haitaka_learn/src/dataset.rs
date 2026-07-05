@@ -61,6 +61,12 @@ struct DatasetManifest {
     completed_games: u32,
     sampled_positions: u64,
     search_depth: u8,
+    label_search_depth: u8,
+    rollout_search_depth: u8,
+    label_searches: u64,
+    rollout_searches: u64,
+    label_search_states: u64,
+    rollout_search_states: u64,
     bootstrap_nnue: Option<String>,
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
@@ -86,6 +92,18 @@ struct ShardManifest {
     game_count: u32,
     sampled_positions: u64,
     search_depth: u8,
+    #[serde(default)]
+    label_search_depth: u8,
+    #[serde(default)]
+    rollout_search_depth: u8,
+    #[serde(default)]
+    label_searches: u64,
+    #[serde(default)]
+    rollout_searches: u64,
+    #[serde(default)]
+    label_search_states: u64,
+    #[serde(default)]
+    rollout_search_states: u64,
     bootstrap_nnue: Option<String>,
     #[serde(default)]
     bootstrap_nnue_sha256: Option<String>,
@@ -103,6 +121,50 @@ struct PendingSample {
     score: i16,
     game_ply: u16,
     side_to_move: Color,
+}
+
+#[derive(Debug, Clone)]
+struct GameEntries {
+    entries: Vec<u8>,
+    stats: SearchUseStats,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct SearchUseStats {
+    label_searches: u64,
+    rollout_searches: u64,
+    label_search_states: u64,
+    rollout_search_states: u64,
+}
+
+impl SearchUseStats {
+    fn record_label(&mut self, summary: &SearchSummary) {
+        self.label_searches += 1;
+        self.label_search_states += summary.states;
+    }
+
+    fn record_rollout(&mut self, summary: &SearchSummary) {
+        self.rollout_searches += 1;
+        self.rollout_search_states += summary.states;
+    }
+
+    fn add(&mut self, other: Self) {
+        self.label_searches += other.label_searches;
+        self.rollout_searches += other.rollout_searches;
+        self.label_search_states += other.label_search_states;
+        self.rollout_search_states += other.rollout_search_states;
+    }
+}
+
+impl From<&ShardManifest> for SearchUseStats {
+    fn from(manifest: &ShardManifest) -> Self {
+        Self {
+            label_searches: manifest.label_searches,
+            rollout_searches: manifest.rollout_searches,
+            label_search_states: manifest.label_search_states,
+            rollout_search_states: manifest.rollout_search_states,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -358,6 +420,12 @@ fn generate_split(
         .filter(|result| !result.reused)
         .map(|result| result.manifest.sampled_positions)
         .sum::<u64>();
+    let search_stats = shard_results
+        .iter()
+        .fold(SearchUseStats::default(), |mut stats, result| {
+            stats.add(SearchUseStats::from(&result.manifest));
+            stats
+        });
     let elapsed = split_started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         generated_positions as f64 / elapsed.as_secs_f64()
@@ -374,6 +442,12 @@ fn generate_split(
         completed_games,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
+        label_search_depth: loaded.config.data.search_depth,
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        label_searches: search_stats.label_searches,
+        rollout_searches: search_stats.rollout_searches,
+        label_search_states: search_stats.label_search_states,
+        rollout_search_states: search_stats.rollout_search_states,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
@@ -648,18 +722,17 @@ fn generate_or_reuse_shard(
             .with_context(|| format!("failed to create {}", tmp_bin.display()))?,
     );
     let mut sampled_positions = 0u64;
+    let mut search_stats = SearchUseStats::default();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
-        let entries =
-            generate_game_entries(dataset_name, loaded, teacher, opening_sfen, game_index)
-                .with_context(|| {
-                    format!(
-                        "failed to generate {dataset_name} game {game_index} in shard {}",
-                        plan.shard_index
-                    )
-                })?;
-        sampled_positions += (entries.len() / ENTRY_BYTES) as u64;
-        writer.write_all(&entries)?;
+        let shard_index = plan.shard_index;
+        let error_context =
+            format!("failed to generate {dataset_name} game {game_index} in shard {shard_index}");
+        let game = generate_game_entries(dataset_name, loaded, teacher, opening_sfen, game_index)
+            .context(error_context)?;
+        sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
+        search_stats.add(game.stats);
+        writer.write_all(&game.entries)?;
     }
     writer.flush()?;
 
@@ -672,6 +745,12 @@ fn generate_or_reuse_shard(
         game_count: plan.game_count,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
+        label_search_depth: loaded.config.data.search_depth,
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        label_searches: search_stats.label_searches,
+        rollout_searches: search_stats.rollout_searches,
+        label_search_states: search_stats.label_search_states,
+        rollout_search_states: search_stats.rollout_search_states,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
@@ -769,6 +848,8 @@ fn shard_manifest_matches(
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
         && manifest.search_depth == loaded.config.data.search_depth
+        && manifest.label_search_depth == loaded.config.data.search_depth
+        && manifest.rollout_search_depth == loaded.config.data.rollout_search_depth
         && (ignore_identity || manifest.config_hash == loaded.hash_hex)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
@@ -931,13 +1012,14 @@ fn generate_game_entries(
     teacher: &Teacher,
     opening_sfen: &str,
     game_index: u32,
-) -> Result<Vec<u8>> {
+) -> Result<GameEntries> {
     let mut rng =
         StdRng::seed_from_u64(game_seed(loaded.config.data.seed, dataset_name, game_index));
     let mut board = Board::from_sfen(opening_sfen)
         .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
     let mut samples = Vec::new();
     let mut played_plies = 0u16;
+    let mut stats = SearchUseStats::default();
 
     while played_plies < loaded.config.data.max_plies {
         if !has_both_kings(&board) {
@@ -953,16 +1035,25 @@ fn generate_game_entries(
                 % loaded.config.data.sample_every_ply
                 == 0
             && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
-        let needs_teacher =
-            should_sample || played_plies >= loaded.config.data.opening_random_plies;
-        let teacher_summary = if needs_teacher {
-            Some(teacher.search(&board, loaded.config.data.search_depth)?)
+        let needs_rollout_search =
+            played_plies >= loaded.config.data.opening_random_plies && !should_sample;
+        let label_summary = if should_sample {
+            let summary = teacher.search(&board, loaded.config.data.search_depth)?;
+            stats.record_label(&summary);
+            Some(summary)
+        } else {
+            None
+        };
+        let rollout_summary = if needs_rollout_search {
+            let summary = teacher.search(&board, loaded.config.data.rollout_search_depth)?;
+            stats.record_rollout(&summary);
+            Some(summary)
         } else {
             None
         };
 
         if should_sample {
-            let summary = teacher_summary
+            let summary = label_summary
                 .as_ref()
                 .ok_or_else(|| anyhow!("teacher search unexpectedly missing"))?;
             let score = summary
@@ -980,17 +1071,11 @@ fn generate_game_entries(
         let mv = if played_plies < loaded.config.data.opening_random_plies {
             legal_moves[rng.random_range(0..legal_moves.len())]
         } else {
-            let best_move = teacher_summary
+            let summary = label_summary
                 .as_ref()
-                .and_then(|summary| summary.best_move.as_deref())
-                .ok_or_else(|| anyhow!("teacher search did not return a best move"))?;
-            let mv: Move = best_move
-                .parse()
-                .map_err(|err| anyhow!("failed to parse teacher move `{best_move}`: {err}"))?;
-            if !board.is_legal(mv) {
-                bail!("teacher move `{best_move}` was not legal for position `{board}`");
-            }
-            mv
+                .or(rollout_summary.as_ref())
+                .ok_or_else(|| anyhow!("rollout search unexpectedly missing"))?;
+            searched_best_move(&board, summary)?
         };
 
         board.play_unchecked(mv);
@@ -1024,7 +1109,21 @@ fn generate_game_entries(
             game_result,
         )?;
     }
-    Ok(entries)
+    Ok(GameEntries { entries, stats })
+}
+
+fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
+    let best_move = summary
+        .best_move
+        .as_deref()
+        .ok_or_else(|| anyhow!("teacher search did not return a best move"))?;
+    let mv: Move = best_move
+        .parse()
+        .map_err(|err| anyhow!("failed to parse teacher move `{best_move}`: {err}"))?;
+    if !board.is_legal(mv) {
+        bail!("teacher move `{best_move}` was not legal for position `{board}`");
+    }
+    Ok(mv)
 }
 
 fn assemble_shards(shard_results: &[ShardResult], bin_path: &Path) -> Result<u64> {
@@ -1117,6 +1216,12 @@ fn merge_split(
     }
 
     let sampled_positions = assemble_shards(&shard_results, bin_path)?;
+    let search_stats = shard_results
+        .iter()
+        .fold(SearchUseStats::default(), |mut stats, result| {
+            stats.add(SearchUseStats::from(&result.manifest));
+            stats
+        });
     let elapsed = started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         sampled_positions as f64 / elapsed.as_secs_f64()
@@ -1132,6 +1237,12 @@ fn merge_split(
         completed_games: expected_start,
         sampled_positions,
         search_depth: loaded.config.data.search_depth,
+        label_search_depth: loaded.config.data.search_depth,
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        label_searches: search_stats.label_searches,
+        rollout_searches: search_stats.rollout_searches,
+        label_search_states: search_stats.label_search_states,
+        rollout_search_states: search_stats.rollout_search_states,
         bootstrap_nnue: teacher_identity
             .as_ref()
             .and_then(|identity| identity.bootstrap_nnue.clone()),
@@ -1191,6 +1302,14 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.search_depth == loaded.config.data.search_depth,
         "search_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_depth == loaded.config.data.search_depth,
+        "label_search_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.rollout_search_depth == loaded.config.data.rollout_search_depth,
+        "rollout_search_depth does not match",
     )?;
     if !ignore_identity_mismatch {
         ensure_merge(
@@ -1824,6 +1943,50 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
+    fn resume_regenerates_shards_when_rollout_depth_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-rollout-depth.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["rollout_search_depth"] = serde_json::Value::from(2);
+        });
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert!(manifest["generated_shards"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn resume_regenerates_shards_when_teacher_identity_changes() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-teacher.toml");
@@ -2192,6 +2355,49 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
+    fn merge_rejects_shards_with_mismatched_rollout_depth() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-rollout-depth.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["rollout_search_depth"] = serde_json::Value::from(2);
+        });
+
+        let err = format!("{:?}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(err.contains("rollout_search_depth does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn merge_ignores_identity_mismatch_with_flag() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-ignore-identity.toml");
@@ -2368,6 +2574,85 @@ seed = 9
     }
 
     #[test]
+    fn rollout_search_depth_defaults_to_one() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("rollout-default.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        assert_eq!(loaded.config.data.rollout_search_depth, 1);
+    }
+
+    #[test]
+    fn rollout_search_depth_must_be_positive() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("rollout-invalid.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out").replace(
+                "search_depth = 1",
+                "search_depth = 1\nrollout_search_depth = 0",
+            ),
+        )
+        .unwrap();
+
+        let err = format!("{:?}", LoadedConfig::from_path(&config_path).unwrap_err());
+
+        assert!(err.contains("data.rollout_search_depth must be at least 1"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn split_search_counters_track_label_and_rollout_searches() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("rollout-counters.toml");
+        fs::write(
+            &config_path,
+            rollout_counter_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert_eq!(manifest["search_depth"].as_u64().unwrap(), 2);
+        assert_eq!(manifest["label_search_depth"].as_u64().unwrap(), 2);
+        assert_eq!(manifest["rollout_search_depth"].as_u64().unwrap(), 1);
+        assert_eq!(manifest["label_searches"].as_u64().unwrap(), 3);
+        assert_eq!(manifest["rollout_searches"].as_u64().unwrap(), 3);
+        assert!(manifest["label_search_states"].as_u64().unwrap() > 0);
+        assert!(manifest["rollout_search_states"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
     fn finds_workspace_root_from_root_config_path() {
         let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_dir.parent().unwrap();
@@ -2461,6 +2746,37 @@ jobs = 1
 shard_games = 100
 progress_every_percent = 50
 resume = true
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
+    fn rollout_counter_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 6
+search_depth = 2
+rollout_search_depth = 1
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 2
+max_positions_per_game = 8
+seed = 7
+jobs = 1
+shard_games = 1
+progress_every_percent = 50
+resume = false
 
 [verify]
 run_search_smoke = false

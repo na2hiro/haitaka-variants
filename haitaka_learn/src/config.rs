@@ -389,6 +389,10 @@ impl LearnConfig {
             "data.search_depth must be at least 1"
         );
         ensure!(
+            self.data.rollout_search_depth > 0,
+            "data.rollout_search_depth must be at least 1"
+        );
+        ensure!(
             self.data.sample_every_ply > 0,
             "data.sample_every_ply must be at least 1"
         );
@@ -521,6 +525,8 @@ pub struct DataConfig {
     pub max_plies: u16,
     #[serde(default = "default_search_depth")]
     pub search_depth: u8,
+    #[serde(default = "default_rollout_search_depth")]
+    pub rollout_search_depth: u8,
     #[serde(default = "default_opening_random_plies")]
     pub opening_random_plies: u16,
     #[serde(default)]
@@ -548,6 +554,7 @@ impl Default for DataConfig {
             validation_games: default_validation_games(),
             max_plies: default_max_plies(),
             search_depth: default_search_depth(),
+            rollout_search_depth: default_rollout_search_depth(),
             opening_random_plies: default_opening_random_plies(),
             sample_start_ply: 0,
             sample_every_ply: default_sample_every_ply(),
@@ -665,6 +672,10 @@ fn default_max_plies() -> u16 {
 
 fn default_search_depth() -> u8 {
     2
+}
+
+fn default_rollout_search_depth() -> u8 {
+    1
 }
 
 fn default_opening_random_plies() -> u16 {
