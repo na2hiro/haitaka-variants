@@ -152,6 +152,30 @@ pub enum SearchEvalMode {
     Incremental,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub struct SearchWorkspace {
+    tt: TranspositionTable,
+    ordering: SearchOrdering,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl SearchWorkspace {
+    pub fn new() -> Self {
+        Self {
+            tt: TranspositionTable::default(),
+            ordering: SearchOrdering::default(),
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for SearchWorkspace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct SearchInterrupted;
 
@@ -812,6 +836,25 @@ fn search_board_with_strategy_and_tt(
         deadline,
         tt,
         &mut ordering,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_strategy_and_workspace(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+) -> Result<SearchSummary, SearchInterrupted> {
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    search_board_with_strategy_tt_and_ordering(
+        board,
+        depth,
+        evaluation,
+        None,
+        &mut workspace.tt,
+        &mut workspace.ordering,
     )
 }
 
@@ -1533,6 +1576,24 @@ pub fn search_board_impl_with_eval_mode(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_in_workspace(
+    board: &Board,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<SearchSummary, String> {
+    search_board_with_strategy_and_workspace(
+        board,
+        depth.max(1),
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+    )
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     search_impl_with_strategy(sfen, depth, EvaluationStrategy::Handcrafted)
 }
@@ -1542,6 +1603,22 @@ pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, S
 pub fn search_board_impl_handcrafted(board: &Board, depth: u8) -> Result<SearchSummary, String> {
     search_board_with_strategy(board, depth.max(1), EvaluationStrategy::Handcrafted, None)
         .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_in_workspace(
+    board: &Board,
+    depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<SearchSummary, String> {
+    search_board_with_strategy_and_workspace(
+        board,
+        depth.max(1),
+        EvaluationStrategy::Handcrafted,
+        workspace,
+    )
+    .map_err(|_| "search timed out unexpectedly".to_string())
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
@@ -2930,6 +3007,17 @@ mod tests {
         let best = summary.best_move.expect("expected best move");
         let mv = Move::from_str(&best).expect("best move should parse");
         assert!(board.is_legal(mv), "{best} should be legal");
+    }
+
+    #[test]
+    fn workspace_handcrafted_search_matches_global_search() {
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).unwrap();
+        let global = search_board_impl_handcrafted(&board, 1).unwrap();
+        let mut workspace = SearchWorkspace::default();
+        let local = search_board_impl_handcrafted_in_workspace(&board, 1, &mut workspace).unwrap();
+
+        assert_eq!(local.best_move, global.best_move);
+        assert_eq!(local.best_score, global.best_score);
     }
 
     #[test]

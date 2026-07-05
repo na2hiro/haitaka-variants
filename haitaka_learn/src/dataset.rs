@@ -10,8 +10,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, SearchSummary, search_board_impl_handcrafted,
-    search_board_impl_with_eval_mode,
+    NnueModel, SearchEvalMode, SearchSummary, SearchWorkspace,
+    search_board_impl_handcrafted_in_workspace, search_board_impl_with_eval_mode_in_workspace,
 };
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -227,15 +227,23 @@ impl Teacher {
         }
     }
 
-    fn search(&self, board: &Board, depth: u8) -> Result<SearchSummary> {
+    fn search(
+        &self,
+        board: &Board,
+        depth: u8,
+        workspace: &mut SearchWorkspace,
+    ) -> Result<SearchSummary> {
         match self {
-            Self::Handcrafted => search_board_impl_handcrafted(board, depth)
-                .map_err(|err| anyhow!("handcrafted teacher search failed: {err}")),
-            Self::Nnue { model, .. } => search_board_impl_with_eval_mode(
+            Self::Handcrafted => {
+                search_board_impl_handcrafted_in_workspace(board, depth, workspace)
+                    .map_err(|err| anyhow!("handcrafted teacher search failed: {err}"))
+            }
+            Self::Nnue { model, .. } => search_board_impl_with_eval_mode_in_workspace(
                 board,
                 depth,
                 model.clone(),
                 SearchEvalMode::Incremental,
+                workspace,
             )
             .map_err(|err| anyhow!("NNUE teacher search failed: {err}")),
         }
@@ -723,13 +731,21 @@ fn generate_or_reuse_shard(
     );
     let mut sampled_positions = 0u64;
     let mut search_stats = SearchUseStats::default();
+    let mut search_workspace = SearchWorkspace::default();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
         let shard_index = plan.shard_index;
         let error_context =
             format!("failed to generate {dataset_name} game {game_index} in shard {shard_index}");
-        let game = generate_game_entries(dataset_name, loaded, teacher, opening_sfen, game_index)
-            .context(error_context)?;
+        let game = generate_game_entries(
+            dataset_name,
+            loaded,
+            teacher,
+            &mut search_workspace,
+            opening_sfen,
+            game_index,
+        )
+        .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
         search_stats.add(game.stats);
         writer.write_all(&game.entries)?;
@@ -1010,6 +1026,7 @@ fn generate_game_entries(
     dataset_name: &str,
     loaded: &LoadedConfig,
     teacher: &Teacher,
+    search_workspace: &mut SearchWorkspace,
     opening_sfen: &str,
     game_index: u32,
 ) -> Result<GameEntries> {
@@ -1038,14 +1055,19 @@ fn generate_game_entries(
         let needs_rollout_search =
             played_plies >= loaded.config.data.opening_random_plies && !should_sample;
         let label_summary = if should_sample {
-            let summary = teacher.search(&board, loaded.config.data.search_depth)?;
+            let summary =
+                teacher.search(&board, loaded.config.data.search_depth, search_workspace)?;
             stats.record_label(&summary);
             Some(summary)
         } else {
             None
         };
         let rollout_summary = if needs_rollout_search {
-            let summary = teacher.search(&board, loaded.config.data.rollout_search_depth)?;
+            let summary = teacher.search(
+                &board,
+                loaded.config.data.rollout_search_depth,
+                search_workspace,
+            )?;
             stats.record_rollout(&summary);
             Some(summary)
         } else {
