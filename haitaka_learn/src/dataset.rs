@@ -115,6 +115,24 @@ struct ShardManifest {
     shard_index: u32,
 }
 
+impl ShardManifest {
+    fn label_search_depth(&self) -> u8 {
+        if self.label_search_depth == 0 {
+            self.search_depth
+        } else {
+            self.label_search_depth
+        }
+    }
+
+    fn rollout_search_depth(&self) -> u8 {
+        if self.rollout_search_depth == 0 {
+            self.search_depth
+        } else {
+            self.rollout_search_depth
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct PendingSample {
     board: Board,
@@ -864,8 +882,8 @@ fn shard_manifest_matches(
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
         && manifest.search_depth == loaded.config.data.search_depth
-        && manifest.label_search_depth == loaded.config.data.search_depth
-        && manifest.rollout_search_depth == loaded.config.data.rollout_search_depth
+        && manifest.label_search_depth() == loaded.config.data.search_depth
+        && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity || manifest.config_hash == loaded.hash_hex)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
@@ -1326,11 +1344,11 @@ fn validate_merge_shard(
         "search_depth does not match",
     )?;
     ensure_merge(
-        manifest.label_search_depth == loaded.config.data.search_depth,
+        manifest.label_search_depth() == loaded.config.data.search_depth,
         "label_search_depth does not match",
     )?;
     ensure_merge(
-        manifest.rollout_search_depth == loaded.config.data.rollout_search_depth,
+        manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
         "rollout_search_depth does not match",
     )?;
     if !ignore_identity_mismatch {
@@ -2009,6 +2027,49 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
+    fn resume_reuses_legacy_shards_without_explicit_search_depths() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-legacy-depths.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        mutate_first_shard_manifest(&loaded, "train", remove_explicit_search_depths);
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
+        assert_eq!(manifest["generated_shards"].as_u64().unwrap(), 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn resume_regenerates_shards_when_teacher_identity_changes() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-teacher.toml");
@@ -2396,6 +2457,49 @@ run_search_smoke = false
 
         let err = format!("{:?}", merge_data(&loaded, &[input], false).unwrap_err());
         assert!(err.contains("rollout_search_depth does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn merge_accepts_legacy_shards_without_explicit_search_depths() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-legacy-depths.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", remove_explicit_search_depths);
+        mutate_first_shard_manifest_in_dir(&input, "validation", remove_explicit_search_depths);
+
+        let output = merge_data(&loaded, &[input], false).unwrap();
+        assert!(output.train_positions > 0);
+        assert!(output.validation_positions > 0);
     }
 
     #[test]
@@ -2832,6 +2936,12 @@ run_search_smoke = false
             serde_json::from_slice(&fs::read(&shard_path).unwrap()).unwrap();
         mutate(&mut manifest);
         fs::write(&shard_path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    }
+
+    fn remove_explicit_search_depths(manifest: &mut serde_json::Value) {
+        let object = manifest.as_object_mut().unwrap();
+        object.remove("label_search_depth");
+        object.remove("rollout_search_depth");
     }
 
     #[test]
