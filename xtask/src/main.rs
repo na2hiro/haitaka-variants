@@ -457,22 +457,18 @@ fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
 
 fn print_usage() {
     eprintln!("Usage: cargo xtask package [options]");
-    eprintln!("       cargo xtask generate-data <config.toml> [generate-data options]");
-    eprintln!("       cargo generate-data <config.toml> [generate-data options]");
+    eprintln!("       cargo generate <config.toml> [generate-data options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
     eprintln!("       cargo run -p xtask -- package [options]");
 }
 
 fn print_generate_data_usage() {
-    eprintln!("Usage: cargo xtask generate-data <config.toml> [generate-data options]");
-    eprintln!("       cargo xtask generate <config.toml> [generate-data options]");
-    eprintln!("       cargo generate-data <config.toml> [generate-data options]");
+    eprintln!("Usage: cargo generate <config.toml> [generate-data options]");
     eprintln!("Options:");
     eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn with");
     eprintln!("  --release, and adds the matching --features flag when required.");
-    eprintln!("  --shard <N/M> is a 1-indexed shorthand for --shard-index N-1,");
-    eprintln!("  --shard-index-end N-1, and --shard-count M.");
+    eprintln!("  --shard <N/M> runs lane N of M using 1-indexed lane numbers.");
     eprintln!("  --shard <N-P/M> runs an inclusive lane range, e.g. --shard 3-5/8.");
     eprintln!("  Additional options are passed to haitaka_learn generate-data.");
 }

@@ -134,7 +134,7 @@ Use the default build for standard shogi and handicap shogi.
 
 ```bash
 cd haitaka-variants
-cargo xtask generate-data haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
 
 This:
@@ -154,23 +154,19 @@ This:
 Equivalent command with the explicit `jobs` override:
 
 ```bash
-cargo generate-data haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
 
 Generate only one lane of a distributed shard split:
 
 ```bash
-cargo xtask generate-data haitaka_learn.toml --jobs 0 --shard 1/2
+cargo generate haitaka_learn.toml --jobs 0 --shard 1/2
 ```
 
-`--shard N/M` is 1-indexed shorthand for the underlying zero-indexed
-`--shard-index`, `--shard-index-end`, and `--shard-count` flags, so
-`--shard 1/4` maps to `--shard-index 0 --shard-index-end 0 --shard-count 4`,
-and `--shard 4/4` maps to
-`--shard-index 3 --shard-index-end 3 --shard-count 4`. `--shard 3-5/8`
-runs the inclusive range covered by `3/8`, `4/8`, and `5/8`. Shard lanes are
-contiguous ranges, not modulo lanes, so the work covered by `--shard 4/4` can
-later be split between `--shard 7/8` and `--shard 8/8`.
+`--shard N/M` is 1-indexed. `--shard 3-5/8` runs the inclusive range covered
+by `3/8`, `4/8`, and `5/8`. Shard lanes are contiguous ranges, not modulo
+lanes, so the work covered by `--shard 4/4` can later be split between
+`--shard 7/8` and `--shard 8/8`.
 
 Pressing Ctrl-C during data generation starts a graceful stop. Already running
 shards finish their current `.bin` writes and are kept; no new shards are
@@ -246,13 +242,12 @@ features = "HalfKAv2^+DonorSingleEff" # Antouzai uses DonorPairSlots; Anki uses 
 
 ```bash
 cd haitaka-variants
-cargo xtask generate-data haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
 
-`xtask` reads the ruleset from the config, so the same command works for Annan,
-Anhoku, Antouzai, Taimen, Haimen, the Neko family, Tenkyo, Tenjiku, and Anki.
-For example, `ruleset = "anhoku"` is expanded internally to
-`cargo run -p haitaka_learn --release --features anhoku -- generate-data --config ...`.
+`cargo generate` reads the ruleset from the config, so the same command works
+for Annan, Anhoku, Antouzai, Taimen, Haimen, the Neko family, Tenkyo, Tenjiku,
+and Anki while still using the matching feature and a release build.
 
 ### 3. Train / export / verify the variant run
 

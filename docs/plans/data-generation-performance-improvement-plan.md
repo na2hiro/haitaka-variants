@@ -65,7 +65,7 @@ xtask wrapper, which reads the config ruleset, adds the matching Cargo feature, 
 release build:
 
 ```bash
-cargo xtask generate-data haitaka_learn.anhoku-v0.5.1.toml
+cargo generate haitaka_learn.anhoku-v0.5.1.toml
 ```
 
 Expected impact:
