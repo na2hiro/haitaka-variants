@@ -168,6 +168,10 @@ cargo xtask generate-data haitaka_learn.toml --jobs 0 --shard 1/2
 `--shard-index 0 --shard-count 4`, and `--shard 4/4` maps to
 `--shard-index 3 --shard-count 4`.
 
+Pressing Ctrl-C during data generation starts a graceful stop. Already running
+shards finish their current `.bin` writes and are kept; no new shards are
+started. Press Ctrl-C again to terminate immediately.
+
 Merge shard outputs copied back from multiple machines:
 
 ```bash

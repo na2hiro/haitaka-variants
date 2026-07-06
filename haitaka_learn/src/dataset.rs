@@ -3,6 +3,7 @@ use std::fs::{self, File};
 use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -22,6 +23,11 @@ use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
 const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+#[cfg(all(unix, not(test)))]
+const GRACEFUL_STOP_MESSAGE: &[u8] =
+    "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
+
+static GRACEFUL_STOP_STATE: AtomicU8 = AtomicU8::new(0);
 
 #[derive(Debug, Clone)]
 pub struct DatasetOutput {
@@ -276,6 +282,7 @@ pub fn generate_data_with_options(
     loaded: &LoadedConfig,
     options: GenerateOptions,
 ) -> Result<DatasetOutput> {
+    let _graceful_stop = GracefulStopGuard::install()?;
     loaded.ruleset_requires_matching_engine()?;
     let opening_sfen = loaded.opening_sfen()?;
     let _: Board = Board::from_sfen(&opening_sfen)
@@ -320,6 +327,17 @@ pub fn generate_data_with_options(
         shard_selector,
         allow_identity_mismatch,
     )?;
+    if graceful_stop_requested() {
+        println!(
+            "generate-data stopped gracefully after training split elapsed={}",
+            format_duration(started.elapsed())
+        );
+        return Ok(DatasetOutput {
+            output_dir: artifacts.output_dir,
+            train_positions,
+            validation_positions: 0,
+        });
+    }
     let validation_positions = generate_split(
         "validation",
         loaded,
@@ -335,16 +353,105 @@ pub fn generate_data_with_options(
         allow_identity_mismatch,
     )?;
 
-    println!(
-        "generate-data finished elapsed={}",
-        format_duration(started.elapsed())
-    );
+    if graceful_stop_requested() {
+        println!(
+            "generate-data stopped gracefully elapsed={}",
+            format_duration(started.elapsed())
+        );
+    } else {
+        println!(
+            "generate-data finished elapsed={}",
+            format_duration(started.elapsed())
+        );
+    }
 
     Ok(DatasetOutput {
         output_dir: artifacts.output_dir,
         train_positions,
         validation_positions,
     })
+}
+
+struct GracefulStopGuard {
+    #[cfg(unix)]
+    previous_handler: Option<libc::sighandler_t>,
+}
+
+impl GracefulStopGuard {
+    fn install() -> Result<Self> {
+        GRACEFUL_STOP_STATE.store(0, Ordering::SeqCst);
+        install_graceful_stop_handler()
+    }
+}
+
+#[cfg(test)]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    Ok(GracefulStopGuard {
+        #[cfg(unix)]
+        previous_handler: None,
+    })
+}
+
+#[cfg(all(unix, not(test)))]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    let previous_handler = unsafe {
+        let previous = libc::signal(
+            libc::SIGINT,
+            handle_sigint as *const () as libc::sighandler_t,
+        );
+        if previous == libc::SIG_ERR {
+            bail!("failed to install SIGINT handler");
+        }
+        previous
+    };
+    Ok(GracefulStopGuard {
+        previous_handler: Some(previous_handler),
+    })
+}
+
+#[cfg(all(not(unix), not(test)))]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    Ok(GracefulStopGuard {})
+}
+
+#[cfg(unix)]
+impl Drop for GracefulStopGuard {
+    fn drop(&mut self) {
+        if let Some(previous_handler) = self.previous_handler {
+            unsafe {
+                libc::signal(libc::SIGINT, previous_handler);
+            }
+        }
+    }
+}
+
+#[cfg(not(unix))]
+impl Drop for GracefulStopGuard {
+    fn drop(&mut self) {}
+}
+
+#[cfg(all(unix, not(test)))]
+unsafe extern "C" fn handle_sigint(_: libc::c_int) {
+    if GRACEFUL_STOP_STATE
+        .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        unsafe {
+            libc::write(
+                libc::STDERR_FILENO,
+                GRACEFUL_STOP_MESSAGE.as_ptr().cast(),
+                GRACEFUL_STOP_MESSAGE.len(),
+            );
+        }
+    } else {
+        unsafe {
+            libc::_exit(130);
+        }
+    }
+}
+
+fn graceful_stop_requested() -> bool {
+    GRACEFUL_STOP_STATE.load(Ordering::SeqCst) != 0
 }
 
 fn generate_split(
@@ -395,7 +502,7 @@ fn generate_split(
 
             handles.push(scope.spawn(move || -> Result<()> {
                 loop {
-                    let Some(plan) = queue.lock().unwrap().pop_front() else {
+                    let Some(plan) = next_shard_plan(&queue) else {
                         return Ok(());
                     };
                     let result = generate_or_reuse_shard(
@@ -427,6 +534,10 @@ fn generate_split(
 
     if let Some(err) = worker_errors.into_iter().next() {
         return Err(err);
+    }
+
+    if graceful_stop_requested() {
+        println!("graceful stop requested; assembling completed {dataset_name} shards");
     }
 
     let mut shard_results = Arc::try_unwrap(results)
@@ -492,6 +603,17 @@ fn generate_split(
         .with_context(|| format!("failed to write {}", manifest_path.display()))?;
 
     Ok(sampled_positions)
+}
+
+fn next_shard_plan(queue: &Arc<Mutex<VecDeque<ShardPlan>>>) -> Option<ShardPlan> {
+    if graceful_stop_requested() {
+        return None;
+    }
+    let mut queue = queue.lock().unwrap();
+    if graceful_stop_requested() {
+        return None;
+    }
+    queue.pop_front()
 }
 
 pub fn merge_data(
@@ -1760,6 +1882,21 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn graceful_stop_prevents_starting_new_shards() {
+        GRACEFUL_STOP_STATE.store(1, Ordering::SeqCst);
+        let queue = Arc::new(Mutex::new(VecDeque::from([ShardPlan {
+            shard_index: 0,
+            game_start: 0,
+            game_count: 1,
+        }])));
+
+        assert!(next_shard_plan(&queue).is_none());
+        assert_eq!(queue.lock().unwrap().len(), 1);
+
+        GRACEFUL_STOP_STATE.store(0, Ordering::SeqCst);
     }
 
     #[test]
