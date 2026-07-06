@@ -134,11 +134,14 @@ Use the default build for standard shogi and handicap shogi.
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
+cargo xtask generate-data haitaka_learn.toml --jobs 0
 ```
 
 This:
 
+- reads `[rules].ruleset` from the config and runs `haitaka_learn` with the
+  matching Cargo feature when one is required
+- always uses the release build for data generation
 - plays Haitaka self-play games
 - samples positions
 - labels sampled positions with teacher search scores at `data.search_depth`
@@ -151,13 +154,13 @@ This:
 Equivalent command with the explicit `jobs` override:
 
 ```bash
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
+cargo generate-data haitaka_learn.toml --jobs 0
 ```
 
 Generate only one lane of a distributed shard split:
 
 ```bash
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
+cargo xtask generate-data haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
 ```
 
 Merge shard outputs copied back from multiple machines:
@@ -230,10 +233,13 @@ features = "HalfKAv2^+DonorSingleEff" # Antouzai uses DonorPairSlots; Anki uses 
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --release --features annan -- generate-data --config haitaka_learn.toml --jobs 0
-cargo run -p haitaka_learn --release --features anhoku -- generate-data --config haitaka_learn.toml --jobs 0
-cargo run -p haitaka_learn --release --features antouzai -- generate-data --config haitaka_learn.toml --jobs 0
+cargo xtask generate-data haitaka_learn.toml --jobs 0
 ```
+
+`xtask` reads the ruleset from the config, so the same command works for Annan,
+Anhoku, Antouzai, Taimen, Haimen, the Neko family, Tenkyo, Tenjiku, and Anki.
+For example, `ruleset = "anhoku"` is expanded internally to
+`cargo run -p haitaka_learn --release --features anhoku -- generate-data --config ...`.
 
 ### 3. Train / export / verify the variant run
 

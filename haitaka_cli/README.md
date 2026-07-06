@@ -82,7 +82,20 @@ archives, opening suites, and JSON reports, see
 
 ### Shogitter Engine Package v1
 
-From the repository root, create a standard package with:
+From the repository root, run the workspace `xtask` helper directly with:
+
+```bash
+cargo xtask package
+```
+
+Create an Annan package with:
+
+```bash
+cargo xtask package --ruleset annan
+```
+
+The repository also defines shorter package aliases. Create a standard package
+with:
 
 ```bash
 cargo pack
@@ -96,6 +109,8 @@ cargo pack-annan
 
 These Cargo aliases are defined in `.cargo/config.toml` and run the workspace
 `xtask` helper, which builds WASM and then invokes `haitaka_cli package`.
+Variant aliases follow the same pattern, for example `cargo pack-taimen` and
+`cargo pack-nekoneko`.
 
 For manual debugging, build WASM first:
 

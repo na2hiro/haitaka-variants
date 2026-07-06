@@ -7,16 +7,32 @@ YaneuraOu, which Shogitter still detects with its `.js`/`.worker.js`/`.wasm` heu
 
 Run these commands from the repository root.
 
-The preferred commands are Cargo aliases backed by the workspace `xtask` helper:
+The workspace `xtask` helper can be run directly through the Cargo alias:
+
+```bash
+cargo xtask package
+cargo xtask package --ruleset annan
+```
+
+It builds the WASM artifacts and then invokes `haitaka_cli package`. The
+repository also defines shorter package aliases for common rulesets:
 
 ```bash
 cargo pack
 cargo pack-annan
+cargo pack-anhoku
+cargo pack-antouzai
+cargo pack-taimen
+cargo pack-haimen
+cargo pack-neko
+cargo pack-nekoneko
+cargo pack-yokoneko
+cargo pack-yokonekoneko
 ```
 
 `cargo pack` builds the standard WASM package and writes
-`target/haitaka-variants.tgz`. `cargo pack-annan` builds with the
-`annan` feature and writes `target/haitaka-variants-annan.tgz`.
+`target/haitaka-variants.tgz`. Variant aliases build with the matching Cargo
+feature and write `target/haitaka-variants-<ruleset>.tgz`.
 
 For manual debugging, build the WASM artifacts first:
 

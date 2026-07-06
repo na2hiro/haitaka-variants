@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
@@ -15,6 +16,12 @@ struct PackageArgs {
     features: Option<String>,
     skip_wasm_build: bool,
     allow_missing_wasm: bool,
+}
+
+#[derive(Debug)]
+struct GenerateDataArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
 }
 
 impl Default for PackageArgs {
@@ -50,7 +57,24 @@ fn run() -> Result<()> {
     };
 
     match command.to_string_lossy().as_ref() {
-        "package" => package(parse_package_args(args.collect())?),
+        "package" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_package_usage();
+                Ok(())
+            } else {
+                package(parse_package_args(raw_args)?)
+            }
+        }
+        "generate" | "generate-data" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_generate_data_usage();
+                Ok(())
+            } else {
+                generate_data(parse_generate_data_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -87,6 +111,30 @@ fn parse_package_args(raw_args: Vec<OsString>) -> Result<PackageArgs> {
         }
     }
     Ok(args)
+}
+
+fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs> {
+    let mut iter = raw_args.into_iter();
+    let Some(first) = iter.next() else {
+        return Err("missing config path".to_string());
+    };
+
+    let config = if first == "--config" {
+        PathBuf::from(required_value(&mut iter, "--config")?)
+    } else if first.to_string_lossy().starts_with('-') {
+        return Err("generate-data expects the config path as the first argument".to_string());
+    } else {
+        PathBuf::from(first)
+    };
+
+    Ok(GenerateDataArgs {
+        config,
+        extra_args: iter.collect(),
+    })
+}
+
+fn is_help_arg(arg: &OsString) -> bool {
+    matches!(arg.to_string_lossy().as_ref(), "-h" | "--help")
 }
 
 fn required_value(iter: &mut impl Iterator<Item = OsString>, flag: &str) -> Result<String> {
@@ -131,6 +179,53 @@ fn package(args: PackageArgs) -> Result<()> {
         ),
         "create Shogitter engine package",
     )
+}
+
+fn generate_data(args: GenerateDataArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    run_command(
+        "cargo",
+        haitaka_learn_generate_data_args(&args.config, features, &args.extra_args),
+        "generate haitaka_learn data",
+    )
+}
+
+fn ruleset_from_config(config: &PathBuf) -> Result<String> {
+    let raw_toml = fs::read_to_string(config)
+        .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
+    ruleset_from_toml(&raw_toml)
+}
+
+fn ruleset_from_toml(raw_toml: &str) -> Result<String> {
+    let value = raw_toml
+        .parse::<toml::Value>()
+        .map_err(|err| format!("failed to parse haitaka_learn TOML: {err}"))?;
+    let ruleset = value
+        .get("rules")
+        .and_then(|rules| rules.get("ruleset"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| "config must set [rules].ruleset".to_string())?;
+    Ok(ruleset.to_string())
+}
+
+fn required_learn_feature_for_ruleset(ruleset: &str) -> Result<Option<&'static str>> {
+    match ruleset {
+        "standard" | "handicap" => Ok(None),
+        "annan" => Ok(Some("annan")),
+        "anhoku" => Ok(Some("anhoku")),
+        "antouzai" => Ok(Some("antouzai")),
+        "taimen" => Ok(Some("taimen")),
+        "haimen" => Ok(Some("haimen")),
+        "neko" => Ok(Some("neko")),
+        "nekoneko" => Ok(Some("nekoneko")),
+        "yokoneko" => Ok(Some("yokoneko")),
+        "yokonekoneko" => Ok(Some("yokonekoneko")),
+        "tenkyo" => Ok(Some("tenkyo")),
+        "tenjiku" => Ok(Some("tenjiku")),
+        "anki" => Ok(Some("anki")),
+        _ => Err(format!("unsupported rules.ruleset={ruleset:?}")),
+    }
 }
 
 fn default_rule_id(ruleset: &str) -> u32 {
@@ -222,6 +317,22 @@ fn haitaka_cli_package_args(
     args
 }
 
+fn haitaka_learn_generate_data_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "generate-data", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
 fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
     args.into_iter().map(OsString::from).collect()
 }
@@ -239,13 +350,27 @@ fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
 }
 
 fn print_usage() {
-    eprintln!("Usage: cargo run -p xtask -- package [options]");
+    eprintln!("Usage: cargo xtask package [options]");
+    eprintln!("       cargo xtask generate-data <config.toml> [generate-data options]");
+    eprintln!("       cargo generate-data <config.toml> [generate-data options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
+    eprintln!("       cargo run -p xtask -- package [options]");
+}
+
+fn print_generate_data_usage() {
+    eprintln!("Usage: cargo xtask generate-data <config.toml> [generate-data options]");
+    eprintln!("       cargo xtask generate <config.toml> [generate-data options]");
+    eprintln!("       cargo generate-data <config.toml> [generate-data options]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn with");
+    eprintln!("  --release, and adds the matching --features flag when required.");
+    eprintln!("  Additional options are passed to haitaka_learn generate-data.");
 }
 
 fn print_package_usage() {
-    eprintln!("Usage: cargo run -p xtask -- package [options]");
+    eprintln!("Usage: cargo xtask package [options]");
+    eprintln!("       cargo run -p xtask -- package [options]");
     eprintln!("Options:");
     eprintln!("  --ruleset <name>          Package ruleset, default standard");
     eprintln!("  --rule-id <id>            Shogitter rule id, default 0 or 26 for annan");
@@ -284,5 +409,48 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn generate_data_infers_variant_feature_from_config_ruleset() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"anhoku\"\n").unwrap();
+        let args = haitaka_learn_generate_data_args(
+            &PathBuf::from("haitaka_learn.anhoku-v0.5.1.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[OsString::from("--jobs"), OsString::from("0")],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(args.iter().any(|arg| arg == "--release"));
+        assert!(has_adjacent_args(&args, "--features", "anhoku"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.anhoku-v0.5.1.toml"
+        ));
+        assert!(has_adjacent_args(&args, "--jobs", "0"));
+    }
+
+    #[test]
+    fn generate_data_omits_features_for_standard_config() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"standard\"\n").unwrap();
+        let args = haitaka_learn_generate_data_args(
+            &PathBuf::from("haitaka_learn.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[],
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    fn args_as_strings(args: &[OsString]) -> Vec<String> {
+        args.iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn has_adjacent_args(args: &[String], first: &str, second: &str) -> bool {
+        args.windows(2)
+            .any(|window| window[0] == first && window[1] == second)
     }
 }

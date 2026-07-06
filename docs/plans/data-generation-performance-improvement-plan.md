@@ -60,10 +60,12 @@ These should be done first because they are cheap and immediately measurable.
 
 ### [done] 0.1 Run generation in release mode
 
-If any long generation jobs are still using plain `cargo run`, switch all docs and scripts to:
+If any long generation jobs are still using plain `cargo run`, switch all docs and scripts to the
+xtask wrapper, which reads the config ruleset, adds the matching Cargo feature, and always uses a
+release build:
 
 ```bash
-cargo run -p haitaka_learn --release --features anhoku -- generate-data --config ...
+cargo xtask generate-data haitaka_learn.anhoku-v0.5.1.toml
 ```
 
 Expected impact:
