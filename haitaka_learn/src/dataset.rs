@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -686,8 +687,10 @@ impl ShardSelector {
         Ok(Self { index, count })
     }
 
-    fn includes(self, shard_index: u32) -> bool {
-        shard_index % self.count == self.index
+    fn selected_range(self, total_shards: u32) -> Range<u32> {
+        let start = partition_boundary(total_shards, self.index, self.count);
+        let end = partition_boundary(total_shards, self.index + 1, self.count);
+        start..end
     }
 }
 
@@ -811,12 +814,14 @@ fn resolve_jobs(configured: u32) -> Result<usize> {
 
 fn shard_plans(game_count: u32, shard_games: u32, selector: ShardSelector) -> Vec<ShardPlan> {
     let mut plans = Vec::new();
+    let total_shards = game_count.div_ceil(shard_games);
+    let selected_shards = selector.selected_range(total_shards);
     let mut game_start = 0;
     let mut shard_index = 0;
     while game_start < game_count {
         let remaining = game_count - game_start;
         let current_games = remaining.min(shard_games);
-        if selector.includes(shard_index) {
+        if selected_shards.contains(&shard_index) {
             plans.push(ShardPlan {
                 shard_index,
                 game_start,
@@ -827,6 +832,10 @@ fn shard_plans(game_count: u32, shard_games: u32, selector: ShardSelector) -> Ve
         shard_index += 1;
     }
     plans
+}
+
+fn partition_boundary(total_shards: u32, lane_index: u32, lane_count: u32) -> u32 {
+    ((u64::from(total_shards) * u64::from(lane_index)) / u64::from(lane_count)) as u32
 }
 
 fn generate_or_reuse_shard(
@@ -1900,6 +1909,27 @@ mod tests {
     }
 
     #[test]
+    fn shard_lanes_are_contiguous_division_ranges() {
+        let fourth_lane = shard_plan_indices(16, 2, Some(3), Some(4));
+        let seventh_lane = shard_plan_indices(16, 2, Some(6), Some(8));
+        let eighth_lane = shard_plan_indices(16, 2, Some(7), Some(8));
+
+        assert_eq!(fourth_lane, [6, 7]);
+        assert_eq!(seventh_lane, [6]);
+        assert_eq!(eighth_lane, [7]);
+    }
+
+    #[test]
+    fn shard_lanes_cover_uneven_division_without_overlap() {
+        let mut all_indices = Vec::new();
+        for index in 0..3 {
+            all_indices.extend(shard_plan_indices(10, 1, Some(index), Some(3)));
+        }
+
+        assert_eq!(all_indices, (0..10).collect::<Vec<_>>());
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -2498,7 +2528,7 @@ run_search_smoke = false
         fs::rename(loaded.artifact_paths().output_dir, &second_input).unwrap();
 
         assert!(
-            !second_input
+            !first_input
                 .join("datasets")
                 .join("shards")
                 .join("validation")
@@ -3073,6 +3103,19 @@ run_search_smoke = false
             serde_json::from_slice(&fs::read(&shard_path).unwrap()).unwrap();
         mutate(&mut manifest);
         fs::write(&shard_path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    }
+
+    fn shard_plan_indices(
+        game_count: u32,
+        shard_games: u32,
+        shard_index: Option<u32>,
+        shard_count: Option<u32>,
+    ) -> Vec<u32> {
+        let selector = ShardSelector::new(shard_index, shard_count).unwrap();
+        shard_plans(game_count, shard_games, selector)
+            .into_iter()
+            .map(|plan| plan.shard_index)
+            .collect()
     }
 
     fn remove_explicit_search_depths(manifest: &mut serde_json::Value) {
