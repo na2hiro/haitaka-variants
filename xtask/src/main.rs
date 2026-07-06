@@ -129,8 +129,85 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
 
     Ok(GenerateDataArgs {
         config,
-        extra_args: iter.collect(),
+        extra_args: normalize_generate_data_args(iter.collect())?,
     })
+}
+
+fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>> {
+    let uses_shard_index = raw_args.iter().any(|arg| {
+        let arg = arg.to_string_lossy();
+        arg == "--shard-index" || arg.starts_with("--shard-index=")
+    });
+    let uses_shard_count = raw_args.iter().any(|arg| {
+        let arg = arg.to_string_lossy();
+        arg == "--shard-count" || arg.starts_with("--shard-count=")
+    });
+
+    let mut normalized = Vec::with_capacity(raw_args.len() + 2);
+    let mut iter = raw_args.into_iter();
+    let mut saw_shard = false;
+    while let Some(arg) = iter.next() {
+        let arg_text = arg.to_string_lossy();
+        if arg_text == "--shard" {
+            if saw_shard {
+                return Err("--shard may only be specified once".to_string());
+            }
+            if uses_shard_index || uses_shard_count {
+                return Err(
+                    "--shard cannot be combined with --shard-index or --shard-count".to_string(),
+                );
+            }
+            let value = required_value(&mut iter, "--shard")?;
+            let (shard_index, shard_count) = parse_shard_spec(&value)?;
+            normalized.extend(shard_args(shard_index, shard_count));
+            saw_shard = true;
+        } else if let Some(value) = arg_text.strip_prefix("--shard=") {
+            if saw_shard {
+                return Err("--shard may only be specified once".to_string());
+            }
+            if uses_shard_index || uses_shard_count {
+                return Err(
+                    "--shard cannot be combined with --shard-index or --shard-count".to_string(),
+                );
+            }
+            let (shard_index, shard_count) = parse_shard_spec(value)?;
+            normalized.extend(shard_args(shard_index, shard_count));
+            saw_shard = true;
+        } else {
+            normalized.push(arg);
+        }
+    }
+    Ok(normalized)
+}
+
+fn parse_shard_spec(value: &str) -> Result<(u32, u32)> {
+    let Some((shard_number, shard_count)) = value.split_once('/') else {
+        return Err(format!("--shard must use N/M format, got {value:?}"));
+    };
+    let shard_number = shard_number
+        .parse::<u32>()
+        .map_err(|_| format!("--shard numerator must be an integer, got {shard_number:?}"))?;
+    let shard_count = shard_count
+        .parse::<u32>()
+        .map_err(|_| format!("--shard denominator must be an integer, got {shard_count:?}"))?;
+    if shard_count == 0 {
+        return Err("--shard denominator must be greater than 0".to_string());
+    }
+    if shard_number == 0 || shard_number > shard_count {
+        return Err(format!(
+            "--shard numerator must be between 1 and {shard_count}, got {shard_number}"
+        ));
+    }
+    Ok((shard_number - 1, shard_count))
+}
+
+fn shard_args(shard_index: u32, shard_count: u32) -> Vec<OsString> {
+    vec![
+        OsString::from("--shard-index"),
+        OsString::from(shard_index.to_string()),
+        OsString::from("--shard-count"),
+        OsString::from(shard_count.to_string()),
+    ]
 }
 
 fn is_help_arg(arg: &OsString) -> bool {
@@ -365,6 +442,8 @@ fn print_generate_data_usage() {
     eprintln!("Options:");
     eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn with");
     eprintln!("  --release, and adds the matching --features flag when required.");
+    eprintln!("  --shard <N/M> is a 1-indexed shorthand for --shard-index N-1");
+    eprintln!("  and --shard-count M, for example --shard 1/4 through --shard 4/4.");
     eprintln!("  Additional options are passed to haitaka_learn generate-data.");
 }
 
@@ -417,7 +496,13 @@ mod tests {
         let args = haitaka_learn_generate_data_args(
             &PathBuf::from("haitaka_learn.anhoku-v0.5.1.toml"),
             required_learn_feature_for_ruleset(&ruleset).unwrap(),
-            &[OsString::from("--jobs"), OsString::from("0")],
+            &normalize_generate_data_args(vec![
+                OsString::from("--jobs"),
+                OsString::from("0"),
+                OsString::from("--shard"),
+                OsString::from("1/4"),
+            ])
+            .unwrap(),
         );
         let args = args_as_strings(&args);
 
@@ -429,6 +514,8 @@ mod tests {
             "haitaka_learn.anhoku-v0.5.1.toml"
         ));
         assert!(has_adjacent_args(&args, "--jobs", "0"));
+        assert!(has_adjacent_args(&args, "--shard-index", "0"));
+        assert!(has_adjacent_args(&args, "--shard-count", "4"));
     }
 
     #[test]
@@ -441,6 +528,40 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn shard_shorthand_is_one_indexed() {
+        let args = normalize_generate_data_args(vec![
+            OsString::from("--shard=4/4"),
+            OsString::from("--ignore-identity-mismatch"),
+        ])
+        .unwrap();
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--shard-index", "3"));
+        assert!(has_adjacent_args(&args, "--shard-count", "4"));
+        assert!(args.iter().any(|arg| arg == "--ignore-identity-mismatch"));
+    }
+
+    #[test]
+    fn shard_shorthand_rejects_out_of_range_values() {
+        assert!(parse_shard_spec("0/4").is_err());
+        assert!(parse_shard_spec("5/4").is_err());
+        assert!(parse_shard_spec("1/0").is_err());
+        assert!(parse_shard_spec("1:4").is_err());
+    }
+
+    #[test]
+    fn shard_shorthand_rejects_explicit_shard_flags() {
+        let result = normalize_generate_data_args(vec![
+            OsString::from("--shard"),
+            OsString::from("1/4"),
+            OsString::from("--shard-index"),
+            OsString::from("0"),
+        ]);
+
+        assert!(result.is_err());
     }
 
     fn args_as_strings(args: &[OsString]) -> Vec<String> {
