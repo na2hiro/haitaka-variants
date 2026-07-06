@@ -42,6 +42,7 @@ pub struct GenerateOptions {
     pub jobs: Option<u32>,
     pub resume: Option<bool>,
     pub shard_index: Option<u32>,
+    pub shard_index_end: Option<u32>,
     pub shard_count: Option<u32>,
     pub ignore_identity_mismatch: bool,
 }
@@ -52,6 +53,7 @@ impl GenerateOptions {
             jobs: Some(loaded.config.data.jobs),
             resume: Some(loaded.config.data.resume),
             shard_index: None,
+            shard_index_end: None,
             shard_count: None,
             ignore_identity_mismatch: false,
         }
@@ -299,7 +301,11 @@ pub fn generate_data_with_options(
         .unwrap_or_default()
         .as_millis();
 
-    let shard_selector = ShardSelector::new(options.shard_index, options.shard_count)?;
+    let shard_selector = ShardSelector::new(
+        options.shard_index,
+        options.shard_index_end,
+        options.shard_count,
+    )?;
     let jobs = resolve_jobs(options.jobs.unwrap_or(loaded.config.data.jobs))?;
     let resume = options.resume.unwrap_or(loaded.config.data.resume);
     let allow_identity_mismatch = resolve_identity_mismatch(
@@ -668,12 +674,14 @@ pub fn merge_data(
 #[derive(Debug, Clone, Copy)]
 struct ShardSelector {
     index: u32,
+    index_end: u32,
     count: u32,
 }
 
 impl ShardSelector {
-    fn new(index: Option<u32>, count: Option<u32>) -> Result<Self> {
+    fn new(index: Option<u32>, index_end: Option<u32>, count: Option<u32>) -> Result<Self> {
         let index = index.unwrap_or(0);
+        let index_end = index_end.unwrap_or(index);
         let count = count.unwrap_or(1);
         if count == 0 {
             bail!("--shard-count must be at least 1");
@@ -681,15 +689,25 @@ impl ShardSelector {
         if index >= count {
             bail!("--shard-index must be less than --shard-count");
         }
+        if index_end >= count {
+            bail!("--shard-index-end must be less than --shard-count");
+        }
+        if index_end < index {
+            bail!("--shard-index-end must be greater than or equal to --shard-index");
+        }
         if count == 1 && index != 0 {
             bail!("--shard-index must be 0 when --shard-count is 1");
         }
-        Ok(Self { index, count })
+        Ok(Self {
+            index,
+            index_end,
+            count,
+        })
     }
 
     fn selected_range(self, total_shards: u32) -> Range<u32> {
         let start = partition_boundary(total_shards, self.index, self.count);
-        let end = partition_boundary(total_shards, self.index + 1, self.count);
+        let end = partition_boundary(total_shards, self.index_end + 1, self.count);
         start..end
     }
 }
@@ -1910,9 +1928,9 @@ mod tests {
 
     #[test]
     fn shard_lanes_are_contiguous_division_ranges() {
-        let fourth_lane = shard_plan_indices(16, 2, Some(3), Some(4));
-        let seventh_lane = shard_plan_indices(16, 2, Some(6), Some(8));
-        let eighth_lane = shard_plan_indices(16, 2, Some(7), Some(8));
+        let fourth_lane = shard_plan_indices(16, 2, Some(3), None, Some(4));
+        let seventh_lane = shard_plan_indices(16, 2, Some(6), None, Some(8));
+        let eighth_lane = shard_plan_indices(16, 2, Some(7), None, Some(8));
 
         assert_eq!(fourth_lane, [6, 7]);
         assert_eq!(seventh_lane, [6]);
@@ -1923,10 +1941,21 @@ mod tests {
     fn shard_lanes_cover_uneven_division_without_overlap() {
         let mut all_indices = Vec::new();
         for index in 0..3 {
-            all_indices.extend(shard_plan_indices(10, 1, Some(index), Some(3)));
+            all_indices.extend(shard_plan_indices(10, 1, Some(index), None, Some(3)));
         }
 
         assert_eq!(all_indices, (0..10).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn shard_lane_ranges_cover_multiple_contiguous_lanes() {
+        let combined = shard_plan_indices(16, 2, Some(2), Some(4), Some(8));
+        let mut separate = shard_plan_indices(16, 2, Some(2), None, Some(8));
+        separate.extend(shard_plan_indices(16, 2, Some(3), None, Some(8)));
+        separate.extend(shard_plan_indices(16, 2, Some(4), None, Some(8)));
+
+        assert_eq!(combined, separate);
+        assert_eq!(combined, [2, 3, 4]);
     }
 
     #[test]
@@ -2059,6 +2088,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             },
@@ -2070,6 +2100,7 @@ run_search_smoke = false
                 jobs: Some(2),
                 resume: Some(false),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             },
@@ -2302,6 +2333,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(true),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: true,
             },
@@ -2352,7 +2384,7 @@ run_search_smoke = false
         let teacher = Teacher::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
-        let selector = ShardSelector::new(None, None).unwrap();
+        let selector = ShardSelector::new(None, None, None).unwrap();
 
         let (before, total) = detect_identity_mismatch(
             &loaded,
@@ -2438,6 +2470,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(0),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2452,6 +2485,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(1),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2505,6 +2539,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(0),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2519,6 +2554,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(1),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -3109,9 +3145,10 @@ run_search_smoke = false
         game_count: u32,
         shard_games: u32,
         shard_index: Option<u32>,
+        shard_index_end: Option<u32>,
         shard_count: Option<u32>,
     ) -> Vec<u32> {
-        let selector = ShardSelector::new(shard_index, shard_count).unwrap();
+        let selector = ShardSelector::new(shard_index, shard_index_end, shard_count).unwrap();
         shard_plans(game_count, shard_games, selector)
             .into_iter()
             .map(|plan| plan.shard_index)

@@ -136,7 +136,10 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
 fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>> {
     let uses_shard_index = raw_args.iter().any(|arg| {
         let arg = arg.to_string_lossy();
-        arg == "--shard-index" || arg.starts_with("--shard-index=")
+        arg == "--shard-index"
+            || arg.starts_with("--shard-index=")
+            || arg == "--shard-index-end"
+            || arg.starts_with("--shard-index-end=")
     });
     let uses_shard_count = raw_args.iter().any(|arg| {
         let arg = arg.to_string_lossy();
@@ -154,12 +157,12 @@ fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>
             }
             if uses_shard_index || uses_shard_count {
                 return Err(
-                    "--shard cannot be combined with --shard-index or --shard-count".to_string(),
+                    "--shard cannot be combined with --shard-index, --shard-index-end, or --shard-count".to_string(),
                 );
             }
             let value = required_value(&mut iter, "--shard")?;
-            let (shard_index, shard_count) = parse_shard_spec(&value)?;
-            normalized.extend(shard_args(shard_index, shard_count));
+            let (shard_index, shard_index_end, shard_count) = parse_shard_spec(&value)?;
+            normalized.extend(shard_args(shard_index, shard_index_end, shard_count));
             saw_shard = true;
         } else if let Some(value) = arg_text.strip_prefix("--shard=") {
             if saw_shard {
@@ -167,11 +170,11 @@ fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>
             }
             if uses_shard_index || uses_shard_count {
                 return Err(
-                    "--shard cannot be combined with --shard-index or --shard-count".to_string(),
+                    "--shard cannot be combined with --shard-index, --shard-index-end, or --shard-count".to_string(),
                 );
             }
-            let (shard_index, shard_count) = parse_shard_spec(value)?;
-            normalized.extend(shard_args(shard_index, shard_count));
+            let (shard_index, shard_index_end, shard_count) = parse_shard_spec(value)?;
+            normalized.extend(shard_args(shard_index, shard_index_end, shard_count));
             saw_shard = true;
         } else {
             normalized.push(arg);
@@ -180,31 +183,57 @@ fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>
     Ok(normalized)
 }
 
-fn parse_shard_spec(value: &str) -> Result<(u32, u32)> {
-    let Some((shard_number, shard_count)) = value.split_once('/') else {
-        return Err(format!("--shard must use N/M format, got {value:?}"));
+fn parse_shard_spec(value: &str) -> Result<(u32, u32, u32)> {
+    let Some((shard_range, shard_count)) = value.split_once('/') else {
+        return Err(format!(
+            "--shard must use N/M or N-P/M format, got {value:?}"
+        ));
+    };
+    let (shard_number, shard_number_end) = if let Some((start, end)) = shard_range.split_once('-') {
+        (start, Some(end))
+    } else {
+        (shard_range, None)
     };
     let shard_number = shard_number
         .parse::<u32>()
         .map_err(|_| format!("--shard numerator must be an integer, got {shard_number:?}"))?;
+    let shard_number_end = match shard_number_end {
+        Some(value) => Some(
+            value
+                .parse::<u32>()
+                .map_err(|_| format!("--shard range end must be an integer, got {value:?}"))?,
+        ),
+        None => None,
+    };
     let shard_count = shard_count
         .parse::<u32>()
         .map_err(|_| format!("--shard denominator must be an integer, got {shard_count:?}"))?;
     if shard_count == 0 {
         return Err("--shard denominator must be greater than 0".to_string());
     }
+    let shard_number_end = shard_number_end.unwrap_or(shard_number);
     if shard_number == 0 || shard_number > shard_count {
         return Err(format!(
             "--shard numerator must be between 1 and {shard_count}, got {shard_number}"
         ));
     }
-    Ok((shard_number - 1, shard_count))
+    if shard_number_end == 0 || shard_number_end > shard_count {
+        return Err(format!(
+            "--shard range end must be between 1 and {shard_count}, got {shard_number_end}"
+        ));
+    }
+    if shard_number_end < shard_number {
+        return Err("--shard range end must be greater than or equal to its start".to_string());
+    }
+    Ok((shard_number - 1, shard_number_end - 1, shard_count))
 }
 
-fn shard_args(shard_index: u32, shard_count: u32) -> Vec<OsString> {
+fn shard_args(shard_index: u32, shard_index_end: u32, shard_count: u32) -> Vec<OsString> {
     vec![
         OsString::from("--shard-index"),
         OsString::from(shard_index.to_string()),
+        OsString::from("--shard-index-end"),
+        OsString::from(shard_index_end.to_string()),
         OsString::from("--shard-count"),
         OsString::from(shard_count.to_string()),
     ]
@@ -442,8 +471,9 @@ fn print_generate_data_usage() {
     eprintln!("Options:");
     eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn with");
     eprintln!("  --release, and adds the matching --features flag when required.");
-    eprintln!("  --shard <N/M> is a 1-indexed shorthand for --shard-index N-1");
-    eprintln!("  and --shard-count M, for example --shard 1/4 through --shard 4/4.");
+    eprintln!("  --shard <N/M> is a 1-indexed shorthand for --shard-index N-1,");
+    eprintln!("  --shard-index-end N-1, and --shard-count M.");
+    eprintln!("  --shard <N-P/M> runs an inclusive lane range, e.g. --shard 3-5/8.");
     eprintln!("  Additional options are passed to haitaka_learn generate-data.");
 }
 
@@ -515,6 +545,7 @@ mod tests {
         ));
         assert!(has_adjacent_args(&args, "--jobs", "0"));
         assert!(has_adjacent_args(&args, "--shard-index", "0"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "0"));
         assert!(has_adjacent_args(&args, "--shard-count", "4"));
     }
 
@@ -540,8 +571,19 @@ mod tests {
         let args = args_as_strings(&args);
 
         assert!(has_adjacent_args(&args, "--shard-index", "3"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "3"));
         assert!(has_adjacent_args(&args, "--shard-count", "4"));
         assert!(args.iter().any(|arg| arg == "--ignore-identity-mismatch"));
+    }
+
+    #[test]
+    fn shard_shorthand_accepts_inclusive_ranges() {
+        let args = normalize_generate_data_args(vec![OsString::from("--shard=3-5/8")]).unwrap();
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--shard-index", "2"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "4"));
+        assert!(has_adjacent_args(&args, "--shard-count", "8"));
     }
 
     #[test]
@@ -550,6 +592,8 @@ mod tests {
         assert!(parse_shard_spec("5/4").is_err());
         assert!(parse_shard_spec("1/0").is_err());
         assert!(parse_shard_spec("1:4").is_err());
+        assert!(parse_shard_spec("5-3/8").is_err());
+        assert!(parse_shard_spec("3-9/8").is_err());
     }
 
     #[test]
@@ -557,7 +601,7 @@ mod tests {
         let result = normalize_generate_data_args(vec![
             OsString::from("--shard"),
             OsString::from("1/4"),
-            OsString::from("--shard-index"),
+            OsString::from("--shard-index-end"),
             OsString::from("0"),
         ]);
 

@@ -29,6 +29,8 @@ enum Command {
         #[arg(long)]
         shard_index: Option<u32>,
         #[arg(long)]
+        shard_index_end: Option<u32>,
+        #[arg(long)]
         shard_count: Option<u32>,
         #[arg(long)]
         ignore_identity_mismatch: bool,
@@ -72,6 +74,7 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
         jobs: None,
         resume: resume_override(no_resume),
         shard_index: None,
+        shard_index_end: None,
         shard_count: None,
         ignore_identity_mismatch: false,
     }
@@ -85,6 +88,7 @@ fn main() -> Result<()> {
             jobs,
             no_resume,
             shard_index,
+            shard_index_end,
             shard_count,
             ignore_identity_mismatch,
         } => {
@@ -95,6 +99,7 @@ fn main() -> Result<()> {
                     jobs,
                     resume: resume_override(no_resume),
                     shard_index,
+                    shard_index_end,
                     shard_count,
                     ignore_identity_mismatch,
                 },
@@ -185,6 +190,7 @@ mod tests {
                 jobs: None,
                 resume: None,
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             }
@@ -199,6 +205,7 @@ mod tests {
                 jobs: None,
                 resume: Some(false),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             }

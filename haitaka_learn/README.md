@@ -164,11 +164,13 @@ cargo xtask generate-data haitaka_learn.toml --jobs 0 --shard 1/2
 ```
 
 `--shard N/M` is 1-indexed shorthand for the underlying zero-indexed
-`--shard-index` and `--shard-count` flags, so `--shard 1/4` maps to
-`--shard-index 0 --shard-count 4`, and `--shard 4/4` maps to
-`--shard-index 3 --shard-count 4`. Shard lanes are contiguous ranges, not
-modulo lanes, so the work covered by `--shard 4/4` can later be split between
-`--shard 7/8` and `--shard 8/8`.
+`--shard-index`, `--shard-index-end`, and `--shard-count` flags, so
+`--shard 1/4` maps to `--shard-index 0 --shard-index-end 0 --shard-count 4`,
+and `--shard 4/4` maps to
+`--shard-index 3 --shard-index-end 3 --shard-count 4`. `--shard 3-5/8`
+runs the inclusive range covered by `3/8`, `4/8`, and `5/8`. Shard lanes are
+contiguous ranges, not modulo lanes, so the work covered by `--shard 4/4` can
+later be split between `--shard 7/8` and `--shard 8/8`.
 
 Pressing Ctrl-C during data generation starts a graceful stop. Already running
 shards finish their current `.bin` writes and are kept; no new shards are
