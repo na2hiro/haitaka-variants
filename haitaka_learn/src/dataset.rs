@@ -23,7 +23,7 @@ use sha2::{Digest, Sha256};
 use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
-const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -335,15 +335,11 @@ pub fn generate_data_with_options(
         allow_identity_mismatch,
     )?;
     if graceful_stop_requested() {
-        println!(
-            "generate-data stopped gracefully after training split elapsed={}",
+        bail!(
+            "generate-data stopped gracefully after training split elapsed={}; \
+             completed shard files were kept and can be resumed",
             format_duration(started.elapsed())
         );
-        return Ok(DatasetOutput {
-            output_dir: artifacts.output_dir,
-            train_positions,
-            validation_positions: 0,
-        });
     }
     let validation_positions = generate_split(
         "validation",
@@ -361,8 +357,9 @@ pub fn generate_data_with_options(
     )?;
 
     if graceful_stop_requested() {
-        println!(
-            "generate-data stopped gracefully elapsed={}",
+        bail!(
+            "generate-data stopped gracefully elapsed={}; \
+             completed shard files were kept and can be resumed",
             format_duration(started.elapsed())
         );
     } else {
@@ -613,11 +610,18 @@ fn generate_split(
 }
 
 fn next_shard_plan(queue: &Arc<Mutex<VecDeque<ShardPlan>>>) -> Option<ShardPlan> {
-    if graceful_stop_requested() {
+    next_shard_plan_with(queue, graceful_stop_requested)
+}
+
+fn next_shard_plan_with(
+    queue: &Arc<Mutex<VecDeque<ShardPlan>>>,
+    stop_requested: impl Fn() -> bool,
+) -> Option<ShardPlan> {
+    if stop_requested() {
         return None;
     }
     let mut queue = queue.lock().unwrap();
-    if graceful_stop_requested() {
+    if stop_requested() {
         return None;
     }
     queue.pop_front()
@@ -1913,17 +1917,14 @@ mod tests {
 
     #[test]
     fn graceful_stop_prevents_starting_new_shards() {
-        GRACEFUL_STOP_STATE.store(1, Ordering::SeqCst);
         let queue = Arc::new(Mutex::new(VecDeque::from([ShardPlan {
             shard_index: 0,
             game_start: 0,
             game_count: 1,
         }])));
 
-        assert!(next_shard_plan(&queue).is_none());
+        assert!(next_shard_plan_with(&queue, || true).is_none());
         assert_eq!(queue.lock().unwrap().len(), 1);
-
-        GRACEFUL_STOP_STATE.store(0, Ordering::SeqCst);
     }
 
     #[test]
