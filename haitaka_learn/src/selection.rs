@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus};
@@ -272,6 +273,7 @@ fn load_or_create_state(
                 paths.state.display()
             );
         }
+        validate_state_identity(loaded, &state, &paths.state)?;
         return Ok(state);
     }
     Ok(SelectionState {
@@ -288,6 +290,40 @@ fn load_or_create_state(
         deletions: Vec::new(),
         warnings: Vec::new(),
     })
+}
+
+fn validate_state_identity(
+    loaded: &LoadedConfig,
+    state: &SelectionState,
+    state_path: &Path,
+) -> Result<()> {
+    if state.config_hash != loaded.hash_hex {
+        bail!(
+            "selection state {} was created for config hash {}, but current config hash is {}. Use a separate paths.output_dir or remove the stale selection state before continuing.",
+            state_path.display(),
+            state.config_hash,
+            loaded.hash_hex
+        );
+    }
+    let ruleset = loaded.config.rules.ruleset.as_str();
+    if state.ruleset != ruleset {
+        bail!(
+            "selection state {} was created for ruleset {}, but current ruleset is {}",
+            state_path.display(),
+            state.ruleset,
+            ruleset
+        );
+    }
+    let feature_set = loaded.training_features();
+    if state.feature_set != feature_set {
+        bail!(
+            "selection state {} was created for feature set {}, but current feature set is {}",
+            state_path.display(),
+            state.feature_set,
+            feature_set
+        );
+    }
+    Ok(())
 }
 
 fn save_state(path: &Path, state: &SelectionState) -> Result<()> {
@@ -356,7 +392,14 @@ fn process_new_checkpoints(
                 state.candidates[candidate_index].checkpoint
             );
         } else {
-            evaluate_candidate(self_play_bin, selection, paths, state, candidate_index)?;
+            evaluate_candidate(
+                loaded,
+                self_play_bin,
+                selection,
+                paths,
+                state,
+                candidate_index,
+            )?;
         }
         apply_storage_saver(selection, state, checkpoints.last())?;
         save_state(&paths.state, state)?;
@@ -392,6 +435,7 @@ fn export_candidate(
 }
 
 fn evaluate_candidate(
+    loaded: &LoadedConfig,
     self_play_bin: &Path,
     selection: &SelectionConfig,
     paths: &SelectionPaths,
@@ -412,6 +456,7 @@ fn evaluate_candidate(
     let incumbent_id = state.candidates[incumbent_index].id.clone();
     let candidate_nnue = state.candidates[candidate_index].nnue.clone();
     let incumbent_nnue = state.candidates[incumbent_index].nnue.clone();
+    let opening_sfen = loaded.opening_sfen()?;
     println!(
         "evaluating {} against incumbent {}",
         state.candidates[candidate_index].checkpoint, incumbent_checkpoint
@@ -433,6 +478,7 @@ fn evaluate_candidate(
             selection,
             &candidate_nnue,
             &incumbent_nnue,
+            &opening_sfen,
             &report_dir,
             games,
             batch_index as u64,
@@ -485,6 +531,7 @@ fn run_self_play_batch(
     selection: &SelectionConfig,
     candidate_nnue: &str,
     incumbent_nnue: &str,
+    opening_sfen: &str,
     report_dir: &Path,
     games: u32,
     batch_index: u64,
@@ -494,27 +541,15 @@ fn run_self_play_batch(
             .with_context(|| format!("failed to remove {}", report_dir.display()))?;
     }
     let status = Command::new(self_play_bin)
-        .arg("self-play")
-        .arg("--games")
-        .arg(games.to_string())
-        .arg("--threads")
-        .arg(selection.threads.to_string())
-        .arg("--movetime-ms")
-        .arg(selection.movetime_ms.to_string())
-        .arg("--opening-random-plies")
-        .arg(selection.opening_random_plies.to_string())
-        .arg("--seed")
-        .arg((selection.seed.wrapping_add(batch_index)).to_string())
-        .arg("--report-dir")
-        .arg(report_dir)
-        .arg("--a-eval")
-        .arg("nnue")
-        .arg("--a-nnue")
-        .arg(candidate_nnue)
-        .arg("--b-eval")
-        .arg("nnue")
-        .arg("--b-nnue")
-        .arg(incumbent_nnue)
+        .args(self_play_batch_args(
+            selection,
+            candidate_nnue,
+            incumbent_nnue,
+            opening_sfen,
+            report_dir,
+            games,
+            batch_index,
+        ))
         .status()
         .with_context(|| {
             format!(
@@ -526,6 +561,42 @@ fn run_self_play_batch(
         bail!("self-play failed with exit status {status}");
     }
     Ok(())
+}
+
+fn self_play_batch_args(
+    selection: &SelectionConfig,
+    candidate_nnue: &str,
+    incumbent_nnue: &str,
+    opening_sfen: &str,
+    report_dir: &Path,
+    games: u32,
+    batch_index: u64,
+) -> Vec<OsString> {
+    vec![
+        "self-play".into(),
+        "--games".into(),
+        games.to_string().into(),
+        "--threads".into(),
+        selection.threads.to_string().into(),
+        "--movetime-ms".into(),
+        selection.movetime_ms.to_string().into(),
+        "--opening-random-plies".into(),
+        selection.opening_random_plies.to_string().into(),
+        "--seed".into(),
+        selection.seed.wrapping_add(batch_index).to_string().into(),
+        "--sfen".into(),
+        opening_sfen.into(),
+        "--report-dir".into(),
+        report_dir.as_os_str().to_os_string(),
+        "--a-eval".into(),
+        "nnue".into(),
+        "--a-nnue".into(),
+        candidate_nnue.into(),
+        "--b-eval".into(),
+        "nnue".into(),
+        "--b-nnue".into(),
+        incumbent_nnue.into(),
+    ]
 }
 
 fn read_self_play_report(path: &Path) -> Result<SelfPlayReport> {
@@ -699,6 +770,10 @@ fn unix_timestamp_seconds() -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{
+        DataConfig, ExportConfig, LearnConfig, PathsConfig, RulesConfig, Ruleset, TrainingConfig,
+        VerifyConfig,
+    };
 
     fn test_selection() -> SelectionConfig {
         SelectionConfig {
@@ -709,6 +784,44 @@ mod tests {
             sprt_alpha: 0.05,
             sprt_beta: 0.05,
             ..SelectionConfig::default()
+        }
+    }
+
+    fn loaded_config_for_tests(hash_hex: &str) -> LoadedConfig {
+        LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.toml"),
+            hash_hex: hash_hex.to_string(),
+            config: LearnConfig {
+                rules: RulesConfig {
+                    ruleset: Ruleset::Standard,
+                    rule_id: None,
+                    handicap: None,
+                    opening_sfen: None,
+                },
+                paths: PathsConfig::default(),
+                data: DataConfig::default(),
+                training: TrainingConfig::default(),
+                export: ExportConfig::default(),
+                verify: VerifyConfig::default(),
+                selection: SelectionConfig::default(),
+            },
+        }
+    }
+
+    fn empty_state_for_tests(loaded: &LoadedConfig, selection: SelectionConfig) -> SelectionState {
+        SelectionState {
+            schema: SELECTION_SCHEMA.to_string(),
+            schema_version: SELECTION_SCHEMA_VERSION,
+            config_hash: loaded.hash_hex.clone(),
+            ruleset: loaded.config.rules.ruleset.as_str().to_string(),
+            feature_set: loaded.training_features().to_string(),
+            selection,
+            candidates: Vec::new(),
+            incumbent_checkpoint: None,
+            selected_checkpoint: None,
+            selected_nnue: None,
+            deletions: Vec::new(),
+            warnings: Vec::new(),
         }
     }
 
@@ -738,6 +851,37 @@ mod tests {
                 "/tmp/lightning/version 0/checkpoints/epoch=3-step=4.ckpt"
             ))
         );
+    }
+
+    #[test]
+    fn self_play_args_include_configured_opening_sfen() {
+        let selection = test_selection();
+        let report_dir = Path::new("/tmp/haitaka-selection-report");
+        let sfen = "4k4/9/9/9/9/9/9/9/4K4 b - 1";
+        let args = self_play_batch_args(
+            &selection,
+            "/tmp/candidate.nnue",
+            "/tmp/incumbent.nnue",
+            sfen,
+            report_dir,
+            8,
+            2,
+        );
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--sfen", sfen));
+    }
+
+    #[test]
+    fn state_identity_rejects_stale_config_hash() {
+        let loaded = loaded_config_for_tests("current");
+        let mut state = empty_state_for_tests(&loaded, test_selection());
+        state.config_hash = "previous".to_string();
+
+        let err =
+            validate_state_identity(&loaded, &state, Path::new("selection.json")).unwrap_err();
+
+        assert!(format!("{err:?}").contains("current config hash is current"));
     }
 
     #[test]
@@ -786,5 +930,16 @@ mod tests {
         assert!(!old.exists());
         assert!(newest.exists());
         assert_eq!(state.deletions.len(), 1);
+    }
+
+    fn args_as_strings(args: &[OsString]) -> Vec<String> {
+        args.iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn has_adjacent_args(args: &[String], first: &str, second: &str) -> bool {
+        args.windows(2)
+            .any(|window| window[0] == first && window[1] == second)
     }
 }
