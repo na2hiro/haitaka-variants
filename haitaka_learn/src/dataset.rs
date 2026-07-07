@@ -23,7 +23,7 @@ use sha2::{Digest, Sha256};
 use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
-const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();

@@ -10,6 +10,7 @@ use crate::config::{
     FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
     FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset,
 };
+use crate::dataset::ENTRY_BYTES;
 
 #[derive(Debug, Serialize)]
 struct ExportMetadata {
@@ -389,6 +390,13 @@ fn ensure_training_dataset_ready(
             manifest.game_count
         );
     }
+    if manifest.entry_bytes != ENTRY_BYTES {
+        bail!(
+            "{label} manifest entry_bytes is {}, expected {}",
+            manifest.entry_bytes,
+            ENTRY_BYTES
+        );
+    }
     let expected_len = manifest
         .sampled_positions
         .checked_mul(manifest.entry_bytes as u64)
@@ -669,6 +677,24 @@ mod tests {
             .unwrap_err();
 
         assert!(format!("{err:?}").contains("training dataset is incomplete"));
+    }
+
+    #[test]
+    fn training_dataset_ready_rejects_incompatible_entry_bytes() {
+        let temp = tempdir().unwrap();
+        let bin_path = temp.path().join("train.bin");
+        let manifest_path = temp.path().join("train.json");
+        fs::write(&bin_path, vec![0u8; 64]).unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":64}"#,
+        )
+        .unwrap();
+
+        let err = ensure_training_dataset_ready(&bin_path, &manifest_path, "training dataset", 2)
+            .unwrap_err();
+
+        assert!(format!("{err:?}").contains("manifest entry_bytes is 64, expected 72"));
     }
 
     fn loaded_config_for_tests(ruleset: Ruleset) -> LoadedConfig {
