@@ -1,4 +1,7 @@
 [alias]
+xtask = "run -p xtask --"
+generate = "run -p xtask -- generate-data"
+generate-data = "run -p xtask -- generate-data"
 pack = "run -p xtask -- package"
 pack-annan = "run -p xtask -- package --ruleset annan --rule-id 26 --features annan --output target/haitaka-variants-annan.tgz"
 pack-anhoku = "run -p xtask -- package --ruleset anhoku --rule-id 55 --features anhoku --output target/haitaka-variants-anhoku.tgz"

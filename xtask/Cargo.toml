@@ -5,3 +5,5 @@ edition = "2024"
 publish = false
 
 [dependencies]
+libc = "0.2"
+toml = "0.8"

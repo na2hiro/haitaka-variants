@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -21,7 +23,12 @@ use sha2::{Digest, Sha256};
 use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
 
 const PACKED_SFEN_BYTES: usize = 64;
-const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+#[cfg(all(unix, not(test)))]
+const GRACEFUL_STOP_MESSAGE: &[u8] =
+    "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
+
+static GRACEFUL_STOP_STATE: AtomicU8 = AtomicU8::new(0);
 
 #[derive(Debug, Clone)]
 pub struct DatasetOutput {
@@ -35,6 +42,7 @@ pub struct GenerateOptions {
     pub jobs: Option<u32>,
     pub resume: Option<bool>,
     pub shard_index: Option<u32>,
+    pub shard_index_end: Option<u32>,
     pub shard_count: Option<u32>,
     pub ignore_identity_mismatch: bool,
 }
@@ -45,6 +53,7 @@ impl GenerateOptions {
             jobs: Some(loaded.config.data.jobs),
             resume: Some(loaded.config.data.resume),
             shard_index: None,
+            shard_index_end: None,
             shard_count: None,
             ignore_identity_mismatch: false,
         }
@@ -276,6 +285,7 @@ pub fn generate_data_with_options(
     loaded: &LoadedConfig,
     options: GenerateOptions,
 ) -> Result<DatasetOutput> {
+    let _graceful_stop = GracefulStopGuard::install()?;
     loaded.ruleset_requires_matching_engine()?;
     let opening_sfen = loaded.opening_sfen()?;
     let _: Board = Board::from_sfen(&opening_sfen)
@@ -291,7 +301,11 @@ pub fn generate_data_with_options(
         .unwrap_or_default()
         .as_millis();
 
-    let shard_selector = ShardSelector::new(options.shard_index, options.shard_count)?;
+    let shard_selector = ShardSelector::new(
+        options.shard_index,
+        options.shard_index_end,
+        options.shard_count,
+    )?;
     let jobs = resolve_jobs(options.jobs.unwrap_or(loaded.config.data.jobs))?;
     let resume = options.resume.unwrap_or(loaded.config.data.resume);
     let allow_identity_mismatch = resolve_identity_mismatch(
@@ -320,6 +334,13 @@ pub fn generate_data_with_options(
         shard_selector,
         allow_identity_mismatch,
     )?;
+    if graceful_stop_requested() {
+        bail!(
+            "generate-data stopped gracefully after training split elapsed={}; \
+             completed shard files were kept and can be resumed",
+            format_duration(started.elapsed())
+        );
+    }
     let validation_positions = generate_split(
         "validation",
         loaded,
@@ -335,16 +356,106 @@ pub fn generate_data_with_options(
         allow_identity_mismatch,
     )?;
 
-    println!(
-        "generate-data finished elapsed={}",
-        format_duration(started.elapsed())
-    );
+    if graceful_stop_requested() {
+        bail!(
+            "generate-data stopped gracefully elapsed={}; \
+             completed shard files were kept and can be resumed",
+            format_duration(started.elapsed())
+        );
+    } else {
+        println!(
+            "generate-data finished elapsed={}",
+            format_duration(started.elapsed())
+        );
+    }
 
     Ok(DatasetOutput {
         output_dir: artifacts.output_dir,
         train_positions,
         validation_positions,
     })
+}
+
+struct GracefulStopGuard {
+    #[cfg(unix)]
+    previous_handler: Option<libc::sighandler_t>,
+}
+
+impl GracefulStopGuard {
+    fn install() -> Result<Self> {
+        GRACEFUL_STOP_STATE.store(0, Ordering::SeqCst);
+        install_graceful_stop_handler()
+    }
+}
+
+#[cfg(test)]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    Ok(GracefulStopGuard {
+        #[cfg(unix)]
+        previous_handler: None,
+    })
+}
+
+#[cfg(all(unix, not(test)))]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    let previous_handler = unsafe {
+        let previous = libc::signal(
+            libc::SIGINT,
+            handle_sigint as *const () as libc::sighandler_t,
+        );
+        if previous == libc::SIG_ERR {
+            bail!("failed to install SIGINT handler");
+        }
+        previous
+    };
+    Ok(GracefulStopGuard {
+        previous_handler: Some(previous_handler),
+    })
+}
+
+#[cfg(all(not(unix), not(test)))]
+fn install_graceful_stop_handler() -> Result<GracefulStopGuard> {
+    Ok(GracefulStopGuard {})
+}
+
+#[cfg(unix)]
+impl Drop for GracefulStopGuard {
+    fn drop(&mut self) {
+        if let Some(previous_handler) = self.previous_handler {
+            unsafe {
+                libc::signal(libc::SIGINT, previous_handler);
+            }
+        }
+    }
+}
+
+#[cfg(not(unix))]
+impl Drop for GracefulStopGuard {
+    fn drop(&mut self) {}
+}
+
+#[cfg(all(unix, not(test)))]
+unsafe extern "C" fn handle_sigint(_: libc::c_int) {
+    if GRACEFUL_STOP_STATE
+        .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        unsafe {
+            libc::write(
+                libc::STDERR_FILENO,
+                GRACEFUL_STOP_MESSAGE.as_ptr().cast(),
+                GRACEFUL_STOP_MESSAGE.len(),
+            );
+        }
+    } else {
+        unsafe {
+            libc::_exit(130);
+        }
+    }
+}
+
+fn graceful_stop_requested() -> bool {
+    GRACEFUL_STOP_STATE.load(Ordering::SeqCst) != 0
 }
 
 fn generate_split(
@@ -395,7 +506,7 @@ fn generate_split(
 
             handles.push(scope.spawn(move || -> Result<()> {
                 loop {
-                    let Some(plan) = queue.lock().unwrap().pop_front() else {
+                    let Some(plan) = next_shard_plan(&queue) else {
                         return Ok(());
                     };
                     let result = generate_or_reuse_shard(
@@ -427,6 +538,10 @@ fn generate_split(
 
     if let Some(err) = worker_errors.into_iter().next() {
         return Err(err);
+    }
+
+    if graceful_stop_requested() {
+        println!("graceful stop requested; assembling completed {dataset_name} shards");
     }
 
     let mut shard_results = Arc::try_unwrap(results)
@@ -494,6 +609,24 @@ fn generate_split(
     Ok(sampled_positions)
 }
 
+fn next_shard_plan(queue: &Arc<Mutex<VecDeque<ShardPlan>>>) -> Option<ShardPlan> {
+    next_shard_plan_with(queue, graceful_stop_requested)
+}
+
+fn next_shard_plan_with(
+    queue: &Arc<Mutex<VecDeque<ShardPlan>>>,
+    stop_requested: impl Fn() -> bool,
+) -> Option<ShardPlan> {
+    if stop_requested() {
+        return None;
+    }
+    let mut queue = queue.lock().unwrap();
+    if stop_requested() {
+        return None;
+    }
+    queue.pop_front()
+}
+
 pub fn merge_data(
     loaded: &LoadedConfig,
     input_dirs: &[PathBuf],
@@ -545,12 +678,14 @@ pub fn merge_data(
 #[derive(Debug, Clone, Copy)]
 struct ShardSelector {
     index: u32,
+    index_end: u32,
     count: u32,
 }
 
 impl ShardSelector {
-    fn new(index: Option<u32>, count: Option<u32>) -> Result<Self> {
+    fn new(index: Option<u32>, index_end: Option<u32>, count: Option<u32>) -> Result<Self> {
         let index = index.unwrap_or(0);
+        let index_end = index_end.unwrap_or(index);
         let count = count.unwrap_or(1);
         if count == 0 {
             bail!("--shard-count must be at least 1");
@@ -558,14 +693,26 @@ impl ShardSelector {
         if index >= count {
             bail!("--shard-index must be less than --shard-count");
         }
+        if index_end >= count {
+            bail!("--shard-index-end must be less than --shard-count");
+        }
+        if index_end < index {
+            bail!("--shard-index-end must be greater than or equal to --shard-index");
+        }
         if count == 1 && index != 0 {
             bail!("--shard-index must be 0 when --shard-count is 1");
         }
-        Ok(Self { index, count })
+        Ok(Self {
+            index,
+            index_end,
+            count,
+        })
     }
 
-    fn includes(self, shard_index: u32) -> bool {
-        shard_index % self.count == self.index
+    fn selected_range(self, total_shards: u32) -> Range<u32> {
+        let start = partition_boundary(total_shards, self.index, self.count);
+        let end = partition_boundary(total_shards, self.index_end + 1, self.count);
+        start..end
     }
 }
 
@@ -689,12 +836,14 @@ fn resolve_jobs(configured: u32) -> Result<usize> {
 
 fn shard_plans(game_count: u32, shard_games: u32, selector: ShardSelector) -> Vec<ShardPlan> {
     let mut plans = Vec::new();
+    let total_shards = game_count.div_ceil(shard_games);
+    let selected_shards = selector.selected_range(total_shards);
     let mut game_start = 0;
     let mut shard_index = 0;
     while game_start < game_count {
         let remaining = game_count - game_start;
         let current_games = remaining.min(shard_games);
-        if selector.includes(shard_index) {
+        if selected_shards.contains(&shard_index) {
             plans.push(ShardPlan {
                 shard_index,
                 game_start,
@@ -705,6 +854,10 @@ fn shard_plans(game_count: u32, shard_games: u32, selector: ShardSelector) -> Ve
         shard_index += 1;
     }
     plans
+}
+
+fn partition_boundary(total_shards: u32, lane_index: u32, lane_count: u32) -> u32 {
+    ((u64::from(total_shards) * u64::from(lane_index)) / u64::from(lane_count)) as u32
 }
 
 fn generate_or_reuse_shard(
@@ -1763,6 +1916,50 @@ mod tests {
     }
 
     #[test]
+    fn graceful_stop_prevents_starting_new_shards() {
+        let queue = Arc::new(Mutex::new(VecDeque::from([ShardPlan {
+            shard_index: 0,
+            game_start: 0,
+            game_count: 1,
+        }])));
+
+        assert!(next_shard_plan_with(&queue, || true).is_none());
+        assert_eq!(queue.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn shard_lanes_are_contiguous_division_ranges() {
+        let fourth_lane = shard_plan_indices(16, 2, Some(3), None, Some(4));
+        let seventh_lane = shard_plan_indices(16, 2, Some(6), None, Some(8));
+        let eighth_lane = shard_plan_indices(16, 2, Some(7), None, Some(8));
+
+        assert_eq!(fourth_lane, [6, 7]);
+        assert_eq!(seventh_lane, [6]);
+        assert_eq!(eighth_lane, [7]);
+    }
+
+    #[test]
+    fn shard_lanes_cover_uneven_division_without_overlap() {
+        let mut all_indices = Vec::new();
+        for index in 0..3 {
+            all_indices.extend(shard_plan_indices(10, 1, Some(index), None, Some(3)));
+        }
+
+        assert_eq!(all_indices, (0..10).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn shard_lane_ranges_cover_multiple_contiguous_lanes() {
+        let combined = shard_plan_indices(16, 2, Some(2), Some(4), Some(8));
+        let mut separate = shard_plan_indices(16, 2, Some(2), None, Some(8));
+        separate.extend(shard_plan_indices(16, 2, Some(3), None, Some(8)));
+        separate.extend(shard_plan_indices(16, 2, Some(4), None, Some(8)));
+
+        assert_eq!(combined, separate);
+        assert_eq!(combined, [2, 3, 4]);
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -1892,6 +2089,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             },
@@ -1903,6 +2101,7 @@ run_search_smoke = false
                 jobs: Some(2),
                 resume: Some(false),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: false,
             },
@@ -2135,6 +2334,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(true),
                 shard_index: None,
+                shard_index_end: None,
                 shard_count: None,
                 ignore_identity_mismatch: true,
             },
@@ -2185,7 +2385,7 @@ run_search_smoke = false
         let teacher = Teacher::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
-        let selector = ShardSelector::new(None, None).unwrap();
+        let selector = ShardSelector::new(None, None, None).unwrap();
 
         let (before, total) = detect_identity_mismatch(
             &loaded,
@@ -2271,6 +2471,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(0),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2285,6 +2486,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(1),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2338,6 +2540,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(0),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2352,6 +2555,7 @@ run_search_smoke = false
                 jobs: Some(1),
                 resume: Some(false),
                 shard_index: Some(1),
+                shard_index_end: None,
                 shard_count: Some(2),
                 ignore_identity_mismatch: false,
             },
@@ -2361,7 +2565,7 @@ run_search_smoke = false
         fs::rename(loaded.artifact_paths().output_dir, &second_input).unwrap();
 
         assert!(
-            !second_input
+            !first_input
                 .join("datasets")
                 .join("shards")
                 .join("validation")
@@ -2936,6 +3140,20 @@ run_search_smoke = false
             serde_json::from_slice(&fs::read(&shard_path).unwrap()).unwrap();
         mutate(&mut manifest);
         fs::write(&shard_path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    }
+
+    fn shard_plan_indices(
+        game_count: u32,
+        shard_games: u32,
+        shard_index: Option<u32>,
+        shard_index_end: Option<u32>,
+        shard_count: Option<u32>,
+    ) -> Vec<u32> {
+        let selector = ShardSelector::new(shard_index, shard_index_end, shard_count).unwrap();
+        shard_plans(game_count, shard_games, selector)
+            .into_iter()
+            .map(|plan| plan.shard_index)
+            .collect()
     }
 
     fn remove_explicit_search_depths(manifest: &mut serde_json::Value) {

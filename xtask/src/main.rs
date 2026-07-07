@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::OsString;
+use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 
@@ -15,6 +16,12 @@ struct PackageArgs {
     features: Option<String>,
     skip_wasm_build: bool,
     allow_missing_wasm: bool,
+}
+
+#[derive(Debug)]
+struct GenerateDataArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
 }
 
 impl Default for PackageArgs {
@@ -50,7 +57,24 @@ fn run() -> Result<()> {
     };
 
     match command.to_string_lossy().as_ref() {
-        "package" => package(parse_package_args(args.collect())?),
+        "package" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_package_usage();
+                Ok(())
+            } else {
+                package(parse_package_args(raw_args)?)
+            }
+        }
+        "generate" | "generate-data" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_generate_data_usage();
+                Ok(())
+            } else {
+                generate_data(parse_generate_data_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -87,6 +111,136 @@ fn parse_package_args(raw_args: Vec<OsString>) -> Result<PackageArgs> {
         }
     }
     Ok(args)
+}
+
+fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs> {
+    let mut iter = raw_args.into_iter();
+    let Some(first) = iter.next() else {
+        return Err("missing config path".to_string());
+    };
+
+    let config = if first == "--config" {
+        PathBuf::from(required_value(&mut iter, "--config")?)
+    } else if first.to_string_lossy().starts_with('-') {
+        return Err("generate-data expects the config path as the first argument".to_string());
+    } else {
+        PathBuf::from(first)
+    };
+
+    Ok(GenerateDataArgs {
+        config,
+        extra_args: normalize_generate_data_args(iter.collect())?,
+    })
+}
+
+fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>> {
+    let uses_shard_index = raw_args.iter().any(|arg| {
+        let arg = arg.to_string_lossy();
+        arg == "--shard-index"
+            || arg.starts_with("--shard-index=")
+            || arg == "--shard-index-end"
+            || arg.starts_with("--shard-index-end=")
+    });
+    let uses_shard_count = raw_args.iter().any(|arg| {
+        let arg = arg.to_string_lossy();
+        arg == "--shard-count" || arg.starts_with("--shard-count=")
+    });
+
+    let mut normalized = Vec::with_capacity(raw_args.len() + 2);
+    let mut iter = raw_args.into_iter();
+    let mut saw_shard = false;
+    while let Some(arg) = iter.next() {
+        let arg_text = arg.to_string_lossy();
+        if arg_text == "--shard" {
+            if saw_shard {
+                return Err("--shard may only be specified once".to_string());
+            }
+            if uses_shard_index || uses_shard_count {
+                return Err(
+                    "--shard cannot be combined with --shard-index, --shard-index-end, or --shard-count".to_string(),
+                );
+            }
+            let value = required_value(&mut iter, "--shard")?;
+            let (shard_index, shard_index_end, shard_count) = parse_shard_spec(&value)?;
+            normalized.extend(shard_args(shard_index, shard_index_end, shard_count));
+            saw_shard = true;
+        } else if let Some(value) = arg_text.strip_prefix("--shard=") {
+            if saw_shard {
+                return Err("--shard may only be specified once".to_string());
+            }
+            if uses_shard_index || uses_shard_count {
+                return Err(
+                    "--shard cannot be combined with --shard-index, --shard-index-end, or --shard-count".to_string(),
+                );
+            }
+            let (shard_index, shard_index_end, shard_count) = parse_shard_spec(value)?;
+            normalized.extend(shard_args(shard_index, shard_index_end, shard_count));
+            saw_shard = true;
+        } else {
+            normalized.push(arg);
+        }
+    }
+    Ok(normalized)
+}
+
+fn parse_shard_spec(value: &str) -> Result<(u32, u32, u32)> {
+    let Some((shard_range, shard_count)) = value.split_once('/') else {
+        return Err(format!(
+            "--shard must use N/M or N-P/M format, got {value:?}"
+        ));
+    };
+    let (shard_number, shard_number_end) = if let Some((start, end)) = shard_range.split_once('-') {
+        (start, Some(end))
+    } else {
+        (shard_range, None)
+    };
+    let shard_number = shard_number
+        .parse::<u32>()
+        .map_err(|_| format!("--shard numerator must be an integer, got {shard_number:?}"))?;
+    let shard_number_end = match shard_number_end {
+        Some(value) => Some(
+            value
+                .parse::<u32>()
+                .map_err(|_| format!("--shard range end must be an integer, got {value:?}"))?,
+        ),
+        None => None,
+    };
+    let shard_count = shard_count
+        .parse::<u32>()
+        .map_err(|_| format!("--shard denominator must be an integer, got {shard_count:?}"))?;
+    if shard_count == 0 {
+        return Err("--shard denominator must be greater than 0".to_string());
+    }
+    let shard_number_end = shard_number_end.unwrap_or(shard_number);
+    if shard_number == 0 || shard_number > shard_count {
+        return Err(format!(
+            "--shard numerator must be between 1 and {shard_count}, got {shard_number}"
+        ));
+    }
+    if shard_number_end == 0 || shard_number_end > shard_count {
+        return Err(format!(
+            "--shard range end must be between 1 and {shard_count}, got {shard_number_end}"
+        ));
+    }
+    if shard_number_end < shard_number {
+        return Err("--shard range end must be greater than or equal to its start".to_string());
+    }
+    Ok((shard_number - 1, shard_number_end - 1, shard_count))
+}
+
+fn shard_args(shard_index: u32, shard_index_end: u32, shard_count: u32) -> Vec<OsString> {
+    vec![
+        OsString::from("--shard-index"),
+        OsString::from(shard_index.to_string()),
+        OsString::from("--shard-index-end"),
+        OsString::from(shard_index_end.to_string()),
+        OsString::from("--shard-count"),
+        OsString::from(shard_count.to_string()),
+    ]
+}
+
+fn is_help_arg(arg: &OsString) -> bool {
+    matches!(arg.to_string_lossy().as_ref(), "-h" | "--help")
 }
 
 fn required_value(iter: &mut impl Iterator<Item = OsString>, flag: &str) -> Result<String> {
@@ -131,6 +285,53 @@ fn package(args: PackageArgs) -> Result<()> {
         ),
         "create Shogitter engine package",
     )
+}
+
+fn generate_data(args: GenerateDataArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    run_command(
+        "cargo",
+        haitaka_learn_generate_data_args(&args.config, features, &args.extra_args),
+        "generate haitaka_learn data",
+    )
+}
+
+fn ruleset_from_config(config: &PathBuf) -> Result<String> {
+    let raw_toml = fs::read_to_string(config)
+        .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
+    ruleset_from_toml(&raw_toml)
+}
+
+fn ruleset_from_toml(raw_toml: &str) -> Result<String> {
+    let value = raw_toml
+        .parse::<toml::Value>()
+        .map_err(|err| format!("failed to parse haitaka_learn TOML: {err}"))?;
+    let ruleset = value
+        .get("rules")
+        .and_then(|rules| rules.get("ruleset"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| "config must set [rules].ruleset".to_string())?;
+    Ok(ruleset.to_string())
+}
+
+fn required_learn_feature_for_ruleset(ruleset: &str) -> Result<Option<&'static str>> {
+    match ruleset {
+        "standard" | "handicap" => Ok(None),
+        "annan" => Ok(Some("annan")),
+        "anhoku" => Ok(Some("anhoku")),
+        "antouzai" => Ok(Some("antouzai")),
+        "taimen" => Ok(Some("taimen")),
+        "haimen" => Ok(Some("haimen")),
+        "neko" => Ok(Some("neko")),
+        "nekoneko" => Ok(Some("nekoneko")),
+        "yokoneko" => Ok(Some("yokoneko")),
+        "yokonekoneko" => Ok(Some("yokonekoneko")),
+        "tenkyo" => Ok(Some("tenkyo")),
+        "tenjiku" => Ok(Some("tenjiku")),
+        "anki" => Ok(Some("anki")),
+        _ => Err(format!("unsupported rules.ruleset={ruleset:?}")),
+    }
 }
 
 fn default_rule_id(ruleset: &str) -> u32 {
@@ -222,30 +423,105 @@ fn haitaka_cli_package_args(
     args
 }
 
+fn haitaka_learn_generate_data_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "generate-data", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
 fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
     args.into_iter().map(OsString::from).collect()
 }
 
 fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
     println!("==> {action}");
-    let status = Command::new(program)
+    let mut child = Command::new(program)
         .args(args)
-        .status()
+        .spawn()
         .map_err(|err| format!("failed to run {program}: {err}"))?;
+    let _sigint_guard = ParentSigintGuard::ignore_while_waiting()?;
+    let status = child
+        .wait()
+        .map_err(|err| format!("failed to wait for {program}: {err}"))?;
     if !status.success() {
         return Err(format!("{program} failed with status {status}"));
     }
     Ok(())
 }
 
+struct ParentSigintGuard {
+    #[cfg(unix)]
+    previous_handler: libc::sighandler_t,
+}
+
+impl ParentSigintGuard {
+    fn ignore_while_waiting() -> Result<Self> {
+        ignore_parent_sigint()
+    }
+}
+
+#[cfg(unix)]
+fn ignore_parent_sigint() -> Result<ParentSigintGuard> {
+    let previous_handler = unsafe {
+        let previous = libc::signal(libc::SIGINT, libc::SIG_IGN);
+        if previous == libc::SIG_ERR {
+            return Err("failed to install parent SIGINT ignore handler".to_string());
+        }
+        previous
+    };
+    Ok(ParentSigintGuard { previous_handler })
+}
+
+#[cfg(not(unix))]
+fn ignore_parent_sigint() -> Result<ParentSigintGuard> {
+    Ok(ParentSigintGuard {})
+}
+
+#[cfg(unix)]
+impl Drop for ParentSigintGuard {
+    fn drop(&mut self) {
+        unsafe {
+            libc::signal(libc::SIGINT, self.previous_handler);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+impl Drop for ParentSigintGuard {
+    fn drop(&mut self) {}
+}
+
 fn print_usage() {
-    eprintln!("Usage: cargo run -p xtask -- package [options]");
+    eprintln!("Usage: cargo xtask package [options]");
+    eprintln!("       cargo generate <config.toml> [generate-data options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
+    eprintln!("       cargo run -p xtask -- package [options]");
+}
+
+fn print_generate_data_usage() {
+    eprintln!("Usage: cargo generate <config.toml> [generate-data options]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn with");
+    eprintln!("  --release, and adds the matching --features flag when required.");
+    eprintln!("  --shard <N/M> runs lane N of M using 1-indexed lane numbers.");
+    eprintln!("  --shard <N-P/M> runs an inclusive lane range, e.g. --shard 3-5/8.");
+    eprintln!("  Additional options are passed to haitaka_learn generate-data.");
 }
 
 fn print_package_usage() {
-    eprintln!("Usage: cargo run -p xtask -- package [options]");
+    eprintln!("Usage: cargo xtask package [options]");
+    eprintln!("       cargo run -p xtask -- package [options]");
     eprintln!("Options:");
     eprintln!("  --ruleset <name>          Package ruleset, default standard");
     eprintln!("  --rule-id <id>            Shogitter rule id, default 0 or 26 for annan");
@@ -284,5 +560,104 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn generate_data_infers_variant_feature_from_config_ruleset() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"anhoku\"\n").unwrap();
+        let args = haitaka_learn_generate_data_args(
+            &PathBuf::from("haitaka_learn.anhoku-v0.5.1.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &normalize_generate_data_args(vec![
+                OsString::from("--jobs"),
+                OsString::from("0"),
+                OsString::from("--shard"),
+                OsString::from("1/4"),
+            ])
+            .unwrap(),
+        );
+        let args = args_as_strings(&args);
+
+        assert!(args.iter().any(|arg| arg == "--release"));
+        assert!(has_adjacent_args(&args, "--features", "anhoku"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.anhoku-v0.5.1.toml"
+        ));
+        assert!(has_adjacent_args(&args, "--jobs", "0"));
+        assert!(has_adjacent_args(&args, "--shard-index", "0"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "0"));
+        assert!(has_adjacent_args(&args, "--shard-count", "4"));
+    }
+
+    #[test]
+    fn generate_data_omits_features_for_standard_config() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"standard\"\n").unwrap();
+        let args = haitaka_learn_generate_data_args(
+            &PathBuf::from("haitaka_learn.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[],
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn shard_shorthand_is_one_indexed() {
+        let args = normalize_generate_data_args(vec![
+            OsString::from("--shard=4/4"),
+            OsString::from("--ignore-identity-mismatch"),
+        ])
+        .unwrap();
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--shard-index", "3"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "3"));
+        assert!(has_adjacent_args(&args, "--shard-count", "4"));
+        assert!(args.iter().any(|arg| arg == "--ignore-identity-mismatch"));
+    }
+
+    #[test]
+    fn shard_shorthand_accepts_inclusive_ranges() {
+        let args = normalize_generate_data_args(vec![OsString::from("--shard=3-5/8")]).unwrap();
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--shard-index", "2"));
+        assert!(has_adjacent_args(&args, "--shard-index-end", "4"));
+        assert!(has_adjacent_args(&args, "--shard-count", "8"));
+    }
+
+    #[test]
+    fn shard_shorthand_rejects_out_of_range_values() {
+        assert!(parse_shard_spec("0/4").is_err());
+        assert!(parse_shard_spec("5/4").is_err());
+        assert!(parse_shard_spec("1/0").is_err());
+        assert!(parse_shard_spec("1:4").is_err());
+        assert!(parse_shard_spec("5-3/8").is_err());
+        assert!(parse_shard_spec("3-9/8").is_err());
+    }
+
+    #[test]
+    fn shard_shorthand_rejects_explicit_shard_flags() {
+        let result = normalize_generate_data_args(vec![
+            OsString::from("--shard"),
+            OsString::from("1/4"),
+            OsString::from("--shard-index-end"),
+            OsString::from("0"),
+        ]);
+
+        assert!(result.is_err());
+    }
+
+    fn args_as_strings(args: &[OsString]) -> Vec<String> {
+        args.iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn has_adjacent_args(args: &[String], first: &str, second: &str) -> bool {
+        args.windows(2)
+            .any(|window| window[0] == first && window[1] == second)
     }
 }

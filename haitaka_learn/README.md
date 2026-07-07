@@ -134,11 +134,14 @@ Use the default build for standard shogi and handicap shogi.
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
 
 This:
 
+- reads `[rules].ruleset` from the config and runs `haitaka_learn` with the
+  matching Cargo feature when one is required
+- always uses the release build for data generation
 - plays Haitaka self-play games
 - samples positions
 - labels sampled positions with teacher search scores at `data.search_depth`
@@ -151,14 +154,23 @@ This:
 Equivalent command with the explicit `jobs` override:
 
 ```bash
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
 
 Generate only one lane of a distributed shard split:
 
 ```bash
-cargo run -p haitaka_learn --release -- generate-data --config haitaka_learn.toml --jobs 0 --shard-index 0 --shard-count 2
+cargo generate haitaka_learn.toml --jobs 0 --shard 1/2
 ```
+
+`--shard N/M` is 1-indexed. `--shard 3-5/8` runs the inclusive range covered
+by `3/8`, `4/8`, and `5/8`. Shard lanes are contiguous ranges, not modulo
+lanes, so the work covered by `--shard 4/4` can later be split between
+`--shard 7/8` and `--shard 8/8`.
+
+Pressing Ctrl-C during data generation starts a graceful stop. Already running
+shards finish their current `.bin` writes and are kept; no new shards are
+started. Press Ctrl-C again to terminate immediately.
 
 Merge shard outputs copied back from multiple machines:
 
@@ -230,10 +242,12 @@ features = "HalfKAv2^+DonorSingleEff" # Antouzai uses DonorPairSlots; Anki uses 
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --release --features annan -- generate-data --config haitaka_learn.toml --jobs 0
-cargo run -p haitaka_learn --release --features anhoku -- generate-data --config haitaka_learn.toml --jobs 0
-cargo run -p haitaka_learn --release --features antouzai -- generate-data --config haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml --jobs 0
 ```
+
+`cargo generate` reads the ruleset from the config, so the same command works
+for Annan, Anhoku, Antouzai, Taimen, Haimen, the Neko family, Tenkyo, Tenjiku,
+and Anki while still using the matching feature and a release build.
 
 ### 3. Train / export / verify the variant run
 

@@ -57,7 +57,19 @@ archive.
 
 ## Build For Shogitter Engine Package v1
 
-From the repository root:
+From the repository root, run the workspace `xtask` helper directly with:
+
+```bash
+cargo xtask package
+```
+
+For Annan:
+
+```bash
+cargo xtask package --ruleset annan
+```
+
+The repository also defines shorter package aliases:
 
 ```bash
 cargo pack
@@ -68,6 +80,9 @@ For Annan:
 ```bash
 cargo pack-annan
 ```
+
+Additional variant aliases follow the same pattern, such as
+`cargo pack-taimen` and `cargo pack-nekoneko`.
 
 For manual debugging, run the steps directly:
 
