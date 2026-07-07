@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::SystemTime;
 
 use anyhow::{Context, Result, anyhow, bail};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::{
     FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
@@ -22,13 +22,31 @@ struct ExportMetadata {
     config_hash: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct DatasetCompletionManifest {
+    game_count: u32,
+    completed_games: u32,
+    sampled_positions: u64,
+    entry_bytes: usize,
+}
+
 pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
-    ensure_file_exists(&artifacts.train_bin, "training dataset")?;
-    ensure_file_exists(&artifacts.validation_bin, "validation dataset")?;
+    ensure_training_dataset_ready(
+        &artifacts.train_bin,
+        &artifacts.train_manifest,
+        "training dataset",
+        loaded.config.data.train_games,
+    )?;
+    ensure_training_dataset_ready(
+        &artifacts.validation_bin,
+        &artifacts.validation_manifest,
+        "validation dataset",
+        loaded.config.data.validation_games,
+    )?;
 
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
     let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
@@ -343,6 +361,51 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     }
 }
 
+fn ensure_training_dataset_ready(
+    bin_path: &Path,
+    manifest_path: &Path,
+    label: &str,
+    expected_game_count: u32,
+) -> Result<()> {
+    ensure_file_exists(bin_path, label)?;
+    ensure_file_exists(manifest_path, &format!("{label} manifest"))?;
+
+    let manifest: DatasetCompletionManifest = serde_json::from_slice(
+        &fs::read(manifest_path)
+            .with_context(|| format!("failed to read {}", manifest_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    if manifest.game_count != expected_game_count {
+        bail!(
+            "{label} manifest game_count is {}, expected {}",
+            manifest.game_count,
+            expected_game_count
+        );
+    }
+    if manifest.completed_games != manifest.game_count {
+        bail!(
+            "{label} is incomplete: completed {}/{} games. Rerun generate-data to resume.",
+            manifest.completed_games,
+            manifest.game_count
+        );
+    }
+    let expected_len = manifest
+        .sampled_positions
+        .checked_mul(manifest.entry_bytes as u64)
+        .ok_or_else(|| anyhow!("{label} byte length overflow"))?;
+    let actual_len = fs::metadata(bin_path)
+        .with_context(|| format!("failed to stat {}", bin_path.display()))?
+        .len();
+    if actual_len != expected_len {
+        bail!(
+            "{label} has {} bytes, expected {} from manifest",
+            actual_len,
+            expected_len
+        );
+    }
+    Ok(())
+}
+
 fn detect_git_revision(repo_root: &Path) -> Option<String> {
     let output = Command::new("git")
         .arg("-C")
@@ -509,6 +572,7 @@ mod tests {
         DataConfig, ExportConfig, LearnConfig, PathsConfig, RulesConfig, TrainingConfig,
         VerifyConfig,
     };
+    use tempfile::tempdir;
 
     #[test]
     fn checkpoint_validation_script_disables_weights_only_mode() {
@@ -572,6 +636,39 @@ mod tests {
         assert!(variant_h_contents(&anki).contains("#define HAITAKA_DONOR_MODE 12"));
         assert!(overlay_donor_features_py_contents().contains("knight8-friendly"));
         assert!(overlay_donor_features_py_contents().contains("0x6A09E667"));
+    }
+
+    #[test]
+    fn training_dataset_ready_accepts_complete_manifest() {
+        let temp = tempdir().unwrap();
+        let bin_path = temp.path().join("train.bin");
+        let manifest_path = temp.path().join("train.json");
+        fs::write(&bin_path, vec![0u8; 72]).unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":72}"#,
+        )
+        .unwrap();
+
+        ensure_training_dataset_ready(&bin_path, &manifest_path, "training dataset", 2).unwrap();
+    }
+
+    #[test]
+    fn training_dataset_ready_rejects_partial_manifest() {
+        let temp = tempdir().unwrap();
+        let bin_path = temp.path().join("train.bin");
+        let manifest_path = temp.path().join("train.json");
+        fs::write(&bin_path, vec![0u8; 72]).unwrap();
+        fs::write(
+            &manifest_path,
+            r#"{"game_count":2,"completed_games":1,"sampled_positions":1,"entry_bytes":72}"#,
+        )
+        .unwrap();
+
+        let err = ensure_training_dataset_ready(&bin_path, &manifest_path, "training dataset", 2)
+            .unwrap_err();
+
+        assert!(format!("{err:?}").contains("training dataset is incomplete"));
     }
 
     fn loaded_config_for_tests(ruleset: Ruleset) -> LoadedConfig {

@@ -335,15 +335,11 @@ pub fn generate_data_with_options(
         allow_identity_mismatch,
     )?;
     if graceful_stop_requested() {
-        println!(
-            "generate-data stopped gracefully after training split elapsed={}",
+        bail!(
+            "generate-data stopped gracefully after training split elapsed={}; \
+             completed shard files were kept and can be resumed",
             format_duration(started.elapsed())
         );
-        return Ok(DatasetOutput {
-            output_dir: artifacts.output_dir,
-            train_positions,
-            validation_positions: 0,
-        });
     }
     let validation_positions = generate_split(
         "validation",
@@ -361,8 +357,9 @@ pub fn generate_data_with_options(
     )?;
 
     if graceful_stop_requested() {
-        println!(
-            "generate-data stopped gracefully elapsed={}",
+        bail!(
+            "generate-data stopped gracefully elapsed={}; \
+             completed shard files were kept and can be resumed",
             format_duration(started.elapsed())
         );
     } else {
