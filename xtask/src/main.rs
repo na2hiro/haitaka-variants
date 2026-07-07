@@ -24,6 +24,12 @@ struct GenerateDataArgs {
     extra_args: Vec<OsString>,
 }
 
+#[derive(Debug)]
+struct TrainArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
+}
+
 impl Default for PackageArgs {
     fn default() -> Self {
         Self {
@@ -75,6 +81,15 @@ fn run() -> Result<()> {
                 generate_data(parse_generate_data_args(raw_args)?)
             }
         }
+        "train" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_train_usage();
+                Ok(())
+            } else {
+                train(parse_train_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -114,6 +129,22 @@ fn parse_package_args(raw_args: Vec<OsString>) -> Result<PackageArgs> {
 }
 
 fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "generate-data")?;
+    Ok(GenerateDataArgs {
+        config,
+        extra_args: normalize_generate_data_args(extra_args)?,
+    })
+}
+
+fn parse_train_args(raw_args: Vec<OsString>) -> Result<TrainArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "train")?;
+    Ok(TrainArgs { config, extra_args })
+}
+
+fn parse_config_first_args(
+    raw_args: Vec<OsString>,
+    command_name: &str,
+) -> Result<(PathBuf, Vec<OsString>)> {
     let mut iter = raw_args.into_iter();
     let Some(first) = iter.next() else {
         return Err("missing config path".to_string());
@@ -122,15 +153,14 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
     let config = if first == "--config" {
         PathBuf::from(required_value(&mut iter, "--config")?)
     } else if first.to_string_lossy().starts_with('-') {
-        return Err("generate-data expects the config path as the first argument".to_string());
+        return Err(format!(
+            "{command_name} expects the config path as the first argument"
+        ));
     } else {
         PathBuf::from(first)
     };
 
-    Ok(GenerateDataArgs {
-        config,
-        extra_args: normalize_generate_data_args(iter.collect())?,
-    })
+    Ok((config, iter.collect()))
 }
 
 fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>> {
@@ -297,6 +327,21 @@ fn generate_data(args: GenerateDataArgs) -> Result<()> {
     )
 }
 
+fn train(args: TrainArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    run_command(
+        "cargo",
+        haitaka_cli_build_args(features),
+        "build haitaka_cli for self-play selection",
+    )?;
+    run_command(
+        "cargo",
+        haitaka_learn_train_select_args(&args.config, features, &args.extra_args),
+        "train and select strongest NNUE checkpoint",
+    )
+}
+
 fn ruleset_from_config(config: &PathBuf) -> Result<String> {
     let raw_toml = fs::read_to_string(config)
         .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
@@ -439,6 +484,40 @@ fn haitaka_learn_generate_data_args(
     args
 }
 
+fn haitaka_cli_build_args(features: Option<&str>) -> Vec<OsString> {
+    let mut args = os_args(["build", "-p", "haitaka_cli", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args
+}
+
+fn haitaka_learn_train_select_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "train-select", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.push("--self-play-bin".into());
+    args.push(self_play_bin_path().into());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
+fn self_play_bin_path() -> PathBuf {
+    PathBuf::from(format!(
+        "target/release/haitaka_cli{}",
+        std::env::consts::EXE_SUFFIX
+    ))
+}
+
 fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
     args.into_iter().map(OsString::from).collect()
 }
@@ -458,6 +537,7 @@ fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
 fn print_usage() {
     eprintln!("Usage: cargo xtask package [options]");
     eprintln!("       cargo generate <config.toml> [generate-data options]");
+    eprintln!("       cargo train <config.toml> [train-select options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
     eprintln!("       cargo run -p xtask -- package [options]");
@@ -471,6 +551,14 @@ fn print_generate_data_usage() {
     eprintln!("  --shard <N/M> runs lane N of M using 1-indexed lane numbers.");
     eprintln!("  --shard <N-P/M> runs an inclusive lane range, e.g. --shard 3-5/8.");
     eprintln!("  Additional options are passed to haitaka_learn generate-data.");
+}
+
+fn print_train_usage() {
+    eprintln!("Usage: cargo train <config.toml> [train-select options]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, builds haitaka_cli with");
+    eprintln!("  matching --features when required, then runs haitaka_learn train-select.");
+    eprintln!("  Useful options: --no-resume, --selection-max-games <N>, --storage-saver.");
 }
 
 fn print_package_usage() {
@@ -549,6 +637,44 @@ mod tests {
     fn generate_data_omits_features_for_standard_config() {
         let ruleset = ruleset_from_toml("[rules]\nruleset = \"standard\"\n").unwrap();
         let args = haitaka_learn_generate_data_args(
+            &PathBuf::from("haitaka_learn.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[],
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn train_select_infers_variant_feature_and_forwards_options() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"annan\"\n").unwrap();
+        let args = haitaka_learn_train_select_args(
+            &PathBuf::from("haitaka_learn.annan.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[
+                OsString::from("--selection-max-games"),
+                OsString::from("128"),
+                OsString::from("--storage-saver"),
+            ],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--features", "annan"));
+        assert!(args.iter().any(|arg| arg == "train-select"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.annan.toml"
+        ));
+        assert!(args.iter().any(|arg| arg == "--self-play-bin"));
+        assert!(has_adjacent_args(&args, "--selection-max-games", "128"));
+        assert!(args.iter().any(|arg| arg == "--storage-saver"));
+    }
+
+    #[test]
+    fn train_select_omits_features_for_standard_config() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"standard\"\n").unwrap();
+        let args = haitaka_learn_train_select_args(
             &PathBuf::from("haitaka_learn.toml"),
             required_learn_feature_for_ruleset(&ruleset).unwrap(),
             &[],

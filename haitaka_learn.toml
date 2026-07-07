@@ -45,6 +45,21 @@ extra_args = []
 output_name = "haitaka.nnue"
 description = "Haitaka network trained with variant-nnue-pytorch"
 
+[selection]
+poll_interval_secs = 15
+stable_checkpoint_secs = 10
+batch_games = 64
+max_games = 1024
+threads = 0
+movetime_ms = 100
+opening_random_plies = 4
+seed = 1
+sprt_elo0 = 0.0
+sprt_elo1 = 5.0
+sprt_alpha = 0.05
+sprt_beta = 0.05
+storage_saver = false
+
 [verify]
 search_depth = 2
 run_search_smoke = true

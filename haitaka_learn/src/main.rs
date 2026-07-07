@@ -1,5 +1,6 @@
 mod config;
 mod dataset;
+mod selection;
 mod trainer;
 mod verify;
 
@@ -48,6 +49,18 @@ enum Command {
         config: PathBuf,
         #[arg(long)]
         no_resume: bool,
+    },
+    TrainSelect {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        self_play_bin: PathBuf,
+        #[arg(long)]
+        no_resume: bool,
+        #[arg(long)]
+        selection_max_games: Option<u32>,
+        #[arg(long)]
+        storage_saver: bool,
     },
     Export {
         #[arg(long)]
@@ -129,6 +142,25 @@ fn main() -> Result<()> {
             let loaded = LoadedConfig::from_path(&config)?;
             let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
+        }
+        Command::TrainSelect {
+            config,
+            self_play_bin,
+            no_resume,
+            selection_max_games,
+            storage_saver,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let selected = selection::train_select(
+                &loaded,
+                selection::TrainSelectOptions {
+                    self_play_bin,
+                    resume_override: resume_override(no_resume),
+                    selection_max_games,
+                    storage_saver: storage_saver.then_some(true),
+                },
+            )?;
+            println!("training selection finished: {}", selected.display());
         }
         Command::Export { config } => {
             let loaded = LoadedConfig::from_path(&config)?;
