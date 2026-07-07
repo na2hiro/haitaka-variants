@@ -676,7 +676,7 @@ impl Default for VerifyConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SelectionConfig {
     #[serde(default = "default_selection_poll_interval_secs")]
     pub poll_interval_secs: u64,

@@ -175,7 +175,6 @@ pub fn train_select(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resul
     let trainer_checkout = loaded.trainer_checkout()?;
     let _guard = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
     let mut state = load_or_create_state(loaded, &selection, &paths)?;
-    state.selection = selection.clone();
     let mut child = TrainingChild::new(trainer::spawn_training(
         loaded,
         &trainer_checkout,
@@ -273,7 +272,7 @@ fn load_or_create_state(
                 paths.state.display()
             );
         }
-        validate_state_identity(loaded, &state, &paths.state)?;
+        validate_state_identity(loaded, selection, &state, &paths.state)?;
         return Ok(state);
     }
     Ok(SelectionState {
@@ -294,6 +293,7 @@ fn load_or_create_state(
 
 fn validate_state_identity(
     loaded: &LoadedConfig,
+    selection: &SelectionConfig,
     state: &SelectionState,
     state_path: &Path,
 ) -> Result<()> {
@@ -321,6 +321,12 @@ fn validate_state_identity(
             state_path.display(),
             state.feature_set,
             feature_set
+        );
+    }
+    if &state.selection != selection {
+        bail!(
+            "selection state {} was created with different [selection] settings. Reuse the original selection settings, use a separate paths.output_dir, or remove the stale selection state before continuing.",
+            state_path.display()
         );
     }
     Ok(())
@@ -373,6 +379,10 @@ fn process_new_checkpoints(
     state: &mut SelectionState,
     checkpoints: &[PathBuf],
 ) -> Result<()> {
+    process_resumable_candidates(loaded, self_play_bin, selection, paths, state)?;
+    apply_storage_saver(selection, state, checkpoints.last())?;
+    save_state(&paths.state, state)?;
+
     let known: HashSet<String> = state
         .candidates
         .iter()
@@ -402,6 +412,45 @@ fn process_new_checkpoints(
             )?;
         }
         apply_storage_saver(selection, state, checkpoints.last())?;
+        save_state(&paths.state, state)?;
+    }
+    Ok(())
+}
+
+fn process_resumable_candidates(
+    loaded: &LoadedConfig,
+    self_play_bin: &Path,
+    selection: &SelectionConfig,
+    paths: &SelectionPaths,
+    state: &mut SelectionState,
+) -> Result<()> {
+    if state.incumbent_checkpoint.is_none() {
+        if let Some(candidate_index) = state
+            .candidates
+            .iter()
+            .position(|candidate| candidate.status == CandidateStatus::Exported)
+        {
+            state.candidates[candidate_index].status = CandidateStatus::Incumbent;
+            state.incumbent_checkpoint = Some(state.candidates[candidate_index].checkpoint.clone());
+        }
+    }
+
+    loop {
+        let Some(candidate_index) = state
+            .candidates
+            .iter()
+            .position(|candidate| candidate.status == CandidateStatus::Exported)
+        else {
+            break;
+        };
+        evaluate_candidate(
+            loaded,
+            self_play_bin,
+            selection,
+            paths,
+            state,
+            candidate_index,
+        )?;
         save_state(&paths.state, state)?;
     }
     Ok(())
@@ -462,9 +511,17 @@ fn evaluate_candidate(
         state.candidates[candidate_index].checkpoint, incumbent_checkpoint
     );
 
-    let mut a_wins = 0;
-    let mut b_wins = 0;
-    let mut draws = 0;
+    let (mut a_wins, mut b_wins, mut draws) =
+        aggregate_candidate_matches(&state.candidates[candidate_index], &incumbent_checkpoint);
+    if a_wins + b_wins + draws > 0 {
+        println!(
+            "resuming saved candidate match: games={} score {}-{}-{}",
+            a_wins + b_wins + draws,
+            a_wins,
+            b_wins,
+            draws
+        );
+    }
     while a_wins + b_wins + draws < selection.max_games {
         let completed = a_wins + b_wins + draws;
         let games = selection.batch_games.min(selection.max_games - completed);
@@ -513,17 +570,39 @@ fn evaluate_candidate(
                 state.candidates[candidate_index].status = CandidateStatus::Incumbent;
                 state.incumbent_checkpoint =
                     Some(state.candidates[candidate_index].checkpoint.clone());
+                save_state(&paths.state, state)?;
                 return Ok(());
             }
             SprtState::Rejected => {
                 state.candidates[candidate_index].status = CandidateStatus::Rejected;
+                save_state(&paths.state, state)?;
                 return Ok(());
             }
-            SprtState::Inconclusive => {}
+            SprtState::Inconclusive => {
+                save_state(&paths.state, state)?;
+            }
         }
     }
     state.candidates[candidate_index].status = CandidateStatus::Inconclusive;
+    save_state(&paths.state, state)?;
     Ok(())
+}
+
+fn aggregate_candidate_matches(
+    candidate: &CandidateRecord,
+    incumbent_checkpoint: &str,
+) -> (u32, u32, u32) {
+    candidate
+        .matches
+        .iter()
+        .filter(|record| record.incumbent_checkpoint == incumbent_checkpoint)
+        .fold((0, 0, 0), |(a_wins, b_wins, draws), record| {
+            (
+                a_wins + record.a_wins,
+                b_wins + record.b_wins,
+                draws + record.draws,
+            )
+        })
 }
 
 fn run_self_play_batch(
@@ -878,10 +957,84 @@ mod tests {
         let mut state = empty_state_for_tests(&loaded, test_selection());
         state.config_hash = "previous".to_string();
 
-        let err =
-            validate_state_identity(&loaded, &state, Path::new("selection.json")).unwrap_err();
+        let err = validate_state_identity(
+            &loaded,
+            &test_selection(),
+            &state,
+            Path::new("selection.json"),
+        )
+        .unwrap_err();
 
         assert!(format!("{err:?}").contains("current config hash is current"));
+    }
+
+    #[test]
+    fn state_identity_rejects_selection_setting_changes() {
+        let loaded = loaded_config_for_tests("current");
+        let mut saved_selection = test_selection();
+        saved_selection.max_games = 16;
+        let mut current_selection = saved_selection.clone();
+        current_selection.max_games = 32;
+        let state = empty_state_for_tests(&loaded, saved_selection);
+
+        let err = validate_state_identity(
+            &loaded,
+            &current_selection,
+            &state,
+            Path::new("selection.json"),
+        )
+        .unwrap_err();
+
+        assert!(format!("{err:?}").contains("different [selection] settings"));
+    }
+
+    #[test]
+    fn aggregate_candidate_matches_uses_saved_batches_for_incumbent() {
+        let candidate = CandidateRecord {
+            id: "candidate".to_string(),
+            checkpoint: "/tmp/candidate.ckpt".to_string(),
+            nnue: "/tmp/candidate.nnue".to_string(),
+            status: CandidateStatus::Exported,
+            discovered_at_unix_seconds: 0,
+            exported_at_unix_seconds: Some(0),
+            matches: vec![
+                MatchRecord {
+                    incumbent_checkpoint: "/tmp/incumbent.ckpt".to_string(),
+                    report_dir: "/tmp/batch-0".to_string(),
+                    games: 4,
+                    a_wins: 2,
+                    b_wins: 1,
+                    draws: 1,
+                    llr: 0.1,
+                    sprt_state: SprtState::Inconclusive,
+                },
+                MatchRecord {
+                    incumbent_checkpoint: "/tmp/other.ckpt".to_string(),
+                    report_dir: "/tmp/batch-other".to_string(),
+                    games: 4,
+                    a_wins: 4,
+                    b_wins: 0,
+                    draws: 0,
+                    llr: 1.0,
+                    sprt_state: SprtState::Accepted,
+                },
+                MatchRecord {
+                    incumbent_checkpoint: "/tmp/incumbent.ckpt".to_string(),
+                    report_dir: "/tmp/batch-1".to_string(),
+                    games: 4,
+                    a_wins: 1,
+                    b_wins: 2,
+                    draws: 1,
+                    llr: 0.0,
+                    sprt_state: SprtState::Inconclusive,
+                },
+            ],
+        };
+
+        assert_eq!(
+            aggregate_candidate_matches(&candidate, "/tmp/incumbent.ckpt"),
+            (3, 3, 2)
+        );
     }
 
     #[test]
