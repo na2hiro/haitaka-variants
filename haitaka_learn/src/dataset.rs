@@ -610,11 +610,18 @@ fn generate_split(
 }
 
 fn next_shard_plan(queue: &Arc<Mutex<VecDeque<ShardPlan>>>) -> Option<ShardPlan> {
-    if graceful_stop_requested() {
+    next_shard_plan_with(queue, graceful_stop_requested)
+}
+
+fn next_shard_plan_with(
+    queue: &Arc<Mutex<VecDeque<ShardPlan>>>,
+    stop_requested: impl Fn() -> bool,
+) -> Option<ShardPlan> {
+    if stop_requested() {
         return None;
     }
     let mut queue = queue.lock().unwrap();
-    if graceful_stop_requested() {
+    if stop_requested() {
         return None;
     }
     queue.pop_front()
@@ -1910,17 +1917,14 @@ mod tests {
 
     #[test]
     fn graceful_stop_prevents_starting_new_shards() {
-        GRACEFUL_STOP_STATE.store(1, Ordering::SeqCst);
         let queue = Arc::new(Mutex::new(VecDeque::from([ShardPlan {
             shard_index: 0,
             game_start: 0,
             game_count: 1,
         }])));
 
-        assert!(next_shard_plan(&queue).is_none());
+        assert!(next_shard_plan_with(&queue, || true).is_none());
         assert_eq!(queue.lock().unwrap().len(), 1);
-
-        GRACEFUL_STOP_STATE.store(0, Ordering::SeqCst);
     }
 
     #[test]

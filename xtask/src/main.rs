@@ -445,14 +445,60 @@ fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
 
 fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
     println!("==> {action}");
-    let status = Command::new(program)
+    let mut child = Command::new(program)
         .args(args)
-        .status()
+        .spawn()
         .map_err(|err| format!("failed to run {program}: {err}"))?;
+    let _sigint_guard = ParentSigintGuard::ignore_while_waiting()?;
+    let status = child
+        .wait()
+        .map_err(|err| format!("failed to wait for {program}: {err}"))?;
     if !status.success() {
         return Err(format!("{program} failed with status {status}"));
     }
     Ok(())
+}
+
+struct ParentSigintGuard {
+    #[cfg(unix)]
+    previous_handler: libc::sighandler_t,
+}
+
+impl ParentSigintGuard {
+    fn ignore_while_waiting() -> Result<Self> {
+        ignore_parent_sigint()
+    }
+}
+
+#[cfg(unix)]
+fn ignore_parent_sigint() -> Result<ParentSigintGuard> {
+    let previous_handler = unsafe {
+        let previous = libc::signal(libc::SIGINT, libc::SIG_IGN);
+        if previous == libc::SIG_ERR {
+            return Err("failed to install parent SIGINT ignore handler".to_string());
+        }
+        previous
+    };
+    Ok(ParentSigintGuard { previous_handler })
+}
+
+#[cfg(not(unix))]
+fn ignore_parent_sigint() -> Result<ParentSigintGuard> {
+    Ok(ParentSigintGuard {})
+}
+
+#[cfg(unix)]
+impl Drop for ParentSigintGuard {
+    fn drop(&mut self) {
+        unsafe {
+            libc::signal(libc::SIGINT, self.previous_handler);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+impl Drop for ParentSigintGuard {
+    fn drop(&mut self) {}
 }
 
 fn print_usage() {
