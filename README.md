@@ -231,6 +231,7 @@ Use the same feature flag consistently across crates when working on a variant.
 For training details, see:
 
 - [`haitaka_learn/README.md`](haitaka_learn/README.md)
+- [`docs/vast-ai-nnue-training.md`](docs/vast-ai-nnue-training.md)
 - [`haitaka_learn.toml`](haitaka_learn.toml)
 
 ## Acknowledgments
