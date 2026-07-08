@@ -1,8 +1,8 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
-use std::process::{Command, ExitCode};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode, Stdio};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -330,14 +330,10 @@ fn generate_data(args: GenerateDataArgs) -> Result<()> {
 fn train(args: TrainArgs) -> Result<()> {
     let ruleset = ruleset_from_config(&args.config)?;
     let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let self_play_bin = build_haitaka_cli(features)?;
     run_command(
         "cargo",
-        haitaka_cli_build_args(features),
-        "build haitaka_cli for self-play selection",
-    )?;
-    run_command(
-        "cargo",
-        haitaka_learn_train_select_args(&args.config, features, &args.extra_args),
+        haitaka_learn_train_select_args(&args.config, features, &self_play_bin, &args.extra_args),
         "train and select strongest NNUE checkpoint",
     )
 }
@@ -485,7 +481,13 @@ fn haitaka_learn_generate_data_args(
 }
 
 fn haitaka_cli_build_args(features: Option<&str>) -> Vec<OsString> {
-    let mut args = os_args(["build", "-p", "haitaka_cli", "--release"]);
+    let mut args = os_args([
+        "build",
+        "-p",
+        "haitaka_cli",
+        "--release",
+        "--message-format=json",
+    ]);
     if let Some(features) = features {
         args.push("--features".into());
         args.push(features.into());
@@ -496,6 +498,7 @@ fn haitaka_cli_build_args(features: Option<&str>) -> Vec<OsString> {
 fn haitaka_learn_train_select_args(
     config: &PathBuf,
     features: Option<&str>,
+    self_play_bin: &Path,
     extra_args: &[OsString],
 ) -> Vec<OsString> {
     let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
@@ -506,16 +509,45 @@ fn haitaka_learn_train_select_args(
     args.extend(os_args(["--", "train-select", "--config"]));
     args.push(config.as_os_str().to_os_string());
     args.push("--self-play-bin".into());
-    args.push(self_play_bin_path().into());
+    args.push(self_play_bin.as_os_str().to_os_string());
     args.extend(extra_args.iter().cloned());
     args
 }
 
-fn self_play_bin_path() -> PathBuf {
-    PathBuf::from(format!(
-        "target/release/haitaka_cli{}",
-        std::env::consts::EXE_SUFFIX
-    ))
+fn build_haitaka_cli(features: Option<&str>) -> Result<PathBuf> {
+    let output = run_command_capture(
+        "cargo",
+        haitaka_cli_build_args(features),
+        "build haitaka_cli for self-play selection",
+    )?;
+    haitaka_cli_executable_from_cargo_messages(&output)
+}
+
+fn haitaka_cli_executable_from_cargo_messages(output: &[u8]) -> Result<PathBuf> {
+    let output = std::str::from_utf8(output)
+        .map_err(|err| format!("cargo build emitted non-UTF-8 JSON output: {err}"))?;
+    let mut executable = None;
+    for line in output.lines().filter(|line| !line.trim().is_empty()) {
+        let message: serde_json::Value = serde_json::from_str(line)
+            .map_err(|err| format!("failed to parse cargo JSON message {line:?}: {err}"))?;
+        if message.get("reason").and_then(|value| value.as_str()) != Some("compiler-artifact") {
+            continue;
+        }
+        let Some(target) = message.get("target") else {
+            continue;
+        };
+        if target.get("name").and_then(|value| value.as_str()) != Some("haitaka_cli") {
+            continue;
+        }
+        if let Some(path) = message.get("executable").and_then(|value| value.as_str()) {
+            executable = Some(PathBuf::from(path));
+        }
+    }
+    executable.ok_or_else(|| {
+        "cargo build did not report the haitaka_cli executable path; \
+         cannot choose a self-play binary safely"
+            .to_string()
+    })
 }
 
 fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
@@ -536,6 +568,32 @@ fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
         return Err(format!("{program} failed with status {status}"));
     }
     Ok(())
+}
+
+fn run_command_capture(program: &str, args: Vec<OsString>, action: &str) -> Result<Vec<u8>> {
+    println!("==> {action}");
+    let child = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("failed to run {program}: {err}"))?;
+    let _sigint_guard = ParentSigintGuard::ignore_while_waiting()?;
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("failed to wait for {program}: {err}"))?;
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.is_empty() {
+            print!("{stdout}");
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            eprint!("{stderr}");
+        }
+        return Err(format!("{program} failed with status {}", output.status));
+    }
+    Ok(output.stdout)
 }
 
 struct ParentSigintGuard {
@@ -697,6 +755,7 @@ mod tests {
         let args = haitaka_learn_train_select_args(
             &PathBuf::from("haitaka_learn.annan.toml"),
             required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            Path::new("/tmp/custom-target/release/haitaka_cli"),
             &[
                 OsString::from("--selection-max-games"),
                 OsString::from("128"),
@@ -712,7 +771,11 @@ mod tests {
             "--config",
             "haitaka_learn.annan.toml"
         ));
-        assert!(args.iter().any(|arg| arg == "--self-play-bin"));
+        assert!(has_adjacent_args(
+            &args,
+            "--self-play-bin",
+            "/tmp/custom-target/release/haitaka_cli"
+        ));
         assert!(has_adjacent_args(&args, "--selection-max-games", "128"));
         assert!(args.iter().any(|arg| arg == "--storage-saver"));
     }
@@ -723,10 +786,24 @@ mod tests {
         let args = haitaka_learn_train_select_args(
             &PathBuf::from("haitaka_learn.toml"),
             required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            Path::new("target/release/haitaka_cli"),
             &[],
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn train_select_uses_haitaka_cli_executable_from_cargo_json() {
+        let output = br#"{"reason":"compiler-artifact","package_id":"path+file:///repo#dependency@0.1.0","target":{"name":"dependency","kind":["bin"]},"executable":"/tmp/target/release/dependency"}
+{"reason":"compiler-artifact","package_id":"path+file:///repo#haitaka_cli@0.1.0","target":{"name":"haitaka_cli","kind":["bin"]},"executable":"/tmp/custom-target/aarch64-apple-darwin/release/haitaka_cli"}
+{"reason":"build-finished","success":true}
+"#;
+
+        assert_eq!(
+            haitaka_cli_executable_from_cargo_messages(output).unwrap(),
+            PathBuf::from("/tmp/custom-target/aarch64-apple-darwin/release/haitaka_cli")
+        );
     }
 
     #[test]
