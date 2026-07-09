@@ -1,8 +1,8 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::path::PathBuf;
-use std::process::{Command, ExitCode};
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode, Stdio};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -20,6 +20,12 @@ struct PackageArgs {
 
 #[derive(Debug)]
 struct GenerateDataArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
+}
+
+#[derive(Debug)]
+struct TrainArgs {
     config: PathBuf,
     extra_args: Vec<OsString>,
 }
@@ -75,6 +81,15 @@ fn run() -> Result<()> {
                 generate_data(parse_generate_data_args(raw_args)?)
             }
         }
+        "train" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_train_usage();
+                Ok(())
+            } else {
+                train(parse_train_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -114,6 +129,22 @@ fn parse_package_args(raw_args: Vec<OsString>) -> Result<PackageArgs> {
 }
 
 fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "generate-data")?;
+    Ok(GenerateDataArgs {
+        config,
+        extra_args: normalize_generate_data_args(extra_args)?,
+    })
+}
+
+fn parse_train_args(raw_args: Vec<OsString>) -> Result<TrainArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "train")?;
+    Ok(TrainArgs { config, extra_args })
+}
+
+fn parse_config_first_args(
+    raw_args: Vec<OsString>,
+    command_name: &str,
+) -> Result<(PathBuf, Vec<OsString>)> {
     let mut iter = raw_args.into_iter();
     let Some(first) = iter.next() else {
         return Err("missing config path".to_string());
@@ -122,15 +153,14 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
     let config = if first == "--config" {
         PathBuf::from(required_value(&mut iter, "--config")?)
     } else if first.to_string_lossy().starts_with('-') {
-        return Err("generate-data expects the config path as the first argument".to_string());
+        return Err(format!(
+            "{command_name} expects the config path as the first argument"
+        ));
     } else {
         PathBuf::from(first)
     };
 
-    Ok(GenerateDataArgs {
-        config,
-        extra_args: normalize_generate_data_args(iter.collect())?,
-    })
+    Ok((config, iter.collect()))
 }
 
 fn normalize_generate_data_args(raw_args: Vec<OsString>) -> Result<Vec<OsString>> {
@@ -297,6 +327,17 @@ fn generate_data(args: GenerateDataArgs) -> Result<()> {
     )
 }
 
+fn train(args: TrainArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let self_play_bin = build_haitaka_cli(features)?;
+    run_command(
+        "cargo",
+        haitaka_learn_train_select_args(&args.config, features, &self_play_bin, &args.extra_args),
+        "train and select strongest NNUE checkpoint",
+    )
+}
+
 fn ruleset_from_config(config: &PathBuf) -> Result<String> {
     let raw_toml = fs::read_to_string(config)
         .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
@@ -439,6 +480,76 @@ fn haitaka_learn_generate_data_args(
     args
 }
 
+fn haitaka_cli_build_args(features: Option<&str>) -> Vec<OsString> {
+    let mut args = os_args([
+        "build",
+        "-p",
+        "haitaka_cli",
+        "--release",
+        "--message-format=json",
+    ]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args
+}
+
+fn haitaka_learn_train_select_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    self_play_bin: &Path,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "train-select", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.push("--self-play-bin".into());
+    args.push(self_play_bin.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
+fn build_haitaka_cli(features: Option<&str>) -> Result<PathBuf> {
+    let output = run_command_capture(
+        "cargo",
+        haitaka_cli_build_args(features),
+        "build haitaka_cli for self-play selection",
+    )?;
+    haitaka_cli_executable_from_cargo_messages(&output)
+}
+
+fn haitaka_cli_executable_from_cargo_messages(output: &[u8]) -> Result<PathBuf> {
+    let output = std::str::from_utf8(output)
+        .map_err(|err| format!("cargo build emitted non-UTF-8 JSON output: {err}"))?;
+    let mut executable = None;
+    for line in output.lines().filter(|line| !line.trim().is_empty()) {
+        let message: serde_json::Value = serde_json::from_str(line)
+            .map_err(|err| format!("failed to parse cargo JSON message {line:?}: {err}"))?;
+        if message.get("reason").and_then(|value| value.as_str()) != Some("compiler-artifact") {
+            continue;
+        }
+        let Some(target) = message.get("target") else {
+            continue;
+        };
+        if target.get("name").and_then(|value| value.as_str()) != Some("haitaka_cli") {
+            continue;
+        }
+        if let Some(path) = message.get("executable").and_then(|value| value.as_str()) {
+            executable = Some(PathBuf::from(path));
+        }
+    }
+    executable.ok_or_else(|| {
+        "cargo build did not report the haitaka_cli executable path; \
+         cannot choose a self-play binary safely"
+            .to_string()
+    })
+}
+
 fn os_args<'a>(args: impl IntoIterator<Item = &'a str>) -> Vec<OsString> {
     args.into_iter().map(OsString::from).collect()
 }
@@ -457,6 +568,32 @@ fn run_command(program: &str, args: Vec<OsString>, action: &str) -> Result<()> {
         return Err(format!("{program} failed with status {status}"));
     }
     Ok(())
+}
+
+fn run_command_capture(program: &str, args: Vec<OsString>, action: &str) -> Result<Vec<u8>> {
+    println!("==> {action}");
+    let child = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("failed to run {program}: {err}"))?;
+    let _sigint_guard = ParentSigintGuard::ignore_while_waiting()?;
+    let output = child
+        .wait_with_output()
+        .map_err(|err| format!("failed to wait for {program}: {err}"))?;
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.is_empty() {
+            print!("{stdout}");
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            eprint!("{stderr}");
+        }
+        return Err(format!("{program} failed with status {}", output.status));
+    }
+    Ok(output.stdout)
 }
 
 struct ParentSigintGuard {
@@ -504,6 +641,7 @@ impl Drop for ParentSigintGuard {
 fn print_usage() {
     eprintln!("Usage: cargo xtask package [options]");
     eprintln!("       cargo generate <config.toml> [generate-data options]");
+    eprintln!("       cargo train <config.toml> [train-select options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
     eprintln!("       cargo run -p xtask -- package [options]");
@@ -517,6 +655,14 @@ fn print_generate_data_usage() {
     eprintln!("  --shard <N/M> runs lane N of M using 1-indexed lane numbers.");
     eprintln!("  --shard <N-P/M> runs an inclusive lane range, e.g. --shard 3-5/8.");
     eprintln!("  Additional options are passed to haitaka_learn generate-data.");
+}
+
+fn print_train_usage() {
+    eprintln!("Usage: cargo train <config.toml> [train-select options]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, builds haitaka_cli with");
+    eprintln!("  matching --features when required, then runs haitaka_learn train-select.");
+    eprintln!("  Useful options: --no-resume, --selection-max-games <N>, --storage-saver.");
 }
 
 fn print_package_usage() {
@@ -601,6 +747,63 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn train_select_infers_variant_feature_and_forwards_options() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"annan\"\n").unwrap();
+        let args = haitaka_learn_train_select_args(
+            &PathBuf::from("haitaka_learn.annan.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            Path::new("/tmp/custom-target/release/haitaka_cli"),
+            &[
+                OsString::from("--selection-max-games"),
+                OsString::from("128"),
+                OsString::from("--storage-saver"),
+            ],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(has_adjacent_args(&args, "--features", "annan"));
+        assert!(args.iter().any(|arg| arg == "train-select"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.annan.toml"
+        ));
+        assert!(has_adjacent_args(
+            &args,
+            "--self-play-bin",
+            "/tmp/custom-target/release/haitaka_cli"
+        ));
+        assert!(has_adjacent_args(&args, "--selection-max-games", "128"));
+        assert!(args.iter().any(|arg| arg == "--storage-saver"));
+    }
+
+    #[test]
+    fn train_select_omits_features_for_standard_config() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"standard\"\n").unwrap();
+        let args = haitaka_learn_train_select_args(
+            &PathBuf::from("haitaka_learn.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            Path::new("target/release/haitaka_cli"),
+            &[],
+        );
+
+        assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn train_select_uses_haitaka_cli_executable_from_cargo_json() {
+        let output = br#"{"reason":"compiler-artifact","package_id":"path+file:///repo#dependency@0.1.0","target":{"name":"dependency","kind":["bin"]},"executable":"/tmp/target/release/dependency"}
+{"reason":"compiler-artifact","package_id":"path+file:///repo#haitaka_cli@0.1.0","target":{"name":"haitaka_cli","kind":["bin"]},"executable":"/tmp/custom-target/aarch64-apple-darwin/release/haitaka_cli"}
+{"reason":"build-finished","success":true}
+"#;
+
+        assert_eq!(
+            haitaka_cli_executable_from_cargo_messages(output).unwrap(),
+            PathBuf::from("/tmp/custom-target/aarch64-apple-darwin/release/haitaka_cli")
+        );
     }
 
     #[test]

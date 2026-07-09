@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
 use std::time::SystemTime;
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -13,7 +13,7 @@ use crate::config::{
 use crate::dataset::ENTRY_BYTES;
 
 #[derive(Debug, Serialize)]
-struct ExportMetadata {
+pub(crate) struct ExportMetadata {
     exported_nnue: String,
     source_checkpoint: String,
     trainer_checkout: String,
@@ -36,68 +36,10 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
-    ensure_training_dataset_ready(
-        &artifacts.train_bin,
-        &artifacts.train_manifest,
-        "training dataset",
-        loaded.config.data.train_games,
-    )?;
-    ensure_training_dataset_ready(
-        &artifacts.validation_bin,
-        &artifacts.validation_manifest,
-        "validation dataset",
-        loaded.config.data.validation_games,
-    )?;
+    ensure_training_inputs_ready(loaded)?;
 
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
-    let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
-    let resume_checkpoint = if should_resume {
-        find_latest_valid_checkpoint(
-            &artifacts.logs_dir,
-            &loaded.config.paths.python,
-            &trainer_checkout,
-        )?
-    } else {
-        None
-    };
-    let bootstrap_model = if resume_checkpoint.is_none() {
-        materialize_bootstrap_pt(loaded, &trainer_checkout)?
-    } else {
-        None
-    };
-
-    let mut args = vec![
-        "train.py".to_string(),
-        artifacts.train_bin.display().to_string(),
-        artifacts.validation_bin.display().to_string(),
-        "--features".to_string(),
-        loaded.training_features().to_string(),
-        "--default_root_dir".to_string(),
-        artifacts.logs_dir.display().to_string(),
-        "--max_epochs".to_string(),
-        loaded.config.training.max_epochs.to_string(),
-        "--num-workers".to_string(),
-        loaded.config.training.num_workers.to_string(),
-        "--batch-size".to_string(),
-        loaded.config.training.batch_size.to_string(),
-        "--lambda".to_string(),
-        loaded.config.training.lambda_.to_string(),
-        "--random-fen-skipping".to_string(),
-        loaded.config.training.random_fen_skipping.to_string(),
-        "--epoch-size".to_string(),
-        loaded.config.training.epoch_size.to_string(),
-        "--validation-size".to_string(),
-        loaded.config.training.validation_size.to_string(),
-    ];
-    if let Some(checkpoint) = resume_checkpoint {
-        println!("resuming training from {}", checkpoint.display());
-        args.push("--resume_from_checkpoint".to_string());
-        args.push(checkpoint.display().to_string());
-    } else if let Some(model) = bootstrap_model {
-        args.push("--resume-from-model".to_string());
-        args.push(model.display().to_string());
-    }
-    args.extend(loaded.config.training.extra_args.clone());
+    let args = training_args(loaded, resume_override, &trainer_checkout)?;
 
     run_command(
         &loaded.config.paths.python,
@@ -157,8 +99,144 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
         "variant-nnue-pytorch export",
     )?;
 
+    write_export_metadata(
+        loaded,
+        &trainer_checkout,
+        &checkpoint,
+        &artifacts.exported_nnue,
+    )?;
+
+    Ok(artifacts.exported_nnue)
+}
+
+pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> {
+    let artifacts = loaded.artifact_paths();
+    ensure_training_dataset_ready(
+        &artifacts.train_bin,
+        &artifacts.train_manifest,
+        "training dataset",
+        loaded.config.data.train_games,
+    )?;
+    ensure_training_dataset_ready(
+        &artifacts.validation_bin,
+        &artifacts.validation_manifest,
+        "validation dataset",
+        loaded.config.data.validation_games,
+    )
+}
+
+pub(crate) fn training_args(
+    loaded: &LoadedConfig,
+    resume_override: Option<bool>,
+    trainer_checkout: &Path,
+) -> Result<Vec<String>> {
+    let artifacts = loaded.artifact_paths();
+    let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
+    let resume_checkpoint = if should_resume {
+        find_latest_valid_checkpoint(
+            &artifacts.logs_dir,
+            &loaded.config.paths.python,
+            trainer_checkout,
+        )?
+    } else {
+        None
+    };
+    let bootstrap_model = if resume_checkpoint.is_none() {
+        materialize_bootstrap_pt(loaded, trainer_checkout)?
+    } else {
+        None
+    };
+
+    let mut args = vec![
+        "train.py".to_string(),
+        artifacts.train_bin.display().to_string(),
+        artifacts.validation_bin.display().to_string(),
+        "--features".to_string(),
+        loaded.training_features().to_string(),
+        "--default_root_dir".to_string(),
+        artifacts.logs_dir.display().to_string(),
+        "--max_epochs".to_string(),
+        loaded.config.training.max_epochs.to_string(),
+        "--num-workers".to_string(),
+        loaded.config.training.num_workers.to_string(),
+        "--batch-size".to_string(),
+        loaded.config.training.batch_size.to_string(),
+        "--lambda".to_string(),
+        loaded.config.training.lambda_.to_string(),
+        "--random-fen-skipping".to_string(),
+        loaded.config.training.random_fen_skipping.to_string(),
+        "--epoch-size".to_string(),
+        loaded.config.training.epoch_size.to_string(),
+        "--validation-size".to_string(),
+        loaded.config.training.validation_size.to_string(),
+    ];
+    if let Some(checkpoint) = resume_checkpoint {
+        println!("resuming training from {}", checkpoint.display());
+        args.push("--resume_from_checkpoint".to_string());
+        args.push(checkpoint.display().to_string());
+    } else if let Some(model) = bootstrap_model {
+        args.push("--resume-from-model".to_string());
+        args.push(model.display().to_string());
+    }
+    args.extend(loaded.config.training.extra_args.clone());
+    Ok(args)
+}
+
+pub(crate) fn spawn_training(
+    loaded: &LoadedConfig,
+    trainer_checkout: &Path,
+    resume_override: Option<bool>,
+) -> Result<Child> {
+    ensure_training_inputs_ready(loaded)?;
+    let args = training_args(loaded, resume_override, trainer_checkout)?;
+    Command::new(&loaded.config.paths.python)
+        .args(args)
+        .current_dir(trainer_checkout)
+        .spawn()
+        .with_context(|| {
+            format!(
+                "failed to start variant-nnue-pytorch training using `{}`",
+                loaded.config.paths.python
+            )
+        })
+}
+
+pub(crate) fn export_checkpoint_to(
+    loaded: &LoadedConfig,
+    trainer_checkout: &Path,
+    checkpoint: &Path,
+    output_nnue: &Path,
+) -> Result<()> {
+    ensure_file_exists(checkpoint, "checkpoint")?;
+    if let Some(parent) = output_nnue.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    run_command(
+        &loaded.config.paths.python,
+        &[
+            "serialize.py".to_string(),
+            checkpoint.display().to_string(),
+            output_nnue.display().to_string(),
+            "--features".to_string(),
+            loaded.training_features().to_string(),
+            "--description".to_string(),
+            loaded.config.export.description.clone(),
+        ],
+        trainer_checkout,
+        "variant-nnue-pytorch export",
+    )
+}
+
+pub(crate) fn write_export_metadata(
+    loaded: &LoadedConfig,
+    trainer_checkout: &Path,
+    checkpoint: &Path,
+    exported_nnue: &Path,
+) -> Result<()> {
+    let artifacts = loaded.artifact_paths();
     let metadata = ExportMetadata {
-        exported_nnue: artifacts.exported_nnue.display().to_string(),
+        exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
         trainer_revision: detect_git_revision(&trainer_checkout),
@@ -172,15 +250,15 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     )
     .with_context(|| format!("failed to write {}", artifacts.export_metadata.display()))?;
 
-    Ok(artifacts.exported_nnue)
+    Ok(())
 }
 
-struct PreparedTrainer {
+pub(crate) struct PreparedTrainer {
     backups: Vec<FileBackup>,
 }
 
 impl PreparedTrainer {
-    fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
+    pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
         if !trainer_checkout.exists() {
             bail!(
                 "trainer checkout does not exist: {}",
@@ -427,7 +505,7 @@ fn detect_git_revision(repo_root: &Path) -> Option<String> {
     Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
+pub(crate) fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
     };
@@ -441,7 +519,7 @@ fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-fn sort_checkpoints_newest_first(paths: &mut [PathBuf]) {
+pub(crate) fn sort_checkpoints_newest_first(paths: &mut [PathBuf]) {
     paths.sort_by_key(|path| {
         fs::metadata(path)
             .and_then(|m| m.modified())
@@ -450,7 +528,11 @@ fn sort_checkpoints_newest_first(paths: &mut [PathBuf]) {
     paths.reverse();
 }
 
-fn find_latest_valid_checkpoint(root: &Path, python: &str, cwd: &Path) -> Result<Option<PathBuf>> {
+pub(crate) fn find_latest_valid_checkpoint(
+    root: &Path,
+    python: &str,
+    cwd: &Path,
+) -> Result<Option<PathBuf>> {
     let mut candidates = Vec::new();
     collect_checkpoints(root, &mut candidates);
     sort_checkpoints_newest_first(&mut candidates);
@@ -462,7 +544,7 @@ fn find_latest_valid_checkpoint(root: &Path, python: &str, cwd: &Path) -> Result
     Ok(None)
 }
 
-fn is_valid_checkpoint(path: &Path, python: &str, cwd: &Path) -> Result<bool> {
+pub(crate) fn is_valid_checkpoint(path: &Path, python: &str, cwd: &Path) -> Result<bool> {
     let status = Command::new(python)
         .args(["-c", checkpoint_validation_script()])
         .arg(path)
@@ -577,8 +659,8 @@ fn donor_mode_cpp_value(ruleset: Ruleset) -> u8 {
 mod tests {
     use super::*;
     use crate::config::{
-        DataConfig, ExportConfig, LearnConfig, PathsConfig, RulesConfig, TrainingConfig,
-        VerifyConfig,
+        DataConfig, ExportConfig, LearnConfig, PathsConfig, RulesConfig, SelectionConfig,
+        TrainingConfig, VerifyConfig,
     };
     use tempfile::tempdir;
 
@@ -713,6 +795,7 @@ mod tests {
                 training: TrainingConfig::default(),
                 export: ExportConfig::default(),
                 verify: VerifyConfig::default(),
+                selection: SelectionConfig::default(),
             },
         }
     }

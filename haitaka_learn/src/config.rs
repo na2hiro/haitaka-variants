@@ -374,6 +374,8 @@ pub struct LearnConfig {
     pub export: ExportConfig,
     #[serde(default)]
     pub verify: VerifyConfig,
+    #[serde(default)]
+    pub selection: SelectionConfig,
 }
 
 impl LearnConfig {
@@ -413,6 +415,34 @@ impl LearnConfig {
             "training.features=`{configured}` is not valid for ruleset={}; expected one of: {}",
             self.rules.ruleset.as_str(),
             allowed.join(", ")
+        );
+        ensure!(
+            self.selection.poll_interval_secs > 0,
+            "selection.poll_interval_secs must be > 0"
+        );
+        ensure!(
+            self.selection.batch_games > 0,
+            "selection.batch_games must be > 0"
+        );
+        ensure!(
+            self.selection.max_games >= self.selection.batch_games,
+            "selection.max_games must be >= selection.batch_games"
+        );
+        ensure!(
+            self.selection.movetime_ms > 0,
+            "selection.movetime_ms must be > 0"
+        );
+        ensure!(
+            self.selection.sprt_alpha > 0.0 && self.selection.sprt_alpha < 1.0,
+            "selection.sprt_alpha must be between 0 and 1"
+        );
+        ensure!(
+            self.selection.sprt_beta > 0.0 && self.selection.sprt_beta < 1.0,
+            "selection.sprt_beta must be between 0 and 1"
+        );
+        ensure!(
+            self.selection.sprt_elo1 > self.selection.sprt_elo0,
+            "selection.sprt_elo1 must be greater than selection.sprt_elo0"
         );
         if self.rules.ruleset == Ruleset::Handicap {
             ensure!(
@@ -646,6 +676,56 @@ impl Default for VerifyConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct SelectionConfig {
+    #[serde(default = "default_selection_poll_interval_secs")]
+    pub poll_interval_secs: u64,
+    #[serde(default = "default_selection_stable_checkpoint_secs")]
+    pub stable_checkpoint_secs: u64,
+    #[serde(default = "default_selection_batch_games")]
+    pub batch_games: u32,
+    #[serde(default = "default_selection_max_games")]
+    pub max_games: u32,
+    #[serde(default = "default_selection_threads")]
+    pub threads: usize,
+    #[serde(default = "default_selection_movetime_ms")]
+    pub movetime_ms: u32,
+    #[serde(default = "default_selection_opening_random_plies")]
+    pub opening_random_plies: u16,
+    #[serde(default = "default_selection_seed")]
+    pub seed: u64,
+    #[serde(default = "default_selection_sprt_elo0")]
+    pub sprt_elo0: f64,
+    #[serde(default = "default_selection_sprt_elo1")]
+    pub sprt_elo1: f64,
+    #[serde(default = "default_selection_sprt_alpha")]
+    pub sprt_alpha: f64,
+    #[serde(default = "default_selection_sprt_beta")]
+    pub sprt_beta: f64,
+    #[serde(default)]
+    pub storage_saver: bool,
+}
+
+impl Default for SelectionConfig {
+    fn default() -> Self {
+        Self {
+            poll_interval_secs: default_selection_poll_interval_secs(),
+            stable_checkpoint_secs: default_selection_stable_checkpoint_secs(),
+            batch_games: default_selection_batch_games(),
+            max_games: default_selection_max_games(),
+            threads: default_selection_threads(),
+            movetime_ms: default_selection_movetime_ms(),
+            opening_random_plies: default_selection_opening_random_plies(),
+            seed: default_selection_seed(),
+            sprt_elo0: default_selection_sprt_elo0(),
+            sprt_elo1: default_selection_sprt_elo1(),
+            sprt_alpha: default_selection_sprt_alpha(),
+            sprt_beta: default_selection_sprt_beta(),
+            storage_saver: false,
+        }
+    }
+}
+
 fn default_output_dir() -> PathBuf {
     PathBuf::from("haitaka_learn-out")
 }
@@ -764,6 +844,54 @@ fn default_verify_search_depth() -> u8 {
 
 fn default_run_search_smoke() -> bool {
     true
+}
+
+fn default_selection_poll_interval_secs() -> u64 {
+    15
+}
+
+fn default_selection_stable_checkpoint_secs() -> u64 {
+    10
+}
+
+fn default_selection_batch_games() -> u32 {
+    64
+}
+
+fn default_selection_max_games() -> u32 {
+    1024
+}
+
+fn default_selection_threads() -> usize {
+    0
+}
+
+fn default_selection_movetime_ms() -> u32 {
+    100
+}
+
+fn default_selection_opening_random_plies() -> u16 {
+    4
+}
+
+fn default_selection_seed() -> u64 {
+    1
+}
+
+fn default_selection_sprt_elo0() -> f64 {
+    0.0
+}
+
+fn default_selection_sprt_elo1() -> f64 {
+    5.0
+}
+
+fn default_selection_sprt_alpha() -> f64 {
+    0.05
+}
+
+fn default_selection_sprt_beta() -> f64 {
+    0.05
 }
 
 fn active_variant_feature() -> Option<&'static str> {
@@ -1017,6 +1145,7 @@ validation_games = 1
                     training: TrainingConfig::default(),
                     export: ExportConfig::default(),
                     verify: VerifyConfig::default(),
+                    selection: SelectionConfig::default(),
                 },
             };
             assert_eq!(loaded.effective_rule_id().unwrap(), expected);
@@ -1040,6 +1169,7 @@ validation_games = 1
                 training: TrainingConfig::default(),
                 export: ExportConfig::default(),
                 verify: VerifyConfig::default(),
+                selection: SelectionConfig::default(),
             },
         };
 

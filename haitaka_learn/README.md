@@ -123,6 +123,12 @@ Key fields:
   - upstream trainer args like batch size and epoch count
 - `[export]`
   - output name and description string
+- `[selection]`
+  - live checkpoint polling and self-play promotion settings for `cargo train`
+  - `batch_games` and `max_games` bound each candidate-vs-incumbent SPRT match
+  - `sprt_elo0`, `sprt_elo1`, `sprt_alpha`, and `sprt_beta` control the promotion gate
+  - `storage_saver = true` deletes rejected or dethroned checkpoint files only after
+    they are no longer the selected model, current incumbent, or newest resume checkpoint
 - `[verify]`
   - smoke-search settings
 
@@ -182,7 +188,39 @@ cargo run -p haitaka_learn -- merge-data --config haitaka_learn.toml --input pat
 expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
 `--ignore-identity-mismatch` to skip those two checks.
 
-### 2. Train
+### 2. Train And Select The Best Checkpoint
+
+Run this on the CUDA machine:
+
+```bash
+cd haitaka-variants
+cargo train haitaka_learn.toml
+```
+
+This:
+
+- reads `[rules].ruleset` from the config and builds the matching release
+  `haitaka_cli` self-play binary
+- launches upstream `train.py`
+- watches for stable `.ckpt` files under the training logs directory
+- exports every valid checkpoint into `artifacts/selection/candidates/`
+- evaluates each new NNUE against the current incumbent using `haitaka_cli self-play`
+- promotes a candidate only when the SPRT gate accepts it
+- writes resumable selection state to `artifacts/selection/selection.json`
+- copies the final selected model to `[export].output_name`
+
+Useful overrides:
+
+```bash
+cargo train haitaka_learn.toml --selection-max-games 2048
+cargo train haitaka_learn.toml --storage-saver
+```
+
+`--storage-saver` is conservative: it only removes checkpoint files for rejected
+or dethroned candidates, and it keeps the selected checkpoint, current incumbent,
+inconclusive checkpoints, and newest valid checkpoint for training resume.
+
+### 3. Manual Train
 
 Run this on the CUDA machine:
 
@@ -199,21 +237,21 @@ This command:
 - converts the bootstrap `.nnue` into `bootstrap.pt`
 - launches upstream `train.py`
 
-### 3. Export
+### 4. Manual Export
 
 ```bash
 cd haitaka-variants
 cargo run -p haitaka_learn -- export --config haitaka_learn.toml
 ```
 
-### 4. Verify
+### 5. Verify
 
 ```bash
 cd haitaka-variants
 cargo run -p haitaka_learn -- verify --config haitaka_learn.toml
 ```
 
-### 5. One-shot pipeline
+### 6. One-shot pipeline
 
 ```bash
 cd haitaka-variants
