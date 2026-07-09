@@ -30,6 +30,18 @@ struct TrainArgs {
     extra_args: Vec<OsString>,
 }
 
+#[derive(Debug)]
+struct MergeDataArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
+}
+
+#[derive(Debug)]
+struct VerifyArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
+}
+
 impl Default for PackageArgs {
     fn default() -> Self {
         Self {
@@ -90,6 +102,24 @@ fn run() -> Result<()> {
                 train(parse_train_args(raw_args)?)
             }
         }
+        "merge" | "merge-data" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_merge_data_usage();
+                Ok(())
+            } else {
+                merge_data(parse_merge_data_args(raw_args)?)
+            }
+        }
+        "verify" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_verify_usage();
+                Ok(())
+            } else {
+                verify(parse_verify_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -139,6 +169,16 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
 fn parse_train_args(raw_args: Vec<OsString>) -> Result<TrainArgs> {
     let (config, extra_args) = parse_config_first_args(raw_args, "train")?;
     Ok(TrainArgs { config, extra_args })
+}
+
+fn parse_merge_data_args(raw_args: Vec<OsString>) -> Result<MergeDataArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "merge-data")?;
+    Ok(MergeDataArgs { config, extra_args })
+}
+
+fn parse_verify_args(raw_args: Vec<OsString>) -> Result<VerifyArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "verify")?;
+    Ok(VerifyArgs { config, extra_args })
 }
 
 fn parse_config_first_args(
@@ -338,6 +378,26 @@ fn train(args: TrainArgs) -> Result<()> {
     )
 }
 
+fn merge_data(args: MergeDataArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    run_command(
+        "cargo",
+        haitaka_learn_merge_data_args(&args.config, features, &args.extra_args),
+        "merge haitaka_learn data",
+    )
+}
+
+fn verify(args: VerifyArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    run_command(
+        "cargo",
+        haitaka_learn_verify_args(&args.config, features, &args.extra_args),
+        "verify haitaka_learn NNUE",
+    )
+}
+
 fn ruleset_from_config(config: &PathBuf) -> Result<String> {
     let raw_toml = fs::read_to_string(config)
         .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
@@ -514,6 +574,38 @@ fn haitaka_learn_train_select_args(
     args
 }
 
+fn haitaka_learn_merge_data_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "merge-data", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
+fn haitaka_learn_verify_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "verify", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
 fn build_haitaka_cli(features: Option<&str>) -> Result<PathBuf> {
     let output = run_command_capture(
         "cargo",
@@ -642,6 +734,8 @@ fn print_usage() {
     eprintln!("Usage: cargo xtask package [options]");
     eprintln!("       cargo generate <config.toml> [generate-data options]");
     eprintln!("       cargo train <config.toml> [train-select options]");
+    eprintln!("       cargo merge <config.toml> --input <output-dir> [--input <output-dir> ...]");
+    eprintln!("       cargo verify <config.toml> [verify options]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
     eprintln!("       cargo run -p xtask -- package [options]");
@@ -663,6 +757,22 @@ fn print_train_usage() {
     eprintln!("  Reads [rules].ruleset from the TOML config, builds haitaka_cli with");
     eprintln!("  matching --features when required, then runs haitaka_learn train-select.");
     eprintln!("  Useful options: --no-resume, --selection-max-games <N>, --storage-saver.");
+}
+
+fn print_merge_data_usage() {
+    eprintln!("Usage: cargo merge <config.toml> --input <output-dir> [--input <output-dir> ...]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn merge-data");
+    eprintln!("  with --release, and adds the matching --features flag when required.");
+    eprintln!("  Additional options are passed to haitaka_learn merge-data.");
+}
+
+fn print_verify_usage() {
+    eprintln!("Usage: cargo verify <config.toml> [verify options]");
+    eprintln!("Options:");
+    eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn verify");
+    eprintln!("  with --release, and adds the matching --features flag when required.");
+    eprintln!("  Additional options are passed to haitaka_learn verify.");
 }
 
 fn print_package_usage() {
@@ -791,6 +901,53 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn merge_data_infers_variant_feature_and_forwards_inputs() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"taimen\"\n").unwrap();
+        let args = haitaka_learn_merge_data_args(
+            &PathBuf::from("haitaka_learn.taimen.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[
+                OsString::from("--input"),
+                OsString::from("out/machine-a"),
+                OsString::from("--input"),
+                OsString::from("out/machine-b"),
+            ],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(args.iter().any(|arg| arg == "--release"));
+        assert!(has_adjacent_args(&args, "--features", "taimen"));
+        assert!(args.iter().any(|arg| arg == "merge-data"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.taimen.toml"
+        ));
+        assert!(has_adjacent_args(&args, "--input", "out/machine-a"));
+        assert!(has_adjacent_args(&args, "--input", "out/machine-b"));
+    }
+
+    #[test]
+    fn verify_infers_variant_feature() {
+        let ruleset = ruleset_from_toml("[rules]\nruleset = \"nekoneko\"\n").unwrap();
+        let args = haitaka_learn_verify_args(
+            &PathBuf::from("haitaka_learn.nekoneko.toml"),
+            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            &[],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(args.iter().any(|arg| arg == "--release"));
+        assert!(has_adjacent_args(&args, "--features", "nekoneko"));
+        assert!(args.iter().any(|arg| arg == "verify"));
+        assert!(has_adjacent_args(
+            &args,
+            "--config",
+            "haitaka_learn.nekoneko.toml"
+        ));
     }
 
     #[test]

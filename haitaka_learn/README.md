@@ -3,7 +3,7 @@
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data
-- invoking upstream `variant-nnue-pytorch`
+- invoking the modified `haitaka-variant-nnue-pytorch` trainer
 - exporting a `.nnue`
 - verifying that the exported net loads and searches inside Haitaka
 
@@ -25,23 +25,23 @@ Ruleset-to-feature-set mapping:
 
 ## What Is Already Prepared
 
-The example config expects the upstream trainer checkout at:
+The example config expects the modified trainer checkout at:
 
-`../variant-nnue-pytorch`
+`../haitaka-variant-nnue-pytorch`
 
 The example config at [/haitaka_learn.toml](../haitaka_learn.toml) already points there.
 
 Important environment note:
 
-- Upstream `variant-nnue-pytorch` is a CUDA-first trainer.
-- On macOS / Apple Silicon, the upstream `requirements.txt` is not the happy path because it installs CUDA wheels and `train.py` currently calls `.cuda()` directly.
+- `haitaka-variant-nnue-pytorch` is a CUDA-first trainer.
+- On macOS / Apple Silicon, the trainer `requirements.txt` is not the happy path because it installs CUDA wheels and `train.py` currently calls `.cuda()` directly.
 - This means the current machine is good for data generation and verification, but actual training should happen on a Linux machine with a CUDA-capable GPU.
 
 ## Directory Layout
 
 Typical outputs go under the configured `output_dir`, by default:
 
-`./haitaka_learn-out`
+`./out`
 
 Generated artifacts:
 
@@ -67,19 +67,19 @@ Generated artifacts:
 - `cmake`
 - C++17 compiler
 - NVIDIA GPU with CUDA support
-- upstream trainer checkout:
-  - `../variant-nnue-pytorch`
+- modified trainer checkout:
+  - `../haitaka-variant-nnue-pytorch`
 
 Recommended CUDA-machine setup inside the trainer checkout:
 
 ```bash
-cd ../variant-nnue-pytorch
-python3 -m venv env
-source env/bin/activate
-pip install -r requirements.txt
+scripts/install_trainer_requirements.sh ../haitaka-variant-nnue-pytorch
 ```
 
-The upstream trainer README says CUDA 11.8 wheels are the default path.
+The installer creates the trainer virtualenv, upgrades `pip`, and chooses the
+requirements file for the detected CUDA runtime. Set
+`HAITAKA_TRAINER_REQUIREMENTS=requirements-CUDA128.txt` only when you need to
+force a specific requirements file.
 
 ## Config
 
@@ -120,7 +120,7 @@ Key fields:
   - Annan / Anhoku / Taimen / Haimen / Tenkyo / Tenjiku use `HalfKAv2^+DonorSingleEff`
   - Antouzai uses `HalfKAv2^+DonorPairSlots`
   - Anki uses `HalfKAv2^+DonorKnight8Slots`
-  - upstream trainer args like batch size and epoch count
+  - trainer args like batch size and epoch count
 - `[export]`
   - output name and description string
 - `[selection]`
@@ -140,7 +140,7 @@ Use the default build for standard shogi and handicap shogi.
 
 ```bash
 cd haitaka-variants
-cargo generate haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml
 ```
 
 This:
@@ -155,18 +155,13 @@ This:
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
 
-`--jobs 0` is already the default. Pass a smaller value only if the machine becomes memory- or thermally-limited.
-
-Equivalent command with the explicit `jobs` override:
-
-```bash
-cargo generate haitaka_learn.toml --jobs 0
-```
+Data generation uses all available CPU cores by default. Pass `--jobs N` only
+when you need to cap CPU, memory, or thermal load.
 
 Generate only one lane of a distributed shard split:
 
 ```bash
-cargo generate haitaka_learn.toml --jobs 0 --shard 1/2
+cargo generate haitaka_learn.toml --shard 1/2
 ```
 
 `--shard N/M` is 1-indexed. `--shard 3-5/8` runs the inclusive range covered
@@ -181,7 +176,7 @@ started. Press Ctrl-C again to terminate immediately.
 Merge shard outputs copied back from multiple machines:
 
 ```bash
-cargo run -p haitaka_learn -- merge-data --config haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
+cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
 ```
 
 `merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
@@ -201,7 +196,7 @@ This:
 
 - reads `[rules].ruleset` from the config and builds the matching release
   `haitaka_cli` self-play binary
-- launches upstream `train.py`
+- launches trainer `train.py`
 - watches for stable `.ckpt` files under the training logs directory
 - exports every valid checkpoint into `artifacts/selection/candidates/`
 - evaluates each new NNUE against the current incumbent using `haitaka_cli self-play`
@@ -231,11 +226,11 @@ cargo run -p haitaka_learn -- train --config haitaka_learn.toml
 
 This command:
 
-- temporarily writes shogi-specific `variant.py` and `variant.h` into the upstream trainer checkout
+- temporarily writes shogi-specific `variant.py` and `variant.h` into the trainer checkout
 - restores those files afterward
-- optionally builds the upstream fast data loader with `cmake`
+- optionally builds the trainer fast data loader with `cmake`
 - converts the bootstrap `.nnue` into `bootstrap.pt`
-- launches upstream `train.py`
+- launches trainer `train.py`
 
 ### 4. Manual Export
 
@@ -248,7 +243,7 @@ cargo run -p haitaka_learn -- export --config haitaka_learn.toml
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn -- verify --config haitaka_learn.toml
+cargo verify haitaka_learn.toml
 ```
 
 ### 6. One-shot pipeline
@@ -280,7 +275,7 @@ features = "HalfKAv2^+DonorSingleEff" # Antouzai uses DonorPairSlots; Anki uses 
 
 ```bash
 cd haitaka-variants
-cargo generate haitaka_learn.toml --jobs 0
+cargo generate haitaka_learn.toml
 ```
 
 `cargo generate` reads the ruleset from the config, so the same command works
@@ -291,20 +286,14 @@ and Anki while still using the matching feature and a release build.
 
 ```bash
 cd haitaka-variants
-cargo run -p haitaka_learn --features annan -- train --config haitaka_learn.toml
+cargo train haitaka_learn.toml
 cargo run -p haitaka_learn --features annan -- export --config haitaka_learn.toml
-cargo run -p haitaka_learn --features annan -- verify --config haitaka_learn.toml
-
-cargo run -p haitaka_learn --features anhoku -- train --config haitaka_learn.toml
-cargo run -p haitaka_learn --features anhoku -- export --config haitaka_learn.toml
-cargo run -p haitaka_learn --features anhoku -- verify --config haitaka_learn.toml
-
-cargo run -p haitaka_learn --features antouzai -- train --config haitaka_learn.toml
-cargo run -p haitaka_learn --features antouzai -- export --config haitaka_learn.toml
-cargo run -p haitaka_learn --features antouzai -- verify --config haitaka_learn.toml
+cargo verify haitaka_learn.toml
 ```
 
-Use the same matching feature flag consistently for data-generation, training, export, and verification runs.
+The wrapper commands infer the matching feature from `[rules].ruleset`. Manual
+`cargo run -p haitaka_learn` commands still need the matching `--features`
+value.
 
 ## Notes On Labels
 
@@ -330,7 +319,7 @@ Current limitation:
 
 The report is written to:
 
-`haitaka_learn-out/artifacts/verify.json`
+`out/artifacts/verify.json`
 
 ## Practical Recommendation
 
@@ -342,7 +331,7 @@ Use this split:
   - inspect manifests
   - verify exported nets
 - Linux / CUDA trainer box:
-  - install upstream trainer deps
+  - install trainer deps
   - run `train`
   - run `export`
   - copy resulting `.nnue` back if needed

@@ -6,5 +6,5 @@ Cargo.lock
 .serena/
 
 haitaka_wasm/pkg/
-haitaka_learn-out
+/out
 /.codex

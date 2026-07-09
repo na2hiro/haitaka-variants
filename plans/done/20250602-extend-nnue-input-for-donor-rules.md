@@ -23,7 +23,7 @@
     - single-donor 系は donor の相対位置を geometry に入れず、effective_piece_type に潰して共有 geometry を保つ。Annan と Anhoku は同じ family に乗せる。
     - two-donor-union 系は slot 依存情報を保持する。Antouzai は slot 順を left, right で固定する。
     - knight-8-donor 系は 8 つの八方桂 donor slot を固定順で持つ。順序は mover 基準の knight offset を時計回りで固定し、trainer と runtime で完全一致させる。
-- Trainer / external repo (variant-nnue-pytorch)
+- Trainer / external repo (haitaka-variant-nnue-pytorch)
     - Python feature block に DonorSingleEff, DonorPairSlots, DonorKnight8Slots を追加し、features 文字列として上の 3 つの composite feature set を解決できるようにする。
     - C++ data loader に同名 block の sparse feature 展開を追加する。rule family ごとの donor descriptor を block 内に持ち、packed position から donor active feature を直接生成する。
     - feature_set.py の multi-block hash 計算バグを修正する。新しい composite feature set では single-block 前提をやめ、union feature set の hash を正しく計算する。
@@ -45,7 +45,7 @@
 
 ### Test Plan
 
-- variant-nnue-pytorch
+- haitaka-variant-nnue-pytorch
     - 新 feature set 名 3 種が parser で解決できること
     - multi-block feature set で hash 計算が動くこと
     - 各 donor block の sparse active feature が crafted positions で期待どおりになること

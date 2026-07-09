@@ -49,7 +49,7 @@ extra_args = ["--threads", "8", "--gpus", "1"]
 
 - During `generate-data`, Haitaka loads the `.nnue` directly and uses it as the
   teacher evaluator inside search.
-- During `train`, `haitaka_learn` asks `variant-nnue-pytorch/serialize.py` to
+- During `train`, `haitaka_learn` asks `haitaka-variant-nnue-pytorch/serialize.py` to
   convert that same file into `bootstrap.pt` and resume PyTorch training from
   it.
 
@@ -83,12 +83,15 @@ Generate data locally when CPU generation is cheaper or easier than keeping the
 GPU instance alive:
 
 ```bash
-cargo generate haitaka_learn.my-run.toml --jobs 0
+cargo generate haitaka_learn.my-run.toml
 ```
 
 `cargo generate` reads `[rules].ruleset`, builds `haitaka_learn` in release
 mode with the matching Cargo feature when needed, runs `generate-data`, and
 passes extra options through.
+
+Data generation uses all available CPU cores by default. Pass `--jobs N` only
+when you need to cap CPU, memory, or thermal load.
 
 Generation is resumable. If you stop with Ctrl-C or lose the machine, rerun the
 same command; completed shard files under `datasets/shards/` are reused.
@@ -97,23 +100,22 @@ Split data generation across machines with 1-indexed shard lanes:
 
 ```bash
 # Machine A
-cargo generate haitaka_learn.my-run.toml --jobs 0 --shard 1/2
+cargo generate haitaka_learn.my-run.toml --shard 1/2
 
 # Machine B
-cargo generate haitaka_learn.my-run.toml --jobs 0 --shard 2/2
+cargo generate haitaka_learn.my-run.toml --shard 2/2
 ```
 
 You can also run a contiguous range:
 
 ```bash
-cargo generate haitaka_learn.my-run.toml --jobs 0 --shard 3-5/8
+cargo generate haitaka_learn.my-run.toml --shard 3-5/8
 ```
 
 After copying shard outputs back to one machine, merge them:
 
 ```bash
-cargo run -p haitaka_learn -- merge-data \
-  --config haitaka_learn.my-run.toml \
+cargo merge haitaka_learn.my-run.toml \
   --input path/to/machine-a-output \
   --input path/to/machine-b-output
 ```
@@ -130,7 +132,7 @@ bootstrap NNUE if the config references one:
 ```bash
 tar -czf nnue-training-input-my-run.tgz \
   haitaka_learn.my-run.toml \
-  haitaka_learn-out/my-run/datasets \
+  out/my-run/datasets \
   path/to/bootstrap.nnue
 ```
 
@@ -178,12 +180,12 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source "$HOME/.cargo/env"
 ```
 
-Clone Haitaka and the upstream trainer:
+Clone Haitaka and the modified trainer:
 
 ```bash
 cd /workspace
-git clone <haitaka repo url> haitaka-variants
-git clone https://github.com/fairy-stockfish/variant-nnue-pytorch.git
+git clone https://github.com/na2hiro/haitaka-variants.git
+git clone https://github.com/na2hiro/haitaka-variant-nnue-pytorch.git
 
 cd /workspace/haitaka-variants
 git checkout <training branch or commit>
@@ -192,23 +194,24 @@ git checkout <training branch or commit>
 Set up the trainer environment:
 
 ```bash
-cd /workspace/variant-nnue-pytorch
-python3 -m venv env
-source env/bin/activate
-pip install --upgrade pip
-pip install --default-timeout=1000 --retries=10 --no-cache-dir -r requirements.txt
+cd /workspace/haitaka-variants
+scripts/install_trainer_requirements.sh /workspace/haitaka-variant-nnue-pytorch
 ```
 
-If the selected GPU needs a newer CUDA wheel set and the trainer checkout
-contains a matching requirements file, install that file instead. For example:
+The installer creates the trainer virtualenv, upgrades `pip`, chooses
+`requirements-CUDA128.txt` automatically on CUDA 12.8+ hosts when that file is
+available, and otherwise uses `requirements.txt`. Override the choice only when
+needed:
 
 ```bash
-pip install --default-timeout=1000 --retries=10 --no-cache-dir -r requirements-CUDA128.txt
+HAITAKA_TRAINER_REQUIREMENTS=requirements-CUDA128.txt \
+  scripts/install_trainer_requirements.sh /workspace/haitaka-variant-nnue-pytorch
 ```
 
 Verify CUDA from the active virtual environment:
 
 ```bash
+source /workspace/haitaka-variant-nnue-pytorch/env/bin/activate
 python - <<'PY'
 import torch
 print(torch.__version__)
@@ -227,10 +230,17 @@ If the Vast SSH command is:
 ssh -p PORT root@HOST
 ```
 
-upload from the local machine with:
+set reusable variables on the local machine:
 
 ```bash
-scp -P PORT nnue-training-input-my-run.tgz root@HOST:/workspace/
+export VAST_HOST=HOST
+export VAST_PORT=PORT
+```
+
+Then upload from the local machine with:
+
+```bash
+scp -P "$VAST_PORT" nnue-training-input-my-run.tgz "root@$VAST_HOST:/workspace/"
 ```
 
 Unpack on Vast:
@@ -248,7 +258,7 @@ Run training with live checkpoint selection:
 
 ```bash
 source "$HOME/.cargo/env"
-source /workspace/variant-nnue-pytorch/env/bin/activate
+source /workspace/haitaka-variant-nnue-pytorch/env/bin/activate
 
 cd /workspace/haitaka-variants
 cargo train haitaka_learn.my-run.toml
@@ -256,7 +266,7 @@ cargo train haitaka_learn.my-run.toml
 
 `cargo train` reads `[rules].ruleset`, builds the matching release
 `haitaka_cli` self-play binary, then runs `haitaka_learn train-select`. During
-the run it launches the upstream trainer, watches for stable `.ckpt` files,
+the run it launches the trainer, watches for stable `.ckpt` files,
 exports candidates, evaluates each candidate against the incumbent with
 `haitaka_cli self-play`, and copies the selected model to
 `[export].output_name`.
@@ -288,7 +298,7 @@ The usual handoff files are:
 - `artifacts/export.json`
 - `artifacts/verify.json`, after verification
 - `artifacts/selection/selection.json`
-- `variant-nnue-pytorch` commit
+- `haitaka-variant-nnue-pytorch` commit
 - Haitaka commit recorded in dataset manifests
 - Vast GPU model, VRAM, hourly price, and training duration
 
@@ -298,16 +308,16 @@ when you plan to resume training from that exact run.
 Example download:
 
 ```bash
-mkdir -p haitaka_learn-out/my-run/artifacts
-mkdir -p haitaka_learn-out/my-run/datasets
+mkdir -p out/my-run/artifacts
+mkdir -p out/my-run/datasets
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka-variants/haitaka_learn-out/my-run/artifacts/ \
-  haitaka_learn-out/my-run/artifacts/
+rsync -avP -e "ssh -p $VAST_PORT" \
+  "root@$VAST_HOST:/workspace/haitaka-variants/out/my-run/artifacts/" \
+  out/my-run/artifacts/
 
-rsync -avP -e 'ssh -p PORT' \
-  root@HOST:/workspace/haitaka-variants/haitaka_learn-out/my-run/datasets/*.json \
-  haitaka_learn-out/my-run/datasets/
+rsync -avP -e "ssh -p $VAST_PORT" \
+  "root@$VAST_HOST:/workspace/haitaka-variants/out/my-run/datasets/*.json" \
+  out/my-run/datasets/
 ```
 
 After confirming the files are downloaded, destroy the Vast instance to avoid
@@ -319,11 +329,12 @@ After downloading artifacts into the matching local output directory, verify
 that the exported NNUE loads and searches:
 
 ```bash
-cargo run -p haitaka_learn -- verify --config haitaka_learn.my-run.toml
+cargo verify haitaka_learn.my-run.toml
 ```
 
-For a variant build, the wrapper commands infer features for data generation and
-selection, but manual commands still need the matching feature:
+For a variant build, the wrapper commands infer features for data generation,
+merge, training selection, and verification. Manual `cargo run -p haitaka_learn`
+commands still need the matching feature:
 
 ```bash
 cargo run -p haitaka_learn --features anhoku -- verify --config haitaka_learn.my-run.toml

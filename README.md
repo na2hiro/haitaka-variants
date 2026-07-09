@@ -244,7 +244,7 @@ Relevant references:
 - [`tofutofu/haitaka`](https://github.com/tofutofu/haitaka)
 - [`analog-hors/cozy-chess`](https://github.com/analog-hors/cozy-chess)
 - Fairy-Stockfish NNUE tooling and model layout
-- [`variant-nnue-pytorch`](https://github.com/fairy-stockfish/variant-nnue-pytorch)
+- [`haitaka-variant-nnue-pytorch`](https://github.com/na2hiro/haitaka-variant-nnue-pytorch)
 
 ## License
 

@@ -45,7 +45,7 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
         &loaded.config.paths.python,
         &args,
         &trainer_checkout,
-        "variant-nnue-pytorch training",
+        "haitaka-variant-nnue-pytorch training",
     )?;
 
     find_latest_valid_checkpoint(
@@ -96,7 +96,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
             loaded.config.export.description.clone(),
         ],
         &trainer_checkout,
-        "variant-nnue-pytorch export",
+        "haitaka-variant-nnue-pytorch export",
     )?;
 
     write_export_metadata(
@@ -195,7 +195,7 @@ pub(crate) fn spawn_training(
         .spawn()
         .with_context(|| {
             format!(
-                "failed to start variant-nnue-pytorch training using `{}`",
+                "failed to start haitaka-variant-nnue-pytorch training using `{}`",
                 loaded.config.paths.python
             )
         })
@@ -224,7 +224,7 @@ pub(crate) fn export_checkpoint_to(
             loaded.config.export.description.clone(),
         ],
         trainer_checkout,
-        "variant-nnue-pytorch export",
+        "haitaka-variant-nnue-pytorch export",
     )
 }
 
