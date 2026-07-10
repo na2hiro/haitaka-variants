@@ -4,15 +4,15 @@
 - `annan`: 安南将棋. When a piece B is placed behind a piece A and they're on the same side, A moves as if it's B.
 - `anhoku`: 安北将棋. When a piece B is placed in front of a piece A and they're on the same side, A moves as if it's B.
 - `antouzai`: 安東西将棋. Friendly pieces immediately left and right of A donate movement to A. If both adjacent donors exist, A can move as the union of both donor movement types.
+- `anki`: 安騎将棋. Friendly pieces on chess-knight squares donate movement. If at least one donor exists, donor movement replaces native movement.
+- `tenjiku`: 天竺将棋. Same behind-friendly donor geometry as Annan, but the moving piece keeps its native movement in addition to the donor movement.
 - `taimen`: 対面将棋. When an enemy piece B is placed in front of a piece A, A moves as if it's B (and, symmetrically, B moves as if it's A). The donor is the opponent's piece directly ahead; the mutual swap follows automatically because each piece looks at the enemy facing it.
 - `haimen`: 背面将棋. When an enemy piece B is placed behind a piece A, A moves as if it's B (and, symmetrically, B moves as if it's A). The donor is the opponent's piece directly behind.
 - `neko`: ネコ将棋. Within each file, look at a maximal vertical run of contiguous **friendly** pieces. The 1st piece from the top swaps abilities with the 1st from the bottom, the 2nd with the 2nd, and so on. The middle piece of an odd-length run keeps its native movement.
 - `nekoneko`: ネコネコ将棋. Same as `neko` but a run is any maximal vertical run of contiguous pieces **regardless of color** (only an empty square breaks a run), so a piece's partner may be an enemy.
 - `yokoneko`: 横ネコ将棋. Same as `neko` but runs are **horizontal** (within a rank): the 1st piece from the left swaps abilities with the 1st from the right, and so on.
 - `yokonekoneko`: 横ネコネコ将棋. Same as `nekoneko` but **horizontal**.
-- `tenkyo`: 天鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
-- `tenjiku`: 天竺将棋. Same behind-friendly donor geometry as Annan, but the moving piece keeps its native movement in addition to the donor movement.
-- `anki`: 暗鬼将棋. Friendly pieces on chess-knight squares donate movement. If at least one donor exists, donor movement replaces native movement.
+- `tenkyo`: 点鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
 
 The variant feature flags are mutually exclusive compile-time engine modes. `annan` keeps its custom start position; the other variants currently use the standard shogi start position until variant-specific openings are documented.
 
