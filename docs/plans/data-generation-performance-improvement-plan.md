@@ -78,7 +78,7 @@ Risk:
 
 ### [done] 0.2 Always use all local cores
 
-Prefer `--jobs 0` unless the machine becomes memory- or thermally-limited.
+Use the default all-core worker setting unless the machine becomes memory- or thermally-limited.
 
 Expected impact:
 
@@ -320,7 +320,7 @@ This is a targeted optimization, not the main solution to multi-day generation t
 
 ## Recommended Execution Order
 
-1. Confirm all large runs use `--release`, `--jobs 0`, and multi-machine shard splits where available. Phase 0.1 and 0.2 are complete; 0.3 remains open.
+1. Confirm all large runs use `--release`, the default all-core worker setting, and multi-machine shard splits where available. Phase 0.1 and 0.2 are complete; 0.3 remains open.
 2. Measure the current fraction of runtime spent on:
    - rollout teacher calls
    - sampled-position labeling

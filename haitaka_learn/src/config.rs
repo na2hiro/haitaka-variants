@@ -727,7 +727,7 @@ impl Default for SelectionConfig {
 }
 
 fn default_output_dir() -> PathBuf {
-    PathBuf::from("haitaka_learn-out")
+    PathBuf::from("out")
 }
 
 fn default_python() -> String {
@@ -835,7 +835,7 @@ fn default_output_name() -> String {
 }
 
 fn default_export_description() -> String {
-    "Haitaka network trained with variant-nnue-pytorch".to_string()
+    "Haitaka network trained with haitaka-variant-nnue-pytorch".to_string()
 }
 
 fn default_verify_search_depth() -> u8 {

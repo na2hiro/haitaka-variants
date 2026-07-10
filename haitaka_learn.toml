@@ -5,9 +5,9 @@ ruleset = "standard"
 rule_id = 0
 
 [paths]
-output_dir = "haitaka_learn-out"
-# Point this at a local `variant-nnue-pytorch` checkout.
-trainer_checkout = "../variant-nnue-pytorch"
+output_dir = "out"
+# Point this at a local `haitaka-variant-nnue-pytorch` checkout.
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
 bootstrap_nnue = "../shogi-878ca61334a7.nnue"
 python = "python3"
 cmake = "cmake"
@@ -43,7 +43,7 @@ extra_args = []
 
 [export]
 output_name = "haitaka.nnue"
-description = "Haitaka network trained with variant-nnue-pytorch"
+description = "Haitaka network trained with haitaka-variant-nnue-pytorch"
 
 [selection]
 poll_interval_secs = 15

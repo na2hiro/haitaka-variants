@@ -2,8 +2,8 @@
 ruleset = "taimen"
 
 [paths]
-output_dir = "haitaka_learn-out/taimen-v0.4.1"
-trainer_checkout = "../variant-nnue-pytorch"
+output_dir = "out/taimen-v0.4.1"
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
 python = "python3"
 cmake = "cmake"
 
