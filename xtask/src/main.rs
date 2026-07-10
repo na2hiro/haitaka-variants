@@ -1,8 +1,11 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
+use std::path::Component;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
+
+use toml_edit::{DocumentMut, Item, Table, value};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -40,6 +43,12 @@ struct MergeDataArgs {
 struct VerifyArgs {
     config: PathBuf,
     extra_args: Vec<OsString>,
+}
+
+#[derive(Debug)]
+struct BundlePretrainArgs {
+    config: PathBuf,
+    output: Option<PathBuf>,
 }
 
 impl Default for PackageArgs {
@@ -120,6 +129,15 @@ fn run() -> Result<()> {
                 verify(parse_verify_args(raw_args)?)
             }
         }
+        "bundle-pretrain" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_bundle_pretrain_usage();
+                Ok(())
+            } else {
+                bundle_pretrain(parse_bundle_pretrain_args(raw_args)?)
+            }
+        }
         "-h" | "--help" | "help" => {
             print_usage();
             Ok(())
@@ -179,6 +197,23 @@ fn parse_merge_data_args(raw_args: Vec<OsString>) -> Result<MergeDataArgs> {
 fn parse_verify_args(raw_args: Vec<OsString>) -> Result<VerifyArgs> {
     let (config, extra_args) = parse_config_first_args(raw_args, "verify")?;
     Ok(VerifyArgs { config, extra_args })
+}
+
+fn parse_bundle_pretrain_args(raw_args: Vec<OsString>) -> Result<BundlePretrainArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "bundle-pretrain")?;
+    let mut output = None;
+    let mut iter = extra_args.into_iter();
+    while let Some(arg) = iter.next() {
+        match arg.to_string_lossy().as_ref() {
+            "--output" => output = Some(PathBuf::from(required_value(&mut iter, "--output")?)),
+            "-h" | "--help" => {
+                print_bundle_pretrain_usage();
+                return Err("help requested".to_string());
+            }
+            other => return Err(format!("unknown bundle-pretrain option: {other}")),
+        }
+    }
+    Ok(BundlePretrainArgs { config, output })
 }
 
 fn parse_config_first_args(
@@ -396,6 +431,241 @@ fn verify(args: VerifyArgs) -> Result<()> {
         haitaka_learn_verify_args(&args.config, features, &args.extra_args),
         "verify haitaka_learn NNUE",
     )
+}
+
+fn bundle_pretrain(args: BundlePretrainArgs) -> Result<()> {
+    let bundle = PretrainBundle::from_config(&args.config, args.output)?;
+    bundle.create()?;
+    println!("pretrain bundle written to {}", bundle.output.display());
+    Ok(())
+}
+
+#[derive(Debug)]
+struct PretrainBundle {
+    output: PathBuf,
+    staging_dir: PathBuf,
+    config_archive_path: PathBuf,
+    output_dir: PathBuf,
+    datasets_dir: PathBuf,
+    bootstrap_nnue: Option<PathBuf>,
+    bootstrap_archive_path: Option<PathBuf>,
+    config_text: String,
+}
+
+impl PretrainBundle {
+    fn from_config(config: &Path, output: Option<PathBuf>) -> Result<Self> {
+        let config_text = fs::read_to_string(config)
+            .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
+        let value = config_text
+            .parse::<toml::Value>()
+            .map_err(|err| format!("failed to parse haitaka_learn TOML: {err}"))?;
+        let config_dir = config.parent().filter(|path| !path.as_os_str().is_empty());
+        let output_dir = toml_path_string(&value, &["paths", "output_dir"])
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("out"));
+        let resolved_output_dir = resolve_from_config_dir(config_dir, &output_dir)?;
+        let datasets_dir = resolved_output_dir.join("datasets");
+        if !datasets_dir.is_dir() {
+            return Err(format!(
+                "datasets directory does not exist: {}",
+                datasets_dir.display()
+            ));
+        }
+
+        let bootstrap_nnue =
+            toml_path_string(&value, &["paths", "bootstrap_nnue"]).map(PathBuf::from);
+        let resolved_bootstrap_nnue = bootstrap_nnue
+            .as_ref()
+            .map(|path| resolve_from_config_dir(config_dir, path))
+            .transpose()?;
+        if let Some(path) = &resolved_bootstrap_nnue {
+            if !path.is_file() {
+                return Err(format!("bootstrap NNUE does not exist: {}", path.display()));
+            }
+        }
+
+        let config_archive_path = config
+            .file_name()
+            .map(PathBuf::from)
+            .ok_or_else(|| format!("config path has no file name: {}", config.display()))?;
+        let config_stem = config
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("haitaka_learn");
+        let output = output.unwrap_or_else(|| {
+            PathBuf::from("target/pretrain-bundles").join(format!("{config_stem}.tgz"))
+        });
+        let staging_dir = output.with_extension("staging");
+        let archive_output_dir =
+            safe_archive_path(&output_dir).unwrap_or_else(|| PathBuf::from("out"));
+        let bootstrap_archive_path = resolved_bootstrap_nnue
+            .as_ref()
+            .map(|path| {
+                let name = path.file_name().ok_or_else(|| {
+                    format!("bootstrap NNUE path has no file name: {}", path.display())
+                })?;
+                Ok::<PathBuf, String>(PathBuf::from("bootstrap").join(name))
+            })
+            .transpose()?;
+        let bundled_config_text = bundled_config_text(
+            &config_text,
+            &archive_output_dir,
+            bootstrap_archive_path.as_deref(),
+        )?;
+
+        Ok(Self {
+            output,
+            staging_dir,
+            config_archive_path,
+            output_dir: archive_output_dir,
+            datasets_dir,
+            bootstrap_nnue: resolved_bootstrap_nnue,
+            bootstrap_archive_path,
+            config_text: bundled_config_text,
+        })
+    }
+
+    fn create(&self) -> Result<()> {
+        if self.staging_dir.exists() {
+            fs::remove_dir_all(&self.staging_dir).map_err(|err| {
+                format!(
+                    "failed to remove stale staging directory {}: {err}",
+                    self.staging_dir.display()
+                )
+            })?;
+        }
+        fs::create_dir_all(&self.staging_dir).map_err(|err| {
+            format!(
+                "failed to create staging directory {}: {err}",
+                self.staging_dir.display()
+            )
+        })?;
+
+        write_staged_file(
+            &self.staging_dir.join(&self.config_archive_path),
+            self.config_text.as_bytes(),
+        )?;
+        copy_dir_recursive(
+            &self.datasets_dir,
+            &self.staging_dir.join(&self.output_dir).join("datasets"),
+        )?;
+        if let (Some(src), Some(dst)) = (&self.bootstrap_nnue, &self.bootstrap_archive_path) {
+            copy_file(src, &self.staging_dir.join(dst))?;
+        }
+
+        if let Some(parent) = self.output.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+        }
+        run_command(
+            "tar",
+            vec![
+                "-czf".into(),
+                self.output.as_os_str().to_os_string(),
+                "-C".into(),
+                self.staging_dir.as_os_str().to_os_string(),
+                ".".into(),
+            ],
+            "create pretrain transfer bundle",
+        )?;
+        fs::remove_dir_all(&self.staging_dir).map_err(|err| {
+            format!(
+                "failed to remove staging directory {}: {err}",
+                self.staging_dir.display()
+            )
+        })?;
+        Ok(())
+    }
+}
+
+fn toml_path_string(value: &toml::Value, keys: &[&str]) -> Option<String> {
+    let mut current = value;
+    for key in keys {
+        current = current.get(*key)?;
+    }
+    current.as_str().map(ToOwned::to_owned)
+}
+
+fn resolve_from_config_dir(config_dir: Option<&Path>, path: &Path) -> Result<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
+    } else {
+        Ok(config_dir.unwrap_or_else(|| Path::new(".")).join(path))
+    }
+}
+
+fn safe_archive_path(path: &Path) -> Option<PathBuf> {
+    let mut safe = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => safe.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    (!safe.as_os_str().is_empty()).then_some(safe)
+}
+
+fn bundled_config_text(
+    config_text: &str,
+    output_dir: &Path,
+    bootstrap_nnue: Option<&Path>,
+) -> Result<String> {
+    let mut doc = config_text
+        .parse::<DocumentMut>()
+        .map_err(|err| format!("failed to parse haitaka_learn TOML for bundling: {err}"))?;
+    if !doc.as_table().contains_key("paths") {
+        doc["paths"] = Item::Table(Table::new());
+    }
+    doc["paths"]["output_dir"] = value(output_dir.to_string_lossy().as_ref());
+    if let Some(path) = bootstrap_nnue {
+        doc["paths"]["bootstrap_nnue"] = value(path.to_string_lossy().as_ref());
+    }
+    Ok(doc.to_string())
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
+    fs::create_dir_all(dst).map_err(|err| format!("failed to create {}: {err}", dst.display()))?;
+    for entry in
+        fs::read_dir(src).map_err(|err| format!("failed to read {}: {err}", src.display()))?
+    {
+        let entry =
+            entry.map_err(|err| format!("failed to read {} entry: {err}", src.display()))?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        let file_type = entry
+            .file_type()
+            .map_err(|err| format!("failed to stat {}: {err}", src_path.display()))?;
+        if file_type.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else if file_type.is_file() {
+            copy_file(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_file(src: &Path, dst: &Path) -> Result<()> {
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    fs::copy(src, dst).map_err(|err| {
+        format!(
+            "failed to copy {} to {}: {err}",
+            src.display(),
+            dst.display()
+        )
+    })?;
+    Ok(())
+}
+
+fn write_staged_file(path: &Path, contents: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("failed to create {}: {err}", parent.display()))?;
+    }
+    fs::write(path, contents).map_err(|err| format!("failed to write {}: {err}", path.display()))
 }
 
 fn ruleset_from_config(config: &PathBuf) -> Result<String> {
@@ -736,6 +1006,7 @@ fn print_usage() {
     eprintln!("       cargo train <config.toml> [train-select options]");
     eprintln!("       cargo merge <config.toml> --input <output-dir> [--input <output-dir> ...]");
     eprintln!("       cargo verify <config.toml> [verify options]");
+    eprintln!("       cargo bundle-pretrain <config.toml> [--output <bundle.tgz>]");
     eprintln!("       cargo pack");
     eprintln!("       cargo pack-annan");
     eprintln!("       cargo run -p xtask -- package [options]");
@@ -773,6 +1044,15 @@ fn print_verify_usage() {
     eprintln!("  Reads [rules].ruleset from the TOML config, runs haitaka_learn verify");
     eprintln!("  with --release, and adds the matching --features flag when required.");
     eprintln!("  Additional options are passed to haitaka_learn verify.");
+}
+
+fn print_bundle_pretrain_usage() {
+    eprintln!("Usage: cargo bundle-pretrain <config.toml> [--output <bundle.tgz>]");
+    eprintln!("Options:");
+    eprintln!("  Copies the config, configured output_dir/datasets, and optional");
+    eprintln!("  paths.bootstrap_nnue into a .tgz for transfer to a training host.");
+    eprintln!("  The bundled config is rewritten to use archive-local output/bootstrap paths.");
+    eprintln!("  Default output: target/pretrain-bundles/<config-stem>.tgz.");
 }
 
 fn print_package_usage() {
@@ -948,6 +1228,45 @@ mod tests {
             "--config",
             "haitaka_learn.nekoneko.toml"
         ));
+    }
+
+    #[test]
+    fn bundle_config_rewrites_output_and_bootstrap_paths() {
+        let config = r#"
+[rules]
+ruleset = "standard"
+
+[paths]
+output_dir = "out/local-run"
+bootstrap_nnue = "../seed.nnue"
+"#;
+
+        let bundled = bundled_config_text(
+            config,
+            Path::new("out/local-run"),
+            Some(Path::new("bootstrap/seed.nnue")),
+        )
+        .unwrap();
+
+        let value = bundled.parse::<toml::Value>().unwrap();
+        assert_eq!(
+            toml_path_string(&value, &["paths", "output_dir"]).unwrap(),
+            "out/local-run"
+        );
+        assert_eq!(
+            toml_path_string(&value, &["paths", "bootstrap_nnue"]).unwrap(),
+            "bootstrap/seed.nnue"
+        );
+    }
+
+    #[test]
+    fn bundle_archive_paths_reject_parent_components() {
+        assert_eq!(
+            safe_archive_path(Path::new("out/local-run")).unwrap(),
+            PathBuf::from("out/local-run")
+        );
+        assert_eq!(safe_archive_path(Path::new("../out")), None);
+        assert_eq!(safe_archive_path(Path::new("/tmp/out")), None);
     }
 
     #[test]

@@ -130,14 +130,17 @@ Create a transfer archive containing the run config, generated datasets, and the
 bootstrap NNUE if the config references one:
 
 ```bash
-tar -czf nnue-training-input-my-run.tgz \
-  haitaka_learn.my-run.toml \
-  out/my-run/datasets \
-  path/to/bootstrap.nnue
+cargo bundle-pretrain haitaka_learn.my-run.toml
 ```
 
-Adjust the output path to match `[paths].output_dir`. If the run does not use
-`paths.bootstrap_nnue`, omit the bootstrap file.
+The default archive path is
+`target/pretrain-bundles/haitaka_learn.my-run.tgz`. Pass `--output <path>` when
+you need a different name.
+
+`cargo bundle-pretrain` copies the configured `output_dir/datasets` directory
+and optional `paths.bootstrap_nnue`. The config inside the archive is rewritten
+to use archive-local `output_dir` and `bootstrap/` paths, so unpacking into the
+Haitaka checkout on Vast is enough.
 
 ## Vast.ai Instance
 
@@ -240,19 +243,17 @@ export VAST_PORT=PORT
 Then upload from the local machine with:
 
 ```bash
-scp -P "$VAST_PORT" nnue-training-input-my-run.tgz "root@$VAST_HOST:/workspace/"
+scp -P "$VAST_PORT" \
+  target/pretrain-bundles/haitaka_learn.my-run.tgz \
+  "root@$VAST_HOST:/workspace/haitaka-variants/"
 ```
 
-Unpack on Vast:
+Unpack in the Vast checkout:
 
 ```bash
-cd /workspace
-tar -xzf nnue-training-input-my-run.tgz
+cd /workspace/haitaka-variants
+tar -xzf haitaka_learn.my-run.tgz
 ```
-
-If the archive did not unpack directly into the repository checkout, copy the
-config, datasets, and optional bootstrap file into the paths expected by the
-config.
 
 Run training with live checkpoint selection:
 

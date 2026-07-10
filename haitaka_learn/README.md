@@ -183,6 +183,16 @@ cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/
 expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
 `--ignore-identity-mismatch` to skip those two checks.
 
+Bundle generated data for a CUDA training host:
+
+```bash
+cargo bundle-pretrain haitaka_learn.toml
+```
+
+The bundle includes the config, configured `output_dir/datasets`, and optional
+`paths.bootstrap_nnue`. The bundled config is rewritten to use archive-local
+paths after extraction.
+
 ### 2. Train And Select The Best Checkpoint
 
 Run this on the CUDA machine:
