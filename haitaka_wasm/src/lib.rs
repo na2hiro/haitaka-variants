@@ -2236,7 +2236,13 @@ fn has_both_kings(board: &Board) -> bool {
 
 fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
     let us = board.side_to_move();
-    if !board.has(us, Piece::King) {
+    if let Some(winner) = board.immediate_winner() {
+        if winner == us {
+            Some(MATE_SCORE - ply)
+        } else {
+            Some(-MATE_SCORE + ply)
+        }
+    } else if !board.has(us, Piece::King) {
         Some(-MATE_SCORE + ply)
     } else if !board.has(!us, Piece::King) {
         Some(MATE_SCORE - ply)
@@ -2702,6 +2708,18 @@ mod tests {
     #[cfg(feature = "annan")]
     fn returns_legal_move_for_annan_start_position() {
         assert_legal_best_move(haitaka::SFEN_STARTPOS, 2);
+    }
+
+    #[test]
+    #[cfg(feature = "oute")]
+    fn immediate_win_is_scored_as_terminal_loss_for_side_to_move() {
+        let sfen = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1";
+        let board: Board = sfen.parse().unwrap();
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(-MATE_SCORE + 3)
+        );
+        assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
     }
 
     #[test]

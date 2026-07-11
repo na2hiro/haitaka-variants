@@ -355,19 +355,44 @@ fn required_value(iter: &mut impl Iterator<Item = OsString>, flag: &str) -> Resu
 }
 
 fn package(args: PackageArgs) -> Result<()> {
-    let rule_id = args
-        .rule_id
-        .unwrap_or_else(|| default_rule_id(&args.ruleset));
-    let output = args.output.unwrap_or_else(|| {
-        if args.ruleset == "standard" {
-            PathBuf::from("target/haitaka-variants.tgz")
+    let mut features = args.features.clone().or_else(|| {
+        if args.ruleset.contains('+') {
+            Some(args.ruleset.replace('+', ","))
         } else {
-            PathBuf::from(format!("target/haitaka-variants-{}.tgz", args.ruleset))
+            inferred_package_feature(&args.ruleset).map(str::to_string)
         }
     });
-    let features = args
-        .features
-        .or_else(|| inferred_package_feature(&args.ruleset).map(str::to_string));
+    let base_ruleset = args.ruleset.split('+').next().unwrap_or("standard");
+    if let Some(donor) = inferred_package_feature(base_ruleset)
+        && !features.as_deref().is_some_and(|selected| {
+            selected
+                .split(',')
+                .map(str::trim)
+                .any(|feature| feature == donor)
+        })
+    {
+        features = Some(match features {
+            Some(selected) if !selected.is_empty() => format!("{donor},{selected}"),
+            _ => donor.to_string(),
+        });
+    }
+    let ruleset = canonical_package_profile(&args.ruleset, features.as_deref())?;
+    let rule_id = match args.rule_id {
+        Some(rule_id) => rule_id,
+        None if !ruleset.contains('+') => default_rule_id(&ruleset),
+        None => {
+            return Err(format!(
+                "--rule-id is required for composite or auxiliary rule profile {ruleset}"
+            ));
+        }
+    };
+    let output = args.output.unwrap_or_else(|| {
+        if ruleset == "standard" {
+            PathBuf::from("target/haitaka-variants.tgz")
+        } else {
+            PathBuf::from(format!("target/haitaka-variants-{ruleset}.tgz"))
+        }
+    });
 
     if !args.skip_wasm_build && !args.allow_missing_wasm {
         run_command(
@@ -380,7 +405,7 @@ fn package(args: PackageArgs) -> Result<()> {
     run_command(
         "cargo",
         haitaka_cli_package_args(
-            &args.ruleset,
+            &ruleset,
             rule_id,
             &output,
             &args.wasm_dir,
@@ -392,43 +417,90 @@ fn package(args: PackageArgs) -> Result<()> {
     )
 }
 
+fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<String> {
+    let feature_names: Vec<&str> = features
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|feature| !feature.is_empty())
+        .collect();
+    let donor_features = [
+        "annan",
+        "anhoku",
+        "antouzai",
+        "taimen",
+        "haimen",
+        "neko",
+        "nekoneko",
+        "yokoneko",
+        "yokonekoneko",
+        "tenkyo",
+        "tenjiku",
+        "anki",
+    ];
+    let donors: Vec<&str> = donor_features
+        .into_iter()
+        .filter(|feature| feature_names.contains(feature))
+        .collect();
+    if donors.len() > 1 {
+        return Err(format!(
+            "multiple donor features selected: {}",
+            donors.join(",")
+        ));
+    }
+    let mut profile = ruleset.split('+').next().unwrap_or("standard").to_string();
+    if profile == "standard"
+        && let Some(donor) = donors.first()
+    {
+        profile = (*donor).to_string();
+    }
+    for auxiliary in ["oute", "sanmaime", "inochinotokin", "igyoku", "hitomasuou"] {
+        if feature_names.contains(&auxiliary) {
+            profile.push('+');
+            profile.push_str(auxiliary);
+        }
+    }
+    Ok(profile)
+}
+
 fn generate_data(args: GenerateDataArgs) -> Result<()> {
-    let ruleset = ruleset_from_config(&args.config)?;
-    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let features = learn_features_from_config(&args.config)?;
     run_command(
         "cargo",
-        haitaka_learn_generate_data_args(&args.config, features, &args.extra_args),
+        haitaka_learn_generate_data_args(&args.config, features.as_deref(), &args.extra_args),
         "generate haitaka_learn data",
     )
 }
 
 fn train(args: TrainArgs) -> Result<()> {
-    let ruleset = ruleset_from_config(&args.config)?;
-    let features = required_learn_feature_for_ruleset(&ruleset)?;
-    let self_play_bin = build_haitaka_cli(features)?;
+    let features = learn_features_from_config(&args.config)?;
+    let self_play_bin = build_haitaka_cli(features.as_deref())?;
     run_command(
         "cargo",
-        haitaka_learn_train_select_args(&args.config, features, &self_play_bin, &args.extra_args),
+        haitaka_learn_train_select_args(
+            &args.config,
+            features.as_deref(),
+            &self_play_bin,
+            &args.extra_args,
+        ),
         "train and select strongest NNUE checkpoint",
     )
 }
 
 fn merge_data(args: MergeDataArgs) -> Result<()> {
-    let ruleset = ruleset_from_config(&args.config)?;
-    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let features = learn_features_from_config(&args.config)?;
     run_command(
         "cargo",
-        haitaka_learn_merge_data_args(&args.config, features, &args.extra_args),
+        haitaka_learn_merge_data_args(&args.config, features.as_deref(), &args.extra_args),
         "merge haitaka_learn data",
     )
 }
 
 fn verify(args: VerifyArgs) -> Result<()> {
-    let ruleset = ruleset_from_config(&args.config)?;
-    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let features = learn_features_from_config(&args.config)?;
     run_command(
         "cargo",
-        haitaka_learn_verify_args(&args.config, features, &args.extra_args),
+        haitaka_learn_verify_args(&args.config, features.as_deref(), &args.extra_args),
         "verify haitaka_learn NNUE",
     )
 }
@@ -668,12 +740,61 @@ fn write_staged_file(path: &Path, contents: &[u8]) -> Result<()> {
     fs::write(path, contents).map_err(|err| format!("failed to write {}: {err}", path.display()))
 }
 
-fn ruleset_from_config(config: &PathBuf) -> Result<String> {
+fn learn_features_from_config(config: &PathBuf) -> Result<Option<String>> {
     let raw_toml = fs::read_to_string(config)
         .map_err(|err| format!("failed to read config {}: {err}", config.display()))?;
-    ruleset_from_toml(&raw_toml)
+    learn_features_from_toml(&raw_toml)
 }
 
+fn learn_features_from_toml(raw_toml: &str) -> Result<Option<String>> {
+    let value = raw_toml
+        .parse::<toml::Value>()
+        .map_err(|err| format!("failed to parse haitaka_learn TOML: {err}"))?;
+    let rules = value
+        .get("rules")
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| "config must contain [rules]".to_string())?;
+    let ruleset = rules
+        .get("ruleset")
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| "config must set [rules].ruleset".to_string())?;
+    let mut features = required_learn_feature_for_ruleset(ruleset)?
+        .into_iter()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+
+    if let Some(win_conditions) = rules.get("win_conditions") {
+        let conditions = win_conditions
+            .as_array()
+            .ok_or_else(|| "rules.win_conditions must be an array".to_string())?;
+        for condition in conditions {
+            let condition = condition
+                .as_str()
+                .ok_or_else(|| "rules.win_conditions entries must be strings".to_string())?;
+            if !matches!(condition, "oute" | "sanmaime" | "inochinotokin") {
+                return Err(format!("unsupported win condition {condition:?}"));
+            }
+            features.push(condition.to_string());
+        }
+    }
+    if let Some(constraint) = rules.get("movement_constraint") {
+        let constraint = constraint
+            .as_str()
+            .ok_or_else(|| "rules.movement_constraint must be a string".to_string())?;
+        if !matches!(constraint, "igyoku" | "hitomasuou") {
+            return Err(format!("unsupported movement constraint {constraint:?}"));
+        }
+        features.push(constraint.to_string());
+    }
+
+    if features.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(features.join(",")))
+    }
+}
+
+#[cfg(test)]
 fn ruleset_from_toml(raw_toml: &str) -> Result<String> {
     let value = raw_toml
         .parse::<toml::Value>()
@@ -1084,6 +1205,14 @@ mod tests {
     }
 
     #[test]
+    fn package_profile_is_derived_from_all_feature_axes() {
+        assert_eq!(
+            canonical_package_profile("standard", Some("sanmaime,annan,igyoku,oute")).unwrap(),
+            "annan+oute+sanmaime+igyoku"
+        );
+    }
+
+    #[test]
     fn handicap_package_args_do_not_pass_cargo_features() {
         let args = haitaka_cli_package_args(
             "handicap",
@@ -1125,6 +1254,21 @@ mod tests {
         assert!(has_adjacent_args(&args, "--shard-index", "0"));
         assert!(has_adjacent_args(&args, "--shard-index-end", "0"));
         assert!(has_adjacent_args(&args, "--shard-count", "4"));
+    }
+
+    #[test]
+    fn learn_features_include_all_configured_rule_axes_in_stable_order() {
+        let features = learn_features_from_toml(
+            r#"
+[rules]
+ruleset = "annan"
+win_conditions = ["oute", "sanmaime"]
+movement_constraint = "igyoku"
+rule_id = 123
+"#,
+        )
+        .unwrap();
+        assert_eq!(features.as_deref(), Some("annan,oute,sanmaime,igyoku"));
     }
 
     #[test]

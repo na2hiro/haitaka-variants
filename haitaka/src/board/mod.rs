@@ -157,20 +157,7 @@ impl Board {
         }
     }
 
-    #[cfg(any(
-        feature = "annan",
-        feature = "anhoku",
-        feature = "antouzai",
-        feature = "taimen",
-        feature = "haimen",
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    ))]
+    #[cfg(feature = "donor-category")]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
         &self,
@@ -860,7 +847,9 @@ impl Board {
     ///   fourth time, and this was not caused by a sequence of continuous checks.
     ///
     pub fn status(&self) -> GameStatus {
-        if self.generate_moves(|_| true) {
+        if self.immediate_winner().is_some() {
+            GameStatus::Won
+        } else if self.generate_moves(|_| true) {
             GameStatus::Ongoing
         } else {
             // if we don't have any moves, it's a loss for us
@@ -871,6 +860,42 @@ impl Board {
             // (this case can not be handled by `Board`)
             GameStatus::Won
         }
+    }
+
+    /// Return the winner of an enabled position-based immediate-win rule.
+    ///
+    /// The winner is interpreted as the player who made the previous move
+    /// (`!side_to_move`), keeping the board representation history-free.
+    #[inline(always)]
+    pub fn immediate_winner(&self) -> Option<Color> {
+        #[cfg(feature = "win-condition-category")]
+        {
+            let previous = !self.side_to_move();
+
+            #[cfg(feature = "oute")]
+            if !self.checkers.is_empty() {
+                return Some(previous);
+            }
+
+            #[cfg(feature = "sanmaime")]
+            if self
+                .hand(previous)
+                .iter()
+                .copied()
+                .map(u16::from)
+                .sum::<u16>()
+                >= 3
+            {
+                return Some(previous);
+            }
+
+            #[cfg(feature = "inochinotokin")]
+            if self.has(previous, Piece::Tokin) {
+                return Some(previous);
+            }
+        }
+
+        None
     }
 
     /// Check if two positions are equivalent.

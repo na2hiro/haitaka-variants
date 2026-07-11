@@ -63,6 +63,69 @@ fn subset_movegen_habu_position() {
     visit(&board, 2);
 }
 
+#[cfg(feature = "oute")]
+#[test]
+fn oute_is_an_immediate_win_and_stops_play() {
+    let board: Board = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+    assert!(!board.generate_moves(|_| true));
+    assert!(!board.is_legal("5a4a".parse().unwrap()));
+}
+
+#[cfg(feature = "sanmaime")]
+#[test]
+fn three_hand_pieces_are_an_immediate_win() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 w RBG 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "inochinotokin")]
+#[test]
+fn a_previous_movers_tokin_is_an_immediate_win() {
+    let board: Board = "4k4/9/9/9/9/9/4+P4/9/4K4 w - 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "igyoku")]
+#[test]
+fn igyoku_forbids_physical_king_moves() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 b - 1".parse().unwrap();
+    assert!(!board.is_legal("5i5h".parse().unwrap()));
+    let mut saw_king = false;
+    board.generate_moves(|moves| {
+        saw_king |= matches!(
+            moves,
+            PieceMoves::BoardMoves {
+                piece: Piece::King,
+                ..
+            }
+        );
+        false
+    });
+    assert!(!saw_king);
+}
+
+#[cfg(feature = "hitomasuou")]
+#[test]
+fn hitomasuou_only_allows_destinations_in_the_home_zone() {
+    let board: Board = "4k4/9/9/9/9/9/4K4/9/9 b - 1".parse().unwrap();
+    assert!(board.is_legal("5g5h".parse().unwrap()));
+    assert!(!board.is_legal("5g4f".parse().unwrap()));
+}
+
+#[cfg(all(feature = "annan", feature = "king-constraint-category"))]
+#[test]
+fn king_constraint_only_applies_to_the_physical_king() {
+    let board: Board = "k8/9/9/9/4P4/4K4/9/9/9 b - 1".parse().unwrap();
+    assert!(
+        board.is_legal("5e4d".parse().unwrap()),
+        "a Pawn moving with donated King movement must not inherit the King's zone restriction"
+    );
+}
+
 #[allow(dead_code)]
 fn test_is_legal(board: Board) {
     use std::collections::HashSet;
@@ -632,6 +695,7 @@ fn discovered_checks1() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "oute"))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
     let mut board = Board::tsume(sfen).unwrap();
@@ -716,6 +780,7 @@ fn undiscovered_checks() {
 
 #[test]
 #[cfg(not(feature = "tenkyo"))]
+#[cfg(not(feature = "oute"))]
 fn discovered_checks2() {
     /*
     . . . . . . . . .
@@ -1335,6 +1400,7 @@ fn anki_king_move_into_donor_only_attack_is_rejected() {
 
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_king_capture_removes_enemy_backer_attack() {
     let board: Board = "k8/4K4/4r4/4p4/9/9/9/9/9 b - 1".parse().unwrap();
     let from = board.king(Color::Black);
@@ -1378,6 +1444,7 @@ fn annan_king_capture_removes_enemy_backer_attack() {
 /// Black Rook on 5a can capture the backer on 5f, removing the check.
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_capture_backer_resolves_check() {
     // rank a: Black Rook on 5a
     // rank c: White King on 9c (safe from Black Rook — different file)
@@ -1450,6 +1517,7 @@ fn annan_capture_backer_does_not_help_native_check() {
 /// Black should be able to drop a piece on 5h to interpose.
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_drop_interpose_backed_slider() {
     // rank b: White King on 9b (safe)
     // rank f: White Rook on 5f (backer)
@@ -1671,6 +1739,7 @@ fn annan_illegal_pawn_drop_mate_is_not_legal_or_generated() {
 
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
     let board: Board =
         "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1"

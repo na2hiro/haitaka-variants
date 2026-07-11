@@ -14,7 +14,27 @@
 - `yokonekoneko`: 横ネコネコ将棋. Same as `nekoneko` but **horizontal**.
 - `tenkyo`: 点鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
 
-The variant feature flags are mutually exclusive compile-time engine modes. `annan` keeps its custom start position; the other variants currently use the standard shogi start position until variant-specific openings are documented.
+The piece-influence (donor) feature flags are mutually exclusive, but they are
+orthogonal to the following win-condition and king-constraint features:
+
+- `oute`: the previous mover wins immediately by giving check.
+- `sanmaime`: the previous mover wins when their total hand reaches three pieces.
+- `inochinotokin`: the previous mover wins when they have made a Tokin.
+- `igyoku`: the physical King cannot move.
+- `hitomasuou`: the physical King may only move within the six squares on files
+  4--6 and its two home ranks.
+
+Multiple win conditions may be enabled together and are combined with OR.
+At most one donor and one king constraint may be enabled. Concrete features
+automatically enable the internal `donor-category`, `win-condition-category`,
+or `king-constraint-category` marker; those markers must not be selected
+directly. `annan` keeps its custom start position; the other variants currently
+use the standard shogi start position until variant-specific openings are documented.
+
+All special wins are additional to the normal no-legal-move win. A qualifying
+SFEN is terminal for the player who moved immediately before its encoded
+side-to-move. DFPN remains a checking-move checkmate solver and is not a
+complete solver for non-checking special-win plans.
 
 `taimen` and `haimen` are "donor" variants like `annan`/`anhoku`, but the donating piece is an enemy rather than a friendly piece, and captures, promotion, and drops still use the physical moving piece.
 

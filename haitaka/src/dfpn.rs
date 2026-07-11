@@ -383,6 +383,11 @@ impl DfpnSolver {
 }
 
 impl Board {
+    /// Solve a forced mate using checking moves for the attacker.
+    ///
+    /// With special win-condition features this remains a checkmate solver; it
+    /// is not a complete solver for non-checking `sanmaime` or
+    /// `inochinotokin` winning plans.
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
         DfpnSolver::new(self.side_to_move(), *options).solve(self)
     }
@@ -973,6 +978,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "annan")]
+    #[cfg(not(feature = "oute"))]
     fn solves_specific_annan_problem() {
         let board = parse_problem_board(ANNAN_PROBLEM_SFEN);
         let result = board.dfpn(&DfpnOptions::default());

@@ -24,3 +24,17 @@ jobs:
       run: cargo build --workspace --features annan --verbose
     - name: Run Annan tests
       run: cargo test --workspace --features annan --verbose
+    - name: Run orthogonal rule tests
+      run: |
+        cargo check --workspace --features annan,oute,sanmaime,igyoku --verbose
+        cargo test -p haitaka --features annan,oute,sanmaime,igyoku oute_is_an_immediate_win_and_stops_play
+        cargo test -p haitaka_wasm --features annan,oute,sanmaime,igyoku immediate_win_is_scored_as_terminal_loss_for_side_to_move
+        cargo test -p haitaka_learn --features annan,oute,sanmaime,igyoku composite_rule_profile_has_stable_canonical_name
+    - name: Check replay-filter donor composition
+      run: cargo check --workspace --features neko,hitomasuou --verbose
+    - name: Reject invalid feature categories
+      shell: bash
+      run: |
+        if cargo check -p haitaka --features donor-category; then exit 1; fi
+        if cargo check -p haitaka --features igyoku,hitomasuou; then exit 1; fi
+        if cargo check -p haitaka --features annan,anhoku; then exit 1; fi

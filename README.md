@@ -151,8 +151,16 @@ See [haitaka_wasm/README.md](haitaka_wasm/README.md).
 - `tenkyo`: point-symmetric piece around 5,5 donates movement, regardless of color.
 - `tenjiku`: friendly piece behind the mover donates movement; native movement remains.
 - `anki`: friendly pieces on chess-knight squares donate movement.
+- `oute`: giving check wins immediately.
+- `sanmaime`: reaching three total pieces in hand wins immediately.
+- `inochinotokin`: making a Tokin wins immediately.
+- `igyoku`: the physical King cannot move.
+- `hitomasuou`: the physical King is confined to the six-square home zone.
 
-The variant rule features are mutually exclusive.
+Donor features are mutually exclusive. Win-condition features may be combined;
+king-constraint features are mutually exclusive. These three groups are
+orthogonal. Category marker features are enabled automatically and are not
+user-facing build options.
 
 ### `haitaka_wasm`
 
