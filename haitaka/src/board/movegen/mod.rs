@@ -61,20 +61,41 @@ macro_rules! abort_if {
 }
 
 impl Board {
-    #[cfg(any(
-        feature = "annan",
-        feature = "anhoku",
-        feature = "antouzai",
-        feature = "taimen",
-        feature = "haimen",
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    ))]
+    #[inline(always)]
+    fn king_destination_mask(&self, color: Color) -> BitBoard {
+        let _ = color;
+        #[cfg(feature = "igyoku")]
+        {
+            return BitBoard::EMPTY;
+        }
+        #[cfg(feature = "hitomasuou")]
+        {
+            return match color {
+                Color::Black => {
+                    Square::H4.bitboard()
+                        | Square::H5.bitboard()
+                        | Square::H6.bitboard()
+                        | Square::I4.bitboard()
+                        | Square::I5.bitboard()
+                        | Square::I6.bitboard()
+                }
+                Color::White => {
+                    Square::A4.bitboard()
+                        | Square::A5.bitboard()
+                        | Square::A6.bitboard()
+                        | Square::B4.bitboard()
+                        | Square::B5.bitboard()
+                        | Square::B6.bitboard()
+                }
+            };
+        }
+        #[cfg(not(feature = "king-constraint-category"))]
+        {
+            BitBoard::FULL
+        }
+    }
+
+    #[cfg(feature = "donor-category")]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
@@ -1216,6 +1237,8 @@ impl Board {
         )))]
         let mut moves = king_attacks(color, our_king) & !our_pieces;
 
+        moves &= self.king_destination_mask(color);
+
         for to in moves {
             // removing unsafe squares should generally be more efficient than
             // adding safe squares since (until the endgame) most squares are safe
@@ -1531,11 +1554,17 @@ impl Board {
     /// Is this move legal?
     #[inline(always)]
     pub fn is_legal(&self, mv: Move) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         self.is_legal_board_move(mv) || self.is_legal_drop(mv)
     }
 
     /// Is this move a legal drop?
     pub fn is_legal_drop(&self, mv: Move) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         if let Move::Drop { piece, to } = mv {
             let color = self.side_to_move();
 
@@ -1648,6 +1677,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         if let Move::BoardMove {
             from,
             to,
@@ -1668,6 +1700,9 @@ impl Board {
 
             if piece == Piece::King {
                 if promotion {
+                    return false;
+                }
+                if !self.king_destination_mask(color).has(to) {
                     return false;
                 }
                 return self.king_is_legal(color, from, to);
@@ -1761,6 +1796,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         if let Move::BoardMove {
             from,
             to,
@@ -1808,7 +1846,7 @@ impl Board {
                     return false;
                 }
                 // King uses effective movement, but must still be safe.
-                let candidate = moves & !our_pieces;
+                let candidate = moves & !our_pieces & self.king_destination_mask(color);
                 if !candidate.has(to) {
                     return false;
                 }
@@ -2001,6 +2039,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         abort_if! {
             self.generate_drops(&mut listener),
             self.generate_board_moves(&mut listener)
@@ -2023,6 +2064,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         // The neko variants always go through the king-safety-filtered drop and
         // board-move generators (see `generate_drops`/`generate_board_moves_for`),
         // so there is no separate in-check evasion path here.
@@ -2111,6 +2155,9 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         // The neko variants generate a broad superset and verify each move's king
         // safety on the post-move position (pins are disabled for these variants).
         #[cfg(any(
@@ -2231,6 +2278,9 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",
@@ -2294,6 +2344,9 @@ impl Board {
         piece: Piece,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",
@@ -2409,6 +2462,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         let color = self.side_to_move();
         let their_color = !color;
         if !self.has(their_color, Piece::King) {
@@ -2651,6 +2707,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
         let their_color = !self.side_to_move();
         if !self.has(their_color, Piece::King) {
             return false;

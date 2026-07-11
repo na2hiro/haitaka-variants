@@ -110,6 +110,21 @@ The command refuses a non-empty `out/anhoku-reboot-r3` so the one-shot decision
 block cannot be silently reopened. It generates no production corpus and plays
 no strength games.
 
+Rules may add orthogonal win conditions and one King movement constraint while
+retaining the existing `ruleset` field for standard, handicap, or donor rules:
+
+```toml
+[rules]
+ruleset = "annan"
+win_conditions = ["oute", "sanmaime"]
+movement_constraint = "igyoku"
+rule_id = 123
+```
+
+`rule_id` is mandatory whenever a win condition or movement constraint is
+present. The configured axes must exactly match the Cargo features used to
+build `haitaka_learn`.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data

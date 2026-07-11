@@ -223,11 +223,11 @@ struct PackageArgs {
     #[arg(long, default_value = "haitaka_wasm/pkg")]
     wasm_dir: PathBuf,
     /// Ruleset name written into metadata.
-    #[arg(long, default_value = default_ruleset())]
+    #[arg(long, default_value_t = active_rule_profile())]
     ruleset: String,
     /// Shogitter rule ID written into metadata.
-    #[arg(long, default_value_t = default_rule_id())]
-    rule_id: u32,
+    #[arg(long)]
+    rule_id: Option<u32>,
     /// Optional NNUE file to include in the package.
     #[arg(long)]
     nnue: Option<PathBuf>,
@@ -248,7 +248,7 @@ struct ArchiveEngineArgs {
     #[arg(long)]
     nnue: Option<PathBuf>,
     /// Ruleset name written into metadata.
-    #[arg(long, default_value = default_ruleset())]
+    #[arg(long, default_value_t = active_rule_profile())]
     ruleset: String,
     /// Engine display name written into metadata.
     #[arg(long = "engine-name", default_value = ENGINE_NAME)]
@@ -907,6 +907,27 @@ fn default_ruleset() -> &'static str {
     }
 }
 
+fn active_rule_profile() -> String {
+    let mut profile = default_ruleset().to_string();
+    for (enabled, name) in [
+        (cfg!(feature = "oute"), "oute"),
+        (cfg!(feature = "sanmaime"), "sanmaime"),
+        (cfg!(feature = "inochinotokin"), "inochinotokin"),
+        (cfg!(feature = "igyoku"), "igyoku"),
+        (cfg!(feature = "hitomasuou"), "hitomasuou"),
+    ] {
+        if enabled {
+            profile.push('+');
+            profile.push_str(name);
+        }
+    }
+    profile
+}
+
+fn has_auxiliary_rules() -> bool {
+    cfg!(feature = "win-condition-category") || cfg!(feature = "king-constraint-category")
+}
+
 fn default_rule_id() -> u32 {
     if cfg!(feature = "annan") {
         26
@@ -960,8 +981,19 @@ fn profile_display_ruleset(ruleset: &str) -> String {
     }
 }
 
-fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePackageManifest {
-    EnginePackageManifest {
+fn package_manifest(
+    args: &PackageArgs,
+    nnue: Option<NnueArtifact>,
+) -> Result<EnginePackageManifest> {
+    let rule_id = match args.rule_id {
+        Some(rule_id) => rule_id,
+        None if !has_auxiliary_rules() && args.ruleset == default_ruleset() => default_rule_id(),
+        None => bail!(
+            "--rule-id is required for composite or auxiliary rule profile {}",
+            args.ruleset
+        ),
+    };
+    Ok(EnginePackageManifest {
         schema: "shogitter-engine-package",
         schema_version: 1,
         engine: ManifestEngine {
@@ -986,7 +1018,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             id: format!("{}-default", args.ruleset),
             name: format!("{} default", profile_display_ruleset(&args.ruleset)),
             rules: vec![ManifestRule {
-                rule_id: args.rule_id,
+                rule_id,
                 variant: args.ruleset.clone(),
                 position_format: "sfen",
                 move_format: "usi",
@@ -994,7 +1026,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             }],
             nnue,
         }],
-    }
+    })
 }
 
 fn parse_board(sfen: Option<&str>) -> Result<Board> {
@@ -3794,10 +3826,10 @@ fn git_dirty() -> bool {
 }
 
 fn active_feature_names() -> Vec<String> {
-    // Derived from `default_ruleset()` so a native archive's advertised `features`
-    // can never disagree with its `ruleset`. The variant features are mutually
-    // exclusive, so this is exactly the one active rule (or "standard").
-    vec![default_ruleset().to_string()]
+    active_rule_profile()
+        .split('+')
+        .map(str::to_string)
+        .collect()
 }
 
 fn infer_build_profile(binary: &Path) -> ArchiveBuildProfile {
@@ -3856,7 +3888,7 @@ fn package_in_staging(args: PackageArgs, staging: &Path) -> Result<()> {
         None
     };
 
-    let manifest = package_manifest(&args, nnue);
+    let manifest = package_manifest(&args, nnue)?;
     fs::write(
         staging.join(MANIFEST_FILE),
         serde_json::to_string_pretty(&manifest)?,
@@ -3962,8 +3994,8 @@ mod tests {
         PackageArgs {
             output,
             wasm_dir,
-            ruleset: default_ruleset().to_string(),
-            rule_id: default_rule_id(),
+            ruleset: active_rule_profile(),
+            rule_id: Some(default_rule_id()),
             nnue: None,
             allow_missing_wasm: false,
         }
@@ -3978,7 +4010,7 @@ mod tests {
             output,
             binary,
             nnue,
-            ruleset: default_ruleset().to_string(),
+            ruleset: active_rule_profile(),
             engine_name: ENGINE_NAME.to_string(),
             profile: Some(ArchiveBuildProfile::Debug),
             target: Some("test-target".to_string()),
@@ -4134,8 +4166,9 @@ mod tests {
 
         assert_eq!(default_ruleset(), expected_ruleset);
         assert_eq!(default_rule_id(), expected_rule_id);
-        // A native archive's advertised features must agree with its ruleset.
-        assert_eq!(active_feature_names(), vec![expected_ruleset.to_string()]);
+        let features = active_feature_names();
+        assert_eq!(features.first().map(String::as_str), Some(expected_ruleset));
+        assert_eq!(features.join("+"), active_rule_profile());
     }
 
     fn write_fake_wasm_pack_output(dir: &Path) {
@@ -4181,7 +4214,7 @@ mod tests {
     #[test]
     fn manifest_serializes_shogitter_engine_package_v1() {
         let args = test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["schema"], "shogitter-engine-package");
@@ -4189,7 +4222,7 @@ mod tests {
         assert_eq!(json["engine"]["id"], ENGINE_ID);
         assert_eq!(
             json["engine"]["name"],
-            format!("{ENGINE_NAME} ({})", default_ruleset())
+            format!("{ENGINE_NAME} ({})", active_rule_profile())
         );
         assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
@@ -4206,16 +4239,19 @@ mod tests {
         assert_eq!(json["profiles"].as_array().unwrap().len(), 1);
         assert_eq!(
             json["profiles"][0]["id"],
-            format!("{}-default", default_ruleset())
+            format!("{}-default", active_rule_profile())
         );
         assert_eq!(
             json["profiles"][0]["name"],
-            format!("{} default", profile_display_ruleset(default_ruleset()))
+            format!(
+                "{} default",
+                profile_display_ruleset(&active_rule_profile())
+            )
         );
         assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], default_rule_id());
         assert_eq!(
             json["profiles"][0]["rules"][0]["variant"],
-            default_ruleset()
+            active_rule_profile()
         );
         assert_eq!(json["profiles"][0]["rules"][0]["positionFormat"], "sfen");
         assert_eq!(json["profiles"][0]["rules"][0]["moveFormat"], "usi");
@@ -4232,7 +4268,8 @@ mod tests {
                 path: NNUE_ARTIFACT_PATH,
                 format: "nnue",
             }),
-        );
+        )
+        .unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["profiles"][0]["nnue"]["path"], NNUE_ARTIFACT_PATH);
@@ -4240,13 +4277,27 @@ mod tests {
     }
 
     #[test]
+    fn auxiliary_package_profile_requires_explicit_rule_id() {
+        let args = PackageArgs {
+            output: PathBuf::from("out.tgz"),
+            wasm_dir: PathBuf::from("haitaka_wasm/pkg"),
+            ruleset: "standard+oute".to_string(),
+            rule_id: None,
+            nnue: None,
+            allow_missing_wasm: true,
+        };
+        let error = package_manifest(&args, None).unwrap_err().to_string();
+        assert!(error.contains("--rule-id is required"));
+    }
+
+    #[test]
     fn manifest_serializes_explicit_anhoku_profile() {
         let mut args =
             test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
         args.ruleset = "anhoku".to_string();
-        args.rule_id = 55;
+        args.rule_id = Some(55);
 
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["profiles"][0]["id"], "anhoku-default");
@@ -5816,11 +5867,15 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(all(
+        feature = "annan",
+        not(feature = "win-condition-category"),
+        not(feature = "king-constraint-category")
+    ))]
     #[test]
     fn annan_manifest_defaults_to_rule_26_usi_sfen() {
         let args = test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
