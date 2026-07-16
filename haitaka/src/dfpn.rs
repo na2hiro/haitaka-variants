@@ -418,9 +418,10 @@ impl DfpnSolver {
 impl Board {
     /// Solve a forced mate using checking moves for the attacker.
     ///
-    /// With special win-condition features this remains a checkmate solver; it
-    /// is not a complete solver for non-checking `sanmaime` or
-    /// `inochinotokin` winning plans.
+    /// With special outcome features this remains a checking-move solver. A
+    /// reconstructed mating line is accepted only when [`Board::winner`] names
+    /// the attacker, but DFPN is not a complete solver for plans that require
+    /// non-checking preparation.
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
         let history = PositionHistory::new(self.clone());
         DfpnSolver::new(self.side_to_move(), *options).solve(self, &history)
@@ -509,7 +510,9 @@ fn verify_mating_line(board: &Board, attacker: Color, pv: &[Move]) -> bool {
         }
     }
 
-    board.side_to_move() != attacker && !board.generate_moves(|_| true)
+    board.side_to_move() != attacker
+        && !board.generate_moves(|_| true)
+        && board.winner() == Some(attacker)
 }
 
 const fn terminal_numbers(kind: NodeKind) -> ProofNumbers {
@@ -706,6 +709,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     const BESTSEL_LIVE_SHAPE_13_SFEN: &str = "4+B2nl/7k1/6p1p/6bN1/9/9/9/9/9 b R2GLr2g4s2n2l16p 1";
     #[cfg(not(any(
         feature = "annan",
@@ -721,6 +725,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     const BESTSEL_LIGHTNING_7_SFEN: &str = "9/9/9/4+B4/7+B1/5k3/4p1ps1/4s4/9 b 4G2r2s4n4l16p 1";
     #[cfg(not(any(
         feature = "annan",
@@ -736,6 +741,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     const BESTSEL_CONGRATS_37_SFEN: &str =
         "9/9/3+p1+p3/2+p1+p1L2/4P3k/3+B5/1G7/B5S2/5RR2 b 2S3gs4n3l13p 1";
     #[cfg(not(any(
@@ -752,13 +758,16 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     const BESTSEL_SWAPPED_7_SFEN: &str = "9/9/9/7R1/7S1/5S1k1/6+psR/8L/9 b G2b3gs4n3l17p 1";
     const ONE_PLY_MATE_SFEN: &str = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1";
+    #[cfg(not(feature = "ningenshogi"))]
     const ONE_PLY_MATE_WHITE_SFEN: &str = "k8/9/9/9/9/9/7b1/6g2/8K w r 1";
     const NO_MATE_SFEN: &str = "4k4/9/9/9/9/9/9/9/4K4 b - 1";
     #[cfg(feature = "annan")]
     const ANNAN_PROBLEM_SFEN: &str = "7p1/8k/5+R3/6P2/7G1/9/9/9/9 b N 1";
 
+    #[cfg(not(feature = "ningenshogi"))]
     fn assert_mating_line(board: &Board, pv: &[Move]) {
         assert!(
             verify_mating_line(board, board.side_to_move(), pv),
@@ -790,6 +799,28 @@ mod tests {
             !board.generate_moves(|_| true),
             "defender should have no legal replies at the end of the PV"
         );
+    }
+
+    #[cfg(feature = "ningenshogi")]
+    #[test]
+    fn mating_line_is_rejected_when_human_shogi_mater_has_an_unmoved_piece() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        let mate: Move = "9b5b".parse().unwrap();
+
+        assert!(board.is_legal(mate));
+        assert!(!verify_mating_line(&board, Color::Black, &[mate]));
+    }
+
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn mating_line_is_rejected_when_capture_reaches_five_hand_pieces() {
+        let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
+        let mate: Move = "5c5b".parse().unwrap();
+
+        assert!(board.is_legal(mate));
+        assert!(!verify_mating_line(&board, Color::Black, &[mate]));
     }
 
     #[test]
@@ -860,6 +891,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn assert_solves_standard_regression(sfen: &str) {
         let board = parse_problem_board(sfen);
         let result = board.dfpn(&DfpnOptions {
@@ -885,7 +917,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
-    #[cfg(not(feature = "shihonkangen"))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn solves_existing_tsume_position() {
         let board = Board::tsume(TSUME_SFEN).unwrap();
         let result = board.dfpn(&DfpnOptions::default());
@@ -909,6 +941,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn solves_best_selection_live_shape_13_regression() {
         assert_solves_standard_regression(BESTSEL_LIVE_SHAPE_13_SFEN);
     }
@@ -928,6 +961,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn solves_best_selection_lightning_7_regression() {
         assert_solves_standard_regression(BESTSEL_LIGHTNING_7_SFEN);
     }
@@ -947,6 +981,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn solves_best_selection_congrats_37_regression() {
         assert_solves_standard_regression(BESTSEL_CONGRATS_37_SFEN);
     }
@@ -966,11 +1001,13 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn solves_best_selection_swapped_7_regression() {
         assert_solves_standard_regression(BESTSEL_SWAPPED_7_SFEN);
     }
 
     #[test]
+    #[cfg(not(feature = "ningenshogi"))]
     fn finds_one_ply_mate() {
         let board = Board::from_sfen(ONE_PLY_MATE_SFEN).unwrap();
         let result = board.dfpn(&DfpnOptions::default());
@@ -998,6 +1035,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "ningenshogi"))]
     fn solves_white_to_move_mate() {
         let board = Board::from_sfen(ONE_PLY_MATE_WHITE_SFEN).unwrap();
         let result = board.dfpn(&DfpnOptions::default());

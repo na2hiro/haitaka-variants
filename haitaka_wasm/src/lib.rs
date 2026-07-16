@@ -6049,6 +6049,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -6061,6 +6062,53 @@ mod tests {
         assert_eq!(dfpn.status, "mate");
         assert!(dfpn.selected);
         assert_eq!(dfpn.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_human_shogi() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 1, 5_000, true).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("R*1b"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "unknown");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_capital_return() {
+        let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
+        let summary = search_board_iterative_deepening_with_strategy(
+            &board,
+            1,
+            5_000,
+            EvaluationStrategy::Handcrafted,
+        )
+        .unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b"));
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b+"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "unknown");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_movetime_search_preserves_human_shogi_move_history() {
+        let initial = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1";
+        let moves = ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"];
+        let mut session = UsiSession::default();
+        let position = format!("position sfen {initial} moves {}", moves.join(" "));
+        assert!(session.handle_line(&position).is_empty());
+
+        let output = session.handle_line("go movetime 0 depth 1");
+
+        assert_eq!(output.last().map(String::as_str), Some("bestmove 9b5b+"));
     }
 
     #[test]
@@ -6098,7 +6146,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
-    #[cfg(not(feature = "shihonkangen"))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -6151,7 +6199,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
-    #[cfg(not(feature = "shihonkangen"))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",

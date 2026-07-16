@@ -46,9 +46,12 @@ bitboard of original pieces that have not moved or been captured, and includes
 it in position identity and the transposition hash. Because SFEN has no field
 for this history, every board piece in a newly parsed SFEN is treated as not yet
 moved. Drops never become part of this requirement. DFPN remains a
-checking-move geometric checkmate solver: it does not prove that a mate is a
-valid Human Shogi win, nor is it a complete solver for non-checking special-win
-plans.
+checking-move solver and validates that the reconstructed line actually names
+the attacker as `Board::winner()`, so a Human Shogi or Capital Return reversal
+is rejected. It is still not a complete solver for plans requiring non-checking
+preparation. Stateful CLI/WASM searches pass `Board` directly, and external USI
+self-play replays the base SFEN plus its full move list so Human Shogi history is
+preserved across searches.
 
 `taimen` and `haimen` are "donor" variants like `annan`/`anhoku`, but the donating piece is an enemy rather than a friendly piece, and captures, promotion, and drops still use the physical moving piece.
 
