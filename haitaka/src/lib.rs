@@ -147,7 +147,13 @@ compile_error!("donor-category is internal; enable one concrete donor feature in
 
 #[cfg(all(
     feature = "win-condition-category",
-    not(any(feature = "oute", feature = "sanmaime", feature = "inochinotokin"))
+    not(any(
+        feature = "oute",
+        feature = "sanmaime",
+        feature = "inochinotokin",
+        feature = "shihonkangen",
+        feature = "ningenshogi"
+    ))
 ))]
 compile_error!("win-condition-category is internal; enable a concrete win condition instead");
 

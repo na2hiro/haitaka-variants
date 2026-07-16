@@ -154,10 +154,13 @@ See [haitaka_wasm/README.md](haitaka_wasm/README.md).
 - `oute`: giving check wins immediately.
 - `sanmaime`: reaching three total pieces in hand wins immediately.
 - `inochinotokin`: making a Tokin wins immediately.
+- `shihonkangen`: reaching five total pieces in hand loses immediately.
+- `ningenshogi`: a checkmating player loses if any of their original,
+  uncaptured pieces has never moved.
 - `igyoku`: the physical King cannot move.
 - `hitomasuou`: the physical King is confined to the six-square home zone.
 
-Donor features are mutually exclusive. Win-condition features may be combined;
+Donor features are mutually exclusive. Outcome-rule features may be combined;
 king-constraint features are mutually exclusive. These three groups are
 orthogonal. Category marker features are enabled automatically and are not
 user-facing build options.

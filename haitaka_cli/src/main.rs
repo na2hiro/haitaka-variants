@@ -913,6 +913,8 @@ fn active_rule_profile() -> String {
         (cfg!(feature = "oute"), "oute"),
         (cfg!(feature = "sanmaime"), "sanmaime"),
         (cfg!(feature = "inochinotokin"), "inochinotokin"),
+        (cfg!(feature = "shihonkangen"), "shihonkangen"),
+        (cfg!(feature = "ningenshogi"), "ningenshogi"),
         (cfg!(feature = "igyoku"), "igyoku"),
         (cfg!(feature = "hitomasuou"), "hitomasuou"),
     ] {
@@ -2065,6 +2067,13 @@ fn terminal_adjudication(
         return Some((winner, GameTerminationReason::KingCaptured));
     }
 
+    if let Some(winner) = board.immediate_winner() {
+        return Some((
+            Some(seat_for_color(winner, a_color)),
+            GameTerminationReason::NoLegalMove,
+        ));
+    }
+
     match history.adjudication() {
         HistoryAdjudication::RepetitionDraw => {
             return Some((None, GameTerminationReason::RepetitionDraw));
@@ -2080,10 +2089,16 @@ fn terminal_adjudication(
 
     (board.status() != GameStatus::Ongoing).then(|| {
         (
-            Some(seat_for_color(!board.side_to_move(), a_color)),
+            terminal_winner(board, a_color),
             GameTerminationReason::NoLegalMove,
         )
     })
+}
+
+fn terminal_winner(board: &Board, a_color: Color) -> Option<Seat> {
+    board
+        .winner()
+        .map(|winner| if winner == a_color { Seat::A } else { Seat::B })
 }
 
 fn play_self_play_game(
@@ -4327,7 +4342,7 @@ mod tests {
         assert_eq!(json["schemaVersion"], 1);
         assert_eq!(json["engine"]["name"], ENGINE_NAME);
         assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
-        assert_eq!(json["engine"]["ruleset"], default_ruleset());
+        assert_eq!(json["engine"]["ruleset"], active_rule_profile());
         assert_eq!(json["engine"]["buildProfile"], "debug");
         assert_eq!(json["engine"]["target"], "test-target");
         assert_eq!(json["runtime"]["protocol"], "usi");
@@ -5793,6 +5808,16 @@ mod tests {
         assert_eq!(result.winner, Some(Seat::A));
 
         fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn terminal_winner_reports_the_opponent_of_the_losing_previous_mover() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(terminal_winner(&board, Color::Black), Some(Seat::B));
+        assert_eq!(terminal_winner(&board, Color::White), Some(Seat::A));
     }
 
     #[test]
