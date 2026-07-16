@@ -36,8 +36,12 @@ jobs:
       run: |
         cargo test -p haitaka --features shihonkangen reaching_five_hand_pieces_is_an_immediate_loss
         cargo test -p haitaka_wasm --features shihonkangen capital_return_loss_is_scored_as_a_win_for_side_to_move
+        cargo test -p haitaka --features shihonkangen mating_line_is_rejected_when_capture_reaches_five_hand_pieces
+        cargo test -p haitaka_wasm --features shihonkangen iterative_search_does_not_select_dfpn_mate_that_loses_capital_return
         cargo test -p haitaka --features ningenshogi human_shogi
-        cargo test -p haitaka_wasm --features ningenshogi human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move
+        cargo test -p haitaka_wasm --features ningenshogi human_shogi
+        cargo test -p haitaka_cli --features shihonkangen,ningenshogi external_engine_receives_the_full_position_history
+        cargo test -p haitaka_cli --features shihonkangen,ningenshogi self_play_report_records_the_active_composite_profile
         cargo check --workspace --features annan,shihonkangen,ningenshogi,igyoku --verbose
     - name: Reject invalid feature categories
       shell: bash
