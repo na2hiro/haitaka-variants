@@ -89,6 +89,79 @@ fn a_previous_movers_tokin_is_an_immediate_win() {
     assert_eq!(board.status(), GameStatus::Won);
 }
 
+#[cfg(feature = "shihonkangen")]
+#[test]
+fn reaching_five_hand_pieces_is_an_immediate_loss() {
+    let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), None);
+
+    board.play("9d8d".parse().unwrap());
+
+    assert_eq!(board.num_in_hand(Color::Black, Piece::Pawn), 1);
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+    assert!(!board.generate_moves(|_| true));
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_mate_wins_after_every_surviving_piece_has_moved() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1".parse().unwrap();
+    board.play("4d4c".parse().unwrap());
+    board.play("9c9d".parse().unwrap());
+    board.play("9b5b".parse().unwrap());
+
+    assert_eq!(
+        board.unmoved_pieces() & board.colors(Color::Black),
+        BitBoard::EMPTY
+    );
+    assert_eq!(board.winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_mating_side_loses_with_an_unmoved_piece_left() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+    board.play("4d4c".parse().unwrap());
+    board.play("9c9d".parse().unwrap());
+    board.play("9b5b".parse().unwrap());
+
+    assert_eq!(
+        board.unmoved_pieces() & board.colors(Color::Black),
+        Square::G1.bitboard()
+    );
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_capture_removes_an_unmoved_piece_from_the_requirement() {
+    let mut board: Board = "4k4/9/9/4rP3/9/9/9/9/8K w - 1".parse().unwrap();
+    assert!(board.unmoved_pieces().has(Square::D4));
+
+    board.play("5d4d".parse().unwrap());
+
+    assert!(!board.unmoved_pieces().has(Square::D4));
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_history_participates_in_position_identity() {
+    let mut moved: Board = "4k4/9/9/9/9/9/9/9/4K4 b - 1".parse().unwrap();
+    moved.play("5i5h".parse().unwrap());
+    moved.play("5a5b".parse().unwrap());
+    moved.play("5h5i".parse().unwrap());
+    moved.play("5b5a".parse().unwrap());
+
+    let reparsed: Board = format!("{moved}").parse().unwrap();
+    assert_ne!(moved.unmoved_pieces(), reparsed.unmoved_pieces());
+    assert_ne!(moved.hash(), reparsed.hash());
+    assert!(!moved.same_position(&reparsed));
+}
+
 #[cfg(feature = "igyoku")]
 #[test]
 fn igyoku_forbids_physical_king_moves() {
@@ -340,6 +413,7 @@ fn pawn_push_mate_is_valid() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -375,6 +449,7 @@ fn discount_pawn_drop_mate_in_perft() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
     let mut board: Board = Board::tsume(sfen).unwrap();
@@ -505,6 +580,7 @@ fn tsume() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -559,6 +635,7 @@ fn generate_checks() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -641,6 +718,7 @@ fn invalid_tsume() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -695,7 +773,7 @@ fn discovered_checks1() {
     feature = "tenjiku",
     feature = "anki"
 )))]
-#[cfg(not(feature = "oute"))]
+#[cfg(not(any(feature = "oute", feature = "shihonkangen")))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
     let mut board = Board::tsume(sfen).unwrap();
@@ -733,6 +811,7 @@ fn pinners() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -780,7 +859,7 @@ fn undiscovered_checks() {
 
 #[test]
 #[cfg(not(feature = "tenkyo"))]
-#[cfg(not(feature = "oute"))]
+#[cfg(not(any(feature = "oute", feature = "shihonkangen")))]
 fn discovered_checks2() {
     /*
     . . . . . . . . .
@@ -849,6 +928,7 @@ fn discovered_checks2() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .

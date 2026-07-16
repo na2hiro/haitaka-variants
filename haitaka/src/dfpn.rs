@@ -840,6 +840,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "shihonkangen"))]
     fn solves_existing_tsume_position() {
         let board = Board::tsume(TSUME_SFEN).unwrap();
         let result = board.dfpn(&DfpnOptions::default());

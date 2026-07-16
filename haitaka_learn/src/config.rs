@@ -497,6 +497,8 @@ pub enum WinCondition {
     Oute,
     Sanmaime,
     Inochinotokin,
+    Shihonkangen,
+    Ningenshogi,
 }
 
 impl WinCondition {
@@ -505,6 +507,8 @@ impl WinCondition {
             Self::Oute => "oute",
             Self::Sanmaime => "sanmaime",
             Self::Inochinotokin => "inochinotokin",
+            Self::Shihonkangen => "shihonkangen",
+            Self::Ningenshogi => "ningenshogi",
         }
     }
 }
@@ -539,6 +543,8 @@ impl RuleProfile {
             WinCondition::Oute,
             WinCondition::Sanmaime,
             WinCondition::Inochinotokin,
+            WinCondition::Shihonkangen,
+            WinCondition::Ningenshogi,
         ] {
             if self.win_conditions.contains(&condition) {
                 name.push('+');
@@ -1056,6 +1062,12 @@ fn active_win_conditions() -> Vec<WinCondition> {
     if cfg!(feature = "inochinotokin") {
         conditions.push(WinCondition::Inochinotokin);
     }
+    if cfg!(feature = "shihonkangen") {
+        conditions.push(WinCondition::Shihonkangen);
+    }
+    if cfg!(feature = "ningenshogi") {
+        conditions.push(WinCondition::Ningenshogi);
+    }
     conditions
 }
 
@@ -1148,6 +1160,40 @@ rule_id = 123
         assert_eq!(
             config.rules.movement_constraint,
             Some(MovementConstraint::Igyoku)
+        );
+    }
+
+    #[test]
+    fn history_and_loss_conditions_have_stable_profile_names() {
+        let rules = RulesConfig {
+            ruleset: Ruleset::Standard,
+            win_conditions: vec![
+                WinCondition::Ningenshogi,
+                WinCondition::Shihonkangen,
+                WinCondition::Inochinotokin,
+            ],
+            movement_constraint: None,
+            rule_id: Some(124),
+            handicap: None,
+            opening_sfen: None,
+        };
+        assert_eq!(
+            rules.profile().canonical_name(),
+            "standard+inochinotokin+shihonkangen+ningenshogi"
+        );
+
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+win_conditions = ["shihonkangen", "ningenshogi"]
+rule_id = 124
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            config.rules.win_conditions,
+            vec![WinCondition::Shihonkangen, WinCondition::Ningenshogi]
         );
     }
 

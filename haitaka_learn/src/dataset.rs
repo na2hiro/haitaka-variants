@@ -1299,6 +1299,7 @@ fn generate_game_entries(
     } else {
         match board.status() {
             haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
+            haitaka::GameStatus::WonBySideToMove => GameOutcome::Winner(board.side_to_move()),
             haitaka::GameStatus::Drawn => GameOutcome::Draw,
             haitaka::GameStatus::Ongoing => GameOutcome::Draw,
         }
@@ -1635,6 +1636,7 @@ fn format_duration(duration: Duration) -> String {
 fn terminal_teacher_score(board: &Board) -> i32 {
     match board.status() {
         haitaka::GameStatus::Won => -30_000,
+        haitaka::GameStatus::WonBySideToMove => 30_000,
         haitaka::GameStatus::Drawn => 0,
         haitaka::GameStatus::Ongoing => 0,
     }
@@ -1881,6 +1883,15 @@ mod tests {
     #[test]
     fn packed_entry_size_matches_trainer_layout() {
         assert_eq!(ENTRY_BYTES, 72);
+    }
+
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn terminal_teacher_score_rewards_the_side_that_received_capital_return_win() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(terminal_teacher_score(&board), 30_000);
     }
 
     #[test]
@@ -2898,10 +2909,13 @@ run_search_smoke = false
         let config_path = temp.path().join("haitaka_learn.toml");
         fs::write(
             &config_path,
-            r#"
+            format!(
+                r#"
 [rules]
 ruleset = "handicap"
 handicap = "six-piece"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "out"
@@ -2917,6 +2931,8 @@ sample_every_ply = 1
 max_positions_per_game = 4
 seed = 9
 "#,
+                aux = active_test_aux_rules()
+            ),
         )
         .unwrap();
 
@@ -3051,6 +3067,8 @@ seed = 9
             (cfg!(feature = "oute"), "oute"),
             (cfg!(feature = "sanmaime"), "sanmaime"),
             (cfg!(feature = "inochinotokin"), "inochinotokin"),
+            (cfg!(feature = "shihonkangen"), "shihonkangen"),
+            (cfg!(feature = "ningenshogi"), "ningenshogi"),
         ]
         .into_iter()
         .filter_map(|(enabled, name)| enabled.then_some(name))

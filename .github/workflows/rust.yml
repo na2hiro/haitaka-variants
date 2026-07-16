@@ -32,6 +32,13 @@ jobs:
         cargo test -p haitaka_learn --features annan,oute,sanmaime,igyoku composite_rule_profile_has_stable_canonical_name
     - name: Check replay-filter donor composition
       run: cargo check --workspace --features neko,hitomasuou --verbose
+    - name: Run history and loss outcome tests
+      run: |
+        cargo test -p haitaka --features shihonkangen reaching_five_hand_pieces_is_an_immediate_loss
+        cargo test -p haitaka_wasm --features shihonkangen capital_return_loss_is_scored_as_a_win_for_side_to_move
+        cargo test -p haitaka --features ningenshogi human_shogi
+        cargo test -p haitaka_wasm --features ningenshogi human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move
+        cargo check --workspace --features annan,shihonkangen,ningenshogi,igyoku --verbose
     - name: Reject invalid feature categories
       shell: bash
       run: |

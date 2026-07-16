@@ -15,6 +15,12 @@ rule_id = 123
 present. The configured axes must exactly match the Cargo features used to
 build `haitaka_learn`.
 
+Supported `win_conditions` values are `oute`, `sanmaime`, `inochinotokin`,
+`shihonkangen`, and `ningenshogi`. Human Shogi rollout boards carry their
+unmoved-piece history through search and self-play; when an `opening_sfen` is
+loaded, all pieces present in that opening are initially considered unmoved.
+These two rules do not change NNUE input geometry.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data

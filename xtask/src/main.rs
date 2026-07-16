@@ -454,7 +454,15 @@ fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<St
     {
         profile = (*donor).to_string();
     }
-    for auxiliary in ["oute", "sanmaime", "inochinotokin", "igyoku", "hitomasuou"] {
+    for auxiliary in [
+        "oute",
+        "sanmaime",
+        "inochinotokin",
+        "shihonkangen",
+        "ningenshogi",
+        "igyoku",
+        "hitomasuou",
+    ] {
         if feature_names.contains(&auxiliary) {
             profile.push('+');
             profile.push_str(auxiliary);
@@ -771,7 +779,10 @@ fn learn_features_from_toml(raw_toml: &str) -> Result<Option<String>> {
             let condition = condition
                 .as_str()
                 .ok_or_else(|| "rules.win_conditions entries must be strings".to_string())?;
-            if !matches!(condition, "oute" | "sanmaime" | "inochinotokin") {
+            if !matches!(
+                condition,
+                "oute" | "sanmaime" | "inochinotokin" | "shihonkangen" | "ningenshogi"
+            ) {
                 return Err(format!("unsupported win condition {condition:?}"));
             }
             features.push(condition.to_string());
@@ -1269,6 +1280,20 @@ rule_id = 123
         )
         .unwrap();
         assert_eq!(features.as_deref(), Some("annan,oute,sanmaime,igyoku"));
+    }
+
+    #[test]
+    fn learn_features_include_history_and_loss_conditions() {
+        let features = learn_features_from_toml(
+            r#"
+[rules]
+ruleset = "standard"
+win_conditions = ["shihonkangen", "ningenshogi"]
+rule_id = 124
+"#,
+        )
+        .unwrap();
+        assert_eq!(features.as_deref(), Some("shihonkangen,ningenshogi"));
     }
 
     #[test]

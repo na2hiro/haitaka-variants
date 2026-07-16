@@ -1924,7 +1924,7 @@ fn negamax(
     let ply_index = usize::try_from(ply).unwrap_or(usize::MAX);
     let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, ply_index);
     if move_picker.is_empty() {
-        return Ok(-MATE_SCORE + ply);
+        return Ok(no_legal_moves_terminal_score(board, ply));
     }
 
     let mut best_score = -INF_SCORE;
@@ -2060,7 +2060,7 @@ fn quiescence(
 
     if in_check {
         if !searched_move {
-            return Ok(-MATE_SCORE + ply);
+            return Ok(no_legal_moves_terminal_score(board, ply));
         }
         return Ok(alpha);
     }
@@ -2207,7 +2207,7 @@ fn evaluate_or_mate(
     let us = board.side_to_move();
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
-        return -MATE_SCORE + ply;
+        return no_legal_moves_terminal_score(board, ply);
     }
 
     match &ctx.evaluation {
@@ -2237,11 +2237,7 @@ fn has_both_kings(board: &Board) -> bool {
 fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
     let us = board.side_to_move();
     if let Some(winner) = board.immediate_winner() {
-        if winner == us {
-            Some(MATE_SCORE - ply)
-        } else {
-            Some(-MATE_SCORE + ply)
-        }
+        Some(terminal_score_for_winner(us, winner, ply))
     } else if !board.has(us, Piece::King) {
         Some(-MATE_SCORE + ply)
     } else if !board.has(!us, Piece::King) {
@@ -2249,6 +2245,21 @@ fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
     } else {
         None
     }
+}
+
+fn terminal_score_for_winner(side_to_move: Color, winner: Color, ply: i32) -> i32 {
+    if winner == side_to_move {
+        MATE_SCORE - ply
+    } else {
+        -MATE_SCORE + ply
+    }
+}
+
+fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
+    let winner = board
+        .winner()
+        .expect("a position without legal moves must have a winner");
+    terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -2723,6 +2734,30 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn capital_return_loss_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(MATE_SCORE - 3)
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        board.play("9b5b".parse().unwrap());
+
+        assert_eq!(terminal_score_for_side_to_move(&board, 3), None);
+        assert_eq!(no_legal_moves_terminal_score(&board, 3), MATE_SCORE - 3);
+    }
+
+    #[test]
     #[cfg(not(any(
         feature = "annan",
         feature = "anhoku",
@@ -3138,7 +3173,7 @@ mod tests {
 
         let moves = reference_ordered_moves(board);
         if moves.is_empty() {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
 
         let mut best_score = -INF_SCORE;
@@ -3230,7 +3265,7 @@ mod tests {
             return if searched_move {
                 alpha
             } else {
-                -MATE_SCORE + ply
+                no_legal_moves_terminal_score(board, ply)
             };
         }
 
@@ -3282,7 +3317,7 @@ mod tests {
         let us = board.side_to_move();
         let our_mobility = count_legal_moves(board) as i32;
         if our_mobility == 0 {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
         material_score(board, us) - material_score(board, them)
@@ -3546,6 +3581,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "shihonkangen"))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -3598,6 +3634,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "shihonkangen"))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",
