@@ -1331,11 +1331,28 @@ fn search_iterative_deepening_with_strategy_and_deadline(
     config: IterativeSearchConfig,
     deadline: Option<Instant>,
 ) -> Result<IterativeSearchSummary, String> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Native callers such as `haitaka_cli self-play` search concurrently.
+        // A shared write-locked TT serializes those searches after their
+        // deadlines have already started, causing queued searches to time out
+        // before completing even depth one. Give each native search its own TT;
+        // the wasm build remains single-threaded and keeps reusing its slot.
+        let mut tt = TranspositionTable::default();
+        return search_iterative_deepening_with_strategy_and_deadline_and_tt(
+            sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+        );
+    }
+
+    #[cfg(target_arch = "wasm32")]
     let mut tt = search_tt_slot().write().unwrap();
-    tt.clear();
-    search_iterative_deepening_with_strategy_and_deadline_and_tt(
-        sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
-    )
+    #[cfg(target_arch = "wasm32")]
+    {
+        tt.clear();
+        search_iterative_deepening_with_strategy_and_deadline_and_tt(
+            sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+        )
+    }
 }
 
 fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
@@ -1408,6 +1425,20 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         dfpn = Some(dfpn_summary);
     }
 
+    search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+        &board, max_depth, evaluation, deadline, tt, started_at, dfpn,
+    )
+}
+
+fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+    board: &Board,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    started_at: Instant,
+    dfpn: Option<DfpnSummary>,
+) -> Result<IterativeSearchSummary, String> {
     let mut iterations = Vec::with_capacity(max_depth as usize);
     let mut completed_depth = 0;
     let mut total_states = 0;
@@ -1425,7 +1456,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         }
 
         match search_board_with_strategy_tt_and_ordering(
-            &board,
+            board,
             depth,
             evaluation.clone(),
             deadline,
@@ -1479,6 +1510,28 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_iterative_deepening_with_strategy(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+) -> Result<IterativeSearchSummary, String> {
+    let started_at = Instant::now();
+    let deadline = (timeout_ms != 0)
+        .then(|| started_at + std::time::Duration::from_millis(u64::from(timeout_ms)));
+    let mut tt = TranspositionTable::default();
+    search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+        board,
+        max_depth.max(1),
+        evaluation,
+        deadline,
+        &mut tt,
+        started_at,
+        None,
+    )
+}
+
 #[doc(hidden)]
 pub fn search_iterative_deepening_impl(
     sfen: &str,
@@ -1508,6 +1561,21 @@ pub fn search_iterative_deepening_impl_with_dfpn_mode(
         timeout_ms,
         current_evaluation_strategy(),
         IterativeSearchConfig { run_dfpn },
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Handcrafted,
     )
 }
 
@@ -1548,12 +1616,44 @@ pub fn search_iterative_deepening_impl_with_eval_mode(
     model: Arc<NnueModel>,
     mode: SearchEvalMode,
 ) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+        sfen, max_depth, timeout_ms, model, mode, true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    run_dfpn: bool,
+) -> Result<IterativeSearchSummary, String> {
     search_iterative_deepening_with_strategy(
         sfen,
         max_depth,
         timeout_ms,
         EvaluationStrategy::Nnue { model, mode },
-        IterativeSearchConfig::default(),
+        IterativeSearchConfig { run_dfpn },
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl_with_eval_mode(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Nnue { model, mode },
     )
 }
 

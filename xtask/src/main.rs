@@ -34,6 +34,12 @@ struct TrainArgs {
 }
 
 #[derive(Debug)]
+struct RankExistingArgs {
+    config: PathBuf,
+    extra_args: Vec<OsString>,
+}
+
+#[derive(Debug)]
 struct MergeDataArgs {
     config: PathBuf,
     extra_args: Vec<OsString>,
@@ -109,6 +115,15 @@ fn run() -> Result<()> {
                 Ok(())
             } else {
                 train(parse_train_args(raw_args)?)
+            }
+        }
+        "rank-existing" => {
+            let raw_args: Vec<OsString> = args.collect();
+            if raw_args.iter().any(is_help_arg) {
+                print_rank_existing_usage();
+                Ok(())
+            } else {
+                rank_existing(parse_rank_existing_args(raw_args)?)
             }
         }
         "merge" | "merge-data" => {
@@ -187,6 +202,11 @@ fn parse_generate_data_args(raw_args: Vec<OsString>) -> Result<GenerateDataArgs>
 fn parse_train_args(raw_args: Vec<OsString>) -> Result<TrainArgs> {
     let (config, extra_args) = parse_config_first_args(raw_args, "train")?;
     Ok(TrainArgs { config, extra_args })
+}
+
+fn parse_rank_existing_args(raw_args: Vec<OsString>) -> Result<RankExistingArgs> {
+    let (config, extra_args) = parse_config_first_args(raw_args, "rank-existing")?;
+    Ok(RankExistingArgs { config, extra_args })
 }
 
 fn parse_merge_data_args(raw_args: Vec<OsString>) -> Result<MergeDataArgs> {
@@ -410,6 +430,17 @@ fn train(args: TrainArgs) -> Result<()> {
         "cargo",
         haitaka_learn_train_select_args(&args.config, features, &self_play_bin, &args.extra_args),
         "train and select strongest NNUE checkpoint",
+    )
+}
+
+fn rank_existing(args: RankExistingArgs) -> Result<()> {
+    let ruleset = ruleset_from_config(&args.config)?;
+    let features = required_learn_feature_for_ruleset(&ruleset)?;
+    let self_play_bin = build_haitaka_cli(features)?;
+    run_command(
+        "cargo",
+        haitaka_learn_rank_existing_args(&args.config, features, &self_play_bin, &args.extra_args),
+        "rank existing NNUE candidates",
     )
 }
 
@@ -844,6 +875,25 @@ fn haitaka_learn_train_select_args(
     args
 }
 
+fn haitaka_learn_rank_existing_args(
+    config: &PathBuf,
+    features: Option<&str>,
+    self_play_bin: &Path,
+    extra_args: &[OsString],
+) -> Vec<OsString> {
+    let mut args = os_args(["run", "-p", "haitaka_learn", "--release"]);
+    if let Some(features) = features {
+        args.push("--features".into());
+        args.push(features.into());
+    }
+    args.extend(os_args(["--", "rank-existing", "--config"]));
+    args.push(config.as_os_str().to_os_string());
+    args.push("--self-play-bin".into());
+    args.push(self_play_bin.as_os_str().to_os_string());
+    args.extend(extra_args.iter().cloned());
+    args
+}
+
 fn haitaka_learn_merge_data_args(
     config: &PathBuf,
     features: Option<&str>,
@@ -1004,6 +1054,7 @@ fn print_usage() {
     eprintln!("Usage: cargo xtask package [options]");
     eprintln!("       cargo generate <config.toml> [generate-data options]");
     eprintln!("       cargo train <config.toml> [train-select options]");
+    eprintln!("       cargo rank-existing <config.toml> --output <path> [ranking options]");
     eprintln!("       cargo merge <config.toml> --input <output-dir> [--input <output-dir> ...]");
     eprintln!("       cargo verify <config.toml> [verify options]");
     eprintln!("       cargo bundle-pretrain <config.toml> [--output <bundle.tgz>]");
@@ -1027,7 +1078,13 @@ fn print_train_usage() {
     eprintln!("Options:");
     eprintln!("  Reads [rules].ruleset from the TOML config, builds haitaka_cli with");
     eprintln!("  matching --features when required, then runs haitaka_learn train-select.");
-    eprintln!("  Useful options: --no-resume, --selection-max-games <N>, --storage-saver.");
+    eprintln!("  Useful options: --no-resume, --ranking-budget <N>, --storage-saver.");
+}
+
+fn print_rank_existing_usage() {
+    eprintln!("Usage: cargo rank-existing <config.toml> --output <path> [--ranking-budget <N>]");
+    eprintln!("  Builds the matching self-play binary, imports complete legacy pairs,");
+    eprintln!("  and resumes fixed-anchor ranking without overwriting the old NNUE.");
 }
 
 fn print_merge_data_usage() {
@@ -1181,6 +1238,31 @@ mod tests {
         );
 
         assert!(!args.iter().any(|arg| arg == "--features"));
+    }
+
+    #[test]
+    fn rank_existing_forwards_output_and_budget() {
+        let args = haitaka_learn_rank_existing_args(
+            &PathBuf::from("haitaka_learn.anhoku.toml"),
+            Some("anhoku"),
+            Path::new("target/release/haitaka_cli"),
+            &[
+                OsString::from("--ranking-budget"),
+                OsString::from("8192"),
+                OsString::from("--output"),
+                OsString::from("out/model.reselected.nnue"),
+            ],
+        );
+        let args = args_as_strings(&args);
+
+        assert!(args.iter().any(|arg| arg == "rank-existing"));
+        assert!(has_adjacent_args(&args, "--features", "anhoku"));
+        assert!(has_adjacent_args(&args, "--ranking-budget", "8192"));
+        assert!(has_adjacent_args(
+            &args,
+            "--output",
+            "out/model.reselected.nnue"
+        ));
     }
 
     #[test]

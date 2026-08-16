@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
@@ -495,6 +496,8 @@ struct MatchStats {
     total_plies: u64,
     a_breakdown: SearchBreakdown,
     b_breakdown: SearchBreakdown,
+    pair_score_bins: [u32; 5],
+    pending_pair_scores: BTreeMap<u32, Vec<f64>>,
 }
 
 #[derive(Debug, Clone)]
@@ -601,6 +604,8 @@ struct ReportPackage {
 struct ReportGit {
     commit: String,
     dirty: bool,
+    #[serde(rename = "executableSha256")]
+    executable_sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -632,6 +637,8 @@ struct ReportEngine {
     command: Option<String>,
     args: Vec<String>,
     nnue: Option<String>,
+    #[serde(rename = "nnueSha256", skip_serializing_if = "Option::is_none")]
+    nnue_sha256: Option<String>,
     #[serde(rename = "archivePath", skip_serializing_if = "Option::is_none")]
     archive_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -656,6 +663,14 @@ struct RatingSummary {
     approx_elo: f64,
     #[serde(rename = "approxElo95Ci")]
     approx_elo_95_ci: [f64; 2],
+    #[serde(rename = "pairCount", default)]
+    pair_count: u32,
+    #[serde(rename = "pairScoreBins", default)]
+    pair_score_bins: [u32; 5],
+    #[serde(rename = "pairedElo", default)]
+    paired_elo: f64,
+    #[serde(rename = "pairedElo95Ci", default)]
+    paired_elo_95_ci: [f64; 2],
     #[serde(rename = "avgPlies")]
     avg_plies: f64,
     #[serde(rename = "totalNodes")]
@@ -906,8 +921,8 @@ fn search_in_process_handcrafted(
             })
         }
         SearchBudget::Movetime { max_depth, millis } => {
-            let summary = haitaka_wasm::search_iterative_deepening_impl(
-                &board.to_string(),
+            let summary = haitaka_wasm::search_board_iterative_deepening_impl(
+                board,
                 max_depth.unwrap_or(u8::MAX),
                 millis,
             )?;
@@ -942,8 +957,8 @@ fn search_in_process_nnue(
             })
         }
         SearchBudget::Movetime { max_depth, millis } => {
-            let summary = haitaka_wasm::search_iterative_deepening_impl_with_eval_mode(
-                &board.to_string(),
+            let summary = haitaka_wasm::search_board_iterative_deepening_impl_with_eval_mode(
+                board,
                 max_depth.unwrap_or(u8::MAX),
                 millis,
                 model,
@@ -1728,6 +1743,13 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
     if stats.draws == games && games > 0 {
         warnings.push("all games were drawn; estimate is uninformative".to_string());
     }
+    let (pair_count, paired_elo, paired_elo_95_ci) = paired_rating(stats.pair_score_bins);
+    if games > pair_count * 2 {
+        warnings.push(format!(
+            "{} game(s) are not part of a complete color-swapped pair and are excluded from paired statistics",
+            games - pair_count * 2
+        ));
+    }
 
     RatingSummary {
         games,
@@ -1739,6 +1761,10 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
         score_rate,
         approx_elo: score_rate_to_elo(bounded_rate),
         approx_elo_95_ci: [score_rate_to_elo(lower_rate), score_rate_to_elo(upper_rate)],
+        pair_count,
+        pair_score_bins: stats.pair_score_bins,
+        paired_elo,
+        paired_elo_95_ci,
         avg_plies: stats.total_plies as f64 / denom,
         total_nodes: stats.total_nodes,
         total_elapsed_ms: stats.total_elapsed_ms,
@@ -1788,7 +1814,41 @@ fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
             summary.b_breakdown.total_elapsed_ms,
             summary.b_breakdown.qsearch(),
         ),
+        pair_score_bins: summary.pair_score_bins,
+        pending_pair_scores: BTreeMap::new(),
     }
+}
+
+fn paired_rating(bins: [u32; 5]) -> (u32, f64, [f64; 2]) {
+    let pairs: u32 = bins.iter().sum();
+    if pairs == 0 {
+        return (0, 0.0, [0.0, 0.0]);
+    }
+    let n = f64::from(pairs);
+    let mean = bins
+        .iter()
+        .enumerate()
+        .map(|(bin, count)| bin as f64 / 4.0 * f64::from(*count))
+        .sum::<f64>()
+        / n;
+    let bounded = mean.clamp(0.001, 0.999);
+    let variance = if pairs > 1 {
+        bins.iter()
+            .enumerate()
+            .map(|(bin, count)| {
+                let delta = bin as f64 / 4.0 - mean;
+                delta * delta * f64::from(*count)
+            })
+            .sum::<f64>()
+            / (n - 1.0)
+    } else {
+        0.25
+    };
+    let score_se = (variance / n).sqrt();
+    let derivative = 400.0 / std::f64::consts::LN_10 / (bounded * (1.0 - bounded));
+    let elo = score_rate_to_elo(bounded);
+    let elo_se = derivative * score_se;
+    (pairs, elo, [elo - 1.96 * elo_se, elo + 1.96 * elo_se])
 }
 
 fn normalized_report_command_value(command: serde_json::Value) -> Result<serde_json::Value> {
@@ -2043,6 +2103,7 @@ fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> Repo
             command: None,
             args: Vec::new(),
             nnue: None,
+            nnue_sha256: None,
             archive_path: None,
             archive: None,
         },
@@ -2053,6 +2114,7 @@ fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> Repo
             command: None,
             args: Vec::new(),
             nnue: Some(path.display().to_string()),
+            nnue_sha256: file_sha256(path).ok(),
             archive_path: None,
             archive: None,
         },
@@ -2065,6 +2127,7 @@ fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> Repo
                     command: Some(archive.manifest.runtime.executable.clone()),
                     args: archive_report_args(archive, args),
                     nnue: None,
+                    nnue_sha256: None,
                     archive_path: Some(archive.source_archive_path.display().to_string()),
                     archive: Some(archive.manifest.clone()),
                 }
@@ -2076,6 +2139,7 @@ fn report_engine(engine: &EngineConfig, archive: Option<&ArchiveLaunch>) -> Repo
                     command: Some(path.display().to_string()),
                     args: args.clone(),
                     nnue: None,
+                    nnue_sha256: None,
                     archive_path: None,
                     archive: None,
                 }
@@ -2130,7 +2194,7 @@ fn self_play_report(
 ) -> Result<SelfPlayReport> {
     Ok(SelfPlayReport {
         schema: "haitaka-self-play-report",
-        schema_version: 1,
+        schema_version: 2,
         generated_at_unix_seconds: unix_timestamp_seconds()?,
         package: ReportPackage {
             name: env!("CARGO_PKG_NAME"),
@@ -2139,6 +2203,7 @@ fn self_play_report(
         git: ReportGit {
             commit: git_commit(),
             dirty: git_dirty(),
+            executable_sha256: file_sha256(&std::env::current_exe()?)?,
         },
         ruleset: default_ruleset().to_string(),
         command: report_command(args, threads),
@@ -2551,6 +2616,19 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
                 Some(Seat::A) => stats.a_wins += 1,
                 Some(Seat::B) => stats.b_wins += 1,
                 None => stats.draws += 1,
+            }
+            let pair_index = game_index / 2;
+            let score = match result.winner {
+                Some(Seat::A) => 1.0,
+                Some(Seat::B) => 0.0,
+                None => 0.5,
+            };
+            let pair = stats.pending_pair_scores.entry(pair_index).or_default();
+            pair.push(score);
+            if pair.len() == 2 {
+                let bin = ((pair[0] + pair[1]) * 2.0).round() as usize;
+                stats.pair_score_bins[bin.min(4)] += 1;
+                stats.pending_pair_scores.remove(&pair_index);
             }
             if let Some(output) = report_output.as_mut() {
                 append_jsonl(
@@ -3160,6 +3238,7 @@ mod tests {
                 command: None,
                 args: Vec::new(),
                 nnue: None,
+                nnue_sha256: None,
                 archive_path: None,
                 archive: None,
             },
@@ -3170,6 +3249,7 @@ mod tests {
                 command: Some("/tmp/engine-b".to_string()),
                 args: vec!["--fast".to_string()],
                 nnue: None,
+                nnue_sha256: None,
                 archive_path: None,
                 archive: None,
             },
@@ -3774,6 +3854,8 @@ mod tests {
                     qsearch_delta_prunes: 4,
                 },
             ),
+            pair_score_bins: [0, 0, 1, 1, 0],
+            pending_pair_scores: BTreeMap::new(),
         };
 
         let summary = rating_summary(&stats, 4);
@@ -3783,6 +3865,9 @@ mod tests {
         assert_eq!(summary.a_score, 2.5);
         assert_eq!(summary.score_rate, 0.625);
         assert!(summary.approx_elo > 0.0);
+        assert_eq!(summary.pair_count, 2);
+        assert_eq!(summary.pair_score_bins, [0, 0, 1, 1, 0]);
+        assert!(summary.paired_elo > 0.0);
         assert_eq!(summary.avg_plies, 10.0);
         assert_eq!(summary.total_elapsed_ms, 500.0);
         assert_eq!(summary.aggregate_nps, 2_000.0);

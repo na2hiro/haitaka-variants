@@ -60,7 +60,19 @@ enum Command {
         #[arg(long)]
         selection_max_games: Option<u32>,
         #[arg(long)]
+        ranking_budget: Option<u32>,
+        #[arg(long)]
         storage_saver: bool,
+    },
+    RankExisting {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        self_play_bin: PathBuf,
+        #[arg(long)]
+        ranking_budget: Option<u32>,
+        #[arg(long)]
+        output: PathBuf,
     },
     Export {
         #[arg(long)]
@@ -148,6 +160,7 @@ fn main() -> Result<()> {
             self_play_bin,
             no_resume,
             selection_max_games,
+            ranking_budget,
             storage_saver,
         } => {
             let loaded = LoadedConfig::from_path(&config)?;
@@ -157,10 +170,28 @@ fn main() -> Result<()> {
                     self_play_bin,
                     resume_override: resume_override(no_resume),
                     selection_max_games,
+                    ranking_budget,
                     storage_saver: storage_saver.then_some(true),
                 },
             )?;
             println!("training selection finished: {}", selected.display());
+        }
+        Command::RankExisting {
+            config,
+            self_play_bin,
+            ranking_budget,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let selected = selection::rank_existing(
+                &loaded,
+                selection::RankExistingOptions {
+                    self_play_bin,
+                    ranking_budget,
+                    output,
+                },
+            )?;
+            println!("existing candidates ranked: {}", selected.display());
         }
         Command::Export { config } => {
             let loaded = LoadedConfig::from_path(&config)?;

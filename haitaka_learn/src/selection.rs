@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus};
 use std::thread;
@@ -10,7 +11,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{LoadedConfig, SelectionConfig};
+use crate::config::{LoadedConfig, SelectionConfig, SelectionStrategy};
 use crate::trainer;
 
 const SELECTION_SCHEMA: &str = "haitaka-nnue-selection";
@@ -21,7 +22,15 @@ pub struct TrainSelectOptions {
     pub self_play_bin: PathBuf,
     pub resume_override: Option<bool>,
     pub selection_max_games: Option<u32>,
+    pub ranking_budget: Option<u32>,
     pub storage_saver: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RankExistingOptions {
+    pub self_play_bin: PathBuf,
+    pub ranking_budget: Option<u32>,
+    pub output: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +164,13 @@ struct SelfPlaySummary {
 }
 
 pub fn train_select(loaded: &LoadedConfig, options: TrainSelectOptions) -> Result<PathBuf> {
+    match loaded.config.selection.strategy {
+        SelectionStrategy::AnchoredRanking => train_select_anchored(loaded, options),
+        SelectionStrategy::Sprt => train_select_sprt(loaded, options),
+    }
+}
+
+fn train_select_sprt(loaded: &LoadedConfig, options: TrainSelectOptions) -> Result<PathBuf> {
     let mut selection = loaded.config.selection.clone();
     if let Some(max_games) = options.selection_max_games {
         selection.max_games = max_games;
@@ -237,11 +253,23 @@ pub fn train_select(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resul
 }
 
 fn validate_effective_selection(selection: &SelectionConfig) -> Result<()> {
-    if selection.batch_games == 0 {
-        bail!("selection.batch_games must be > 0");
-    }
-    if selection.max_games < selection.batch_games {
-        bail!("selection.max_games must be >= selection.batch_games");
+    match selection.strategy {
+        SelectionStrategy::AnchoredRanking => {
+            if selection.screen_games == 0 || selection.screen_games % 2 != 0 {
+                bail!("selection.screen_games must be a positive even number");
+            }
+            if selection.round_games == 0 || selection.round_games % 2 != 0 {
+                bail!("selection.round_games must be a positive even number");
+            }
+        }
+        SelectionStrategy::Sprt => {
+            if selection.batch_games == 0 {
+                bail!("selection.batch_games must be > 0");
+            }
+            if selection.max_games < selection.batch_games {
+                bail!("selection.max_games must be >= selection.batch_games");
+            }
+        }
     }
     Ok(())
 }
@@ -337,8 +365,16 @@ fn save_state(path: &Path, state: &SelectionState) -> Result<()> {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    fs::write(path, serde_json::to_vec_pretty(state)?)
-        .with_context(|| format!("failed to write {}", path.display()))
+    let temporary = path.with_extension("json.tmp");
+    {
+        let mut file = fs::File::create(&temporary)
+            .with_context(|| format!("failed to create {}", temporary.display()))?;
+        serde_json::to_writer_pretty(&mut file, state)?;
+        file.write_all(b"\n")?;
+        file.sync_all()?;
+    }
+    fs::rename(&temporary, path)
+        .with_context(|| format!("failed to atomically replace {}", path.display()))
 }
 
 fn eligible_checkpoints(
@@ -357,6 +393,13 @@ fn eligible_checkpoints(
     let now = SystemTime::now();
     let mut valid = Vec::new();
     for checkpoint in checkpoints {
+        // `last.ckpt` is a mutable alias. Treating its path as candidate identity
+        // freezes whichever epoch happened to be exported first and can also race
+        // the trainer's next write. Immutable epoch checkpoints cover the same
+        // models and are content-deduplicated later by NNUE SHA-256.
+        if checkpoint.file_name().and_then(|name| name.to_str()) == Some("last.ckpt") {
+            continue;
+        }
         let modified = fs::metadata(&checkpoint)
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
@@ -846,6 +889,790 @@ fn unix_timestamp_seconds() -> Result<u64> {
         .as_secs())
 }
 
+const RANKING_SCHEMA: &str = "haitaka-nnue-anchored-ranking";
+const RANKING_SCHEMA_VERSION: u8 = 1;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RankingState {
+    schema: String,
+    schema_version: u8,
+    match_identity: String,
+    anchor_sha256: String,
+    budget_games: u32,
+    fresh_games: u32,
+    status: RankingStatus,
+    selected_sha256: Option<String>,
+    selected_nnue: Option<String>,
+    candidates: Vec<RankingCandidate>,
+    warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum RankingStatus {
+    Collecting,
+    Decisive,
+    BudgetLimited,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RankingCandidate {
+    sha256: String,
+    nnue: String,
+    checkpoints: Vec<String>,
+    aliases: Vec<String>,
+    imported_games: u32,
+    fresh_games: u32,
+    pair_score_bins: [u32; 5],
+    rating: f64,
+    standard_error: f64,
+    confidence95: [f64; 2],
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredGame {
+    pair_index: u32,
+    winner: Option<String>,
+}
+
+#[derive(Debug, Default)]
+struct ParsedPairs {
+    bins: [u32; 5],
+    complete_games: u32,
+    incomplete_pairs: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RankedExportMetadata<'a> {
+    selection_method: &'static str,
+    exported_nnue: String,
+    candidate_sha256: &'a str,
+    source_checkpoints: &'a [String],
+    anchor_sha256: &'a str,
+    rating: f64,
+    confidence95: [f64; 2],
+    ranking_status: RankingStatus,
+    ranking_report: String,
+    handcrafted_benchmark_report: String,
+    config_hash: &'a str,
+}
+
+fn train_select_anchored(loaded: &LoadedConfig, options: TrainSelectOptions) -> Result<PathBuf> {
+    if options.selection_max_games.is_some() {
+        bail!(
+            "--selection-max-games is only valid with selection.strategy=\"sprt\"; use --ranking-budget for anchored ranking"
+        );
+    }
+    let mut selection = loaded.config.selection.clone();
+    if let Some(storage_saver) = options.storage_saver {
+        selection.storage_saver = storage_saver;
+    }
+    validate_effective_selection(&selection)?;
+
+    let artifacts = loaded.artifact_paths();
+    artifacts.ensure_dirs()?;
+    let paths = selection_paths(loaded);
+    fs::create_dir_all(&paths.candidates)?;
+    fs::create_dir_all(&paths.matches)?;
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let _guard = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let mut state = load_or_create_state(loaded, &selection, &paths)?;
+    let mut child = TrainingChild::new(trainer::spawn_training(
+        loaded,
+        &trainer_checkout,
+        options.resume_override,
+    )?);
+    println!("training started; checkpoints are exported without self-play contention");
+
+    let training_status = loop {
+        let checkpoints = eligible_checkpoints(
+            &artifacts.logs_dir,
+            &loaded.config.paths.python,
+            &trainer_checkout,
+            Duration::from_secs(selection.stable_checkpoint_secs),
+        )?;
+        export_new_checkpoints_only(
+            loaded,
+            &trainer_checkout,
+            &selection,
+            &paths,
+            &mut state,
+            &checkpoints,
+        )?;
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        thread::sleep(Duration::from_secs(selection.poll_interval_secs));
+    };
+
+    let checkpoints = eligible_checkpoints(
+        &artifacts.logs_dir,
+        &loaded.config.paths.python,
+        &trainer_checkout,
+        Duration::ZERO,
+    )?;
+    export_new_checkpoints_only(
+        loaded,
+        &trainer_checkout,
+        &selection,
+        &paths,
+        &mut state,
+        &checkpoints,
+    )?;
+    if !training_status.success() {
+        save_state(&paths.state, &state)?;
+        bail!("training failed with exit status {training_status}");
+    }
+
+    let budget = options.ranking_budget.unwrap_or(selection.max_total_games);
+    rank_candidates(
+        loaded,
+        &options.self_play_bin,
+        &selection,
+        &paths,
+        &state,
+        budget,
+        false,
+        &artifacts.exported_nnue,
+    )
+}
+
+pub fn rank_existing(loaded: &LoadedConfig, options: RankExistingOptions) -> Result<PathBuf> {
+    let selection = loaded.config.selection.clone();
+    validate_effective_selection(&selection)?;
+    let paths = selection_paths(loaded);
+    let bytes = fs::read(&paths.state)
+        .with_context(|| format!("failed to read legacy state {}", paths.state.display()))?;
+    let legacy: SelectionState = serde_json::from_slice(&bytes)
+        .with_context(|| format!("failed to parse legacy state {}", paths.state.display()))?;
+    let budget = options.ranking_budget.unwrap_or(selection.max_total_games);
+    rank_candidates(
+        loaded,
+        &options.self_play_bin,
+        &selection,
+        &paths,
+        &legacy,
+        budget,
+        true,
+        &options.output,
+    )
+}
+
+fn export_new_checkpoints_only(
+    loaded: &LoadedConfig,
+    trainer_checkout: &Path,
+    selection: &SelectionConfig,
+    paths: &SelectionPaths,
+    state: &mut SelectionState,
+    checkpoints: &[PathBuf],
+) -> Result<()> {
+    let known: HashSet<String> = state
+        .candidates
+        .iter()
+        .map(|candidate| candidate.checkpoint.clone())
+        .collect();
+    for checkpoint in checkpoints {
+        if known.contains(&checkpoint.display().to_string()) {
+            continue;
+        }
+        export_candidate(loaded, trainer_checkout, paths, state, checkpoint)?;
+        save_state(&paths.state, state)?;
+    }
+    if selection.storage_saver {
+        prune_exported_checkpoints(state, checkpoints.last())?;
+        save_state(&paths.state, state)?;
+    }
+    Ok(())
+}
+
+fn prune_exported_checkpoints(
+    state: &mut SelectionState,
+    newest_resume_checkpoint: Option<&PathBuf>,
+) -> Result<()> {
+    let newest = newest_resume_checkpoint.map(|path| path.display().to_string());
+    let deleted: HashSet<String> = state
+        .deletions
+        .iter()
+        .map(|record| record.checkpoint.clone())
+        .collect();
+    for candidate in &state.candidates {
+        if newest.as_deref() == Some(&candidate.checkpoint)
+            || deleted.contains(&candidate.checkpoint)
+        {
+            continue;
+        }
+        let checkpoint = Path::new(&candidate.checkpoint);
+        if checkpoint.exists() && Path::new(&candidate.nnue).exists() {
+            fs::remove_file(checkpoint).with_context(|| {
+                format!(
+                    "failed to delete exported checkpoint {}",
+                    checkpoint.display()
+                )
+            })?;
+            state.deletions.push(DeletionRecord {
+                checkpoint: candidate.checkpoint.clone(),
+                reason: "exported NNUE retained; older resume checkpoint pruned".to_string(),
+                deleted_at_unix_seconds: unix_timestamp_seconds()?,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn rank_candidates(
+    loaded: &LoadedConfig,
+    self_play_bin: &Path,
+    selection: &SelectionConfig,
+    paths: &SelectionPaths,
+    legacy: &SelectionState,
+    budget_games: u32,
+    import_legacy: bool,
+    output: &Path,
+) -> Result<PathBuf> {
+    if budget_games == 0 || budget_games % 2 != 0 {
+        bail!("ranking budget must be a positive even number");
+    }
+    let ranking_path = paths
+        .state
+        .parent()
+        .expect("selection state has a parent")
+        .join("ranking.json");
+    let match_identity = ranking_match_identity(loaded, self_play_bin, selection)?;
+    let mut candidates = deduplicated_ranking_candidates(paths, legacy)?;
+    if candidates.is_empty() {
+        bail!("no exported candidate NNUEs were found");
+    }
+    let anchor_sha256 = candidates[0].sha256.clone();
+
+    let mut ranking = if ranking_path.exists() {
+        let saved: RankingState = serde_json::from_slice(&fs::read(&ranking_path)?)
+            .with_context(|| format!("failed to parse {}", ranking_path.display()))?;
+        if saved.schema != RANKING_SCHEMA
+            || saved.schema_version != RANKING_SCHEMA_VERSION
+            || saved.match_identity != match_identity
+            || saved.anchor_sha256 != anchor_sha256
+        {
+            bail!(
+                "{} belongs to a different match identity or anchor; use a separate selection directory",
+                ranking_path.display()
+            );
+        }
+        saved
+    } else {
+        if import_legacy {
+            import_legacy_pairs(paths, legacy, &anchor_sha256, &mut candidates)?;
+        }
+        RankingState {
+            schema: RANKING_SCHEMA.to_string(),
+            schema_version: RANKING_SCHEMA_VERSION,
+            match_identity,
+            anchor_sha256,
+            budget_games,
+            fresh_games: 0,
+            status: RankingStatus::Collecting,
+            selected_sha256: None,
+            selected_nnue: None,
+            candidates,
+            warnings: Vec::new(),
+        }
+    };
+    if budget_games < ranking.fresh_games {
+        bail!(
+            "ranking budget {budget_games} is below {} already completed fresh games; keep or increase the budget",
+            ranking.fresh_games
+        );
+    }
+    ranking.budget_games = budget_games;
+    refresh_estimates(&mut ranking);
+    save_ranking_state(&ranking_path, &ranking)?;
+
+    let opening_sfen = loaded.opening_sfen()?;
+    while ranking.fresh_games < budget_games {
+        if is_decisive(&ranking) {
+            ranking.status = RankingStatus::Decisive;
+            break;
+        }
+        let Some(index) = next_ranking_candidate(&ranking, selection) else {
+            break;
+        };
+        let candidate_games =
+            ranking.candidates[index].imported_games + ranking.candidates[index].fresh_games;
+        let screen_remaining = selection.screen_games.saturating_sub(candidate_games);
+        let wanted = if screen_remaining > 0 {
+            screen_remaining.min(selection.screen_games)
+        } else {
+            selection.round_games
+        };
+        let per_candidate_remaining = selection
+            .max_games_per_candidate
+            .saturating_sub(candidate_games);
+        let total_remaining = budget_games.saturating_sub(ranking.fresh_games);
+        let games = wanted.min(per_candidate_remaining).min(total_remaining) & !1;
+        if games == 0 {
+            break;
+        }
+        let batch_index = ranking.candidates[index].fresh_games / 2;
+        let report_dir = paths
+            .matches
+            .join("anchored-ranking")
+            .join(&ranking.candidates[index].sha256[..16])
+            .join(format!("batch-{batch_index:06}"));
+        run_self_play_batch(
+            self_play_bin,
+            selection,
+            &ranking.candidates[index].nnue,
+            &ranking.candidates[0].nnue,
+            &opening_sfen,
+            &report_dir,
+            games,
+            1_000_000 + u64::from(ranking.fresh_games / 2),
+        )?;
+        let parsed = parse_paired_games(&report_dir.join("self-play-games.jsonl"))?;
+        if parsed.incomplete_pairs > 0 {
+            ranking.warnings.push(format!(
+                "excluded {} incomplete pair(s) from {}",
+                parsed.incomplete_pairs,
+                report_dir.display()
+            ));
+        }
+        add_bins(&mut ranking.candidates[index].pair_score_bins, parsed.bins);
+        ranking.candidates[index].fresh_games += parsed.complete_games;
+        ranking.fresh_games += parsed.complete_games;
+        refresh_estimates(&mut ranking);
+        save_ranking_state(&ranking_path, &ranking)?;
+        println!(
+            "ranking: {} games, candidate {} Elo {:+.1} ± {:.1}",
+            ranking.fresh_games,
+            &ranking.candidates[index].sha256[..12],
+            ranking.candidates[index].rating,
+            1.96 * ranking.candidates[index].standard_error
+        );
+    }
+
+    if ranking.status == RankingStatus::Collecting {
+        ranking.status = if is_decisive(&ranking) {
+            RankingStatus::Decisive
+        } else {
+            RankingStatus::BudgetLimited
+        };
+    }
+    refresh_estimates(&mut ranking);
+    let selected_index = ranking
+        .candidates
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.rating.total_cmp(&b.rating))
+        .map(|(index, _)| index)
+        .expect("non-empty ranking");
+    let selected = &ranking.candidates[selected_index];
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::copy(&selected.nnue, output).with_context(|| {
+        format!(
+            "failed to copy selected NNUE {} to {}",
+            selected.nnue,
+            output.display()
+        )
+    })?;
+    ranking.selected_sha256 = Some(selected.sha256.clone());
+    ranking.selected_nnue = Some(output.display().to_string());
+    save_ranking_state(&ranking_path, &ranking)?;
+    let benchmark_dir = paths
+        .matches
+        .join("handcrafted-benchmark")
+        .join(&selected.sha256[..16]);
+    run_handcrafted_benchmark(
+        self_play_bin,
+        selection,
+        output,
+        &opening_sfen,
+        &benchmark_dir,
+    )?;
+    let metadata = RankedExportMetadata {
+        selection_method: "fixed-anchor-paired-ranking",
+        exported_nnue: output.display().to_string(),
+        candidate_sha256: &selected.sha256,
+        source_checkpoints: &selected.checkpoints,
+        anchor_sha256: &ranking.anchor_sha256,
+        rating: selected.rating,
+        confidence95: selected.confidence95,
+        ranking_status: ranking.status,
+        ranking_report: ranking_path.display().to_string(),
+        handcrafted_benchmark_report: benchmark_dir
+            .join("self-play-report.json")
+            .display()
+            .to_string(),
+        config_hash: &loaded.hash_hex,
+    };
+    let metadata_path = output.with_extension("export.json");
+    let metadata_bytes = serde_json::to_vec_pretty(&metadata)?;
+    fs::write(&metadata_path, metadata_bytes)
+        .with_context(|| format!("failed to write {}", metadata_path.display()))?;
+    println!(
+        "selected {} at {:+.1} Elo ({:.1}, {:.1}); ranking is {:?}",
+        output.display(),
+        selected.rating,
+        selected.confidence95[0],
+        selected.confidence95[1],
+        ranking.status
+    );
+    Ok(output.to_path_buf())
+}
+
+fn deduplicated_ranking_candidates(
+    paths: &SelectionPaths,
+    legacy: &SelectionState,
+) -> Result<Vec<RankingCandidate>> {
+    let mut by_hash = HashMap::<String, usize>::new();
+    let mut result = Vec::<RankingCandidate>::new();
+    for candidate in &legacy.candidates {
+        let local_nnue = paths.candidates.join(&candidate.id).join("model.nnue");
+        let nnue = if local_nnue.exists() {
+            local_nnue
+        } else {
+            PathBuf::from(&candidate.nnue)
+        };
+        if !nnue.exists() {
+            bail!("candidate NNUE is missing: {}", nnue.display());
+        }
+        let sha256 = sha256_file(&nnue)?;
+        if let Some(&index) = by_hash.get(&sha256) {
+            result[index].checkpoints.push(candidate.checkpoint.clone());
+            result[index].aliases.push(candidate.id.clone());
+            continue;
+        }
+        by_hash.insert(sha256.clone(), result.len());
+        result.push(RankingCandidate {
+            sha256,
+            nnue: nnue.display().to_string(),
+            checkpoints: vec![candidate.checkpoint.clone()],
+            aliases: vec![candidate.id.clone()],
+            imported_games: 0,
+            fresh_games: 0,
+            pair_score_bins: [0; 5],
+            rating: 0.0,
+            standard_error: 0.0,
+            confidence95: [0.0, 0.0],
+        });
+    }
+    Ok(result)
+}
+
+fn import_legacy_pairs(
+    paths: &SelectionPaths,
+    legacy: &SelectionState,
+    anchor_sha256: &str,
+    ranking: &mut [RankingCandidate],
+) -> Result<()> {
+    let anchor_checkpoint = legacy
+        .candidates
+        .first()
+        .map(|candidate| candidate.checkpoint.as_str())
+        .ok_or_else(|| anyhow!("legacy state has no anchor"))?;
+    let by_alias: HashMap<String, usize> = ranking
+        .iter()
+        .enumerate()
+        .flat_map(|(index, candidate)| {
+            candidate
+                .aliases
+                .iter()
+                .map(move |alias| (alias.clone(), index))
+        })
+        .collect();
+    for candidate in &legacy.candidates {
+        let Some(&index) = by_alias.get(candidate.id.as_str()) else {
+            continue;
+        };
+        if ranking[index].sha256 == anchor_sha256 {
+            continue;
+        }
+        for record in &candidate.matches {
+            if record.incumbent_checkpoint != anchor_checkpoint {
+                continue;
+            }
+            let remote = Path::new(&record.report_dir);
+            let Some(batch) = remote.file_name() else {
+                continue;
+            };
+            let report_dir = paths
+                .matches
+                .join(format!("{}-vs-{}", candidate.id, legacy.candidates[0].id))
+                .join(batch);
+            let games_path = report_dir.join("self-play-games.jsonl");
+            if !games_path.exists() {
+                bail!(
+                    "legacy paired game record is missing: {}",
+                    games_path.display()
+                );
+            }
+            let parsed = parse_paired_games(&games_path)?;
+            add_bins(&mut ranking[index].pair_score_bins, parsed.bins);
+            ranking[index].imported_games += parsed.complete_games;
+        }
+    }
+    Ok(())
+}
+
+fn parse_paired_games(path: &Path) -> Result<ParsedPairs> {
+    let file =
+        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    let mut pairs = BTreeMap::<u32, Vec<f64>>::new();
+    for (line_index, line) in BufReader::new(file).lines().enumerate() {
+        let line = line.with_context(|| format!("failed reading {}", path.display()))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let game: StoredGame = serde_json::from_str(&line).with_context(|| {
+            format!("invalid game JSON at {}:{}", path.display(), line_index + 1)
+        })?;
+        let score = match game.winner.as_deref() {
+            Some("A") | Some("a") => 1.0,
+            Some("B") | Some("b") => 0.0,
+            None => 0.5,
+            Some(other) => bail!("unknown winner {other:?} in {}", path.display()),
+        };
+        pairs.entry(game.pair_index).or_default().push(score);
+    }
+    let mut parsed = ParsedPairs::default();
+    for games in pairs.values() {
+        if games.len() != 2 {
+            parsed.incomplete_pairs += 1;
+            continue;
+        }
+        let bin = ((games[0] + games[1]) * 2.0).round() as usize;
+        parsed.bins[bin.min(4)] += 1;
+        parsed.complete_games += 2;
+    }
+    Ok(parsed)
+}
+
+fn add_bins(target: &mut [u32; 5], source: [u32; 5]) {
+    for index in 0..5 {
+        target[index] += source[index];
+    }
+}
+
+fn refresh_estimates(ranking: &mut RankingState) {
+    for candidate in &mut ranking.candidates {
+        if candidate.sha256 == ranking.anchor_sha256 {
+            candidate.rating = 0.0;
+            candidate.standard_error = 0.0;
+            candidate.confidence95 = [0.0, 0.0];
+            continue;
+        }
+        let pairs: u32 = candidate.pair_score_bins.iter().sum();
+        if pairs == 0 {
+            candidate.rating = 0.0;
+            candidate.standard_error = 9_999.0;
+            candidate.confidence95 = [-19_598.0, 19_598.0];
+            continue;
+        }
+        let n = f64::from(pairs);
+        let mean = candidate
+            .pair_score_bins
+            .iter()
+            .enumerate()
+            .map(|(bin, count)| (bin as f64 / 4.0) * f64::from(*count))
+            .sum::<f64>()
+            / n;
+        let bounded = mean.clamp(0.001, 0.999);
+        let variance = if pairs > 1 {
+            candidate
+                .pair_score_bins
+                .iter()
+                .enumerate()
+                .map(|(bin, count)| {
+                    let delta = bin as f64 / 4.0 - mean;
+                    delta * delta * f64::from(*count)
+                })
+                .sum::<f64>()
+                / (n - 1.0)
+        } else {
+            0.25
+        };
+        let score_se = (variance / n).sqrt();
+        let derivative = 400.0 / std::f64::consts::LN_10 / (bounded * (1.0 - bounded));
+        candidate.rating = score_rate_to_elo(bounded);
+        candidate.standard_error = (derivative * score_se).min(9_999.0);
+        candidate.confidence95 = [
+            candidate.rating - 1.96 * candidate.standard_error,
+            candidate.rating + 1.96 * candidate.standard_error,
+        ];
+    }
+}
+
+fn score_rate_to_elo(score: f64) -> f64 {
+    400.0 * (score / (1.0 - score)).log10()
+}
+
+fn next_ranking_candidate(ranking: &RankingState, selection: &SelectionConfig) -> Option<usize> {
+    if let Some((index, _)) = ranking
+        .candidates
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, candidate)| {
+            candidate.imported_games + candidate.fresh_games < selection.screen_games
+                && candidate.imported_games + candidate.fresh_games
+                    < selection.max_games_per_candidate
+        })
+        .min_by_key(|(_, candidate)| candidate.imported_games + candidate.fresh_games)
+    {
+        return Some(index);
+    }
+    let mut eligible: Vec<usize> = ranking
+        .candidates
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, candidate)| {
+            candidate.imported_games + candidate.fresh_games < selection.max_games_per_candidate
+        })
+        .map(|(index, _)| index)
+        .collect();
+    eligible.sort_by(|&a, &b| {
+        let ucb_a = ranking.candidates[a].rating
+            + selection.explore_factor * ranking.candidates[a].standard_error;
+        let ucb_b = ranking.candidates[b].rating
+            + selection.explore_factor * ranking.candidates[b].standard_error;
+        ucb_b.total_cmp(&ucb_a)
+    });
+    eligible.truncate(selection.top_k);
+    eligible.into_iter().min_by_key(|&index| {
+        ranking.candidates[index].imported_games + ranking.candidates[index].fresh_games
+    })
+}
+
+fn is_decisive(ranking: &RankingState) -> bool {
+    let Some((leader_index, leader)) = ranking
+        .candidates
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.rating.total_cmp(&b.rating))
+    else {
+        return false;
+    };
+    let games = if leader.sha256 == ranking.anchor_sha256 {
+        ranking
+            .candidates
+            .iter()
+            .filter(|candidate| candidate.sha256 != ranking.anchor_sha256)
+            .map(|candidate| candidate.imported_games + candidate.fresh_games)
+            .sum()
+    } else {
+        leader.imported_games + leader.fresh_games
+    };
+    games >= 1_024
+        && ranking
+            .candidates
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != leader_index)
+            .all(|(_, other)| leader.confidence95[0] > other.confidence95[1])
+}
+
+fn ranking_match_identity(
+    loaded: &LoadedConfig,
+    self_play_bin: &Path,
+    selection: &SelectionConfig,
+) -> Result<String> {
+    let identity = serde_json::json!({
+        "ruleset": loaded.config.rules.ruleset.as_str(),
+        "featureSet": loaded.training_features(),
+        "openingSfen": loaded.opening_sfen()?,
+        "movetimeMs": selection.movetime_ms,
+        "openingRandomPlies": selection.opening_random_plies,
+        "seed": selection.seed,
+        "selfPlaySha256": sha256_file(self_play_bin)?,
+    });
+    let mut hasher = Sha256::new();
+    hasher.update(serde_json::to_vec(&identity)?);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn sha256_file(path: &Path) -> Result<String> {
+    let mut file =
+        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn save_ranking_state(path: &Path, state: &RankingState) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let temporary = path.with_extension("json.tmp");
+    {
+        let mut file = fs::File::create(&temporary)?;
+        serde_json::to_writer_pretty(&mut file, state)?;
+        file.write_all(b"\n")?;
+        file.sync_all()?;
+    }
+    fs::rename(&temporary, path)
+        .with_context(|| format!("failed to atomically replace {}", path.display()))
+}
+
+fn run_handcrafted_benchmark(
+    self_play_bin: &Path,
+    selection: &SelectionConfig,
+    selected_nnue: &Path,
+    opening_sfen: &str,
+    report_dir: &Path,
+) -> Result<()> {
+    if report_dir.join("self-play-report.json").exists() {
+        return Ok(());
+    }
+    fs::create_dir_all(report_dir.parent().unwrap_or_else(|| Path::new(".")))?;
+    let status = Command::new(self_play_bin)
+        .args([
+            OsString::from("self-play"),
+            OsString::from("--games"),
+            OsString::from("1024"),
+            OsString::from("--threads"),
+            selection.threads.to_string().into(),
+            OsString::from("--movetime-ms"),
+            selection.movetime_ms.to_string().into(),
+            OsString::from("--opening-random-plies"),
+            selection.opening_random_plies.to_string().into(),
+            OsString::from("--seed"),
+            selection.seed.wrapping_add(9_000_000).to_string().into(),
+            OsString::from("--sfen"),
+            opening_sfen.into(),
+            OsString::from("--report-dir"),
+            report_dir.as_os_str().to_os_string(),
+            OsString::from("--a-eval"),
+            OsString::from("nnue"),
+            OsString::from("--a-nnue"),
+            selected_nnue.as_os_str().to_os_string(),
+            OsString::from("--b-eval"),
+            OsString::from("handcrafted"),
+        ])
+        .status()
+        .with_context(|| {
+            format!(
+                "failed to start benchmark using {}",
+                self_play_bin.display()
+            )
+        })?;
+    if !status.success() {
+        bail!("handcrafted benchmark failed with {status}");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1083,6 +1910,73 @@ mod tests {
         assert!(!old.exists());
         assert!(newest.exists());
         assert_eq!(state.deletions.len(), 1);
+    }
+
+    #[test]
+    fn paired_parser_excludes_incomplete_pairs_and_builds_pentanomial_bins() {
+        let temp = tempfile::tempdir().unwrap();
+        let games = temp.path().join("self-play-games.jsonl");
+        fs::write(
+            &games,
+            concat!(
+                "{\"pairIndex\":0,\"winner\":\"A\"}\n",
+                "{\"pairIndex\":0,\"winner\":null}\n",
+                "{\"pairIndex\":1,\"winner\":\"B\"}\n"
+            ),
+        )
+        .unwrap();
+
+        let parsed = parse_paired_games(&games).unwrap();
+        assert_eq!(parsed.complete_games, 2);
+        assert_eq!(parsed.incomplete_pairs, 1);
+        assert_eq!(parsed.bins, [0, 0, 0, 1, 0]);
+    }
+
+    #[test]
+    fn paired_estimate_uses_anchor_zero_and_candidate_pair_scores() {
+        let mut ranking = RankingState {
+            schema: RANKING_SCHEMA.to_string(),
+            schema_version: RANKING_SCHEMA_VERSION,
+            match_identity: "match".to_string(),
+            anchor_sha256: "anchor".to_string(),
+            budget_games: 100,
+            fresh_games: 0,
+            status: RankingStatus::Collecting,
+            selected_sha256: None,
+            selected_nnue: None,
+            candidates: vec![
+                RankingCandidate {
+                    sha256: "anchor".to_string(),
+                    nnue: "anchor.nnue".to_string(),
+                    checkpoints: vec![],
+                    aliases: vec![],
+                    imported_games: 0,
+                    fresh_games: 0,
+                    pair_score_bins: [0; 5],
+                    rating: 99.0,
+                    standard_error: 99.0,
+                    confidence95: [99.0; 2],
+                },
+                RankingCandidate {
+                    sha256: "candidate".to_string(),
+                    nnue: "candidate.nnue".to_string(),
+                    checkpoints: vec![],
+                    aliases: vec![],
+                    imported_games: 8,
+                    fresh_games: 0,
+                    pair_score_bins: [0, 0, 1, 2, 1],
+                    rating: 0.0,
+                    standard_error: 0.0,
+                    confidence95: [0.0; 2],
+                },
+            ],
+            warnings: vec![],
+        };
+
+        refresh_estimates(&mut ranking);
+        assert_eq!(ranking.candidates[0].rating, 0.0);
+        assert!(ranking.candidates[1].rating > 0.0);
+        assert!(ranking.candidates[1].standard_error > 0.0);
     }
 
     fn args_as_strings(args: &[OsString]) -> Vec<String> {

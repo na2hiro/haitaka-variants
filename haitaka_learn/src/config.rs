@@ -420,14 +420,42 @@ impl LearnConfig {
             self.selection.poll_interval_secs > 0,
             "selection.poll_interval_secs must be > 0"
         );
-        ensure!(
-            self.selection.batch_games > 0,
-            "selection.batch_games must be > 0"
-        );
-        ensure!(
-            self.selection.max_games >= self.selection.batch_games,
-            "selection.max_games must be >= selection.batch_games"
-        );
+        match self.selection.strategy {
+            SelectionStrategy::AnchoredRanking => {
+                ensure!(
+                    self.selection.screen_games > 0 && self.selection.screen_games % 2 == 0,
+                    "selection.screen_games must be a positive even number"
+                );
+                ensure!(
+                    self.selection.round_games > 0 && self.selection.round_games % 2 == 0,
+                    "selection.round_games must be a positive even number"
+                );
+                ensure!(self.selection.top_k > 0, "selection.top_k must be > 0");
+                ensure!(
+                    self.selection.max_total_games >= self.selection.screen_games,
+                    "selection.max_total_games must be >= selection.screen_games"
+                );
+                ensure!(
+                    self.selection.max_games_per_candidate >= self.selection.screen_games,
+                    "selection.max_games_per_candidate must be >= selection.screen_games"
+                );
+                ensure!(
+                    self.selection.explore_factor.is_finite()
+                        && self.selection.explore_factor >= 0.0,
+                    "selection.explore_factor must be finite and >= 0"
+                );
+            }
+            SelectionStrategy::Sprt => {
+                ensure!(
+                    self.selection.batch_games > 0,
+                    "selection.batch_games must be > 0"
+                );
+                ensure!(
+                    self.selection.max_games >= self.selection.batch_games,
+                    "selection.max_games must be >= selection.batch_games"
+                );
+            }
+        }
         ensure!(
             self.selection.movetime_ms > 0,
             "selection.movetime_ms must be > 0"
@@ -678,6 +706,8 @@ impl Default for VerifyConfig {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SelectionConfig {
+    #[serde(default)]
+    pub strategy: SelectionStrategy,
     #[serde(default = "default_selection_poll_interval_secs")]
     pub poll_interval_secs: u64,
     #[serde(default = "default_selection_stable_checkpoint_secs")]
@@ -704,11 +734,32 @@ pub struct SelectionConfig {
     pub sprt_beta: f64,
     #[serde(default)]
     pub storage_saver: bool,
+    #[serde(default = "default_selection_screen_games")]
+    pub screen_games: u32,
+    #[serde(default = "default_selection_round_games")]
+    pub round_games: u32,
+    #[serde(default = "default_selection_max_total_games")]
+    pub max_total_games: u32,
+    #[serde(default = "default_selection_max_games_per_candidate")]
+    pub max_games_per_candidate: u32,
+    #[serde(default = "default_selection_explore_factor")]
+    pub explore_factor: f64,
+    #[serde(default = "default_selection_top_k")]
+    pub top_k: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SelectionStrategy {
+    #[default]
+    AnchoredRanking,
+    Sprt,
 }
 
 impl Default for SelectionConfig {
     fn default() -> Self {
         Self {
+            strategy: SelectionStrategy::default(),
             poll_interval_secs: default_selection_poll_interval_secs(),
             stable_checkpoint_secs: default_selection_stable_checkpoint_secs(),
             batch_games: default_selection_batch_games(),
@@ -722,6 +773,12 @@ impl Default for SelectionConfig {
             sprt_alpha: default_selection_sprt_alpha(),
             sprt_beta: default_selection_sprt_beta(),
             storage_saver: false,
+            screen_games: default_selection_screen_games(),
+            round_games: default_selection_round_games(),
+            max_total_games: default_selection_max_total_games(),
+            max_games_per_candidate: default_selection_max_games_per_candidate(),
+            explore_factor: default_selection_explore_factor(),
+            top_k: default_selection_top_k(),
         }
     }
 }
@@ -892,6 +949,30 @@ fn default_selection_sprt_alpha() -> f64 {
 
 fn default_selection_sprt_beta() -> f64 {
     0.05
+}
+
+fn default_selection_screen_games() -> u32 {
+    256
+}
+
+fn default_selection_round_games() -> u32 {
+    128
+}
+
+fn default_selection_max_total_games() -> u32 {
+    32_768
+}
+
+fn default_selection_max_games_per_candidate() -> u32 {
+    4_096
+}
+
+fn default_selection_explore_factor() -> f64 {
+    1.5
+}
+
+fn default_selection_top_k() -> usize {
+    3
 }
 
 fn active_variant_feature() -> Option<&'static str> {
