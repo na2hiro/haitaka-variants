@@ -1,5 +1,17 @@
 ## Donor-Family NNUE Feature Plan
 
+### Completion Status (2026-08-17)
+
+This plan is complete and the design below is retained as implementation
+history. Donor feature families are accepted by `haitaka_learn`, exported by
+the trainer, loaded by Haitaka, and used by the current variant configs.
+
+The original v1 allowance for full-refresh donor evaluation was temporary. The
+runtime now applies donor feature deltas to incremental accumulators. The
+current Anhoku configuration uses `HalfKAv2^+DonorSingleEff`; remaining
+strength work is tracked in
+[Anhoku NNUE Handcrafted-Strength Execution Plan](../anhoku-nnue-handcrafted-strength-plan.md).
+
 ### Summary
 
 既存の HalfKAv2^ はそのままベースとして維持し、donor 関係は ^ に押し込まず 追加の real feature block として実装する。
@@ -69,9 +81,15 @@
 - single-donor family は slot 位置を潰して effective_piece_type のみを持つ。これにより front/back など異なる 1-donor rules を同じ geometry に載せる。
 - two-donor-union family は slot 依存を保持する。rule ごとの slot 順は descriptor で固定し、feature geometry 自体は family 内で共有する。
 - knight-8-donor family は 8 knight offsets の固定順を仕様として先に決める。実 ruleset 名は将来追加でよいが、geometry はこの順序で固定する。
-- v1 では donor family の incremental accumulator 最適化はスコープ外。正しさ優先で full refresh fallback を採用する。
+- The original v1 plan allowed full-refresh fallback while correctness was
+  established. The current runtime updates donor-family accumulators
+  incrementally, so full refresh is no longer the active implementation path.
 
-### Objective review from another AI
+### Historical Objective Review (Pre-Implementation)
+
+The review below describes the repository before this plan was implemented.
+Statements such as “right now” and the full-refresh caveat are historical, not
+the current repository state.
 
 Objectively: for donor-rule variants, this is likely a materially important input change, not a cosmetic one.
 
