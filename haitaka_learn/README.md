@@ -176,6 +176,13 @@ cargo run -p haitaka_learn --features anhoku -- validate-openings \
   --config haitaka_learn.anhoku-v0.6.toml
 ```
 
+Run the bounded Anhoku v0.6 generation smoke test with production data contracts:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6.smoke.toml --no-resume
+```
+
 Suite files use one `<stable-opening-id><TAB><SFEN>` entry per line. Blank lines and
 text after `#` are ignored. Validation rejects malformed SFENs, duplicate IDs,
 duplicate canonical positions, missing kings, positions without a legal move, and

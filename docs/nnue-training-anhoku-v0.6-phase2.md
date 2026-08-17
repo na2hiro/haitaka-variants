@@ -42,3 +42,23 @@ Strict resume and merge reject any opening-identity mismatch. The existing
 The production [Anhoku v0.6 config](../haitaka_learn.anhoku-v0.6.toml) selects the
 suite and sets `opening_random_plies = 0`; `uniform-random` remains available only as
 an explicitly named compatibility/smoke-test policy.
+
+## Generation Smoke Result
+
+The checked-in [`haitaka_learn.anhoku-v0.6.smoke.toml`](../haitaka_learn.anhoku-v0.6.smoke.toml)
+keeps the production suite, seed, feature family, label depth 3, rollout depth 1, and
+sampling contracts while limiting the run to four train and four validation games at
+60 plies.
+
+Two clean runs produced byte-identical datasets:
+
+- train: 79 positions, 5,688 bytes, SHA-256
+  `48479910b6c954102aa277704bf89ad02cb50f7d1d8f098fec70d88871667914`
+- validation: 62 positions, SHA-256
+  `5296ec5301d0c28d68a8fea664599ae5b63f1929890ab15a87fde0b386859eba`
+
+The train audit contained both ply parities (55 even and 24 odd), zero samples before
+the configured opening end, zero nonzero teacher moves, and the expected suite SHA and
+transformation identity. All four game records formed two adjacent base/swapped pairs
+with matching opening IDs. The ignored machine-readable artifacts are under
+`out/anhoku-v0.6-smoke/datasets/`.
