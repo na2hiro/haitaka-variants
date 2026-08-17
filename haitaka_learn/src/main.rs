@@ -1,5 +1,6 @@
 mod config;
 mod dataset;
+mod dataset_audit;
 mod selection;
 mod trainer;
 mod verify;
@@ -20,6 +21,17 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    AuditData {
+        #[arg(long)]
+        bin: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Optional for legacy manifests that did not embed seed and feature identity.
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     GenerateData {
         #[arg(long)]
         config: PathBuf,
@@ -108,6 +120,17 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::AuditData {
+            bin,
+            manifest,
+            config,
+            output,
+        } => {
+            let report = dataset_audit::audit_dataset(&bin, &manifest, config.as_deref())?;
+            if let Some(path) = dataset_audit::write_report(&report, output.as_deref())? {
+                println!("dataset audit written to {}", path.display());
+            }
+        }
         Command::GenerateData {
             config,
             jobs,

@@ -2,7 +2,7 @@
 ruleset = "anhoku"
 
 [paths]
-output_dir = "out/anhoku-v0.5.1"
+output_dir = "out/anhoku-v0.6"
 trainer_checkout = "../haitaka-variant-nnue-pytorch"
 python = "python3"
 cmake = "cmake"
@@ -16,9 +16,9 @@ rollout_search_depth = 1
 opening_random_plies = 16
 sample_start_ply = 8
 sample_every_ply = 2
-sampling_policy = "fixed-phase-legacy"
+sampling_policy = "per-game-random-v1"
 max_positions_per_game = 64
-seed = 74
+seed = 75
 jobs = 0
 shard_games = 20
 progress_every_percent = 1
@@ -34,11 +34,12 @@ epoch_size = 1000000
 validation_size = 100000
 max_epochs = 60
 build_data_loader = true
+teacher_move_consumers = false
 extra_args = ["--threads", "8", "--accelerator", "gpu", "--devices", "1"]
 
 [export]
-output_name = "haitaka-anhoku-v0.5.1.reselected.nnue"
-description = "Haitaka Anhoku v0.5.1 NNUE trained with HalfKAv2^+DonorSingleEff"
+output_name = "haitaka-anhoku-v0.6.nnue"
+description = "Haitaka Anhoku v0.6 NNUE with per-game randomized post-opening sampling"
 
 [verify]
 search_depth = 2

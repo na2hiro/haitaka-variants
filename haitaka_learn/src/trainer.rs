@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{
     FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
-    FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset,
+    FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
 };
 use crate::dataset::ENTRY_BYTES;
 
@@ -29,6 +29,8 @@ struct DatasetCompletionManifest {
     completed_games: u32,
     sampled_positions: u64,
     entry_bytes: usize,
+    #[serde(default)]
+    teacher_move_encoding: String,
 }
 
 pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
@@ -475,6 +477,16 @@ fn ensure_training_dataset_ready(
             ENTRY_BYTES
         );
     }
+    if manifest.teacher_move_encoding != TEACHER_MOVE_ENCODING {
+        bail!(
+            "{label} manifest teacher_move_encoding is `{}`, expected `{TEACHER_MOVE_ENCODING}`; regenerate the dataset so teacher-move-dependent filtering cannot consume ambiguous 16-bit values",
+            if manifest.teacher_move_encoding.is_empty() {
+                "legacy-unspecified"
+            } else {
+                &manifest.teacher_move_encoding
+            }
+        );
+    }
     let expected_len = manifest
         .sampled_positions
         .checked_mul(manifest.entry_bytes as u64)
@@ -720,6 +732,10 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+        assert!(
+            overlay_training_data_loader_cpp_contents()
+                .contains("Ignore the trainer's smart/filtered")
+        );
 
         let anki = loaded_config_for_tests(Ruleset::Anki);
         assert!(variant_py_contents(&anki).contains("DONOR_MODE = \"knight8-friendly\""));
@@ -736,7 +752,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 72]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":72}"#,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":72,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 
@@ -751,7 +767,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 72]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":1,"sampled_positions":1,"entry_bytes":72}"#,
+            r#"{"game_count":2,"completed_games":1,"sampled_positions":1,"entry_bytes":72,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 
@@ -769,7 +785,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 64]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":64}"#,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":64,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 

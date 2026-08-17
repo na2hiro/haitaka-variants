@@ -14,6 +14,28 @@ pub const FEATURE_SET_DONOR_SINGLE: &str = "HalfKAv2^+DonorSingleEff";
 pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
 #[allow(dead_code)]
 pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
+pub const TEACHER_MOVE_ENCODING: &str = "unavailable";
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SamplingPolicy {
+    #[default]
+    PerGameRandomV1,
+    FixedPhaseLegacy,
+}
+
+impl SamplingPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::PerGameRandomV1 => "per-game-random-v1",
+            Self::FixedPhaseLegacy => "fixed-phase-legacy",
+        }
+    }
+
+    pub const fn samples_after_opening(self) -> bool {
+        matches!(self, Self::PerGameRandomV1)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RulesetSpec {
@@ -399,6 +421,19 @@ impl LearnConfig {
             "data.sample_every_ply must be at least 1"
         );
         ensure!(
+            !self.training.teacher_move_consumers,
+            "training.teacher_move_consumers cannot be enabled: the 72-byte record format has teacher_move_encoding=unavailable"
+        );
+        ensure!(
+            !self.training.extra_args.iter().any(|arg| {
+                matches!(
+                    arg.as_str(),
+                    "--smart-fen-skipping" | "--smart-capture-skipping" | "--teacher-move-filter"
+                )
+            }),
+            "training.extra_args enables a teacher-move consumer, but the 72-byte record format has teacher_move_encoding=unavailable"
+        );
+        ensure!(
             self.data.max_positions_per_game > 0,
             "data.max_positions_per_game must be > 0"
         );
@@ -591,6 +626,8 @@ pub struct DataConfig {
     pub sample_start_ply: u16,
     #[serde(default = "default_sample_every_ply")]
     pub sample_every_ply: u16,
+    #[serde(default)]
+    pub sampling_policy: SamplingPolicy,
     #[serde(default = "default_max_positions_per_game")]
     pub max_positions_per_game: u16,
     #[serde(default = "default_seed")]
@@ -616,6 +653,7 @@ impl Default for DataConfig {
             opening_random_plies: default_opening_random_plies(),
             sample_start_ply: 0,
             sample_every_ply: default_sample_every_ply(),
+            sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
             seed: default_seed(),
             jobs: default_jobs(),
@@ -649,6 +687,8 @@ pub struct TrainingConfig {
     #[serde(default = "default_build_data_loader")]
     pub build_data_loader: bool,
     #[serde(default)]
+    pub teacher_move_consumers: bool,
+    #[serde(default)]
     pub extra_args: Vec<String>,
 }
 
@@ -665,6 +705,7 @@ impl Default for TrainingConfig {
             validation_size: default_validation_size(),
             max_epochs: default_max_epochs(),
             build_data_loader: default_build_data_loader(),
+            teacher_move_consumers: false,
             extra_args: Vec::new(),
         }
     }
@@ -1069,6 +1110,24 @@ validation_games = 1
         assert_eq!(config.data.shard_games, 100);
         assert_eq!(config.data.progress_every_percent, 1);
         assert!(config.data.resume);
+        assert_eq!(config.data.sampling_policy, SamplingPolicy::PerGameRandomV1);
+        assert!(!config.training.teacher_move_consumers);
+    }
+
+    #[test]
+    fn rejects_teacher_move_consumers_for_current_record_format() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+[training]
+teacher_move_consumers = true
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        let error = config.validate().unwrap_err();
+        assert!(format!("{error:#}").contains("teacher_move_encoding=unavailable"));
     }
 
     #[test]

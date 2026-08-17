@@ -777,7 +777,11 @@ private:
 };
 
 std::function<bool(const TrainingDataEntry&)> make_skip_predicate(bool filtered, int random_fen_skipping) {
-    if (!filtered && !random_fen_skipping) {
+    // The current 72-byte record cannot represent every shogi teacher move. In particular,
+    // `move == 0` means unavailable, not a real move. Ignore the trainer's smart/filtered
+    // mode until a versioned wider encoding exists; random skipping is score/result-only.
+    (void)filtered;
+    if (!random_fen_skipping) {
         return nullptr;
     }
 

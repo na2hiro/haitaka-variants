@@ -20,7 +20,7 @@ use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
+use crate::config::{ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, TEACHER_MOVE_ENCODING};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
@@ -80,6 +80,12 @@ struct DatasetManifest {
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
+    seed: u64,
+    feature_family: String,
+    sampling_phase: String,
+    sample_after_opening: bool,
+    teacher_move_encoding: String,
+    opening_random_plies: u16,
     generated_at_unix_ms: u128,
     build_mode: String,
     entry_bytes: usize,
@@ -118,10 +124,24 @@ struct ShardManifest {
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
+    #[serde(default = "legacy_sampling_phase")]
+    sampling_phase: String,
+    #[serde(default)]
+    sample_after_opening: bool,
+    #[serde(default = "legacy_teacher_move_encoding")]
+    teacher_move_encoding: String,
     generated_at_unix_ms: u128,
     build_mode: String,
     entry_bytes: usize,
     shard_index: u32,
+}
+
+fn legacy_sampling_phase() -> String {
+    "fixed-phase-legacy".to_string()
+}
+
+fn legacy_teacher_move_encoding() -> String {
+    "legacy-ambiguous-u16".to_string()
 }
 
 impl ShardManifest {
@@ -593,6 +613,17 @@ fn generate_split(
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
+        seed: loaded.config.data.seed,
+        feature_family: loaded.training_features().to_string(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
         generated_at_unix_ms,
         build_mode: teacher_build_mode(loaded, teacher),
         entry_bytes: ENTRY_BYTES,
@@ -942,6 +973,14 @@ fn generate_or_reuse_shard(
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
         generated_at_unix_ms,
         build_mode: teacher_build_mode(loaded, teacher),
         entry_bytes: ENTRY_BYTES,
@@ -1037,6 +1076,11 @@ fn shard_manifest_matches(
         && manifest.search_depth == loaded.config.data.search_depth
         && manifest.label_search_depth() == loaded.config.data.search_depth
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
+        && (ignore_identity
+            || (manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name()
+                && manifest.sample_after_opening
+                    == loaded.config.data.sampling_policy.samples_after_opening()
+                && manifest.teacher_move_encoding == TEACHER_MOVE_ENCODING))
         && (ignore_identity || manifest.config_hash == loaded.hash_hex)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
@@ -1061,8 +1105,8 @@ enum MismatchChoice {
     Regenerate,
 }
 
-/// Decides whether resumed shards with a mismatching git revision or config hash
-/// may be reused. Returns `true` when such shards should be reused as-is.
+/// Decides whether resumed shards with a mismatching generation identity may be
+/// reused. Returns `true` when such shards should be reused as-is.
 #[allow(clippy::too_many_arguments)]
 fn resolve_identity_mismatch(
     loaded: &LoadedConfig,
@@ -1098,7 +1142,7 @@ fn resolve_identity_mismatch(
     };
     match prompt_identity_mismatch_choice(percent)? {
         MismatchChoice::Abort => bail!(
-            "aborting: existing shards have a mismatching git revision and/or config hash. \
+            "aborting: existing shards have a mismatching generation identity (config, engine, sampling, and/or teacher-move contract). \
              Re-run with --ignore-identity-mismatch to reuse them, or with --no-resume to regenerate."
         ),
         MismatchChoice::Reuse => Ok(true),
@@ -1164,7 +1208,7 @@ fn prompt_identity_mismatch_choice(percent: f64) -> Result<MismatchChoice> {
     let mut err = stderr();
     let _ = writeln!(
         err,
-        "Identity mismatch (git revision and/or config hash) found in existing shards \
+        "Generation identity mismatch found in existing shards \
          covering {percent:.1}% of this run's data."
     );
     if !stdin().is_terminal() || !err.is_terminal() {
@@ -1201,8 +1245,15 @@ fn generate_game_entries(
     opening_sfen: &str,
     game_index: u32,
 ) -> Result<GameEntries> {
-    let mut rng =
-        StdRng::seed_from_u64(game_seed(loaded.config.data.seed, dataset_name, game_index));
+    let seed = game_seed(loaded.config.data.seed, dataset_name, game_index);
+    let mut rng = StdRng::seed_from_u64(seed);
+    let sample_origin = sampling_origin(
+        seed,
+        loaded.config.data.sampling_policy,
+        loaded.config.data.sample_start_ply,
+        loaded.config.data.opening_random_plies,
+        loaded.config.data.sample_every_ply,
+    );
     let mut board = Board::from_sfen(opening_sfen)
         .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
     let mut samples = Vec::new();
@@ -1218,10 +1269,8 @@ fn generate_game_entries(
             break;
         }
 
-        let should_sample = played_plies >= loaded.config.data.sample_start_ply
-            && (played_plies - loaded.config.data.sample_start_ply)
-                % loaded.config.data.sample_every_ply
-                == 0
+        let should_sample = played_plies >= sample_origin
+            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
             && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
         let needs_rollout_search =
             played_plies >= loaded.config.data.opening_random_plies && !should_sample;
@@ -1303,6 +1352,24 @@ fn generate_game_entries(
         )?;
     }
     Ok(GameEntries { entries, stats })
+}
+
+fn sampling_origin(
+    game_seed: u64,
+    policy: SamplingPolicy,
+    sample_start_ply: u16,
+    opening_random_plies: u16,
+    sample_every_ply: u16,
+) -> u16 {
+    match policy {
+        SamplingPolicy::PerGameRandomV1 => {
+            let base = sample_start_ply.max(opening_random_plies);
+            let phase = (splitmix64(game_seed ^ 0x7361_6d70_6c65_7631)
+                % u64::from(sample_every_ply)) as u16;
+            base.saturating_add(phase)
+        }
+        SamplingPolicy::FixedPhaseLegacy => sample_start_ply,
+    }
 }
 
 fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
@@ -1446,6 +1513,17 @@ fn merge_split(
             .as_ref()
             .and_then(|identity| identity.engine_revision.clone()),
         config_hash: loaded.hash_hex.clone(),
+        seed: loaded.config.data.seed,
+        feature_family: loaded.training_features().to_string(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
         generated_at_unix_ms,
         build_mode: format!("{}+merged", loaded.runtime_mode()),
         entry_bytes: ENTRY_BYTES,
@@ -1504,6 +1582,21 @@ fn validate_merge_shard(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
         "rollout_search_depth does not match",
     )?;
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name(),
+            "sampling_phase does not match",
+        )?;
+        ensure_merge(
+            manifest.sample_after_opening
+                == loaded.config.data.sampling_policy.samples_after_opening(),
+            "sample_after_opening does not match",
+        )?;
+        ensure_merge(
+            manifest.teacher_move_encoding == TEACHER_MOVE_ENCODING,
+            "teacher_move_encoding does not match",
+        )?;
+    }
     if !ignore_identity_mismatch {
         ensure_merge(
             manifest.config_hash == loaded.hash_hex,
@@ -1864,6 +1957,45 @@ mod tests {
     }
 
     #[test]
+    fn per_game_sampling_phase_covers_both_parities_and_starts_after_opening() {
+        let origins = (0..100)
+            .map(|game_index| {
+                sampling_origin(
+                    game_seed(75, "train", game_index),
+                    SamplingPolicy::PerGameRandomV1,
+                    8,
+                    16,
+                    2,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert!(origins.iter().all(|&ply| ply >= 16));
+        assert!(origins.iter().any(|ply| ply % 2 == 0));
+        assert!(origins.iter().any(|ply| ply % 2 == 1));
+
+        let repeated = (0..100)
+            .map(|game_index| {
+                sampling_origin(
+                    game_seed(75, "train", game_index),
+                    SamplingPolicy::PerGameRandomV1,
+                    8,
+                    16,
+                    2,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(origins, repeated);
+    }
+
+    #[test]
+    fn legacy_sampling_requires_the_explicit_fixed_phase_policy() {
+        assert_eq!(
+            sampling_origin(123, SamplingPolicy::FixedPhaseLegacy, 8, 16, 2),
+            8
+        );
+    }
+
+    #[test]
     fn packer_preserves_feature_signature() {
         let board = Board::from_sfen(
             "lnsgkgsnl/1r5b1/pppp1pppp/4p4/4+P4/9/PPPP1PPPP/1B5R1/LNSGKGSNL b - 3",
@@ -2158,6 +2290,32 @@ run_search_smoke = false
                 .unwrap();
         assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
         assert_eq!(manifest["generated_shards"].as_u64().unwrap(), 0);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn resume_rejects_sampling_and_teacher_move_contract_mismatches_without_override() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-contract.toml");
+        fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("fixed-phase-legacy".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String("legacy-ambiguous-u16".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
     }
 
     #[test]
@@ -2661,6 +2819,37 @@ run_search_smoke = false
 
         let err = format!("{:?}", merge_data(&loaded, &[input], false).unwrap_err());
         assert!(err.contains("rollout_search_depth does not match"));
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn merge_rejects_sampling_and_teacher_move_contract_mismatches() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-contract.toml");
+        fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("fixed-phase-legacy".to_string());
+        });
+        let error = format!(
+            "{:#}",
+            merge_data(&loaded, &[input.clone()], false).unwrap_err()
+        );
+        assert!(error.contains("sampling_phase does not match"));
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String("legacy-ambiguous-u16".to_string());
+        });
+        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(error.contains("teacher_move_encoding does not match"));
     }
 
     #[test]

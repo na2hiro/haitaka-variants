@@ -16,6 +16,7 @@ rollout_search_depth = 1
 opening_random_plies = 16
 sample_start_ply = 8
 sample_every_ply = 2
+sampling_policy = "fixed-phase-legacy"
 max_positions_per_game = 64
 seed = 72
 jobs = 0
