@@ -58,6 +58,7 @@ struct AuditIdentity {
     shuffle_policy: Option<String>,
     shuffle_seed: Option<u64>,
     shuffle_chunk_records: Option<u64>,
+    self_play_move_policy: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -269,6 +270,7 @@ pub fn audit_dataset(
         shuffle_policy: value_string(&manifest, "shuffle_policy"),
         shuffle_seed: value_u64(&manifest, "shuffle_seed"),
         shuffle_chunk_records: value_u64(&manifest, "shuffle_chunk_records"),
+        self_play_move_policy: value_string(&manifest, "self_play_move_policy"),
     };
     let train_opening_ids = value_string_vec(&manifest, "train_opening_ids");
     let validation_opening_ids = value_string_vec(&manifest, "validation_opening_ids");

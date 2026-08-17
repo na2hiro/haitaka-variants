@@ -18,6 +18,7 @@ validation_games = 2
 max_plies = 160
 search_depth = 2
 rollout_search_depth = 1
+self_play_move_policy = "label-on-sample-legacy"
 opening_random_plies = 8
 opening_policy = "uniform-random"
 split_policy = "independent-legacy"

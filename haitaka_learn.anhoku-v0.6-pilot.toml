@@ -13,6 +13,7 @@ validation_games = 20
 max_plies = 180
 search_depth = 3
 rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
 opening_random_plies = 0
 opening_policy = "suite"
 opening_suite = "haitaka_learn/openings/anhoku-v1.tsv"

@@ -26,6 +26,14 @@ pub enum SamplingPolicy {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum SelfPlayMovePolicy {
+    UniformRolloutV1,
+    #[default]
+    LabelOnSampleLegacy,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum OpeningPolicy {
     Suite,
     #[default]
@@ -85,6 +93,15 @@ impl SamplingPolicy {
 
     pub const fn samples_after_opening(self) -> bool {
         matches!(self, Self::PerGameRandomV1)
+    }
+}
+
+impl SelfPlayMovePolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::UniformRolloutV1 => "uniform-rollout-v1",
+            Self::LabelOnSampleLegacy => "label-on-sample-legacy",
+        }
     }
 }
 
@@ -726,6 +743,8 @@ pub struct DataConfig {
     pub search_depth: u8,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
+    #[serde(default)]
+    pub self_play_move_policy: SelfPlayMovePolicy,
     #[serde(default = "default_opening_random_plies")]
     pub opening_random_plies: u16,
     #[serde(default)]
@@ -772,6 +791,7 @@ impl Default for DataConfig {
             max_plies: default_max_plies(),
             search_depth: default_search_depth(),
             rollout_search_depth: default_rollout_search_depth(),
+            self_play_move_policy: SelfPlayMovePolicy::default(),
             opening_random_plies: default_opening_random_plies(),
             opening_policy: OpeningPolicy::default(),
             opening_suite: None,
@@ -1254,6 +1274,10 @@ validation_games = 1
         assert!(config.data.resume);
         assert_eq!(config.data.opening_policy, OpeningPolicy::UniformRandom);
         assert_eq!(config.data.sampling_policy, SamplingPolicy::PerGameRandomV1);
+        assert_eq!(
+            config.data.self_play_move_policy,
+            SelfPlayMovePolicy::LabelOnSampleLegacy
+        );
         assert!(!config.training.teacher_move_consumers);
     }
 

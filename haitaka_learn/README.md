@@ -113,12 +113,16 @@ Key fields:
   - `sampling_policy = "fixed-phase-legacy"` is the explicit compatibility mode for
     reproducing old datasets and may sample during the random opening
   - `search_depth` labels sampled positions
-  - `rollout_search_depth` chooses non-labeling self-play moves after `opening_random_plies`; keep this shallow, for example `1`, when running expensive label depths
+  - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
+    shallow, for example `1`, when running expensive label depths
+  - `self_play_move_policy = "uniform-rollout-v1"` makes label search observational:
+    every post-opening move uses rollout search even when the position is sampled. The
+    explicit `label-on-sample-legacy` compatibility policy reproduces older biased data.
   - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions. Each shard records the
-    git revision, config-file hash, sampling policy, and teacher-move contract; if a resumed
+    git revision, config-file hash, sampling/self-play policy, and teacher-move contract; if a resumed
     shard's identity differs from the current run (e.g. a local patch that doesn't affect
     data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
@@ -165,7 +169,8 @@ This:
 - plays Haitaka self-play games
 - samples positions
 - labels sampled positions with teacher search scores at `data.search_depth`
-- uses `data.rollout_search_depth` for post-opening self-play moves that are not sampled
+- uses `data.rollout_search_depth` for every post-opening self-play move under
+  `uniform-rollout-v1`, independently of whether the position is sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
 
@@ -237,9 +242,9 @@ cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/
 `merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
 expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
 `--ignore-identity-mismatch` to skip identity checks. Sampling-policy and teacher-move
-contract mismatches are also rejected unless this explicit override is supplied. Split
-policy/seed, assigned opening groups, shuffle policy/seed, and chunk size are checked in
-the same way.
+contract mismatches are also rejected unless this explicit override is supplied.
+Self-play move policy, split policy/seed, assigned opening groups, shuffle policy/seed,
+and chunk size are checked in the same way.
 
 Audit a completed dataset with deterministic JSON output:
 

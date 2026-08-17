@@ -22,7 +22,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
+    ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy,
+    TEACHER_MOVE_ENCODING,
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 
@@ -93,6 +94,7 @@ struct DatasetManifest {
     search_depth: u8,
     label_search_depth: u8,
     rollout_search_depth: u8,
+    self_play_move_policy: String,
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
@@ -158,6 +160,8 @@ struct ShardManifest {
     label_search_depth: u8,
     #[serde(default)]
     rollout_search_depth: u8,
+    #[serde(default = "legacy_self_play_move_policy")]
+    self_play_move_policy: String,
     #[serde(default)]
     label_searches: u64,
     #[serde(default)]
@@ -185,6 +189,10 @@ struct ShardManifest {
 
 fn legacy_sampling_phase() -> String {
     "fixed-phase-legacy".to_string()
+}
+
+fn legacy_self_play_move_policy() -> String {
+    "label-on-sample-legacy".to_string()
 }
 
 fn legacy_opening_policy() -> String {
@@ -740,6 +748,12 @@ fn generate_split(
         search_depth: loaded.config.data.search_depth,
         label_search_depth: loaded.config.data.search_depth,
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
@@ -1141,6 +1155,12 @@ fn generate_or_reuse_shard(
         search_depth: loaded.config.data.search_depth,
         label_search_depth: loaded.config.data.search_depth,
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
@@ -1271,6 +1291,9 @@ fn shard_manifest_matches(
         && manifest.label_search_depth() == loaded.config.data.search_depth
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
+            || manifest.self_play_move_policy
+                == loaded.config.data.self_play_move_policy.manifest_name())
+        && (ignore_identity
             || (manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name()
                 && manifest.sample_after_opening
                     == loaded.config.data.sampling_policy.samples_after_opening()
@@ -1340,7 +1363,7 @@ fn resolve_identity_mismatch(
     };
     match prompt_identity_mismatch_choice(percent)? {
         MismatchChoice::Abort => bail!(
-            "aborting: existing shards have a mismatching generation identity (config, engine, opening, sampling, and/or teacher-move contract). \
+            "aborting: existing shards have a mismatching generation identity (config, engine, opening, sampling, self-play move, and/or teacher-move contract). \
              Re-run with --ignore-identity-mismatch to reuse them, or with --no-resume to regenerate."
         ),
         MismatchChoice::Reuse => Ok(true),
@@ -1492,8 +1515,9 @@ fn generate_game_entries(
         let should_sample = played_plies >= sample_origin
             && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
             && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
-        let needs_rollout_search =
-            played_plies >= loaded.config.data.opening_random_plies && !should_sample;
+        let needs_rollout_search = played_plies >= loaded.config.data.opening_random_plies
+            && (loaded.config.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1
+                || !should_sample);
         let label_summary = if should_sample {
             let summary =
                 teacher.search(&board, loaded.config.data.search_depth, search_workspace)?;
@@ -1533,10 +1557,12 @@ fn generate_game_entries(
         let mv = if played_plies < loaded.config.data.opening_random_plies {
             legal_moves[rng.random_range(0..legal_moves.len())]
         } else {
-            let summary = label_summary
-                .as_ref()
-                .or(rollout_summary.as_ref())
-                .ok_or_else(|| anyhow!("rollout search unexpectedly missing"))?;
+            let summary = select_self_play_search(
+                loaded.config.data.self_play_move_policy,
+                label_summary.as_ref(),
+                rollout_summary.as_ref(),
+            )
+            .ok_or_else(|| anyhow!("self-play move search unexpectedly missing"))?;
             searched_best_move(&board, summary)?
         };
 
@@ -1576,6 +1602,17 @@ fn generate_game_entries(
         stats,
         opening: selected_opening.metadata,
     })
+}
+
+fn select_self_play_search<'a, T>(
+    policy: SelfPlayMovePolicy,
+    label: Option<&'a T>,
+    rollout: Option<&'a T>,
+) -> Option<&'a T> {
+    match policy {
+        SelfPlayMovePolicy::UniformRolloutV1 => rollout,
+        SelfPlayMovePolicy::LabelOnSampleLegacy => label.or(rollout),
+    }
 }
 
 fn sampling_origin(
@@ -1889,6 +1926,12 @@ fn merge_split(
         search_depth: loaded.config.data.search_depth,
         label_search_depth: loaded.config.data.search_depth,
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
@@ -2017,6 +2060,13 @@ fn validate_merge_shard(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
         "rollout_search_depth does not match",
     )?;
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.self_play_move_policy
+                == loaded.config.data.self_play_move_policy.manifest_name(),
+            "self_play_move_policy does not match",
+        )?;
+    }
     if !ignore_identity_mismatch {
         ensure_merge(
             manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name(),
@@ -2420,6 +2470,29 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(origins, repeated);
+    }
+
+    #[test]
+    fn uniform_rollout_never_uses_the_label_search_for_self_play() {
+        let label = "depth-3-label";
+        let rollout = "depth-1-rollout";
+
+        assert_eq!(
+            select_self_play_search(
+                SelfPlayMovePolicy::UniformRolloutV1,
+                Some(&label),
+                Some(&rollout),
+            ),
+            Some(&rollout)
+        );
+        assert_eq!(
+            select_self_play_search(
+                SelfPlayMovePolicy::LabelOnSampleLegacy,
+                Some(&label),
+                Some(&rollout),
+            ),
+            Some(&label)
+        );
     }
 
     #[test]
@@ -2927,7 +3000,7 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "anhoku")]
-    fn resume_rejects_sampling_and_teacher_move_contract_mismatches_without_override() {
+    fn resume_rejects_sampling_self_play_and_teacher_move_mismatches_without_override() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-contract.toml");
         fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
@@ -2937,6 +3010,17 @@ run_search_smoke = false
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
             manifest["sampling_phase"] =
                 serde_json::Value::String("fixed-phase-legacy".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String(TEACHER_MOVE_ENCODING.to_string());
+            manifest["self_play_move_policy"] =
+                serde_json::Value::String("uniform-rollout-v1".to_string());
         });
         let error = format!("{:#}", generate_data(&loaded).unwrap_err());
         assert!(error.contains("--ignore-identity-mismatch"));
@@ -3471,7 +3555,7 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "anhoku")]
-    fn merge_rejects_sampling_and_teacher_move_contract_mismatches() {
+    fn merge_rejects_sampling_self_play_and_teacher_move_mismatches() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-contract.toml");
         fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
@@ -3496,8 +3580,20 @@ run_search_smoke = false
             manifest["teacher_move_encoding"] =
                 serde_json::Value::String("legacy-ambiguous-u16".to_string());
         });
-        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        let error = format!(
+            "{:#}",
+            merge_data(&loaded, &[input.clone()], false).unwrap_err()
+        );
         assert!(error.contains("teacher_move_encoding does not match"));
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String(TEACHER_MOVE_ENCODING.to_string());
+            manifest["self_play_move_policy"] =
+                serde_json::Value::String("uniform-rollout-v1".to_string());
+        });
+        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(error.contains("self_play_move_policy does not match"));
     }
 
     #[test]
@@ -3813,8 +3909,9 @@ seed = 9
         assert_eq!(manifest["search_depth"].as_u64().unwrap(), 2);
         assert_eq!(manifest["label_search_depth"].as_u64().unwrap(), 2);
         assert_eq!(manifest["rollout_search_depth"].as_u64().unwrap(), 1);
+        assert_eq!(manifest["self_play_move_policy"], "uniform-rollout-v1");
         assert_eq!(manifest["label_searches"].as_u64().unwrap(), 3);
-        assert_eq!(manifest["rollout_searches"].as_u64().unwrap(), 3);
+        assert_eq!(manifest["rollout_searches"].as_u64().unwrap(), 6);
         assert!(manifest["label_search_states"].as_u64().unwrap() > 0);
         assert!(manifest["rollout_search_states"].as_u64().unwrap() > 0);
     }
@@ -3909,6 +4006,7 @@ opening_random_plies = 0
 opening_policy = "suite"
 opening_suite = "{suite}"
 opening_suite_id = "anhoku-v1"
+self_play_move_policy = "uniform-rollout-v1"
 split_policy = "opening-group-hash-v1"
 split_seed = 76
 shuffle_policy = "chunk-v1"
@@ -3974,6 +4072,7 @@ validation_games = 1
 max_plies = 6
 search_depth = 2
 rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
 opening_random_plies = 0
 sample_start_ply = 0
 sample_every_ply = 2

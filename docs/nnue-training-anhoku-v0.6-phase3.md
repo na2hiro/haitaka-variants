@@ -52,6 +52,10 @@ resume/merge rejection after split or shuffle identity mutation.
 
 ## Generation Smoke Result
 
+> These hashes predate the uniform-rollout correction. The checked-in smoke config now
+> uses `uniform-rollout-v1`; see the [corrected pilot](nnue-training-anhoku-v0.6-pilot.md)
+> for current generation hashes and timing.
+
 Two clean release-mode runs of `haitaka_learn.anhoku-v0.6.smoke.toml` produced the same
 files:
 
