@@ -45,6 +45,10 @@ an explicitly named compatibility/smoke-test policy.
 
 ## Generation Smoke Result
 
+> These are the pre-shuffle Phase 2 hashes. Phase 3 subsequently added grouped splitting
+> and deterministic shuffling to the checked-in smoke config; see the
+> [Phase 3 result](nnue-training-anhoku-v0.6-phase3.md) for its current hashes.
+
 The checked-in [`haitaka_learn.anhoku-v0.6.smoke.toml`](../haitaka_learn.anhoku-v0.6.smoke.toml)
 keeps the production suite, seed, feature family, label depth 3, rollout depth 1, and
 sampling contracts while limiting the run to four train and four validation games at

@@ -194,6 +194,22 @@ uses the versioned `anhoku-rotate180-color-swap-v1` transformation (rotate the b
 180 degrees, exchange piece/hand colors, and exchange side to move). Shard and final
 manifests contain the suite hash and per-game opening metadata.
 
+The v0.6 configs also use `split_policy = "opening-group-hash-v1"`. Suite IDs are
+ranked from `split_seed` before any game is generated, and each ID is assigned wholly
+to train or validation. At least two validation groups are retained when the suite has
+four or more IDs. This keeps a base/swapped pair—and every repeated game from the same
+opening—on one side of the split. Manifests record both assigned ID lists, qualified
+game IDs such as `train-0000000000`, and their empty intersection.
+
+`shuffle_policy = "chunk-v1"` performs a deterministic external shuffle after shard
+generation. It shuffles records inside fixed-size chunks and visits the chunk files by
+a seeded affine permutation. The algorithm never loads a full shard or dataset. Its
+documented heap bound for record and I/O buffers is
+`shuffle_chunk_records * 72 + 131072` bytes; the config validator caps the record
+payload at 1,000,000 records (about 68.7 MiB). Temporary chunk files live beside the
+final dataset and are removed after assembly. Historical configs explicitly use
+`independent-legacy` and `game-order-legacy`.
+
 Data generation uses all available CPU cores by default. Pass `--jobs N` only
 when you need to cap CPU, memory, or thermal load.
 
@@ -221,7 +237,9 @@ cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/
 `merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
 expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
 `--ignore-identity-mismatch` to skip identity checks. Sampling-policy and teacher-move
-contract mismatches are also rejected unless this explicit override is supplied.
+contract mismatches are also rejected unless this explicit override is supplied. Split
+policy/seed, assigned opening groups, shuffle policy/seed, and chunk size are checked in
+the same way.
 
 Audit a completed dataset with deterministic JSON output:
 

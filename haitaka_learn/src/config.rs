@@ -32,11 +32,45 @@ pub enum OpeningPolicy {
     UniformRandom,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SplitPolicy {
+    OpeningGroupHashV1,
+    #[default]
+    IndependentLegacy,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ShufflePolicy {
+    ChunkV1,
+    #[default]
+    GameOrderLegacy,
+}
+
 impl OpeningPolicy {
     pub const fn manifest_name(self) -> &'static str {
         match self {
             Self::Suite => "suite",
             Self::UniformRandom => "uniform-random",
+        }
+    }
+}
+
+impl SplitPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::OpeningGroupHashV1 => "opening-group-hash-v1",
+            Self::IndependentLegacy => "independent-legacy",
+        }
+    }
+}
+
+impl ShufflePolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::ChunkV1 => "bounded-chunk-v1",
+            Self::GameOrderLegacy => "game-order-legacy",
         }
     }
 }
@@ -474,6 +508,24 @@ impl LearnConfig {
                 );
             }
         }
+        if self.data.split_policy == SplitPolicy::OpeningGroupHashV1 {
+            ensure!(
+                self.data.opening_policy == OpeningPolicy::Suite,
+                "data.split_policy=opening-group-hash-v1 requires data.opening_policy=suite"
+            );
+            ensure!(
+                self.data.train_games % 2 == 0 && self.data.validation_games % 2 == 0,
+                "data.split_policy=opening-group-hash-v1 requires even train_games and validation_games so color-swapped pairs stay together"
+            );
+        }
+        ensure!(
+            self.data.shuffle_chunk_records > 0,
+            "data.shuffle_chunk_records must be at least 1"
+        );
+        ensure!(
+            self.data.shuffle_chunk_records <= 1_000_000,
+            "data.shuffle_chunk_records must not exceed 1000000 (about 68.7 MiB of record payload)"
+        );
         ensure!(
             !self.training.teacher_move_consumers,
             "training.teacher_move_consumers cannot be enabled: the 72-byte record format has teacher_move_encoding=unavailable"
@@ -683,6 +735,16 @@ pub struct DataConfig {
     #[serde(default)]
     pub opening_suite_id: Option<String>,
     #[serde(default)]
+    pub split_policy: SplitPolicy,
+    #[serde(default = "default_split_seed")]
+    pub split_seed: u64,
+    #[serde(default)]
+    pub shuffle_policy: ShufflePolicy,
+    #[serde(default = "default_shuffle_seed")]
+    pub shuffle_seed: u64,
+    #[serde(default = "default_shuffle_chunk_records")]
+    pub shuffle_chunk_records: usize,
+    #[serde(default)]
     pub sample_start_ply: u16,
     #[serde(default = "default_sample_every_ply")]
     pub sample_every_ply: u16,
@@ -714,6 +776,11 @@ impl Default for DataConfig {
             opening_policy: OpeningPolicy::default(),
             opening_suite: None,
             opening_suite_id: None,
+            split_policy: SplitPolicy::default(),
+            split_seed: default_split_seed(),
+            shuffle_policy: ShufflePolicy::default(),
+            shuffle_seed: default_shuffle_seed(),
+            shuffle_chunk_records: default_shuffle_chunk_records(),
             sample_start_ply: 0,
             sample_every_ply: default_sample_every_ply(),
             sampling_policy: SamplingPolicy::default(),
@@ -933,6 +1000,18 @@ fn default_max_positions_per_game() -> u16 {
 
 fn default_seed() -> u64 {
     42
+}
+
+fn default_split_seed() -> u64 {
+    0x7370_6c69_742d_7631
+}
+
+fn default_shuffle_seed() -> u64 {
+    0x7368_7566_666c_6531
+}
+
+fn default_shuffle_chunk_records() -> usize {
+    65_536
 }
 
 fn default_jobs() -> u32 {

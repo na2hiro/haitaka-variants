@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::{self, File};
-use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
+use std::io::{BufReader, BufWriter, IsTerminal, Read, Write, stderr, stdin};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -16,15 +16,19 @@ use haitaka_wasm::{
     search_board_impl_handcrafted_in_workspace, search_board_impl_with_eval_mode_in_workspace,
 };
 use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, TEACHER_MOVE_ENCODING};
-use crate::openings::{GameOpeningMetadata, OpeningSource};
+use crate::config::{
+    ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
+};
+use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -73,6 +77,16 @@ struct DatasetManifest {
     opening_transformation: String,
     opening_ids: Vec<String>,
     games: Vec<GameOpeningMetadata>,
+    split_policy: String,
+    split_seed: u64,
+    train_opening_ids: Vec<String>,
+    validation_opening_ids: Vec<String>,
+    opening_group_count: usize,
+    opening_group_overlap: Vec<String>,
+    shuffle_policy: String,
+    shuffle_seed: u64,
+    shuffle_chunk_records: usize,
+    shuffle_memory_bound_bytes: usize,
     game_count: u32,
     completed_games: u32,
     sampled_positions: u64,
@@ -122,6 +136,20 @@ struct ShardManifest {
     opening_ids: Vec<String>,
     #[serde(default)]
     games: Vec<GameOpeningMetadata>,
+    #[serde(default = "legacy_split_policy")]
+    split_policy: String,
+    #[serde(default = "legacy_split_seed")]
+    split_seed: u64,
+    #[serde(default)]
+    train_opening_ids: Vec<String>,
+    #[serde(default)]
+    validation_opening_ids: Vec<String>,
+    #[serde(default = "legacy_shuffle_policy")]
+    shuffle_policy: String,
+    #[serde(default = "legacy_shuffle_seed")]
+    shuffle_seed: u64,
+    #[serde(default = "legacy_shuffle_chunk_records")]
+    shuffle_chunk_records: usize,
     game_start: u32,
     game_count: u32,
     sampled_positions: u64,
@@ -165,6 +193,26 @@ fn legacy_opening_policy() -> String {
 
 fn legacy_opening_transformation() -> String {
     "none".to_string()
+}
+
+fn legacy_split_policy() -> String {
+    "independent-legacy".to_string()
+}
+
+fn legacy_split_seed() -> u64 {
+    0x7370_6c69_742d_7631
+}
+
+fn legacy_shuffle_policy() -> String {
+    "game-order-legacy".to_string()
+}
+
+fn legacy_shuffle_seed() -> u64 {
+    0x7368_7566_666c_6531
+}
+
+fn legacy_shuffle_chunk_records() -> usize {
+    65_536
 }
 
 fn legacy_teacher_move_encoding() -> String {
@@ -339,6 +387,12 @@ pub fn generate_data_with_options(
     let _: Board = Board::from_sfen(&opening_sfen)
         .map_err(|err| anyhow!("invalid opening SFEN in config: {err}"))?;
     let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+    )?;
 
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -363,6 +417,7 @@ pub fn generate_data_with_options(
         &teacher,
         &opening_sfen,
         &opening_source,
+        &opening_split,
         &engine_revision,
         shard_selector,
         resume,
@@ -377,6 +432,7 @@ pub fn generate_data_with_options(
         &teacher,
         &opening_sfen,
         &opening_source,
+        &opening_split,
         loaded.config.data.train_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -399,6 +455,7 @@ pub fn generate_data_with_options(
         &teacher,
         &opening_sfen,
         &opening_source,
+        &opening_split,
         loaded.config.data.validation_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -517,6 +574,7 @@ fn generate_split(
     teacher: &Teacher,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     game_count: u32,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
@@ -555,6 +613,7 @@ fn generate_split(
             let artifacts = artifacts.clone();
             let opening_sfen = opening_sfen.to_string();
             let opening_source = opening_source.clone();
+            let opening_split = opening_split.clone();
             let engine_revision = engine_revision.clone();
             let dataset_name = dataset_name.to_string();
 
@@ -570,6 +629,7 @@ fn generate_split(
                         &teacher,
                         &opening_sfen,
                         &opening_source,
+                        &opening_split,
                         &engine_revision,
                         generated_at_unix_ms,
                         plan,
@@ -604,7 +664,14 @@ fn generate_split(
         .into_inner()
         .map_err(|_| anyhow!("failed to lock shard results"))?;
     shard_results.sort_by_key(|result| result.manifest.game_start);
-    let sampled_positions = assemble_shards(&shard_results, bin_path)?;
+    let sampled_positions = assemble_shards(
+        &shard_results,
+        bin_path,
+        loaded.config.data.shuffle_policy,
+        loaded.config.data.shuffle_seed,
+        loaded.config.data.shuffle_chunk_records,
+        dataset_name,
+    )?;
     let completed_games = shard_results
         .iter()
         .map(|result| result.manifest.game_count)
@@ -650,6 +717,23 @@ fn generate_split(
         opening_transformation: opening_source.transformation().to_string(),
         opening_ids,
         games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        opening_group_count: opening_split.ids_for(dataset_name)?.len(),
+        opening_group_overlap: opening_split.overlap(),
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
+        shuffle_memory_bound_bytes: shuffle_memory_bound_bytes(
+            loaded.config.data.shuffle_chunk_records,
+        ),
         game_count,
         completed_games,
         sampled_positions,
@@ -723,6 +807,12 @@ pub fn merge_data(
     artifacts.ensure_dirs()?;
     let opening_sfen = loaded.opening_sfen()?;
     let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+    )?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -737,6 +827,7 @@ pub fn merge_data(
         loaded.config.data.train_games,
         &opening_sfen,
         &opening_source,
+        &opening_split,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -749,6 +840,7 @@ pub fn merge_data(
         loaded.config.data.validation_games,
         &opening_sfen,
         &opening_source,
+        &opening_split,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -952,6 +1044,7 @@ fn generate_or_reuse_shard(
     teacher: &Teacher,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     plan: ShardPlan,
@@ -970,6 +1063,7 @@ fn generate_or_reuse_shard(
             dataset_name,
             opening_sfen,
             opening_source,
+            opening_split,
             teacher,
             engine_revision,
             plan,
@@ -1002,6 +1096,7 @@ fn generate_or_reuse_shard(
             teacher,
             &mut search_workspace,
             opening_source,
+            opening_split,
             game_index,
         )
         .context(error_context)?;
@@ -1028,6 +1123,18 @@ fn generate_or_reuse_shard(
             .into_iter()
             .collect(),
         games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
         game_start: plan.game_start,
         game_count: plan.game_count,
         sampled_positions,
@@ -1074,6 +1181,7 @@ fn reusable_shard(
     dataset_name: &str,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     teacher: &Teacher,
     engine_revision: &Option<String>,
     plan: ShardPlan,
@@ -1094,6 +1202,7 @@ fn reusable_shard(
         dataset_name,
         opening_sfen,
         opening_source,
+        opening_split,
         plan,
         &manifest,
         allow_identity_mismatch,
@@ -1135,6 +1244,7 @@ fn shard_manifest_matches(
     dataset_name: &str,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     plan: ShardPlan,
     manifest: &ShardManifest,
     ignore_identity: bool,
@@ -1147,7 +1257,14 @@ fn shard_manifest_matches(
             || (manifest.opening_policy == opening_source.policy()
                 && manifest.opening_suite_id.as_deref() == opening_source.suite_id()
                 && manifest.opening_suite_sha256.as_deref() == opening_source.suite_sha256()
-                && manifest.opening_transformation == opening_source.transformation()))
+                && manifest.opening_transformation == opening_source.transformation()
+                && manifest.split_policy == loaded.config.data.split_policy.manifest_name()
+                && manifest.split_seed == loaded.config.data.split_seed
+                && manifest.train_opening_ids == opening_split.train_ids
+                && manifest.validation_opening_ids == opening_split.validation_ids
+                && manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name()
+                && manifest.shuffle_seed == loaded.config.data.shuffle_seed
+                && manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records))
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
         && manifest.search_depth == loaded.config.data.search_depth
@@ -1191,6 +1308,7 @@ fn resolve_identity_mismatch(
     teacher: &Teacher,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
     resume: bool,
@@ -1208,6 +1326,7 @@ fn resolve_identity_mismatch(
         teacher,
         opening_sfen,
         opening_source,
+        opening_split,
         engine_revision,
         shard_selector,
     )?;
@@ -1238,6 +1357,7 @@ fn detect_identity_mismatch(
     teacher: &Teacher,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
 ) -> Result<(u32, u32)> {
@@ -1274,6 +1394,7 @@ fn detect_identity_mismatch(
                     dataset_name,
                     opening_sfen,
                     opening_source,
+                    opening_split,
                     plan,
                     &manifest,
                     false,
@@ -1284,6 +1405,7 @@ fn detect_identity_mismatch(
                     dataset_name,
                     opening_sfen,
                     opening_source,
+                    opening_split,
                     plan,
                     &manifest,
                     true,
@@ -1337,11 +1459,13 @@ fn generate_game_entries(
     teacher: &Teacher,
     search_workspace: &mut SearchWorkspace,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     game_index: u32,
 ) -> Result<GameEntries> {
     let seed = game_seed(loaded.config.data.seed, dataset_name, game_index);
     let pair_seed = game_seed(loaded.config.data.seed, dataset_name, game_index / 2);
-    let selected_opening = opening_source.select(pair_seed, game_index);
+    let selected_opening =
+        opening_source.select(dataset_name, opening_split, pair_seed, game_index)?;
     let mut rng = StdRng::seed_from_u64(seed);
     let sample_origin = sampling_origin(
         seed,
@@ -1486,24 +1610,146 @@ fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
     Ok(mv)
 }
 
-fn assemble_shards(shard_results: &[ShardResult], bin_path: &Path) -> Result<u64> {
-    let mut writer = BufWriter::new(
+fn assemble_shards(
+    shard_results: &[ShardResult],
+    bin_path: &Path,
+    policy: ShufflePolicy,
+    shuffle_seed: u64,
+    chunk_records: usize,
+    dataset_name: &str,
+) -> Result<u64> {
+    let sampled_positions = shard_results
+        .iter()
+        .map(|result| result.manifest.sampled_positions)
+        .sum::<u64>();
+    if policy == ShufflePolicy::GameOrderLegacy {
+        let mut writer = BufWriter::new(
+            File::create(bin_path)
+                .with_context(|| format!("failed to create {}", bin_path.display()))?,
+        );
+        for result in shard_results {
+            let mut reader = BufReader::new(
+                File::open(&result.bin_path)
+                    .with_context(|| format!("failed to open {}", result.bin_path.display()))?,
+            );
+            std::io::copy(&mut reader, &mut writer)?;
+        }
+        writer.flush()?;
+        return Ok(sampled_positions);
+    }
+
+    let parent = bin_path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = bin_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("dataset.bin");
+    let temp_dir = parent.join(format!(".{file_name}.shuffle-tmp"));
+    if temp_dir.exists() {
+        fs::remove_dir_all(&temp_dir)
+            .with_context(|| format!("failed to clear {}", temp_dir.display()))?;
+    }
+    fs::create_dir_all(&temp_dir)
+        .with_context(|| format!("failed to create {}", temp_dir.display()))?;
+
+    let split_seed = shuffle_seed
+        ^ match dataset_name {
+            "train" => 0x7472_6169_6e2d_7631,
+            "validation" => 0x7661_6c69_642d_7631,
+            _ => bail!("unknown dataset split `{dataset_name}`"),
+        };
+    let mut records = Vec::<[u8; ENTRY_BYTES]>::with_capacity(chunk_records);
+    let mut chunk_count = 0usize;
+    for result in shard_results {
+        let mut reader = BufReader::with_capacity(
+            SHUFFLE_IO_BUFFER_BYTES,
+            File::open(&result.bin_path)
+                .with_context(|| format!("failed to open {}", result.bin_path.display()))?,
+        );
+        for _ in 0..result.manifest.sampled_positions {
+            let mut record = [0u8; ENTRY_BYTES];
+            reader.read_exact(&mut record)?;
+            records.push(record);
+            if records.len() == chunk_records {
+                write_shuffle_chunk(&temp_dir, &mut records, split_seed, chunk_count)?;
+                chunk_count += 1;
+            }
+        }
+    }
+    if !records.is_empty() {
+        write_shuffle_chunk(&temp_dir, &mut records, split_seed, chunk_count)?;
+        chunk_count += 1;
+    }
+    drop(records);
+
+    let mut writer = BufWriter::with_capacity(
+        SHUFFLE_IO_BUFFER_BYTES,
         File::create(bin_path)
             .with_context(|| format!("failed to create {}", bin_path.display()))?,
     );
-    let mut sampled_positions = 0u64;
-    let mut buffer = Vec::new();
-    for result in shard_results {
-        buffer.clear();
-        File::open(&result.bin_path)
-            .with_context(|| format!("failed to open {}", result.bin_path.display()))?
-            .read_to_end(&mut buffer)
-            .with_context(|| format!("failed to read {}", result.bin_path.display()))?;
-        writer.write_all(&buffer)?;
-        sampled_positions += result.manifest.sampled_positions;
+    let (offset, step) = chunk_permutation(split_seed, chunk_count);
+    for position in 0..chunk_count {
+        let chunk_index = (offset + position.wrapping_mul(step)) % chunk_count;
+        let chunk = temp_dir.join(format!("chunk-{chunk_index:08}.bin"));
+        let mut reader = BufReader::with_capacity(
+            SHUFFLE_IO_BUFFER_BYTES,
+            File::open(&chunk).with_context(|| format!("failed to open {}", chunk.display()))?,
+        );
+        std::io::copy(&mut reader, &mut writer)?;
     }
     writer.flush()?;
+    fs::remove_dir_all(&temp_dir)
+        .with_context(|| format!("failed to remove {}", temp_dir.display()))?;
     Ok(sampled_positions)
+}
+
+fn write_shuffle_chunk(
+    temp_dir: &Path,
+    records: &mut Vec<[u8; ENTRY_BYTES]>,
+    seed: u64,
+    chunk_index: usize,
+) -> Result<()> {
+    let mut rng = StdRng::seed_from_u64(splitmix64(seed ^ chunk_index as u64));
+    records.shuffle(&mut rng);
+    let path = temp_dir.join(format!("chunk-{chunk_index:08}.bin"));
+    let mut writer = BufWriter::with_capacity(
+        SHUFFLE_IO_BUFFER_BYTES,
+        File::create(&path).with_context(|| format!("failed to create {}", path.display()))?,
+    );
+    for record in records.iter() {
+        writer.write_all(record)?;
+    }
+    writer.flush()?;
+    records.clear();
+    Ok(())
+}
+
+fn shuffle_memory_bound_bytes(chunk_records: usize) -> usize {
+    chunk_records
+        .saturating_mul(ENTRY_BYTES)
+        .saturating_add(2 * SHUFFLE_IO_BUFFER_BYTES)
+}
+
+fn chunk_permutation(seed: u64, count: usize) -> (usize, usize) {
+    if count <= 1 {
+        return (0, 1);
+    }
+    let offset = (splitmix64(seed ^ 0x6f66_6673_6574_7631) % count as u64) as usize;
+    let mut step = (splitmix64(seed ^ 0x7374_6570_2d76_3100) % count as u64) as usize;
+    step = step.max(1);
+    while gcd(step, count) != 1 {
+        step += 1;
+        if step == count {
+            step = 1;
+        }
+    }
+    (offset, step)
+}
+
+fn gcd(mut left: usize, mut right: usize) -> usize {
+    while right != 0 {
+        (left, right) = (right, left % right);
+    }
+    left
 }
 
 fn merge_split(
@@ -1515,6 +1761,7 @@ fn merge_split(
     game_count: u32,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     generated_at_unix_ms: u128,
     ignore_identity_mismatch: bool,
 ) -> Result<u64> {
@@ -1542,6 +1789,7 @@ fn merge_split(
                 dataset_name,
                 opening_sfen,
                 opening_source,
+                opening_split,
                 &mut teacher_identity,
                 &manifest,
                 ignore_identity_mismatch,
@@ -1577,7 +1825,14 @@ fn merge_split(
         bail!("incomplete {dataset_name} shards: covered {expected_start}/{game_count} games");
     }
 
-    let sampled_positions = assemble_shards(&shard_results, bin_path)?;
+    let sampled_positions = assemble_shards(
+        &shard_results,
+        bin_path,
+        loaded.config.data.shuffle_policy,
+        loaded.config.data.shuffle_seed,
+        loaded.config.data.shuffle_chunk_records,
+        dataset_name,
+    )?;
     let search_stats = shard_results
         .iter()
         .fold(SearchUseStats::default(), |mut stats, result| {
@@ -1611,6 +1866,23 @@ fn merge_split(
         opening_transformation: opening_source.transformation().to_string(),
         opening_ids,
         games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        opening_group_count: opening_split.ids_for(dataset_name)?.len(),
+        opening_group_overlap: opening_split.overlap(),
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
+        shuffle_memory_bound_bytes: shuffle_memory_bound_bytes(
+            loaded.config.data.shuffle_chunk_records,
+        ),
         game_count,
         completed_games: expected_start,
         sampled_positions,
@@ -1669,6 +1941,7 @@ fn validate_merge_shard(
     dataset_name: &str,
     opening_sfen: &str,
     opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     teacher_identity: &mut Option<MergeTeacherIdentity>,
     manifest: &ShardManifest,
     ignore_identity_mismatch: bool,
@@ -1705,6 +1978,31 @@ fn validate_merge_shard(
         ensure_merge(
             manifest.opening_transformation == opening_source.transformation(),
             "opening_transformation does not match",
+        )?;
+        ensure_merge(
+            manifest.split_policy == loaded.config.data.split_policy.manifest_name(),
+            "split_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.split_seed == loaded.config.data.split_seed,
+            "split_seed does not match",
+        )?;
+        ensure_merge(
+            manifest.train_opening_ids == opening_split.train_ids
+                && manifest.validation_opening_ids == opening_split.validation_ids,
+            "opening split groups do not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name(),
+            "shuffle_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_seed == loaded.config.data.shuffle_seed,
+            "shuffle_seed does not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records,
+            "shuffle_chunk_records does not match",
         )?;
     }
     ensure_merge(
@@ -2423,6 +2721,136 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "anhoku")]
+    fn grouped_split_and_bounded_shuffle_are_disjoint_and_deterministic() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let first_config = temp.path().join("first.toml");
+        let second_config = temp.path().join("second.toml");
+        fs::write(
+            &first_config,
+            suite_test_config("out-first", &suite.display().to_string()),
+        )
+        .unwrap();
+        fs::write(
+            &second_config,
+            suite_test_config("out-second", &suite.display().to_string()),
+        )
+        .unwrap();
+        let first = LoadedConfig::from_path(&first_config).unwrap();
+        let second = LoadedConfig::from_path(&second_config).unwrap();
+        generate_data(&first).unwrap();
+        generate_data(&second).unwrap();
+
+        let first_artifacts = first.artifact_paths();
+        let second_artifacts = second.artifact_paths();
+        assert_eq!(
+            fs::read(&first_artifacts.train_bin).unwrap(),
+            fs::read(&second_artifacts.train_bin).unwrap()
+        );
+        assert_eq!(
+            fs::read(&first_artifacts.validation_bin).unwrap(),
+            fs::read(&second_artifacts.validation_bin).unwrap()
+        );
+
+        let train: serde_json::Value =
+            serde_json::from_slice(&fs::read(&first_artifacts.train_manifest).unwrap()).unwrap();
+        let validation: serde_json::Value =
+            serde_json::from_slice(&fs::read(&first_artifacts.validation_manifest).unwrap())
+                .unwrap();
+        let train_openings = train["opening_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|id| id.as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        let validation_openings = validation["opening_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|id| id.as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert!(train_openings.is_disjoint(&validation_openings));
+        let train_games = train["games"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|game| game["game_id"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        let validation_games = validation["games"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|game| game["game_id"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert!(train_games.is_disjoint(&validation_games));
+        assert_eq!(train["opening_group_overlap"].as_array().unwrap().len(), 0);
+        assert_eq!(
+            train["shuffle_memory_bound_bytes"],
+            shuffle_memory_bound_bytes(2)
+        );
+        let audit = serde_json::to_value(
+            crate::dataset_audit::audit_dataset(
+                &first_artifacts.train_bin,
+                &first_artifacts.train_manifest,
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(audit["groups"]["opening_group_overlap_count"], 0);
+        assert_eq!(audit["groups"]["unique_game_ids"], 4);
+
+        let raw = [0_u32, 1]
+            .into_iter()
+            .flat_map(|index| {
+                fs::read(
+                    first_artifacts
+                        .datasets_dir
+                        .join("shards/train")
+                        .join(format!("shard-{index:06}.bin")),
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
+        assert_ne!(fs::read(&first_artifacts.train_bin).unwrap(), raw);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn resume_and_merge_reject_split_and_shuffle_identity_mismatches() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let config_path = temp.path().join("phase3.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["split_seed"] = serde_json::json!(999);
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["split_seed"] = serde_json::json!(76);
+            manifest["shuffle_seed"] = serde_json::json!(999);
+        });
+        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(error.contains("shuffle_seed does not match"));
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
     fn suite_content_change_invalidates_resume_and_merge_identity() {
         let temp = tempdir().unwrap();
         let source_suite = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -2748,6 +3176,14 @@ run_search_smoke = false
         let teacher = Teacher::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
         let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+            )
+            .unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
         let selector = ShardSelector::new(None, None, None).unwrap();
 
@@ -2757,6 +3193,7 @@ run_search_smoke = false
             &teacher,
             &opening_sfen,
             &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -2773,6 +3210,7 @@ run_search_smoke = false
             &teacher,
             &opening_sfen,
             &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -2793,6 +3231,7 @@ run_search_smoke = false
             &teacher,
             &opening_sfen,
             &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -3470,6 +3909,11 @@ opening_random_plies = 0
 opening_policy = "suite"
 opening_suite = "{suite}"
 opening_suite_id = "anhoku-v1"
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+shuffle_policy = "chunk-v1"
+shuffle_seed = 77
+shuffle_chunk_records = 2
 sample_start_ply = 0
 sample_every_ply = 1
 max_positions_per_game = 2

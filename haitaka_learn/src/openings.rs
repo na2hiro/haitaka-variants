@@ -7,7 +7,7 @@ use haitaka::{Board, Color, Move, Piece};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{LoadedConfig, OpeningPolicy};
+use crate::config::{LoadedConfig, OpeningPolicy, SplitPolicy};
 
 pub const ANHOKU_COLOR_SWAP_V1: &str = "anhoku-rotate180-color-swap-v1";
 pub const NO_OPENING_TRANSFORMATION: &str = "none";
@@ -39,11 +39,38 @@ pub struct SelectedOpening {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct GameOpeningMetadata {
+    #[serde(default)]
+    pub game_id: String,
     pub game_index: u32,
     pub pair_index: u32,
     pub opening_id: String,
     pub color: String,
     pub sfen: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpeningSplit {
+    pub train_ids: Vec<String>,
+    pub validation_ids: Vec<String>,
+}
+
+impl OpeningSplit {
+    pub fn ids_for(&self, dataset: &str) -> Result<&[String]> {
+        match dataset {
+            "train" => Ok(&self.train_ids),
+            "validation" => Ok(&self.validation_ids),
+            _ => bail!("unknown dataset split `{dataset}`"),
+        }
+    }
+
+    pub fn overlap(&self) -> Vec<String> {
+        let validation = self.validation_ids.iter().collect::<BTreeSet<_>>();
+        self.train_ids
+            .iter()
+            .filter(|id| validation.contains(id))
+            .cloned()
+            .collect()
+    }
 }
 
 impl OpeningSource {
@@ -102,12 +129,63 @@ impl OpeningSource {
         }
     }
 
-    pub fn select(&self, pair_seed: u64, game_index: u32) -> SelectedOpening {
+    pub fn split_openings(
+        &self,
+        policy: SplitPolicy,
+        split_seed: u64,
+        train_games: u32,
+        validation_games: u32,
+    ) -> Result<OpeningSplit> {
+        let all_ids = match self {
+            Self::UniformRandom { .. } => vec!["uniform-random".to_string()],
+            Self::Suite { openings, .. } => {
+                openings.iter().map(|opening| opening.id.clone()).collect()
+            }
+        };
+        if policy == SplitPolicy::IndependentLegacy {
+            return Ok(OpeningSplit {
+                train_ids: all_ids.clone(),
+                validation_ids: all_ids,
+            });
+        }
+        if !matches!(self, Self::Suite { .. }) {
+            bail!("opening-group-hash-v1 requires an opening suite");
+        }
+        if all_ids.len() < 2 {
+            bail!("opening-group-hash-v1 requires at least two opening IDs");
+        }
+        let total_games = u64::from(train_games) + u64::from(validation_games);
+        let mut validation_count = ((all_ids.len() as u64 * u64::from(validation_games)
+            + total_games / 2)
+            / total_games) as usize;
+        let minimum_validation_groups = usize::from(all_ids.len() >= 4) + 1;
+        validation_count = validation_count.clamp(minimum_validation_groups, all_ids.len() - 1);
+        let mut ranked = all_ids;
+        ranked.sort_by_key(|id| (opening_group_key(split_seed, id), id.clone()));
+        let mut validation_ids = ranked[..validation_count].to_vec();
+        let mut train_ids = ranked[validation_count..].to_vec();
+        train_ids.sort();
+        validation_ids.sort();
+        Ok(OpeningSplit {
+            train_ids,
+            validation_ids,
+        })
+    }
+
+    pub fn select(
+        &self,
+        dataset: &str,
+        split: &OpeningSplit,
+        pair_seed: u64,
+        game_index: u32,
+    ) -> Result<SelectedOpening> {
         let pair_index = game_index / 2;
-        match self {
+        let game_id = format!("{dataset}-{game_index:010}");
+        Ok(match self {
             Self::UniformRandom { base_sfen } => SelectedOpening {
                 sfen: base_sfen.clone(),
                 metadata: GameOpeningMetadata {
+                    game_id,
                     game_index,
                     pair_index,
                     opening_id: "uniform-random".to_string(),
@@ -116,8 +194,13 @@ impl OpeningSource {
                 },
             },
             Self::Suite { openings, .. } => {
-                let index = (pair_seed % openings.len() as u64) as usize;
-                let opening = &openings[index];
+                let allowed = split.ids_for(dataset)?;
+                let index = (pair_seed % allowed.len() as u64) as usize;
+                let opening_id = &allowed[index];
+                let opening = openings
+                    .iter()
+                    .find(|opening| &opening.id == opening_id)
+                    .expect("split IDs originate from this suite");
                 let swapped = game_index % 2 == 1;
                 let sfen = if swapped {
                     opening.swapped_sfen.clone()
@@ -127,6 +210,7 @@ impl OpeningSource {
                 SelectedOpening {
                     sfen: sfen.clone(),
                     metadata: GameOpeningMetadata {
+                        game_id,
                         game_index,
                         pair_index,
                         opening_id: opening.id.clone(),
@@ -135,8 +219,16 @@ impl OpeningSource {
                     },
                 }
             }
-        }
+        })
     }
+}
+
+fn opening_group_key(seed: u64, id: &str) -> u64 {
+    let mut hash = Sha256::new();
+    hash.update(seed.to_le_bytes());
+    hash.update(id.as_bytes());
+    let digest = hash.finalize();
+    u64::from_le_bytes(digest[..8].try_into().expect("SHA-256 prefix is 8 bytes"))
 }
 
 pub fn validate_configured_suite(loaded: &LoadedConfig) -> Result<(String, usize, String)> {
@@ -391,8 +483,11 @@ mod tests {
                 swapped_sfen: color_swap_anhoku_sfen(haitaka::SFEN_STARTPOS).unwrap(),
             }],
         };
-        let first = source.select(123, 20);
-        let second = source.select(123, 21);
+        let split = source
+            .split_openings(SplitPolicy::IndependentLegacy, 1, 2, 2)
+            .unwrap();
+        let first = source.select("train", &split, 123, 20).unwrap();
+        let second = source.select("train", &split, 123, 21).unwrap();
         assert_eq!(first.metadata.opening_id, second.metadata.opening_id);
         assert_eq!(first.metadata.color, "base");
         assert_eq!(second.metadata.color, "swapped");
@@ -411,21 +506,32 @@ mod tests {
             .join("haitaka_learn.anhoku-v0.6.toml");
         let loaded = LoadedConfig::from_path(&config).unwrap();
         let source = OpeningSource::from_config(&loaded, &loaded.opening_sfen().unwrap()).unwrap();
+        let split = source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+            )
+            .unwrap();
         let first = (0..40)
             .map(|game| {
                 source
-                    .select(0x1234_5678 ^ u64::from(game / 2), game)
+                    .select("train", &split, 0x1234_5678 ^ u64::from(game / 2), game)
+                    .unwrap()
                     .metadata
             })
             .collect::<Vec<_>>();
         let second = (0..40)
             .map(|game| {
                 source
-                    .select(0x1234_5678 ^ u64::from(game / 2), game)
+                    .select("train", &split, 0x1234_5678 ^ u64::from(game / 2), game)
+                    .unwrap()
                     .metadata
             })
             .collect::<Vec<_>>();
         assert_eq!(first, second);
+        assert!(split.overlap().is_empty());
         for pair in first.chunks_exact(2) {
             assert_eq!(pair[0].opening_id, pair[1].opening_id);
             assert_eq!(pair[0].color, "base");

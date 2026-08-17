@@ -28,6 +28,7 @@ pub struct AuditReport {
     scores: ScoreStats,
     teacher_moves: TeacherMoveStats,
     samples_before_opening: u64,
+    groups: GroupStats,
 }
 
 #[derive(Debug, Serialize)]
@@ -52,6 +53,22 @@ struct AuditIdentity {
     opening_suite_id: Option<String>,
     opening_suite_sha256: Option<String>,
     opening_transformation: Option<String>,
+    split_policy: Option<String>,
+    split_seed: Option<u64>,
+    shuffle_policy: Option<String>,
+    shuffle_seed: Option<u64>,
+    shuffle_chunk_records: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+struct GroupStats {
+    game_count: u64,
+    unique_game_ids: u64,
+    opening_group_count: u64,
+    train_opening_group_count: u64,
+    validation_opening_group_count: u64,
+    opening_group_overlap_count: u64,
+    opening_group_overlap_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -247,7 +264,29 @@ pub fn audit_dataset(
         opening_suite_id: value_string(&manifest, "opening_suite_id"),
         opening_suite_sha256: value_string(&manifest, "opening_suite_sha256"),
         opening_transformation: value_string(&manifest, "opening_transformation"),
+        split_policy: value_string(&manifest, "split_policy"),
+        split_seed: value_u64(&manifest, "split_seed"),
+        shuffle_policy: value_string(&manifest, "shuffle_policy"),
+        shuffle_seed: value_u64(&manifest, "shuffle_seed"),
+        shuffle_chunk_records: value_u64(&manifest, "shuffle_chunk_records"),
     };
+    let train_opening_ids = value_string_vec(&manifest, "train_opening_ids");
+    let validation_opening_ids = value_string_vec(&manifest, "validation_opening_ids");
+    let validation_set = validation_opening_ids
+        .iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    let opening_group_overlap_ids = train_opening_ids
+        .iter()
+        .filter(|id| validation_set.contains(id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let games = manifest.get("games").and_then(Value::as_array);
+    let unique_game_ids = games
+        .into_iter()
+        .flatten()
+        .filter_map(|game| game.get("game_id").and_then(Value::as_str))
+        .collect::<std::collections::BTreeSet<_>>()
+        .len() as u64;
     Ok(AuditReport {
         schema: "haitaka-dataset-audit-v1",
         file: AuditFile {
@@ -283,6 +322,15 @@ pub fn audit_dataset(
             zero: expected_entries - nonzero_moves,
         },
         samples_before_opening,
+        groups: GroupStats {
+            game_count: games.map_or(0, |games| games.len() as u64),
+            unique_game_ids,
+            opening_group_count: value_u64(&manifest, "opening_group_count").unwrap_or(0),
+            train_opening_group_count: train_opening_ids.len() as u64,
+            validation_opening_group_count: validation_opening_ids.len() as u64,
+            opening_group_overlap_count: opening_group_overlap_ids.len() as u64,
+            opening_group_overlap_ids,
+        },
     })
 }
 
@@ -304,6 +352,17 @@ fn value_string(value: &Value, key: &str) -> Option<String> {
 
 fn value_u64(value: &Value, key: &str) -> Option<u64> {
     value.get(key).and_then(Value::as_u64)
+}
+
+fn value_string_vec(value: &Value, key: &str) -> Vec<String> {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect()
 }
 
 #[cfg(test)]
