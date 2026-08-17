@@ -14,6 +14,7 @@ max_plies = 180
 search_depth = 3
 rollout_search_depth = 1
 opening_random_plies = 16
+opening_policy = "uniform-random"
 sample_start_ply = 8
 sample_every_ply = 2
 sampling_policy = "fixed-phase-legacy"

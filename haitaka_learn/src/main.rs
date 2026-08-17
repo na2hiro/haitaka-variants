@@ -1,6 +1,7 @@
 mod config;
 mod dataset;
 mod dataset_audit;
+mod openings;
 mod selection;
 mod trainer;
 mod verify;
@@ -21,6 +22,10 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    ValidateOpenings {
+        #[arg(long)]
+        config: PathBuf,
+    },
     AuditData {
         #[arg(long)]
         bin: PathBuf,
@@ -120,6 +125,14 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::ValidateOpenings { config } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            loaded.ruleset_requires_matching_engine()?;
+            let (suite_id, positions, sha256) = openings::validate_configured_suite(&loaded)?;
+            println!(
+                "validated opening suite {suite_id}: {positions} position(s), sha256={sha256}"
+            );
+        }
         Command::AuditData {
             bin,
             manifest,

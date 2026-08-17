@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::{self, File};
 use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
 use std::ops::Range;
@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, TEACHER_MOVE_ENCODING};
+use crate::openings::{GameOpeningMetadata, OpeningSource};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
@@ -66,6 +67,12 @@ struct DatasetManifest {
     ruleset: Ruleset,
     rule_id: u16,
     opening_sfen: String,
+    opening_policy: String,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    opening_ids: Vec<String>,
+    games: Vec<GameOpeningMetadata>,
     game_count: u32,
     completed_games: u32,
     sampled_positions: u64,
@@ -103,6 +110,18 @@ struct ShardManifest {
     ruleset: Ruleset,
     rule_id: u16,
     opening_sfen: String,
+    #[serde(default = "legacy_opening_policy")]
+    opening_policy: String,
+    #[serde(default)]
+    opening_suite_id: Option<String>,
+    #[serde(default)]
+    opening_suite_sha256: Option<String>,
+    #[serde(default = "legacy_opening_transformation")]
+    opening_transformation: String,
+    #[serde(default)]
+    opening_ids: Vec<String>,
+    #[serde(default)]
+    games: Vec<GameOpeningMetadata>,
     game_start: u32,
     game_count: u32,
     sampled_positions: u64,
@@ -140,6 +159,14 @@ fn legacy_sampling_phase() -> String {
     "fixed-phase-legacy".to_string()
 }
 
+fn legacy_opening_policy() -> String {
+    "uniform-random".to_string()
+}
+
+fn legacy_opening_transformation() -> String {
+    "none".to_string()
+}
+
 fn legacy_teacher_move_encoding() -> String {
     "legacy-ambiguous-u16".to_string()
 }
@@ -174,6 +201,7 @@ struct PendingSample {
 struct GameEntries {
     entries: Vec<u8>,
     stats: SearchUseStats,
+    opening: GameOpeningMetadata,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -310,6 +338,7 @@ pub fn generate_data_with_options(
     let opening_sfen = loaded.opening_sfen()?;
     let _: Board = Board::from_sfen(&opening_sfen)
         .map_err(|err| anyhow!("invalid opening SFEN in config: {err}"))?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
 
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -333,6 +362,7 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
         &engine_revision,
         shard_selector,
         resume,
@@ -346,6 +376,7 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
         loaded.config.data.train_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -367,6 +398,7 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
         loaded.config.data.validation_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -484,6 +516,7 @@ fn generate_split(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     game_count: u32,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
@@ -521,6 +554,7 @@ fn generate_split(
             let loaded = loaded.clone();
             let artifacts = artifacts.clone();
             let opening_sfen = opening_sfen.to_string();
+            let opening_source = opening_source.clone();
             let engine_revision = engine_revision.clone();
             let dataset_name = dataset_name.to_string();
 
@@ -535,6 +569,7 @@ fn generate_split(
                         &artifacts,
                         &teacher,
                         &opening_sfen,
+                        &opening_source,
                         &engine_revision,
                         generated_at_unix_ms,
                         plan,
@@ -587,6 +622,16 @@ fn generate_split(
             stats.add(SearchUseStats::from(&result.manifest));
             stats
         });
+    let games = shard_results
+        .iter()
+        .flat_map(|result| result.manifest.games.iter().cloned())
+        .collect::<Vec<_>>();
+    let opening_ids = games
+        .iter()
+        .map(|game| game.opening_id.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let elapsed = split_started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         generated_positions as f64 / elapsed.as_secs_f64()
@@ -599,6 +644,12 @@ fn generate_split(
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids,
+        games,
         game_count,
         completed_games,
         sampled_positions,
@@ -671,6 +722,7 @@ pub fn merge_data(
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
     let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -684,6 +736,7 @@ pub fn merge_data(
         input_dirs,
         loaded.config.data.train_games,
         &opening_sfen,
+        &opening_source,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -695,6 +748,7 @@ pub fn merge_data(
         input_dirs,
         loaded.config.data.validation_games,
         &opening_sfen,
+        &opening_source,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -897,6 +951,7 @@ fn generate_or_reuse_shard(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     plan: ShardPlan,
@@ -914,6 +969,7 @@ fn generate_or_reuse_shard(
             loaded,
             dataset_name,
             opening_sfen,
+            opening_source,
             teacher,
             engine_revision,
             plan,
@@ -933,6 +989,7 @@ fn generate_or_reuse_shard(
     );
     let mut sampled_positions = 0u64;
     let mut search_stats = SearchUseStats::default();
+    let mut games = Vec::with_capacity(plan.game_count as usize);
     let mut search_workspace = SearchWorkspace::default();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
@@ -944,12 +1001,13 @@ fn generate_or_reuse_shard(
             loaded,
             teacher,
             &mut search_workspace,
-            opening_sfen,
+            opening_source,
             game_index,
         )
         .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
         search_stats.add(game.stats);
+        games.push(game.opening);
         writer.write_all(&game.entries)?;
     }
     writer.flush()?;
@@ -959,6 +1017,17 @@ fn generate_or_reuse_shard(
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids: games
+            .iter()
+            .map(|game| game.opening_id.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect(),
+        games,
         game_start: plan.game_start,
         game_count: plan.game_count,
         sampled_positions,
@@ -1004,6 +1073,7 @@ fn reusable_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     teacher: &Teacher,
     engine_revision: &Option<String>,
     plan: ShardPlan,
@@ -1023,6 +1093,7 @@ fn reusable_shard(
         loaded,
         dataset_name,
         opening_sfen,
+        opening_source,
         plan,
         &manifest,
         allow_identity_mismatch,
@@ -1063,6 +1134,7 @@ fn shard_manifest_matches(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     plan: ShardPlan,
     manifest: &ShardManifest,
     ignore_identity: bool,
@@ -1071,6 +1143,11 @@ fn shard_manifest_matches(
         && manifest.ruleset == loaded.config.rules.ruleset
         && manifest.rule_id == loaded.effective_rule_id()?
         && manifest.opening_sfen == opening_sfen
+        && (ignore_identity
+            || (manifest.opening_policy == opening_source.policy()
+                && manifest.opening_suite_id.as_deref() == opening_source.suite_id()
+                && manifest.opening_suite_sha256.as_deref() == opening_source.suite_sha256()
+                && manifest.opening_transformation == opening_source.transformation()))
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
         && manifest.search_depth == loaded.config.data.search_depth
@@ -1113,6 +1190,7 @@ fn resolve_identity_mismatch(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
     resume: bool,
@@ -1129,6 +1207,7 @@ fn resolve_identity_mismatch(
         artifacts,
         teacher,
         opening_sfen,
+        opening_source,
         engine_revision,
         shard_selector,
     )?;
@@ -1142,7 +1221,7 @@ fn resolve_identity_mismatch(
     };
     match prompt_identity_mismatch_choice(percent)? {
         MismatchChoice::Abort => bail!(
-            "aborting: existing shards have a mismatching generation identity (config, engine, sampling, and/or teacher-move contract). \
+            "aborting: existing shards have a mismatching generation identity (config, engine, opening, sampling, and/or teacher-move contract). \
              Re-run with --ignore-identity-mismatch to reuse them, or with --no-resume to regenerate."
         ),
         MismatchChoice::Reuse => Ok(true),
@@ -1158,6 +1237,7 @@ fn detect_identity_mismatch(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
 ) -> Result<(u32, u32)> {
@@ -1189,11 +1269,25 @@ fn detect_identity_mismatch(
                 continue;
             }
             let strict =
-                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, false)?
-                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
+                shard_manifest_matches(
+                    loaded,
+                    dataset_name,
+                    opening_sfen,
+                    opening_source,
+                    plan,
+                    &manifest,
+                    false,
+                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
             let relaxed =
-                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, true)?
-                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
+                shard_manifest_matches(
+                    loaded,
+                    dataset_name,
+                    opening_sfen,
+                    opening_source,
+                    plan,
+                    &manifest,
+                    true,
+                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
             if relaxed && !strict {
                 mismatched_games += plan.game_count;
             }
@@ -1242,10 +1336,12 @@ fn generate_game_entries(
     loaded: &LoadedConfig,
     teacher: &Teacher,
     search_workspace: &mut SearchWorkspace,
-    opening_sfen: &str,
+    opening_source: &OpeningSource,
     game_index: u32,
 ) -> Result<GameEntries> {
     let seed = game_seed(loaded.config.data.seed, dataset_name, game_index);
+    let pair_seed = game_seed(loaded.config.data.seed, dataset_name, game_index / 2);
+    let selected_opening = opening_source.select(pair_seed, game_index);
     let mut rng = StdRng::seed_from_u64(seed);
     let sample_origin = sampling_origin(
         seed,
@@ -1254,7 +1350,7 @@ fn generate_game_entries(
         loaded.config.data.opening_random_plies,
         loaded.config.data.sample_every_ply,
     );
-    let mut board = Board::from_sfen(opening_sfen)
+    let mut board = Board::from_sfen(&selected_opening.sfen)
         .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
     let mut samples = Vec::new();
     let mut played_plies = 0u16;
@@ -1351,7 +1447,11 @@ fn generate_game_entries(
             game_result,
         )?;
     }
-    Ok(GameEntries { entries, stats })
+    Ok(GameEntries {
+        entries,
+        stats,
+        opening: selected_opening.metadata,
+    })
 }
 
 fn sampling_origin(
@@ -1414,6 +1514,7 @@ fn merge_split(
     input_dirs: &[PathBuf],
     game_count: u32,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     generated_at_unix_ms: u128,
     ignore_identity_mismatch: bool,
 ) -> Result<u64> {
@@ -1440,6 +1541,7 @@ fn merge_split(
                 loaded,
                 dataset_name,
                 opening_sfen,
+                opening_source,
                 &mut teacher_identity,
                 &manifest,
                 ignore_identity_mismatch,
@@ -1482,6 +1584,16 @@ fn merge_split(
             stats.add(SearchUseStats::from(&result.manifest));
             stats
         });
+    let games = shard_results
+        .iter()
+        .flat_map(|result| result.manifest.games.iter().cloned())
+        .collect::<Vec<_>>();
+    let opening_ids = games
+        .iter()
+        .map(|game| game.opening_id.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let elapsed = started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         sampled_positions as f64 / elapsed.as_secs_f64()
@@ -1493,6 +1605,12 @@ fn merge_split(
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids,
+        games,
         game_count,
         completed_games: expected_start,
         sampled_positions,
@@ -1550,6 +1668,7 @@ fn validate_merge_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
     teacher_identity: &mut Option<MergeTeacherIdentity>,
     manifest: &ShardManifest,
     ignore_identity_mismatch: bool,
@@ -1570,6 +1689,24 @@ fn validate_merge_shard(
         manifest.opening_sfen == opening_sfen,
         "opening_sfen does not match",
     )?;
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.opening_policy == opening_source.policy(),
+            "opening_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_suite_id.as_deref() == opening_source.suite_id(),
+            "opening_suite_id does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_suite_sha256.as_deref() == opening_source.suite_sha256(),
+            "opening_suite_sha256 does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_transformation == opening_source.transformation(),
+            "opening_transformation does not match",
+        )?;
+    }
     ensure_merge(
         manifest.search_depth == loaded.config.data.search_depth,
         "search_depth does not match",
@@ -2251,6 +2388,74 @@ run_search_smoke = false
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
+    fn suite_generation_records_deterministic_color_swapped_pair_metadata() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let config_path = temp.path().join("suite.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert_eq!(manifest["opening_policy"], "suite");
+        assert_eq!(manifest["opening_suite_id"], "anhoku-v1");
+        assert_eq!(
+            manifest["opening_transformation"],
+            "anhoku-rotate180-color-swap-v1"
+        );
+        assert_eq!(manifest["games"].as_array().unwrap().len(), 4);
+        for pair in manifest["games"].as_array().unwrap().chunks_exact(2) {
+            assert_eq!(pair[0]["opening_id"], pair[1]["opening_id"]);
+            assert_eq!(pair[0]["color"], "base");
+            assert_eq!(pair[1]["color"], "swapped");
+            assert_ne!(pair[0]["sfen"], pair[1]["sfen"]);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn suite_content_change_invalidates_resume_and_merge_identity() {
+        let temp = tempdir().unwrap();
+        let source_suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let suite = temp.path().join("suite.tsv");
+        fs::copy(source_suite, &suite).unwrap();
+        let config_path = temp.path().join("suite.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        let mut changed = fs::read_to_string(&suite).unwrap();
+        changed.push_str("# identity change\n");
+        fs::write(&suite, changed).unwrap();
+        let changed_loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let error = format!("{:#}", generate_data(&changed_loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        let error = format!(
+            "{:#}",
+            merge_data(&changed_loaded, &[input], false).unwrap_err()
+        );
+        assert!(error.contains("opening_suite_sha256 does not match"));
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -2542,6 +2747,7 @@ run_search_smoke = false
         let artifacts = loaded.artifact_paths();
         let teacher = Teacher::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
         let selector = ShardSelector::new(None, None, None).unwrap();
 
@@ -2550,6 +2756,7 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
             &engine_revision,
             selector,
         )
@@ -2565,6 +2772,7 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
             &engine_revision,
             selector,
         )
@@ -2584,6 +2792,7 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
             &engine_revision,
             selector,
         )
@@ -3233,6 +3442,40 @@ max_positions_per_game = 4
 seed = 7
 jobs = 1
 shard_games = 1
+progress_every_percent = 50
+resume = true
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
+    #[cfg(feature = "anhoku")]
+    fn suite_test_config(output_dir: &str, suite: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 4
+validation_games = 2
+max_plies = 4
+search_depth = 1
+opening_random_plies = 0
+opening_policy = "suite"
+opening_suite = "{suite}"
+opening_suite_id = "anhoku-v1"
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 2
+seed = 75
+jobs = 1
+shard_games = 2
 progress_every_percent = 50
 resume = true
 

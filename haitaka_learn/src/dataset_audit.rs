@@ -48,6 +48,10 @@ struct AuditIdentity {
     sampling_phase: Option<String>,
     sample_after_opening: Option<bool>,
     teacher_move_encoding: Option<String>,
+    opening_policy: Option<String>,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: Option<String>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -239,6 +243,10 @@ pub fn audit_dataset(
             value_string(&manifest, "teacher_move_encoding")
                 .unwrap_or_else(|| "legacy-unspecified".to_string()),
         ),
+        opening_policy: value_string(&manifest, "opening_policy"),
+        opening_suite_id: value_string(&manifest, "opening_suite_id"),
+        opening_suite_sha256: value_string(&manifest, "opening_suite_sha256"),
+        opening_transformation: value_string(&manifest, "opening_transformation"),
     };
     Ok(AuditReport {
         schema: "haitaka-dataset-audit-v1",

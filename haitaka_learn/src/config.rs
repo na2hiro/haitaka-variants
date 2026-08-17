@@ -24,6 +24,23 @@ pub enum SamplingPolicy {
     FixedPhaseLegacy,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OpeningPolicy {
+    Suite,
+    #[default]
+    UniformRandom,
+}
+
+impl OpeningPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Suite => "suite",
+            Self::UniformRandom => "uniform-random",
+        }
+    }
+}
+
 impl SamplingPolicy {
     pub const fn manifest_name(self) -> &'static str {
         match self {
@@ -332,6 +349,14 @@ impl LoadedConfig {
             .as_ref()
             .map(|path| self.resolve_path(path))
     }
+
+    pub fn opening_suite(&self) -> Option<PathBuf> {
+        self.config
+            .data
+            .opening_suite
+            .as_ref()
+            .map(|path| self.resolve_path(path))
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -420,6 +445,35 @@ impl LearnConfig {
             self.data.sample_every_ply > 0,
             "data.sample_every_ply must be at least 1"
         );
+        match self.data.opening_policy {
+            OpeningPolicy::Suite => {
+                ensure!(
+                    self.rules.ruleset == Ruleset::Anhoku,
+                    "data.opening_policy=suite currently supports ruleset=anhoku only"
+                );
+                ensure!(
+                    self.data.opening_suite.is_some(),
+                    "data.opening_suite is required when data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data
+                        .opening_suite_id
+                        .as_deref()
+                        .is_some_and(|id| !id.trim().is_empty()),
+                    "data.opening_suite_id is required when data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data.opening_random_plies == 0,
+                    "data.opening_random_plies must be 0 when data.opening_policy=suite; suite positions already end the opening phase"
+                );
+            }
+            OpeningPolicy::UniformRandom => {
+                ensure!(
+                    self.data.opening_suite.is_none() && self.data.opening_suite_id.is_none(),
+                    "data.opening_suite and data.opening_suite_id require data.opening_policy=suite"
+                );
+            }
+        }
         ensure!(
             !self.training.teacher_move_consumers,
             "training.teacher_move_consumers cannot be enabled: the 72-byte record format has teacher_move_encoding=unavailable"
@@ -623,6 +677,12 @@ pub struct DataConfig {
     #[serde(default = "default_opening_random_plies")]
     pub opening_random_plies: u16,
     #[serde(default)]
+    pub opening_policy: OpeningPolicy,
+    #[serde(default)]
+    pub opening_suite: Option<PathBuf>,
+    #[serde(default)]
+    pub opening_suite_id: Option<String>,
+    #[serde(default)]
     pub sample_start_ply: u16,
     #[serde(default = "default_sample_every_ply")]
     pub sample_every_ply: u16,
@@ -651,6 +711,9 @@ impl Default for DataConfig {
             search_depth: default_search_depth(),
             rollout_search_depth: default_rollout_search_depth(),
             opening_random_plies: default_opening_random_plies(),
+            opening_policy: OpeningPolicy::default(),
+            opening_suite: None,
+            opening_suite_id: None,
             sample_start_ply: 0,
             sample_every_ply: default_sample_every_ply(),
             sampling_policy: SamplingPolicy::default(),
@@ -1110,6 +1173,7 @@ validation_games = 1
         assert_eq!(config.data.shard_games, 100);
         assert_eq!(config.data.progress_every_percent, 1);
         assert!(config.data.resume);
+        assert_eq!(config.data.opening_policy, OpeningPolicy::UniformRandom);
         assert_eq!(config.data.sampling_policy, SamplingPolicy::PerGameRandomV1);
         assert!(!config.training.teacher_move_consumers);
     }
@@ -1128,6 +1192,32 @@ teacher_move_consumers = true
         let config: LearnConfig = toml::from_str(raw).unwrap();
         let error = config.validate().unwrap_err();
         assert!(format!("{error:#}").contains("teacher_move_encoding=unavailable"));
+    }
+
+    #[test]
+    fn suite_policy_requires_anhoku_identity_and_zero_random_plies() {
+        let non_anhoku = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+opening_policy = "suite"
+opening_suite = "suite.tsv"
+opening_suite_id = "v1"
+opening_random_plies = 0
+"#;
+        let config: LearnConfig = toml::from_str(non_anhoku).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("ruleset=anhoku"));
+
+        let random_after_suite = non_anhoku
+            .replace("standard", "anhoku")
+            .replace("opening_random_plies = 0", "opening_random_plies = 2");
+        let config: LearnConfig = toml::from_str(&random_after_suite).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("opening_random_plies must be 0")
+        );
     }
 
     #[test]

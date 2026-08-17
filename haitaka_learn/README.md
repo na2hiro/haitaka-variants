@@ -101,6 +101,12 @@ Key fields:
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters
+  - `opening_policy = "suite"` loads the tab-separated file in `opening_suite` and
+    selects one stable opening ID deterministically per game pair
+  - `opening_suite_id` is the human-readable suite version; the raw file SHA-256 is
+    computed and stored separately in manifests
+  - `opening_policy = "uniform-random"` preserves the old random-opening behavior for
+    compatibility and smoke tests; production Anhoku v0.6 does not use it
   - `sampling_policy = "per-game-random-v1"` deterministically chooses a phase per
     game and starts at or after `max(sample_start_ply, opening_random_plies)`; this is
     the default
@@ -162,6 +168,24 @@ This:
 - uses `data.rollout_search_depth` for post-opening self-play moves that are not sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
+
+Validate the configured suite without generating games:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- validate-openings \
+  --config haitaka_learn.anhoku-v0.6.toml
+```
+
+Suite files use one `<stable-opening-id><TAB><SFEN>` entry per line. Blank lines and
+text after `#` are ignored. Validation rejects malformed SFENs, duplicate IDs,
+duplicate canonical positions, missing kings, positions without a legal move, and
+non-reversible Anhoku color swaps. Add a new file and `opening_suite_id` for any suite
+change; do not edit an already-used suite version in place.
+
+For Anhoku, adjacent games form a pair. Both select the same opening ID; the second
+uses the versioned `anhoku-rotate180-color-swap-v1` transformation (rotate the board
+180 degrees, exchange piece/hand colors, and exchange side to move). Shard and final
+manifests contain the suite hash and per-game opening metadata.
 
 Data generation uses all available CPU cores by default. Pass `--jobs N` only
 when you need to cap CPU, memory, or thermal load.
