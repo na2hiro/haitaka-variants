@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phases 1–3 and 6 complete; Phase 4 pending
+- Status: Phases 1–4 and 6 complete; Phase 5 pending
 - Created: 2026-08-17
 - Last checked: 2026-08-20
 - Primary ruleset: Anhoku
@@ -114,7 +114,8 @@ Follow-up notes:
   small validation split still misses the 60% decisive-outcome bound. A larger
   validation pilot and the Phase 7 gate are still required; do not start the
   1M three-seed strength experiment yet.
-- Phase 4 remains the next implementation phase: fixed-node label budgeting.
+- Phase 4 fixed-node label budgeting is complete. Phase 5 qsearch-PV leaf
+  entries are the next implementation phase.
 
 Common completion gate for implementation phases:
 
@@ -297,6 +298,8 @@ Out of scope: opening generation, label-search changes, training, and changing
 the trainer record ABI.
 
 ## Phase 4: Fixed-Node Label Budget
+
+**Status: complete.** See [the Phase 4 result](../docs/nnue-training-anhoku-v0.6-phase4.md).
 
 This agent adds node-budgeted teacher labeling without changing which position
 is stored.

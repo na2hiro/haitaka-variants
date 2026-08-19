@@ -12,8 +12,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, SearchSummary, SearchWorkspace,
-    search_board_impl_handcrafted_in_workspace, search_board_impl_with_eval_mode_in_workspace,
+    NnueModel, NodeBudgetSearchSummary, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
+    SearchSummary, SearchWorkspace, search_board_impl_handcrafted_in_workspace,
+    search_board_impl_handcrafted_with_node_budget_in_workspace,
+    search_board_impl_with_eval_mode_and_node_budget_in_workspace,
+    search_board_impl_with_eval_mode_in_workspace,
 };
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
@@ -22,8 +25,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, LoadedConfig, Ruleset, SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy,
-    TEACHER_MOVE_ENCODING,
+    ArtifactPaths, LabelSearchBudget, LoadedConfig, Ruleset, SamplingPolicy, SelfPlayMovePolicy,
+    ShufflePolicy, TEACHER_MOVE_ENCODING,
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 
@@ -93,12 +96,23 @@ struct DatasetManifest {
     sampled_positions: u64,
     search_depth: u8,
     label_search_depth: u8,
+    label_search_budget: String,
+    label_search_nodes: Option<u64>,
+    label_search_max_depth: u8,
+    node_counting_version: String,
     rollout_search_depth: u8,
     self_play_move_policy: String,
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
+    label_search_qnodes: u64,
+    label_search_total_nodes: u64,
+    label_nodes_per_search: f64,
     rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    label_search_cpu_seconds: f64,
+    rollout_search_cpu_seconds: f64,
+    generation_cpu_seconds: f64,
     bootstrap_nnue: Option<String>,
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
@@ -159,6 +173,14 @@ struct ShardManifest {
     #[serde(default)]
     label_search_depth: u8,
     #[serde(default)]
+    label_search_budget: String,
+    #[serde(default)]
+    label_search_nodes: Option<u64>,
+    #[serde(default)]
+    label_search_max_depth: u8,
+    #[serde(default)]
+    node_counting_version: String,
+    #[serde(default)]
     rollout_search_depth: u8,
     #[serde(default = "legacy_self_play_move_policy")]
     self_play_move_policy: String,
@@ -169,7 +191,15 @@ struct ShardManifest {
     #[serde(default)]
     label_search_states: u64,
     #[serde(default)]
+    label_search_qnodes: u64,
+    #[serde(default)]
     rollout_search_states: u64,
+    #[serde(default)]
+    rollout_search_qnodes: u64,
+    #[serde(default)]
+    label_search_cpu_seconds: f64,
+    #[serde(default)]
+    rollout_search_cpu_seconds: f64,
     bootstrap_nnue: Option<String>,
     #[serde(default)]
     bootstrap_nnue_sha256: Option<String>,
@@ -243,6 +273,28 @@ impl ShardManifest {
             self.rollout_search_depth
         }
     }
+
+    fn label_search_budget(&self) -> &str {
+        if self.label_search_budget.is_empty() {
+            "depth"
+        } else {
+            &self.label_search_budget
+        }
+    }
+
+    fn label_search_max_depth(&self) -> u8 {
+        if self.label_search_max_depth == 0 {
+            self.label_search_depth()
+        } else {
+            self.label_search_max_depth
+        }
+    }
+
+    fn node_counting_version_matches(&self, budget: LabelSearchBudget) -> bool {
+        self.node_counting_version == SEARCH_NODE_COUNTING_VERSION
+            || (self.node_counting_version.is_empty()
+                && matches!(budget, LabelSearchBudget::Depth { .. }))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -265,25 +317,37 @@ struct SearchUseStats {
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
+    label_search_qnodes: u64,
     rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    label_search_elapsed_seconds: f64,
+    rollout_search_elapsed_seconds: f64,
 }
 
 impl SearchUseStats {
-    fn record_label(&mut self, summary: &SearchSummary) {
+    fn record_label(&mut self, summary: &TeacherSearchSummary) {
         self.label_searches += 1;
         self.label_search_states += summary.states;
+        self.label_search_qnodes += summary.qnodes;
+        self.label_search_elapsed_seconds += summary.elapsed_seconds;
     }
 
-    fn record_rollout(&mut self, summary: &SearchSummary) {
+    fn record_rollout(&mut self, summary: &TeacherSearchSummary) {
         self.rollout_searches += 1;
         self.rollout_search_states += summary.states;
+        self.rollout_search_qnodes += summary.qnodes;
+        self.rollout_search_elapsed_seconds += summary.elapsed_seconds;
     }
 
     fn add(&mut self, other: Self) {
         self.label_searches += other.label_searches;
         self.rollout_searches += other.rollout_searches;
         self.label_search_states += other.label_search_states;
+        self.label_search_qnodes += other.label_search_qnodes;
         self.rollout_search_states += other.rollout_search_states;
+        self.rollout_search_qnodes += other.rollout_search_qnodes;
+        self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
+        self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
     }
 }
 
@@ -293,7 +357,11 @@ impl From<&ShardManifest> for SearchUseStats {
             label_searches: manifest.label_searches,
             rollout_searches: manifest.rollout_searches,
             label_search_states: manifest.label_search_states,
+            label_search_qnodes: manifest.label_search_qnodes,
             rollout_search_states: manifest.rollout_search_states,
+            rollout_search_qnodes: manifest.rollout_search_qnodes,
+            label_search_elapsed_seconds: manifest.label_search_cpu_seconds,
+            rollout_search_elapsed_seconds: manifest.rollout_search_cpu_seconds,
         }
     }
 }
@@ -302,6 +370,39 @@ impl From<&ShardManifest> for SearchUseStats {
 enum GameOutcome {
     Draw,
     Winner(Color),
+}
+
+#[derive(Debug, Clone)]
+struct TeacherSearchSummary {
+    best_move: Option<String>,
+    best_score: Option<i32>,
+    states: u64,
+    qnodes: u64,
+    elapsed_seconds: f64,
+}
+
+impl From<SearchSummary> for TeacherSearchSummary {
+    fn from(summary: SearchSummary) -> Self {
+        Self {
+            best_move: summary.best_move,
+            best_score: summary.best_score,
+            states: summary.states,
+            qnodes: summary.qsearch_stats.qnodes,
+            elapsed_seconds: summary.elapsed_ms / 1_000.0,
+        }
+    }
+}
+
+impl From<NodeBudgetSearchSummary> for TeacherSearchSummary {
+    fn from(summary: NodeBudgetSearchSummary) -> Self {
+        Self {
+            best_move: summary.best_move,
+            best_score: summary.best_score,
+            states: summary.alpha_beta_nodes,
+            qnodes: summary.qsearch_nodes,
+            elapsed_seconds: summary.elapsed_ms / 1_000.0,
+        }
+    }
 }
 
 impl GameOutcome {
@@ -358,12 +459,12 @@ impl Teacher {
         }
     }
 
-    fn search(
+    fn search_depth(
         &self,
         board: &Board,
         depth: u8,
         workspace: &mut SearchWorkspace,
-    ) -> Result<SearchSummary> {
+    ) -> Result<TeacherSearchSummary> {
         match self {
             Self::Handcrafted => {
                 search_board_impl_handcrafted_in_workspace(board, depth, workspace)
@@ -377,6 +478,44 @@ impl Teacher {
                 workspace,
             )
             .map_err(|err| anyhow!("NNUE teacher search failed: {err}")),
+        }
+        .map(TeacherSearchSummary::from)
+    }
+
+    fn search_label(
+        &self,
+        board: &Board,
+        budget: LabelSearchBudget,
+        workspace: &mut SearchWorkspace,
+    ) -> Result<TeacherSearchSummary> {
+        match budget {
+            LabelSearchBudget::Depth { depth } => self.search_depth(board, depth, workspace),
+            LabelSearchBudget::Nodes { nodes, max_depth } => match self {
+                Self::Handcrafted => search_board_impl_handcrafted_with_node_budget_in_workspace(
+                    board, nodes, max_depth, workspace,
+                )
+                .map_err(|err| anyhow!("handcrafted node-budget teacher search failed: {err}")),
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+                        board,
+                        nodes,
+                        max_depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE node-budget teacher search failed: {err}"))
+                }
+            }
+            .map(TeacherSearchSummary::from)
+            .and_then(|summary| {
+                if summary.best_move.is_none() || summary.best_score.is_none() {
+                    bail!(
+                        "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes"
+                    );
+                }
+                Ok(summary)
+            }),
         }
     }
 }
@@ -713,6 +852,15 @@ fn generate_split(
     } else {
         0.0
     };
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let label_search_total_nodes = search_stats
+        .label_search_states
+        .saturating_add(search_stats.label_search_qnodes);
+    let label_nodes_per_search = if search_stats.label_searches == 0 {
+        0.0
+    } else {
+        label_search_total_nodes as f64 / search_stats.label_searches as f64
+    };
 
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
@@ -745,8 +893,12 @@ fn generate_split(
         game_count,
         completed_games,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -757,7 +909,15 @@ fn generate_split(
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
+        label_search_total_nodes,
+        label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
+        generation_cpu_seconds: search_stats.label_search_elapsed_seconds
+            + search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
@@ -1121,6 +1281,8 @@ fn generate_or_reuse_shard(
     }
     writer.flush()?;
 
+    let label_budget = loaded.config.data.label_search_budget()?;
+
     let manifest = ShardManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
@@ -1152,8 +1314,12 @@ fn generate_or_reuse_shard(
         game_start: plan.game_start,
         game_count: plan.game_count,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -1164,7 +1330,11 @@ fn generate_or_reuse_shard(
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
@@ -1269,6 +1439,7 @@ fn shard_manifest_matches(
     manifest: &ShardManifest,
     ignore_identity: bool,
 ) -> Result<bool> {
+    let label_budget = loaded.config.data.label_search_budget()?;
     Ok(manifest.dataset == dataset_name
         && manifest.ruleset == loaded.config.rules.ruleset
         && manifest.rule_id == loaded.effective_rule_id()?
@@ -1287,8 +1458,12 @@ fn shard_manifest_matches(
                 && manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records))
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
-        && manifest.search_depth == loaded.config.data.search_depth
-        && manifest.label_search_depth() == loaded.config.data.search_depth
+        && manifest.search_depth == label_budget.legacy_search_depth()
+        && manifest.label_search_depth() == label_budget.max_depth()
+        && manifest.label_search_budget() == label_budget.manifest_name()
+        && manifest.label_search_nodes == label_budget.nodes()
+        && manifest.label_search_max_depth() == label_budget.max_depth()
+        && manifest.node_counting_version_matches(label_budget)
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -1502,6 +1677,7 @@ fn generate_game_entries(
     let mut samples = Vec::new();
     let mut played_plies = 0u16;
     let mut stats = SearchUseStats::default();
+    let label_search_budget = loaded.config.data.label_search_budget()?;
 
     while played_plies < loaded.config.data.max_plies {
         if !has_both_kings(&board) {
@@ -1519,15 +1695,14 @@ fn generate_game_entries(
             && (loaded.config.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1
                 || !should_sample);
         let label_summary = if should_sample {
-            let summary =
-                teacher.search(&board, loaded.config.data.search_depth, search_workspace)?;
+            let summary = teacher.search_label(&board, label_search_budget, search_workspace)?;
             stats.record_label(&summary);
             Some(summary)
         } else {
             None
         };
         let rollout_summary = if needs_rollout_search {
-            let summary = teacher.search(
+            let summary = teacher.search_depth(
                 &board,
                 loaded.config.data.rollout_search_depth,
                 search_workspace,
@@ -1633,7 +1808,7 @@ fn sampling_origin(
     }
 }
 
-fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
+fn searched_best_move(board: &Board, summary: &TeacherSearchSummary) -> Result<Move> {
     let best_move = summary
         .best_move
         .as_deref()
@@ -1892,6 +2067,15 @@ fn merge_split(
     } else {
         0.0
     };
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let label_search_total_nodes = search_stats
+        .label_search_states
+        .saturating_add(search_stats.label_search_qnodes);
+    let label_nodes_per_search = if search_stats.label_searches == 0 {
+        0.0
+    } else {
+        label_search_total_nodes as f64 / search_stats.label_searches as f64
+    };
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
@@ -1923,8 +2107,12 @@ fn merge_split(
         game_count,
         completed_games: expected_start,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -1935,7 +2123,15 @@ fn merge_split(
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
+        label_search_total_nodes,
+        label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
+        generation_cpu_seconds: search_stats.label_search_elapsed_seconds
+            + search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: teacher_identity
             .as_ref()
             .and_then(|identity| identity.bootstrap_nnue.clone()),
@@ -1989,6 +2185,7 @@ fn validate_merge_shard(
     manifest: &ShardManifest,
     ignore_identity_mismatch: bool,
 ) -> Result<()> {
+    let label_budget = loaded.config.data.label_search_budget()?;
     ensure_merge(
         manifest.dataset == dataset_name,
         "dataset name does not match",
@@ -2049,12 +2246,28 @@ fn validate_merge_shard(
         )?;
     }
     ensure_merge(
-        manifest.search_depth == loaded.config.data.search_depth,
+        manifest.search_depth == label_budget.legacy_search_depth(),
         "search_depth does not match",
     )?;
     ensure_merge(
-        manifest.label_search_depth() == loaded.config.data.search_depth,
+        manifest.label_search_depth() == label_budget.max_depth(),
         "label_search_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_budget() == label_budget.manifest_name(),
+        "label_search_budget does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_nodes == label_budget.nodes(),
+        "label_search_nodes does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_max_depth() == label_budget.max_depth(),
+        "label_search_max_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.node_counting_version_matches(label_budget),
+        "node_counting_version does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -3101,6 +3314,65 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
+    fn resume_regenerates_fixed_node_shards_when_budget_identity_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-fixed-node-identity.toml");
+        let config = fixed_node_counter_test_config(active_test_ruleset(), "out")
+            .replace("resume = false", "resume = true");
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let mismatches = [
+            (
+                "label_search_budget",
+                serde_json::Value::String("depth".into()),
+            ),
+            ("label_search_nodes", serde_json::Value::from(4_999)),
+            ("label_search_max_depth", serde_json::Value::from(63)),
+            (
+                "node_counting_version",
+                serde_json::Value::String("different-node-contract".into()),
+            ),
+        ];
+        for (field, value) in mismatches {
+            mutate_first_shard_manifest(&loaded, "train", |manifest| {
+                manifest[field] = value;
+            });
+            generate_data(&loaded).unwrap();
+            let manifest: serde_json::Value = serde_json::from_slice(
+                &fs::read(loaded.artifact_paths().train_manifest.clone()).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                manifest["generated_shards"].as_u64().unwrap() > 0,
+                "{field} mismatch should regenerate its shard"
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn resume_reuses_legacy_shards_without_explicit_search_depths() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-legacy-depths.toml");
@@ -3554,6 +3826,50 @@ run_search_smoke = false
     }
 
     #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn merge_rejects_fixed_node_counting_version_mismatch() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-fixed-node-version.toml");
+        fs::write(
+            &config_path,
+            fixed_node_counter_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["node_counting_version"] =
+                serde_json::Value::String("different-node-contract".to_string());
+        });
+
+        let err = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(err.contains("node_counting_version does not match"));
+    }
+
+    #[test]
     #[cfg(feature = "anhoku")]
     fn merge_rejects_sampling_self_play_and_teacher_move_mismatches() {
         let temp = tempdir().unwrap();
@@ -3917,6 +4233,68 @@ seed = 9
     }
 
     #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn fixed_node_labels_use_exact_budgets_and_keep_rollouts_depth_limited() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("fixed-node-counters.toml");
+        fs::write(
+            &config_path,
+            fixed_node_counter_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        let label_searches = manifest["label_searches"].as_u64().unwrap();
+        let label_states = manifest["label_search_states"].as_u64().unwrap();
+        let label_qnodes = manifest["label_search_qnodes"].as_u64().unwrap();
+        let label_total = manifest["label_search_total_nodes"].as_u64().unwrap();
+
+        assert_eq!(manifest["search_depth"].as_u64().unwrap(), 0);
+        assert_eq!(manifest["label_search_budget"], "nodes");
+        assert_eq!(manifest["label_search_nodes"].as_u64().unwrap(), 5_000);
+        assert_eq!(manifest["label_search_max_depth"].as_u64().unwrap(), 64);
+        assert_eq!(
+            manifest["node_counting_version"],
+            SEARCH_NODE_COUNTING_VERSION
+        );
+        assert_eq!(manifest["rollout_search_depth"].as_u64().unwrap(), 1);
+        assert_eq!(label_total, label_states + label_qnodes);
+        assert_eq!(label_total, label_searches * 5_000);
+        assert_eq!(
+            manifest["label_nodes_per_search"].as_f64().unwrap(),
+            5_000.0
+        );
+        assert!(manifest["rollout_searches"].as_u64().unwrap() > 0);
+        assert!(manifest["rollout_search_states"].as_u64().unwrap() > 0);
+        assert!(manifest["generation_cpu_seconds"].as_f64().unwrap() >= 0.0);
+    }
+
+    #[test]
     fn finds_workspace_root_from_root_config_path() {
         let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_dir.parent().unwrap();
@@ -4089,6 +4467,39 @@ run_search_smoke = false
         )
     }
 
+    fn fixed_node_counter_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 6
+label_search_nodes = 5000
+label_search_max_depth = 64
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 2
+max_positions_per_game = 8
+seed = 7
+jobs = 1
+shard_games = 1
+progress_every_percent = 50
+resume = false
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
     fn mutate_first_shard_manifest(
         loaded: &LoadedConfig,
         dataset_name: &str,
@@ -4134,7 +4545,15 @@ run_search_smoke = false
     fn remove_explicit_search_depths(manifest: &mut serde_json::Value) {
         let object = manifest.as_object_mut().unwrap();
         object.remove("label_search_depth");
+        object.remove("label_search_budget");
+        object.remove("label_search_nodes");
+        object.remove("label_search_max_depth");
+        object.remove("node_counting_version");
         object.remove("rollout_search_depth");
+        object.remove("label_search_qnodes");
+        object.remove("rollout_search_qnodes");
+        object.remove("label_search_cpu_seconds");
+        object.remove("rollout_search_cpu_seconds");
     }
 
     #[test]

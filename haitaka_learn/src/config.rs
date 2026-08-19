@@ -16,6 +16,42 @@ pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
 pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
 pub const TEACHER_MOVE_ENCODING: &str = "unavailable";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LabelSearchBudget {
+    Depth { depth: u8 },
+    Nodes { nodes: u64, max_depth: u8 },
+}
+
+impl LabelSearchBudget {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Depth { .. } => "depth",
+            Self::Nodes { .. } => "nodes",
+        }
+    }
+
+    pub const fn max_depth(self) -> u8 {
+        match self {
+            Self::Depth { depth } => depth,
+            Self::Nodes { max_depth, .. } => max_depth,
+        }
+    }
+
+    pub const fn nodes(self) -> Option<u64> {
+        match self {
+            Self::Depth { .. } => None,
+            Self::Nodes { nodes, .. } => Some(nodes),
+        }
+    }
+
+    pub const fn legacy_search_depth(self) -> u8 {
+        match self {
+            Self::Depth { depth } => depth,
+            Self::Nodes { .. } => 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SamplingPolicy {
@@ -484,10 +520,7 @@ impl LearnConfig {
             "data.validation_games must be > 0"
         );
         ensure!(self.data.max_plies > 0, "data.max_plies must be > 0");
-        ensure!(
-            self.data.search_depth > 0,
-            "data.search_depth must be at least 1"
-        );
+        self.data.label_search_budget()?;
         ensure!(
             self.data.rollout_search_depth > 0,
             "data.rollout_search_depth must be at least 1"
@@ -739,8 +772,12 @@ pub struct DataConfig {
     pub validation_games: u32,
     #[serde(default = "default_max_plies")]
     pub max_plies: u16,
-    #[serde(default = "default_search_depth")]
-    pub search_depth: u8,
+    #[serde(default)]
+    pub search_depth: Option<u8>,
+    #[serde(default)]
+    pub label_search_nodes: Option<u64>,
+    #[serde(default)]
+    pub label_search_max_depth: Option<u8>,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
     #[serde(default)]
@@ -789,7 +826,9 @@ impl Default for DataConfig {
             train_games: default_train_games(),
             validation_games: default_validation_games(),
             max_plies: default_max_plies(),
-            search_depth: default_search_depth(),
+            search_depth: None,
+            label_search_nodes: None,
+            label_search_max_depth: None,
             rollout_search_depth: default_rollout_search_depth(),
             self_play_move_policy: SelfPlayMovePolicy::default(),
             opening_random_plies: default_opening_random_plies(),
@@ -810,6 +849,44 @@ impl Default for DataConfig {
             shard_games: default_shard_games(),
             progress_every_percent: default_progress_every_percent(),
             resume: default_resume(),
+        }
+    }
+}
+
+impl DataConfig {
+    pub fn label_search_budget(&self) -> Result<LabelSearchBudget> {
+        match (
+            self.search_depth,
+            self.label_search_nodes,
+            self.label_search_max_depth,
+        ) {
+            (Some(_), Some(_), _) => bail!(
+                "data.search_depth and data.label_search_nodes are mutually exclusive; choose one label budget"
+            ),
+            (Some(depth), None, None) => {
+                ensure!(depth > 0, "data.search_depth must be at least 1");
+                Ok(LabelSearchBudget::Depth { depth })
+            }
+            (Some(_), None, Some(_)) => bail!(
+                "data.label_search_max_depth requires data.label_search_nodes and cannot be combined with data.search_depth"
+            ),
+            (None, Some(nodes), Some(max_depth)) => {
+                ensure!(nodes > 0, "data.label_search_nodes must be at least 1");
+                ensure!(
+                    max_depth > 0,
+                    "data.label_search_max_depth must be at least 1"
+                );
+                Ok(LabelSearchBudget::Nodes { nodes, max_depth })
+            }
+            (None, Some(_), None) => {
+                bail!("data.label_search_max_depth is required with data.label_search_nodes")
+            }
+            (None, None, Some(_)) => {
+                bail!("data.label_search_max_depth requires data.label_search_nodes")
+            }
+            (None, None, None) => Ok(LabelSearchBudget::Depth {
+                depth: default_search_depth(),
+            }),
         }
     }
 }
@@ -1279,6 +1356,57 @@ validation_games = 1
             SelfPlayMovePolicy::LabelOnSampleLegacy
         );
         assert!(!config.training.teacher_move_consumers);
+        assert_eq!(
+            config.data.label_search_budget().unwrap(),
+            LabelSearchBudget::Depth { depth: 2 }
+        );
+    }
+
+    #[test]
+    fn parses_fixed_node_label_budget() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 5000
+label_search_max_depth = 64
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        config.validate().unwrap();
+        assert_eq!(
+            config.data.label_search_budget().unwrap(),
+            LabelSearchBudget::Nodes {
+                nodes: 5_000,
+                max_depth: 64
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_conflicting_or_incomplete_label_budgets() {
+        let conflicting = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+search_depth = 3
+label_search_nodes = 5000
+label_search_max_depth = 64
+"#;
+        let config: LearnConfig = toml::from_str(conflicting).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("mutually exclusive"));
+
+        let missing_cap = conflicting
+            .replace("search_depth = 3\n", "")
+            .replace("label_search_max_depth = 64\n", "");
+        let config: LearnConfig = toml::from_str(&missing_cap).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("label_search_max_depth is required")
+        );
     }
 
     #[test]

@@ -112,7 +112,12 @@ Key fields:
     the default
   - `sampling_policy = "fixed-phase-legacy"` is the explicit compatibility mode for
     reproducing old datasets and may sample during the random opening
-  - `search_depth` labels sampled positions
+  - choose exactly one label-search budget for new configs:
+    `search_depth` for legacy fixed-depth labels, or `label_search_nodes` plus
+    `label_search_max_depth` for deterministic iterative-deepening labels
+  - fixed-node labels count both alpha-beta entries and qsearch entries under
+    `node_counting_version = "alpha-beta-plus-qsearch-v1"`; the shared budget
+    has zero overshoot, and the manifest reports the two counters separately
   - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
     shallow, for example `1`, when running expensive label depths
   - `self_play_move_policy = "uniform-rollout-v1"` makes label search observational:
@@ -122,7 +127,8 @@ Key fields:
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions. Each shard records the
-    git revision, config-file hash, sampling/self-play policy, and teacher-move contract; if a resumed
+    git revision, config-file hash, label budget type/nodes/depth cap/node-counting
+    version, sampling/self-play policy, and teacher-move contract; if a resumed
     shard's identity differs from the current run (e.g. a local patch that doesn't affect
     data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
@@ -168,7 +174,9 @@ This:
 - always uses the release build for data generation
 - plays Haitaka self-play games
 - samples positions
-- labels sampled positions with teacher search scores at `data.search_depth`
+- labels sampled positions with either the depth budget in `data.search_depth`
+  or the fixed-node budget in `data.label_search_nodes`; node-budgeted search
+  retains the last fully completed iterative-deepening result
 - uses `data.rollout_search_depth` for every post-opening self-play move under
   `uniform-rollout-v1`, independently of whether the position is sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
@@ -187,6 +195,19 @@ Run the bounded Anhoku v0.6 generation smoke test with production data contracts
 cargo run --release -p haitaka_learn --features anhoku -- generate-data \
   --config haitaka_learn.anhoku-v0.6.smoke.toml --no-resume
 ```
+
+Run the corresponding Phase 4 fixed-node smoke configuration with:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6-phase4.smoke.toml --no-resume
+```
+
+Final dataset manifests report `label_search_states`, `label_search_qnodes`,
+their `label_search_total_nodes`, average `label_nodes_per_search`, and elapsed
+label/rollout search seconds. `generation_cpu_seconds` is the sum of elapsed
+teacher-search time across worker jobs; `elapsed_seconds` remains split wall
+time. Rollout moves always retain their independent `rollout_search_depth`.
 
 Suite files use one `<stable-opening-id><TAB><SFEN>` entry per line. Blank lines and
 text after `#` are ignored. Validation rejects malformed SFENs, duplicate IDs,

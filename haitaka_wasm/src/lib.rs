@@ -5,6 +5,7 @@ pub mod nnue_kernels;
 mod tt;
 
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
@@ -32,6 +33,7 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
+pub const SEARCH_NODE_COUNTING_VERSION: &str = "alpha-beta-plus-qsearch-v1";
 const DEFAULT_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
     max_ply: 8,
     check_budget: 1,
@@ -83,6 +85,21 @@ pub struct SearchSummary {
     pub tt_stats: SearchTtStats,
     pub ordering_stats: SearchOrderingStats,
     pub qsearch_stats: SearchQsearchStats,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeBudgetSearchSummary {
+    pub best_move: Option<String>,
+    pub best_score: Option<i32>,
+    pub completed_depth: u8,
+    pub exhausted: bool,
+    pub elapsed_ms: f64,
+    pub node_limit: u64,
+    pub alpha_beta_nodes: u64,
+    pub qsearch_nodes: u64,
+    pub total_nodes: u64,
 }
 
 #[doc(hidden)]
@@ -211,10 +228,61 @@ struct SearchContext<'a> {
     ordering_stats: SearchOrderingStats,
     qsearch_stats: SearchQsearchStats,
     qsearch_limits: QsearchLimits,
+    node_budget: Option<Arc<SharedNodeBudget>>,
+}
+
+#[derive(Debug)]
+struct SharedNodeBudget {
+    limit: u64,
+    total: AtomicU64,
+    alpha_beta: AtomicU64,
+    qsearch: AtomicU64,
+}
+
+impl SharedNodeBudget {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn new(limit: u64) -> Self {
+        Self {
+            limit,
+            total: AtomicU64::new(0),
+            alpha_beta: AtomicU64::new(0),
+            qsearch: AtomicU64::new(0),
+        }
+    }
+
+    fn record(&self, counter: &AtomicU64) -> Result<(), SearchInterrupted> {
+        self.total
+            .fetch_update(AtomicOrdering::Relaxed, AtomicOrdering::Relaxed, |nodes| {
+                (nodes < self.limit).then_some(nodes + 1)
+            })
+            .map_err(|_| SearchInterrupted)?;
+        counter.fetch_add(1, AtomicOrdering::Relaxed);
+        Ok(())
+    }
+
+    fn record_alpha_beta(&self) -> Result<(), SearchInterrupted> {
+        self.record(&self.alpha_beta)
+    }
+
+    fn record_qsearch(&self) -> Result<(), SearchInterrupted> {
+        self.record(&self.qsearch)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn counts(&self) -> (u64, u64, u64) {
+        (
+            self.alpha_beta.load(AtomicOrdering::Relaxed),
+            self.qsearch.load(AtomicOrdering::Relaxed),
+            self.total.load(AtomicOrdering::Relaxed),
+        )
+    }
 }
 
 impl SearchContext<'_> {
     fn record_state(&mut self) -> Result<(), SearchInterrupted> {
+        if let Some(budget) = &self.node_budget {
+            budget.record_alpha_beta()?;
+        }
         self.states += 1;
         if self.deadline.is_some() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
             self.check_deadline()?;
@@ -233,6 +301,9 @@ impl SearchContext<'_> {
     }
 
     fn record_qnode(&mut self, qply: u8) -> Result<bool, SearchInterrupted> {
+        if let Some(budget) = &self.node_budget {
+            budget.record_qsearch()?;
+        }
         self.qsearch_stats.qnodes += 1;
         self.qsearch_stats.qsearch_max_ply = self.qsearch_stats.qsearch_max_ply.max(qply);
         if self.deadline.is_some() && self.qsearch_stats.qnodes % DEADLINE_CHECK_INTERVAL == 0 {
@@ -888,6 +959,29 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
     ordering: &mut SearchOrdering,
     qsearch_limits: QsearchLimits,
 ) -> Result<SearchSummary, SearchInterrupted> {
+    search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+        board,
+        depth,
+        evaluation,
+        deadline,
+        tt,
+        ordering,
+        qsearch_limits,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+    qsearch_limits: QsearchLimits,
+    node_budget: Option<Arc<SharedNodeBudget>>,
+) -> Result<SearchSummary, SearchInterrupted> {
     let started_at = Instant::now();
     tt.new_search();
     let root_state = match &evaluation {
@@ -907,6 +1001,7 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits,
+        node_budget,
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -929,6 +1024,63 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
         tt_stats: ctx.tt_stats,
         ordering_stats: ctx.ordering_stats,
         qsearch_stats: ctx.qsearch_stats,
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    if max_nodes == 0 {
+        return Err("node budget must be at least 1".to_string());
+    }
+    if max_depth == 0 {
+        return Err("node-budget depth cap must be at least 1".to_string());
+    }
+
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    let started_at = Instant::now();
+    let budget = Arc::new(SharedNodeBudget::new(max_nodes));
+    let mut best_move = None;
+    let mut best_score = None;
+    let mut completed_depth = 0;
+
+    for depth in 1..=max_depth {
+        match search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+            board,
+            depth,
+            evaluation.clone(),
+            None,
+            &mut workspace.tt,
+            &mut workspace.ordering,
+            qsearch_limits(),
+            Some(Arc::clone(&budget)),
+        ) {
+            Ok(summary) => {
+                best_move = summary.best_move;
+                best_score = summary.best_score;
+                completed_depth = depth;
+            }
+            Err(SearchInterrupted) => break,
+        }
+    }
+
+    let (alpha_beta_nodes, qsearch_nodes, total_nodes) = budget.counts();
+    Ok(NodeBudgetSearchSummary {
+        best_move,
+        best_score,
+        completed_depth,
+        exhausted: total_nodes == max_nodes,
+        elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+        node_limit: max_nodes,
+        alpha_beta_nodes,
+        qsearch_nodes,
+        total_nodes,
     })
 }
 
@@ -1692,6 +1844,42 @@ pub fn search_board_impl_with_eval_mode_in_workspace(
         workspace,
     )
     .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -2541,6 +2729,7 @@ mod tests {
             ordering_stats: SearchOrderingStats::default(),
             qsearch_stats: SearchQsearchStats::default(),
             qsearch_limits,
+            node_budget: None,
         }
     }
 
@@ -2844,6 +3033,62 @@ mod tests {
         assert!(summary.tt_stats.tt_hashfull <= 1000);
         assert!(summary.ordering_stats.history_move_tries > 0);
         assert!(summary.qsearch_stats.qnodes > 0);
+    }
+
+    #[test]
+    fn fixed_node_search_is_exact_and_deterministic() {
+        let board = Board::startpos();
+        let mut first_workspace = SearchWorkspace::default();
+        let first = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut first_workspace,
+        )
+        .unwrap();
+        let mut second_workspace = SearchWorkspace::default();
+        let second = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut second_workspace,
+        )
+        .unwrap();
+
+        assert!(first.exhausted);
+        assert_eq!(first.total_nodes, 5_000);
+        assert_eq!(
+            first.total_nodes,
+            first.alpha_beta_nodes + first.qsearch_nodes
+        );
+        assert!(first.best_move.is_some());
+        assert_eq!(first.best_move, second.best_move);
+        assert_eq!(first.best_score, second.best_score);
+        assert_eq!(first.completed_depth, second.completed_depth);
+        assert_eq!(first.alpha_beta_nodes, second.alpha_beta_nodes);
+        assert_eq!(first.qsearch_nodes, second.qsearch_nodes);
+        assert_eq!(first.total_nodes, second.total_nodes);
+    }
+
+    #[test]
+    fn fixed_node_search_respects_depth_cap_without_spending_the_budget() {
+        let board = Board::startpos();
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            1_000_000,
+            1,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.completed_depth, 1);
+        assert!(!summary.exhausted);
+        assert!(summary.total_nodes < summary.node_limit);
+        assert_eq!(
+            summary.total_nodes,
+            summary.alpha_beta_nodes + summary.qsearch_nodes
+        );
     }
 
     #[test]
