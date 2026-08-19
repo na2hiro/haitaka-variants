@@ -12,10 +12,15 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
-    NnueModel, NodeBudgetSearchSummary, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
-    SearchSummary, SearchWorkspace, search_board_impl_handcrafted_in_workspace,
+    NnueModel, NodeBudgetSearchSummary, SEARCH_MATE_SCORE_THRESHOLD, SEARCH_NODE_COUNTING_VERSION,
+    SEARCH_TRAINING_TRACE_VERSION, SearchEvalMode, SearchSummary, SearchTrainingTrace,
+    SearchWorkspace, search_board_impl_handcrafted_in_workspace,
+    search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace,
     search_board_impl_handcrafted_with_node_budget_in_workspace,
+    search_board_impl_handcrafted_with_training_trace_in_workspace,
+    search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace,
     search_board_impl_with_eval_mode_and_node_budget_in_workspace,
+    search_board_impl_with_eval_mode_and_training_trace_in_workspace,
     search_board_impl_with_eval_mode_in_workspace,
 };
 use rand::rngs::StdRng;
@@ -25,8 +30,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, LabelSearchBudget, LoadedConfig, Ruleset, SamplingPolicy, SelfPlayMovePolicy,
-    ShufflePolicy, TEACHER_MOVE_ENCODING,
+    ArtifactPaths, LabelSearchBudget, LoadedConfig, PositionPolicy, Ruleset, SamplingPolicy,
+    SelfPlayMovePolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 
@@ -100,6 +105,16 @@ struct DatasetManifest {
     label_search_nodes: Option<u64>,
     label_search_max_depth: u8,
     node_counting_version: String,
+    position_policy: String,
+    training_trace_version: String,
+    candidate_positions: u64,
+    rejected_terminal_positions: u64,
+    rejected_mate_score_positions: u64,
+    root_ply_min: Option<u16>,
+    root_ply_max: Option<u16>,
+    leaf_distance_min: Option<u16>,
+    leaf_distance_max: Option<u16>,
+    leaf_distance_mean: f64,
     rollout_search_depth: u8,
     self_play_move_policy: String,
     label_searches: u64,
@@ -180,6 +195,26 @@ struct ShardManifest {
     label_search_max_depth: u8,
     #[serde(default)]
     node_counting_version: String,
+    #[serde(default)]
+    position_policy: String,
+    #[serde(default)]
+    training_trace_version: String,
+    #[serde(default)]
+    candidate_positions: u64,
+    #[serde(default)]
+    rejected_terminal_positions: u64,
+    #[serde(default)]
+    rejected_mate_score_positions: u64,
+    #[serde(default)]
+    root_ply_min: Option<u16>,
+    #[serde(default)]
+    root_ply_max: Option<u16>,
+    #[serde(default)]
+    leaf_distance_min: Option<u16>,
+    #[serde(default)]
+    leaf_distance_max: Option<u16>,
+    #[serde(default)]
+    leaf_distance_total: u64,
     #[serde(default)]
     rollout_search_depth: u8,
     #[serde(default = "legacy_self_play_move_policy")]
@@ -295,6 +330,19 @@ impl ShardManifest {
             || (self.node_counting_version.is_empty()
                 && matches!(budget, LabelSearchBudget::Depth { .. }))
     }
+
+    fn position_policy(&self) -> &str {
+        if self.position_policy.is_empty() {
+            PositionPolicy::RootPosition.manifest_name()
+        } else {
+            &self.position_policy
+        }
+    }
+
+    fn training_trace_version_matches(&self, policy: PositionPolicy) -> bool {
+        self.training_trace_version == SEARCH_TRAINING_TRACE_VERSION
+            || (self.training_trace_version.is_empty() && !policy.uses_training_trace())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -322,6 +370,14 @@ struct SearchUseStats {
     rollout_search_qnodes: u64,
     label_search_elapsed_seconds: f64,
     rollout_search_elapsed_seconds: f64,
+    candidate_positions: u64,
+    rejected_terminal_positions: u64,
+    rejected_mate_score_positions: u64,
+    root_ply_min: Option<u16>,
+    root_ply_max: Option<u16>,
+    leaf_distance_min: Option<u16>,
+    leaf_distance_max: Option<u16>,
+    leaf_distance_total: u64,
 }
 
 impl SearchUseStats {
@@ -348,6 +404,56 @@ impl SearchUseStats {
         self.rollout_search_qnodes += other.rollout_search_qnodes;
         self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
         self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
+        self.candidate_positions += other.candidate_positions;
+        self.rejected_terminal_positions += other.rejected_terminal_positions;
+        self.rejected_mate_score_positions += other.rejected_mate_score_positions;
+        self.root_ply_min = option_min(self.root_ply_min, other.root_ply_min);
+        self.root_ply_max = option_max(self.root_ply_max, other.root_ply_max);
+        self.leaf_distance_min = option_min(self.leaf_distance_min, other.leaf_distance_min);
+        self.leaf_distance_max = option_max(self.leaf_distance_max, other.leaf_distance_max);
+        self.leaf_distance_total += other.leaf_distance_total;
+    }
+
+    fn record_candidate(&mut self) {
+        self.candidate_positions += 1;
+    }
+
+    fn record_stored_position(&mut self, root_ply: u16, leaf_distance: u16) {
+        self.root_ply_min = option_min(self.root_ply_min, Some(root_ply));
+        self.root_ply_max = option_max(self.root_ply_max, Some(root_ply));
+        self.leaf_distance_min = option_min(self.leaf_distance_min, Some(leaf_distance));
+        self.leaf_distance_max = option_max(self.leaf_distance_max, Some(leaf_distance));
+        self.leaf_distance_total += u64::from(leaf_distance);
+    }
+}
+
+fn option_min<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (left, right) => left.or(right),
+    }
+}
+
+fn option_max<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (left, right) => left.or(right),
+    }
+}
+
+fn stored_position_count(stats: &SearchUseStats) -> u64 {
+    stats
+        .candidate_positions
+        .saturating_sub(stats.rejected_terminal_positions)
+        .saturating_sub(stats.rejected_mate_score_positions)
+}
+
+fn leaf_distance_mean(stats: &SearchUseStats) -> f64 {
+    let stored = stored_position_count(stats);
+    if stored == 0 {
+        0.0
+    } else {
+        stats.leaf_distance_total as f64 / stored as f64
     }
 }
 
@@ -362,6 +468,18 @@ impl From<&ShardManifest> for SearchUseStats {
             rollout_search_qnodes: manifest.rollout_search_qnodes,
             label_search_elapsed_seconds: manifest.label_search_cpu_seconds,
             rollout_search_elapsed_seconds: manifest.rollout_search_cpu_seconds,
+            candidate_positions: if manifest.candidate_positions == 0 {
+                manifest.sampled_positions
+            } else {
+                manifest.candidate_positions
+            },
+            rejected_terminal_positions: manifest.rejected_terminal_positions,
+            rejected_mate_score_positions: manifest.rejected_mate_score_positions,
+            root_ply_min: manifest.root_ply_min,
+            root_ply_max: manifest.root_ply_max,
+            leaf_distance_min: manifest.leaf_distance_min,
+            leaf_distance_max: manifest.leaf_distance_max,
+            leaf_distance_total: manifest.leaf_distance_total,
         }
     }
 }
@@ -379,6 +497,7 @@ struct TeacherSearchSummary {
     states: u64,
     qnodes: u64,
     elapsed_seconds: f64,
+    training_trace: Option<SearchTrainingTrace>,
 }
 
 impl From<SearchSummary> for TeacherSearchSummary {
@@ -389,6 +508,7 @@ impl From<SearchSummary> for TeacherSearchSummary {
             states: summary.states,
             qnodes: summary.qsearch_stats.qnodes,
             elapsed_seconds: summary.elapsed_ms / 1_000.0,
+            training_trace: None,
         }
     }
 }
@@ -401,7 +521,28 @@ impl From<NodeBudgetSearchSummary> for TeacherSearchSummary {
             states: summary.alpha_beta_nodes,
             qnodes: summary.qsearch_nodes,
             elapsed_seconds: summary.elapsed_ms / 1_000.0,
+            training_trace: None,
         }
+    }
+}
+
+impl TeacherSearchSummary {
+    fn from_depth_with_trace(
+        summary: SearchSummary,
+        training_trace: Option<SearchTrainingTrace>,
+    ) -> Self {
+        let mut result = Self::from(summary);
+        result.training_trace = training_trace;
+        result
+    }
+
+    fn from_nodes_with_trace(
+        summary: NodeBudgetSearchSummary,
+        training_trace: Option<SearchTrainingTrace>,
+    ) -> Self {
+        let mut result = Self::from(summary);
+        result.training_trace = training_trace;
+        result
     }
 }
 
@@ -486,10 +627,52 @@ impl Teacher {
         &self,
         board: &Board,
         budget: LabelSearchBudget,
+        position_policy: PositionPolicy,
         workspace: &mut SearchWorkspace,
     ) -> Result<TeacherSearchSummary> {
+        let collect_trace = position_policy.uses_training_trace();
         match budget {
-            LabelSearchBudget::Depth { depth } => self.search_depth(board, depth, workspace),
+            LabelSearchBudget::Depth { depth } if !collect_trace => {
+                self.search_depth(board, depth, workspace)
+            }
+            LabelSearchBudget::Depth { depth } => match self {
+                Self::Handcrafted => search_board_impl_handcrafted_with_training_trace_in_workspace(
+                    board, depth, workspace,
+                )
+                .map_err(|err| anyhow!("handcrafted traced teacher search failed: {err}")),
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_training_trace_in_workspace(
+                        board,
+                        depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE traced teacher search failed: {err}"))
+                }
+            }
+            .map(|(summary, trace)| TeacherSearchSummary::from_depth_with_trace(summary, trace)),
+            LabelSearchBudget::Nodes { nodes, max_depth } if collect_trace => match self {
+                Self::Handcrafted => {
+                    search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                        board, nodes, max_depth, workspace,
+                    )
+                    .map_err(|err| anyhow!("handcrafted traced node-budget teacher search failed: {err}"))
+                }
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace(
+                        board,
+                        nodes,
+                        max_depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE traced node-budget teacher search failed: {err}"))
+                }
+            }
+            .map(|(summary, trace)| TeacherSearchSummary::from_nodes_with_trace(summary, trace))
+            .and_then(|summary| validate_node_budget_summary(summary, nodes)),
             LabelSearchBudget::Nodes { nodes, max_depth } => match self {
                 Self::Handcrafted => search_board_impl_handcrafted_with_node_budget_in_workspace(
                     board, nodes, max_depth, workspace,
@@ -508,16 +691,21 @@ impl Teacher {
                 }
             }
             .map(TeacherSearchSummary::from)
-            .and_then(|summary| {
-                if summary.best_move.is_none() || summary.best_score.is_none() {
-                    bail!(
-                        "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes"
-                    );
-                }
-                Ok(summary)
-            }),
+            .and_then(|summary| validate_node_budget_summary(summary, nodes)),
         }
     }
+}
+
+fn validate_node_budget_summary(
+    summary: TeacherSearchSummary,
+    nodes: u64,
+) -> Result<TeacherSearchSummary> {
+    if summary.best_move.is_none() || summary.best_score.is_none() {
+        bail!(
+            "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes"
+        );
+    }
+    Ok(summary)
 }
 
 pub fn generate_data(loaded: &LoadedConfig) -> Result<DatasetOutput> {
@@ -899,6 +1087,21 @@ fn generate_split(
         label_search_nodes: label_budget.nodes(),
         label_search_max_depth: label_budget.max_depth(),
         node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_mean: leaf_distance_mean(&search_stats),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -1320,6 +1523,21 @@ fn generate_or_reuse_shard(
         label_search_nodes: label_budget.nodes(),
         label_search_max_depth: label_budget.max_depth(),
         node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_total: search_stats.leaf_distance_total,
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -1464,6 +1682,8 @@ fn shard_manifest_matches(
         && manifest.label_search_nodes == label_budget.nodes()
         && manifest.label_search_max_depth() == label_budget.max_depth()
         && manifest.node_counting_version_matches(label_budget)
+        && manifest.position_policy() == loaded.config.data.position_policy.manifest_name()
+        && manifest.training_trace_version_matches(loaded.config.data.position_policy)
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -1695,7 +1915,12 @@ fn generate_game_entries(
             && (loaded.config.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1
                 || !should_sample);
         let label_summary = if should_sample {
-            let summary = teacher.search_label(&board, label_search_budget, search_workspace)?;
+            let summary = teacher.search_label(
+                &board,
+                label_search_budget,
+                loaded.config.data.position_policy,
+                search_workspace,
+            )?;
             stats.record_label(&summary);
             Some(summary)
         } else {
@@ -1717,16 +1942,14 @@ fn generate_game_entries(
             let summary = label_summary
                 .as_ref()
                 .ok_or_else(|| anyhow!("teacher search unexpectedly missing"))?;
-            let score = summary
-                .best_score
-                .unwrap_or_else(|| terminal_teacher_score(&board))
-                .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-            samples.push(PendingSample {
-                board: board.clone(),
-                score,
-                game_ply: played_plies,
-                side_to_move: board.side_to_move(),
-            });
+            record_pending_sample(
+                loaded.config.data.position_policy,
+                &board,
+                summary,
+                played_plies,
+                &mut samples,
+                &mut stats,
+            )?;
         }
 
         let mv = if played_plies < loaded.config.data.opening_random_plies {
@@ -1777,6 +2000,59 @@ fn generate_game_entries(
         stats,
         opening: selected_opening.metadata,
     })
+}
+
+fn record_pending_sample(
+    position_policy: PositionPolicy,
+    root_board: &Board,
+    summary: &TeacherSearchSummary,
+    root_ply: u16,
+    samples: &mut Vec<PendingSample>,
+    stats: &mut SearchUseStats,
+) -> Result<()> {
+    stats.record_candidate();
+    match position_policy {
+        PositionPolicy::RootPosition => {
+            let score = summary
+                .best_score
+                .unwrap_or_else(|| terminal_teacher_score(root_board))
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+            stats.record_stored_position(root_ply, 0);
+            samples.push(PendingSample {
+                board: root_board.clone(),
+                score,
+                game_ply: root_ply,
+                side_to_move: root_board.side_to_move(),
+            });
+        }
+        PositionPolicy::QsearchPvLeaf => match summary.training_trace.as_ref() {
+            Some(trace) if trace.terminal || !has_both_kings(&trace.leaf_board) => {
+                stats.rejected_terminal_positions += 1;
+            }
+            _ if summary
+                .best_score
+                .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD) =>
+            {
+                stats.rejected_mate_score_positions += 1;
+            }
+            Some(trace) => {
+                let score = trace.static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                stats.record_stored_position(root_ply, trace.root_ply_distance);
+                samples.push(PendingSample {
+                    board: trace.leaf_board.clone(),
+                    score,
+                    game_ply: root_ply,
+                    side_to_move: trace.leaf_board.side_to_move(),
+                });
+            }
+            None => {
+                bail!(
+                    "traced teacher search did not produce a qsearch-PV leaf for ordinary root position `{root_board}`"
+                );
+            }
+        },
+    }
+    Ok(())
 }
 
 fn select_self_play_search<'a, T>(
@@ -2113,6 +2389,21 @@ fn merge_split(
         label_search_nodes: label_budget.nodes(),
         label_search_max_depth: label_budget.max_depth(),
         node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_mean: leaf_distance_mean(&search_stats),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
         self_play_move_policy: loaded
             .config
@@ -2268,6 +2559,14 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.node_counting_version_matches(label_budget),
         "node_counting_version does not match",
+    )?;
+    ensure_merge(
+        manifest.position_policy() == loaded.config.data.position_policy.manifest_name(),
+        "position_policy does not match",
+    )?;
+    ensure_merge(
+        manifest.training_trace_version_matches(loaded.config.data.position_policy),
+        "training_trace_version does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -3373,6 +3672,63 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
+    fn resume_regenerates_qsearch_leaf_shards_when_trace_identity_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-qsearch-leaf-identity.toml");
+        let config = qsearch_leaf_test_config(active_test_ruleset(), "out")
+            .replace("resume = false", "resume = true");
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let mismatches = [
+            (
+                "position_policy",
+                serde_json::Value::String("root-position".into()),
+            ),
+            (
+                "training_trace_version",
+                serde_json::Value::String("different-trace-contract".into()),
+            ),
+        ];
+        for (field, value) in mismatches {
+            mutate_first_shard_manifest(&loaded, "train", |manifest| {
+                manifest[field] = value;
+            });
+            generate_data(&loaded).unwrap();
+            let manifest: serde_json::Value = serde_json::from_slice(
+                &fs::read(loaded.artifact_paths().train_manifest.clone()).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                manifest["generated_shards"].as_u64().unwrap() > 0,
+                "{field} mismatch should regenerate its shard"
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn resume_reuses_legacy_shards_without_explicit_search_depths() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-legacy-depths.toml");
@@ -3870,6 +4226,50 @@ run_search_smoke = false
     }
 
     #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn merge_rejects_qsearch_leaf_trace_version_mismatch() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-qsearch-leaf-version.toml");
+        fs::write(
+            &config_path,
+            qsearch_leaf_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["training_trace_version"] =
+                serde_json::Value::String("different-trace-contract".to_string());
+        });
+
+        let err = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(err.contains("training_trace_version does not match"));
+    }
+
+    #[test]
     #[cfg(feature = "anhoku")]
     fn merge_rejects_sampling_self_play_and_teacher_move_mismatches() {
         let temp = tempdir().unwrap();
@@ -4295,6 +4695,143 @@ seed = 9
     }
 
     #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn qsearch_leaf_generation_records_policy_distances_and_rejections() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("qsearch-leaf.toml");
+        fs::write(
+            &config_path,
+            qsearch_leaf_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        let stored = manifest["sampled_positions"].as_u64().unwrap();
+        let candidates = manifest["candidate_positions"].as_u64().unwrap();
+        let terminal = manifest["rejected_terminal_positions"].as_u64().unwrap();
+        let mate = manifest["rejected_mate_score_positions"].as_u64().unwrap();
+
+        assert_eq!(manifest["position_policy"], "qsearch-pv-leaf");
+        assert_eq!(
+            manifest["training_trace_version"],
+            SEARCH_TRAINING_TRACE_VERSION
+        );
+        assert!(stored > 0);
+        assert_eq!(candidates, stored + terminal + mate);
+        assert!(manifest["leaf_distance_min"].as_u64().unwrap() >= 1);
+        assert!(manifest["leaf_distance_max"].as_u64().unwrap() >= 1);
+        assert!(manifest["leaf_distance_mean"].as_f64().unwrap() >= 1.0);
+        assert!(manifest["root_ply_min"].is_number());
+        assert!(manifest["root_ply_max"].is_number());
+    }
+
+    #[test]
+    fn qsearch_leaf_samples_orient_results_to_leaf_and_count_rejections() {
+        let root = Board::startpos();
+        let mut leaf = root.clone();
+        let mv = collect_legal_moves(&leaf)[0];
+        leaf.play_unchecked(mv);
+        assert_ne!(root.side_to_move(), leaf.side_to_move());
+
+        let traced = |best_score, terminal| TeacherSearchSummary {
+            best_move: Some(mv.to_string()),
+            best_score: Some(best_score),
+            states: 1,
+            qnodes: 1,
+            elapsed_seconds: 0.0,
+            training_trace: Some(SearchTrainingTrace {
+                leaf_board: leaf.clone(),
+                static_eval: 123,
+                root_ply_distance: 1,
+                terminal,
+            }),
+        };
+        let mut samples = Vec::new();
+        let mut stats = SearchUseStats::default();
+
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            &root,
+            &traced(123, false),
+            8,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].side_to_move, leaf.side_to_move());
+        assert_eq!(samples[0].score, 123);
+        assert_eq!(samples[0].game_ply, 8);
+        assert_eq!(
+            GameOutcome::Winner(root.side_to_move()).relative_to(samples[0].side_to_move),
+            -1
+        );
+        let pack_sample = |sample: &PendingSample| {
+            let mut bytes = Vec::new();
+            let packed = pack_board_for_training(&sample.board).unwrap();
+            write_training_entry(
+                &mut bytes,
+                &packed,
+                sample.score,
+                0,
+                sample.game_ply,
+                GameOutcome::Winner(root.side_to_move()).relative_to(sample.side_to_move),
+            )
+            .unwrap();
+            bytes
+        };
+        assert_eq!(pack_sample(&samples[0]), pack_sample(&samples[0]));
+
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            &root,
+            &traced(123, true),
+            10,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            &root,
+            &traced(SEARCH_MATE_SCORE_THRESHOLD, false),
+            12,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(stats.candidate_positions, 3);
+        assert_eq!(stats.rejected_terminal_positions, 1);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+    }
+
+    #[test]
     fn finds_workspace_root_from_root_config_path() {
         let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_dir.parent().unwrap();
@@ -4500,6 +5037,39 @@ run_search_smoke = false
         )
     }
 
+    fn qsearch_leaf_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 6
+search_depth = 1
+position_policy = "qsearch-pv-leaf"
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 2
+max_positions_per_game = 8
+seed = 7
+jobs = 1
+shard_games = 1
+progress_every_percent = 50
+resume = false
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
     fn mutate_first_shard_manifest(
         loaded: &LoadedConfig,
         dataset_name: &str,
@@ -4549,6 +5119,16 @@ run_search_smoke = false
         object.remove("label_search_nodes");
         object.remove("label_search_max_depth");
         object.remove("node_counting_version");
+        object.remove("position_policy");
+        object.remove("training_trace_version");
+        object.remove("candidate_positions");
+        object.remove("rejected_terminal_positions");
+        object.remove("rejected_mate_score_positions");
+        object.remove("root_ply_min");
+        object.remove("root_ply_max");
+        object.remove("leaf_distance_min");
+        object.remove("leaf_distance_max");
+        object.remove("leaf_distance_total");
         object.remove("rollout_search_depth");
         object.remove("label_search_qnodes");
         object.remove("rollout_search_qnodes");

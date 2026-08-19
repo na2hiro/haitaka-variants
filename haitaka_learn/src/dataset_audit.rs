@@ -28,6 +28,7 @@ pub struct AuditReport {
     scores: ScoreStats,
     teacher_moves: TeacherMoveStats,
     samples_before_opening: u64,
+    position_trace: PositionTraceStats,
     groups: GroupStats,
 }
 
@@ -59,6 +60,20 @@ struct AuditIdentity {
     shuffle_seed: Option<u64>,
     shuffle_chunk_records: Option<u64>,
     self_play_move_policy: Option<String>,
+    position_policy: Option<String>,
+    training_trace_version: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PositionTraceStats {
+    root_ply_min: u16,
+    root_ply_max: u16,
+    leaf_distance_min: Option<u64>,
+    leaf_distance_max: Option<u64>,
+    leaf_distance_mean: f64,
+    candidate_positions: u64,
+    rejected_terminal_positions: u64,
+    rejected_mate_score_positions: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -190,6 +205,8 @@ pub fn audit_dataset(
     let mut clamp_rate_count = 0;
     let mut nonzero_moves = 0;
     let mut samples_before_opening = 0;
+    let mut root_ply_min = u16::MAX;
+    let mut root_ply_max = 0u16;
 
     for _ in 0..expected_entries {
         reader.read_exact(&mut record)?;
@@ -204,6 +221,8 @@ pub fn audit_dataset(
         let teacher_move =
             u16::from_le_bytes([record[TEACHER_MOVE_OFFSET], record[TEACHER_MOVE_OFFSET + 1]]);
         let ply = u16::from_le_bytes([record[PLY_OFFSET], record[PLY_OFFSET + 1]]);
+        root_ply_min = root_ply_min.min(ply);
+        root_ply_max = root_ply_max.max(ply);
         let result = record[RESULT_OFFSET] as i8;
         if ply % 2 == 0 {
             parity.even += 1;
@@ -271,6 +290,11 @@ pub fn audit_dataset(
         shuffle_seed: value_u64(&manifest, "shuffle_seed"),
         shuffle_chunk_records: value_u64(&manifest, "shuffle_chunk_records"),
         self_play_move_policy: value_string(&manifest, "self_play_move_policy"),
+        position_policy: Some(
+            value_string(&manifest, "position_policy")
+                .unwrap_or_else(|| "root-position".to_string()),
+        ),
+        training_trace_version: value_string(&manifest, "training_trace_version"),
     };
     let train_opening_ids = value_string_vec(&manifest, "train_opening_ids");
     let validation_opening_ids = value_string_vec(&manifest, "validation_opening_ids");
@@ -324,6 +348,19 @@ pub fn audit_dataset(
             zero: expected_entries - nonzero_moves,
         },
         samples_before_opening,
+        position_trace: PositionTraceStats {
+            root_ply_min,
+            root_ply_max,
+            leaf_distance_min: value_u64(&manifest, "leaf_distance_min"),
+            leaf_distance_max: value_u64(&manifest, "leaf_distance_max"),
+            leaf_distance_mean: value_f64(&manifest, "leaf_distance_mean").unwrap_or(0.0),
+            candidate_positions: value_u64(&manifest, "candidate_positions")
+                .unwrap_or(expected_entries),
+            rejected_terminal_positions: value_u64(&manifest, "rejected_terminal_positions")
+                .unwrap_or(0),
+            rejected_mate_score_positions: value_u64(&manifest, "rejected_mate_score_positions")
+                .unwrap_or(0),
+        },
         groups: GroupStats {
             game_count: games.map_or(0, |games| games.len() as u64),
             unique_game_ids,
@@ -354,6 +391,10 @@ fn value_string(value: &Value, key: &str) -> Option<String> {
 
 fn value_u64(value: &Value, key: &str) -> Option<u64> {
     value.get(key).and_then(Value::as_u64)
+}
+
+fn value_f64(value: &Value, key: &str) -> Option<f64> {
+    value.get(key).and_then(Value::as_f64)
 }
 
 fn value_string_vec(value: &Value, key: &str) -> Vec<String> {
@@ -395,7 +436,7 @@ mod tests {
         fs::write(&bin, records.concat()).unwrap();
         fs::write(
             &manifest,
-            r#"{"sampled_positions":3,"entry_bytes":72,"opening_random_plies":4}"#,
+            r#"{"sampled_positions":3,"entry_bytes":72,"opening_random_plies":4,"position_policy":"qsearch-pv-leaf","training_trace_version":"qsearch-pv-v1","candidate_positions":5,"rejected_terminal_positions":1,"rejected_mate_score_positions":1,"leaf_distance_min":1,"leaf_distance_max":3,"leaf_distance_mean":2.0}"#,
         )
         .unwrap();
         let report = audit_dataset(&bin, &manifest, None).unwrap();
@@ -413,6 +454,18 @@ mod tests {
         assert_eq!(report.samples_before_opening, 2);
         assert_eq!(report.scores.mate_rate_count, 2);
         assert_eq!(report.scores.clamp_rate_count, 1);
+        assert_eq!(
+            report.identity.position_policy.as_deref(),
+            Some("qsearch-pv-leaf")
+        );
+        assert_eq!(report.position_trace.root_ply_min, 2);
+        assert_eq!(report.position_trace.root_ply_max, 4);
+        assert_eq!(report.position_trace.leaf_distance_min, Some(1));
+        assert_eq!(report.position_trace.leaf_distance_max, Some(3));
+        assert_eq!(report.position_trace.leaf_distance_mean, 2.0);
+        assert_eq!(report.position_trace.candidate_positions, 5);
+        assert_eq!(report.position_trace.rejected_terminal_positions, 1);
+        assert_eq!(report.position_trace.rejected_mate_score_positions, 1);
     }
 
     #[test]

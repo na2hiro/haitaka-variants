@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phases 1–4 and 6 complete; Phase 5 pending
+- Status: Phases 1–6 complete; Phase 7 pending
 - Created: 2026-08-17
 - Last checked: 2026-08-20
 - Primary ruleset: Anhoku
@@ -114,8 +114,8 @@ Follow-up notes:
   small validation split still misses the 60% decisive-outcome bound. A larger
   validation pilot and the Phase 7 gate are still required; do not start the
   1M three-seed strength experiment yet.
-- Phase 4 fixed-node label budgeting is complete. Phase 5 qsearch-PV leaf
-  entries are the next implementation phase.
+- Phases 4 and 5 are complete. Phase 7's root-position 1M baseline is the next
+  experiment in the planned sequence.
 
 Common completion gate for implementation phases:
 
@@ -340,6 +340,8 @@ Acceptance criteria:
 Out of scope: qsearch-PV leaf storage, new opening policies, SIMD, and training.
 
 ## Phase 5: Qsearch-PV Leaf Dataset Entries
+
+**Status: complete.** See [the Phase 5 result](../docs/nnue-training-anhoku-v0.6-phase5.md).
 
 This agent changes the stored training position semantics and must not also
 change search budgets or the binary ABI.

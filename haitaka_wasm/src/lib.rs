@@ -4,6 +4,7 @@ mod nnue;
 pub mod nnue_kernels;
 mod tt;
 
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
@@ -34,6 +35,8 @@ static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
 pub const SEARCH_NODE_COUNTING_VERSION: &str = "alpha-beta-plus-qsearch-v1";
+pub const SEARCH_TRAINING_TRACE_VERSION: &str = "qsearch-pv-v1";
+pub const SEARCH_MATE_SCORE_THRESHOLD: i32 = 29_000;
 const DEFAULT_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
     max_ply: 8,
     check_budget: 1,
@@ -100,6 +103,15 @@ pub struct NodeBudgetSearchSummary {
     pub alpha_beta_nodes: u64,
     pub qsearch_nodes: u64,
     pub total_nodes: u64,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SearchTrainingTrace {
+    pub leaf_board: Board,
+    pub static_eval: i32,
+    pub root_ply_distance: u16,
+    pub terminal: bool,
 }
 
 #[doc(hidden)]
@@ -229,6 +241,54 @@ struct SearchContext<'a> {
     qsearch_stats: SearchQsearchStats,
     qsearch_limits: QsearchLimits,
     node_budget: Option<Arc<SharedNodeBudget>>,
+    training_trace: Option<TrainingTraceCollector>,
+}
+
+#[derive(Debug, Default)]
+struct TrainingTraceCollector {
+    slots: Vec<Option<SearchTrainingTrace>>,
+    tt_traces: HashMap<(u64, u8), SearchTrainingTrace>,
+}
+
+impl TrainingTraceCollector {
+    fn ensure_slot(&mut self, ply: usize) {
+        if self.slots.len() <= ply {
+            self.slots.resize_with(ply + 1, || None);
+        }
+    }
+
+    fn clear(&mut self, ply: usize) {
+        self.ensure_slot(ply);
+        self.slots[ply] = None;
+    }
+
+    fn set(&mut self, ply: usize, trace: SearchTrainingTrace) {
+        self.ensure_slot(ply);
+        self.slots[ply] = Some(trace);
+    }
+
+    fn promote_child(&mut self, ply: usize) {
+        self.ensure_slot(ply + 1);
+        self.slots[ply] = self.slots[ply + 1].clone();
+    }
+
+    fn restore_tt(&mut self, key: u64, depth: u8, ply: usize) -> bool {
+        let Some(trace) = self.tt_traces.get(&(key, depth)).cloned() else {
+            return false;
+        };
+        self.set(ply, trace);
+        true
+    }
+
+    fn store_tt(&mut self, key: u64, depth: u8, ply: usize) {
+        if let Some(trace) = self.slots.get(ply).and_then(Clone::clone) {
+            self.tt_traces.insert((key, depth), trace);
+        }
+    }
+
+    fn root(&self) -> Option<SearchTrainingTrace> {
+        self.slots.first().and_then(Clone::clone)
+    }
 }
 
 #[derive(Debug)]
@@ -279,6 +339,53 @@ impl SharedNodeBudget {
 }
 
 impl SearchContext<'_> {
+    fn clear_training_trace(&mut self, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.clear(usize::try_from(ply).expect("search ply must be non-negative"));
+        }
+    }
+
+    fn set_training_leaf(&mut self, board: &Board, ply: i32, static_eval: i32, terminal: bool) {
+        if let Some(trace) = &mut self.training_trace {
+            let ply = usize::try_from(ply).expect("search ply must be non-negative");
+            trace.set(
+                ply,
+                SearchTrainingTrace {
+                    leaf_board: board.clone(),
+                    static_eval,
+                    root_ply_distance: u16::try_from(ply).unwrap_or(u16::MAX),
+                    terminal,
+                },
+            );
+        }
+    }
+
+    fn promote_child_training_trace(&mut self, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.promote_child(usize::try_from(ply).expect("search ply must be non-negative"));
+        }
+    }
+
+    fn restore_tt_training_trace(&mut self, key: u64, depth: u8, ply: i32) -> bool {
+        self.training_trace.as_mut().is_none_or(|trace| {
+            trace.restore_tt(
+                key,
+                depth,
+                usize::try_from(ply).expect("search ply must be non-negative"),
+            )
+        })
+    }
+
+    fn store_tt_training_trace(&mut self, key: u64, depth: u8, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.store_tt(
+                key,
+                depth,
+                usize::try_from(ply).expect("search ply must be non-negative"),
+            );
+        }
+    }
+
     fn record_state(&mut self) -> Result<(), SearchInterrupted> {
         if let Some(budget) = &self.node_budget {
             budget.record_alpha_beta()?;
@@ -968,7 +1075,15 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
         ordering,
         qsearch_limits,
         None,
+        false,
     )
+    .map(|execution| execution.summary)
+}
+
+struct SearchExecutionSummary {
+    summary: SearchSummary,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    training_trace: Option<SearchTrainingTrace>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -981,7 +1096,8 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
     ordering: &mut SearchOrdering,
     qsearch_limits: QsearchLimits,
     node_budget: Option<Arc<SharedNodeBudget>>,
-) -> Result<SearchSummary, SearchInterrupted> {
+    collect_training_trace: bool,
+) -> Result<SearchExecutionSummary, SearchInterrupted> {
     let started_at = Instant::now();
     tt.new_search();
     let root_state = match &evaluation {
@@ -1002,6 +1118,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits,
         node_budget,
+        training_trace: collect_training_trace.then(TrainingTraceCollector::default),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -1015,15 +1132,22 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
 
     ctx.tt_stats.tt_hashfull = ctx.tt.hashfull(0);
 
-    Ok(SearchSummary {
-        best_move,
-        best_score,
-        elapsed_ms,
-        states: ctx.states,
-        nps,
-        tt_stats: ctx.tt_stats,
-        ordering_stats: ctx.ordering_stats,
-        qsearch_stats: ctx.qsearch_stats,
+    let training_trace = ctx
+        .training_trace
+        .as_ref()
+        .and_then(TrainingTraceCollector::root);
+    Ok(SearchExecutionSummary {
+        summary: SearchSummary {
+            best_move,
+            best_score,
+            elapsed_ms,
+            states: ctx.states,
+            nps,
+            tt_stats: ctx.tt_stats,
+            ordering_stats: ctx.ordering_stats,
+            qsearch_stats: ctx.qsearch_stats,
+        },
+        training_trace,
     })
 }
 
@@ -1034,7 +1158,8 @@ fn search_board_with_node_budget_in_workspace(
     max_depth: u8,
     evaluation: EvaluationStrategy,
     workspace: &mut SearchWorkspace,
-) -> Result<NodeBudgetSearchSummary, String> {
+    collect_training_trace: bool,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
     if max_nodes == 0 {
         return Err("node budget must be at least 1".to_string());
     }
@@ -1049,6 +1174,7 @@ fn search_board_with_node_budget_in_workspace(
     let mut best_move = None;
     let mut best_score = None;
     let mut completed_depth = 0;
+    let mut training_trace = None;
 
     for depth in 1..=max_depth {
         match search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
@@ -1060,28 +1186,33 @@ fn search_board_with_node_budget_in_workspace(
             &mut workspace.ordering,
             qsearch_limits(),
             Some(Arc::clone(&budget)),
+            collect_training_trace,
         ) {
-            Ok(summary) => {
-                best_move = summary.best_move;
-                best_score = summary.best_score;
+            Ok(execution) => {
+                best_move = execution.summary.best_move;
+                best_score = execution.summary.best_score;
                 completed_depth = depth;
+                training_trace = execution.training_trace;
             }
             Err(SearchInterrupted) => break,
         }
     }
 
     let (alpha_beta_nodes, qsearch_nodes, total_nodes) = budget.counts();
-    Ok(NodeBudgetSearchSummary {
-        best_move,
-        best_score,
-        completed_depth,
-        exhausted: total_nodes == max_nodes,
-        elapsed_ms: elapsed_ms_since(started_at).max(0.0),
-        node_limit: max_nodes,
-        alpha_beta_nodes,
-        qsearch_nodes,
-        total_nodes,
-    })
+    Ok((
+        NodeBudgetSearchSummary {
+            best_move,
+            best_score,
+            completed_depth,
+            exhausted: total_nodes == max_nodes,
+            elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+            node_limit: max_nodes,
+            alpha_beta_nodes,
+            qsearch_nodes,
+            total_nodes,
+        },
+        training_trace,
+    ))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1860,7 +1991,9 @@ pub fn search_board_impl_handcrafted_with_node_budget_in_workspace(
         max_depth,
         EvaluationStrategy::Handcrafted,
         workspace,
+        false,
     )
+    .map(|(summary, _)| summary)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1879,6 +2012,46 @@ pub fn search_board_impl_with_eval_mode_and_node_budget_in_workspace(
         max_depth,
         EvaluationStrategy::Nnue { model, mode },
         workspace,
+        false,
+    )
+    .map(|(summary, _)| summary)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+        true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+        true,
     )
 }
 
@@ -1909,6 +2082,62 @@ pub fn search_board_impl_handcrafted_in_workspace(
         workspace,
     )
     .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+        board,
+        depth.max(1),
+        evaluation,
+        None,
+        &mut workspace.tt,
+        &mut workspace.ordering,
+        qsearch_limits(),
+        None,
+        true,
+    )
+    .map(|execution| (execution.summary, execution.training_trace))
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_training_trace_in_workspace(
+        board,
+        depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_training_trace_in_workspace(
+        board,
+        depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+    )
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
@@ -2101,9 +2330,11 @@ fn search_best_move(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<Option<(Move, i32)>, SearchInterrupted> {
+    ctx.clear_training_trace(0);
     ctx.record_state()?;
     ctx.check_deadline()?;
-    if terminal_score_for_side_to_move(board, 0).is_some() {
+    if let Some(terminal) = terminal_score_for_side_to_move(board, 0) {
+        ctx.set_training_leaf(board, 0, terminal, true);
         return Ok(None);
     }
     let key = board.hash();
@@ -2132,6 +2363,7 @@ fn search_best_move(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, 1) {
+            ctx.set_training_leaf(&child, 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2148,6 +2380,7 @@ fn search_best_move(
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
+            ctx.promote_child_training_trace(0);
         }
         alpha = alpha.max(score);
     }
@@ -2178,9 +2411,11 @@ fn negamax(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<i32, SearchInterrupted> {
+    ctx.clear_training_trace(ply);
     ctx.record_state()?;
     ctx.check_deadline()?;
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
     if depth == 0 {
@@ -2206,8 +2441,10 @@ fn negamax(
         let tt_score = score_from_tt(data.score, ply);
         tt_move = data.best_move;
         if data.depth >= depth && tt_bound_can_cutoff(data.bound, tt_score, alpha, beta) {
-            ctx.tt_stats.tt_cutoffs += 1;
-            return Ok(tt_score);
+            if ctx.restore_tt_training_trace(key, data.depth, ply) {
+                ctx.tt_stats.tt_cutoffs += 1;
+                return Ok(tt_score);
+            }
         }
     }
 
@@ -2228,6 +2465,7 @@ fn negamax(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            ctx.set_training_leaf(&child, ply + 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2236,6 +2474,7 @@ fn negamax(
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
+            ctx.promote_child_training_trace(ply);
         }
         if score > alpha {
             alpha = score;
@@ -2282,19 +2521,24 @@ fn quiescence(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<i32, SearchInterrupted> {
+    ctx.clear_training_trace(ply);
     ctx.check_deadline()?;
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
     if !ctx.record_qnode(qply)? || qply >= ctx.qsearch_limits.max_ply {
         ctx.qsearch_stats.qsearch_cap_hits += u64::from(qply >= ctx.qsearch_limits.max_ply);
-        return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
+        let score = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        ctx.set_training_leaf(board, ply, score, false);
+        return Ok(score);
     }
 
     let in_check = !board.checkers().is_empty();
     let mut stand_pat_for_delta = None;
     if !in_check {
         let stand_pat = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        ctx.set_training_leaf(board, ply, stand_pat, false);
         if stand_pat >= beta {
             return Ok(stand_pat);
         }
@@ -2308,6 +2552,7 @@ fn quiescence(
     } else {
         QsearchMovePicker::new_tactical(board)
     };
+    let mut in_check_best_score = None;
 
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
@@ -2327,6 +2572,7 @@ fn quiescence(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            ctx.set_training_leaf(&child, ply + 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2343,14 +2589,26 @@ fn quiescence(
         };
 
         if score >= beta {
+            ctx.promote_child_training_trace(ply);
             return Ok(score);
         }
-        alpha = alpha.max(score);
+        if in_check_best_score.is_none_or(|best| score > best) {
+            in_check_best_score = Some(score);
+            if in_check {
+                ctx.promote_child_training_trace(ply);
+            }
+        }
+        if score > alpha {
+            alpha = score;
+            ctx.promote_child_training_trace(ply);
+        }
     }
 
     if in_check {
         if !searched_move {
-            return Ok(-MATE_SCORE + ply);
+            let score = -MATE_SCORE + ply;
+            ctx.set_training_leaf(board, ply, score, true);
+            return Ok(score);
         }
         return Ok(alpha);
     }
@@ -2364,6 +2622,7 @@ fn quiescence(
             let mut child = board.clone();
             child.play_unchecked(mv);
             let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+                ctx.set_training_leaf(&child, ply + 1, terminal, true);
                 -terminal
             } else {
                 let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2380,9 +2639,13 @@ fn quiescence(
             };
 
             if score >= beta {
+                ctx.promote_child_training_trace(ply);
                 return Ok(score);
             }
-            alpha = alpha.max(score);
+            if score > alpha {
+                alpha = score;
+                ctx.promote_child_training_trace(ply);
+            }
         }
     }
 
@@ -2426,6 +2689,7 @@ fn store_tt_search_result(
     );
     if stored {
         ctx.tt_stats.tt_stores += 1;
+        ctx.store_tt_training_trace(key, depth, ply);
     }
     if collision {
         ctx.tt_stats.tt_collisions += 1;
@@ -2730,6 +2994,7 @@ mod tests {
             qsearch_stats: SearchQsearchStats::default(),
             qsearch_limits,
             node_budget: None,
+            training_trace: None,
         }
     }
 
@@ -2779,6 +3044,30 @@ mod tests {
         );
         let score = quiescence(board, alpha, beta, 0, qply, check_budget, &mut ctx, None).unwrap();
         (score, ctx.qsearch_stats)
+    }
+
+    fn qsearch_handcrafted_trace(board: &Board) -> (i32, SearchTrainingTrace) {
+        let mut tt = TranspositionTable::default();
+        let mut ordering = SearchOrdering::default();
+        let mut ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_limits());
+        ctx.training_trace = Some(TrainingTraceCollector::default());
+        let score = quiescence(
+            board,
+            -INF_SCORE,
+            INF_SCORE,
+            0,
+            0,
+            qsearch_limits().check_budget,
+            &mut ctx,
+            None,
+        )
+        .unwrap();
+        let trace = ctx
+            .training_trace
+            .as_ref()
+            .and_then(TrainingTraceCollector::root)
+            .expect("qsearch should produce a training trace");
+        (score, trace)
     }
 
     #[cfg(not(any(
@@ -3071,6 +3360,62 @@ mod tests {
     }
 
     #[test]
+    fn training_trace_does_not_change_fixed_node_search() {
+        let board = Board::startpos();
+        let mut normal_workspace = SearchWorkspace::default();
+        let normal = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut normal_workspace,
+        )
+        .unwrap();
+        let mut traced_workspace = SearchWorkspace::default();
+        let (traced, trace) =
+            search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                &board,
+                5_000,
+                64,
+                &mut traced_workspace,
+            )
+            .unwrap();
+
+        assert_eq!(normal.best_move, traced.best_move);
+        assert_eq!(normal.best_score, traced.best_score);
+        assert_eq!(normal.completed_depth, traced.completed_depth);
+        assert_eq!(normal.alpha_beta_nodes, traced.alpha_beta_nodes);
+        assert_eq!(normal.qsearch_nodes, traced.qsearch_nodes);
+        assert_eq!(normal.total_nodes, traced.total_nodes);
+        assert!(trace.is_some());
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn missing_trace_is_confined_to_rejectable_anhoku_mate_position() {
+        let board = Board::from_sfen(
+            "n2+Rgks1l/l1G3g2/ppp1+Sp2p/6pR1/1P7/4P4/P1PPnPP1P/5GK2/L+p1s2SNL b N3P2b 53",
+        )
+        .unwrap();
+        let mut workspace = SearchWorkspace::default();
+        let (summary, trace) =
+            search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                &board,
+                50_000,
+                64,
+                &mut workspace,
+            )
+            .unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert!(
+            summary
+                .best_score
+                .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD)
+        );
+        assert!(trace.as_ref().is_none_or(|trace| trace.terminal));
+    }
+
+    #[test]
     fn fixed_node_search_respects_depth_cap_without_spending_the_budget() {
         let board = Board::startpos();
         let mut workspace = SearchWorkspace::default();
@@ -3088,6 +3433,46 @@ mod tests {
         assert_eq!(
             summary.total_nodes,
             summary.alpha_beta_nodes + summary.qsearch_nodes
+        );
+    }
+
+    #[test]
+    fn qsearch_training_trace_is_deterministic() {
+        let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1").unwrap();
+        let first = qsearch_handcrafted_trace(&board);
+        let second = qsearch_handcrafted_trace(&board);
+
+        assert_eq!(first, second);
+        assert!(!first.1.terminal);
+        assert!(first.1.root_ply_distance > 0);
+        assert!(first.1.leaf_board.checkers().is_empty());
+        assert_eq!(
+            first.1.static_eval,
+            static_handcrafted_eval(&first.1.leaf_board)
+        );
+        assert!(!first.1.leaf_board.has(Color::White, Piece::Rook));
+    }
+
+    #[test]
+    fn qsearch_training_trace_follows_promotions_and_check_evasions() {
+        let promotion = Board::from_sfen("4k4/9/4S4/9/9/9/9/9/4K4 b - 1").unwrap();
+        let (_, promotion_trace) = qsearch_handcrafted_trace(&promotion);
+        assert!(promotion_trace.root_ply_distance > 0);
+        assert!(promotion_trace.leaf_board.has(Color::Black, Piece::PSilver));
+        assert_eq!(
+            promotion_trace.static_eval,
+            static_handcrafted_eval(&promotion_trace.leaf_board)
+        );
+
+        let in_check = Board::from_sfen("9/9/9/9/9/9/9/8k/3rK4 b - 1").unwrap();
+        assert!(!in_check.checkers().is_empty());
+        let (_, evasion_trace) = qsearch_handcrafted_trace(&in_check);
+        assert!(evasion_trace.root_ply_distance > 0);
+        assert!(!evasion_trace.terminal);
+        assert!(evasion_trace.leaf_board.checkers().is_empty());
+        assert_eq!(
+            evasion_trace.static_eval,
+            static_handcrafted_eval(&evasion_trace.leaf_board)
         );
     }
 

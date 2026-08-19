@@ -118,6 +118,10 @@ Key fields:
   - fixed-node labels count both alpha-beta entries and qsearch entries under
     `node_counting_version = "alpha-beta-plus-qsearch-v1"`; the shared budget
     has zero overshoot, and the manifest reports the two counters separately
+  - `position_policy = "root-position"` preserves legacy records and is the
+    default; `position_policy = "qsearch-pv-leaf"` stores the final traced PV
+    leaf with its static evaluation while retaining the root game ply in the
+    72-byte record
   - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
     shallow, for example `1`, when running expensive label depths
   - `self_play_move_policy = "uniform-rollout-v1"` makes label search observational:
@@ -128,7 +132,8 @@ Key fields:
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions. Each shard records the
     git revision, config-file hash, label budget type/nodes/depth cap/node-counting
-    version, sampling/self-play policy, and teacher-move contract; if a resumed
+    version, position/trace policy, sampling/self-play policy, and teacher-move
+    contract; if a resumed
     shard's identity differs from the current run (e.g. a local patch that doesn't affect
     data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
@@ -177,6 +182,9 @@ This:
 - labels sampled positions with either the depth budget in `data.search_depth`
   or the fixed-node budget in `data.label_search_nodes`; node-budgeted search
   retains the last fully completed iterative-deepening result
+- optionally replaces each sampled root with its deterministic qsearch-PV leaf,
+  rejects terminal and mate-saturated examples, and orients the final game
+  result to the leaf side to move
 - uses `data.rollout_search_depth` for every post-opening self-play move under
   `uniform-rollout-v1`, independently of whether the position is sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
@@ -208,6 +216,18 @@ their `label_search_total_nodes`, average `label_nodes_per_search`, and elapsed
 label/rollout search seconds. `generation_cpu_seconds` is the sum of elapsed
 teacher-search time across worker jobs; `elapsed_seconds` remains split wall
 time. Rollout moves always retain their independent `rollout_search_depth`.
+
+Run the Phase 5 qsearch-PV leaf smoke configuration with:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6-phase5.smoke.toml --no-resume
+```
+
+Leaf manifests use `training_trace_version = "qsearch-pv-v1"` and report root
+ply bounds, leaf-distance bounds/mean, candidate count, and separate terminal
+and mate-score rejection counts. The binary ABI stays 72 bytes: its ply remains
+the sampling root ply, while leaf distance is aggregate audit metadata.
 
 Suite files use one `<stable-opening-id><TAB><SFEN>` entry per line. Blank lines and
 text after `#` are ignored. Validation rejects malformed SFENs, duplicate IDs,
@@ -281,7 +301,8 @@ length, and teacher-move encoding. For a legacy manifest, add `--config FILE` to
 recover seed, ruleset, feature family, and opening length. The report validates the
 exact byte length and includes the file SHA-256, side/ply/outcome counters, score
 statistics and nearest-rank quantiles, mate-like scores (`abs(score) >= 29000`),
-clamped scores, nonzero teacher moves, and samples taken during the opening.
+clamped scores, nonzero teacher moves, samples taken during the opening, and
+the position/trace policy with root-ply, leaf-distance, and rejection metadata.
 
 Bundle generated data for a CUDA training host:
 

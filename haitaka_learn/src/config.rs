@@ -16,6 +16,27 @@ pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
 pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
 pub const TEACHER_MOVE_ENCODING: &str = "unavailable";
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PositionPolicy {
+    #[default]
+    RootPosition,
+    QsearchPvLeaf,
+}
+
+impl PositionPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::RootPosition => "root-position",
+            Self::QsearchPvLeaf => "qsearch-pv-leaf",
+        }
+    }
+
+    pub const fn uses_training_trace(self) -> bool {
+        matches!(self, Self::QsearchPvLeaf)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LabelSearchBudget {
     Depth { depth: u8 },
@@ -778,6 +799,8 @@ pub struct DataConfig {
     pub label_search_nodes: Option<u64>,
     #[serde(default)]
     pub label_search_max_depth: Option<u8>,
+    #[serde(default)]
+    pub position_policy: PositionPolicy,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
     #[serde(default)]
@@ -829,6 +852,7 @@ impl Default for DataConfig {
             search_depth: None,
             label_search_nodes: None,
             label_search_max_depth: None,
+            position_policy: PositionPolicy::default(),
             rollout_search_depth: default_rollout_search_depth(),
             self_play_move_policy: SelfPlayMovePolicy::default(),
             opening_random_plies: default_opening_random_plies(),
@@ -1382,6 +1406,34 @@ label_search_max_depth = 64
                 max_depth: 64
             }
         );
+    }
+
+    #[test]
+    fn qsearch_pv_leaf_position_policy_is_opt_in() {
+        let root: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        assert_eq!(root.data.position_policy, PositionPolicy::RootPosition);
+
+        let leaf: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+position_policy = "qsearch-pv-leaf"
+"#,
+        )
+        .unwrap();
+        assert_eq!(leaf.data.position_policy, PositionPolicy::QsearchPvLeaf);
     }
 
     #[test]
