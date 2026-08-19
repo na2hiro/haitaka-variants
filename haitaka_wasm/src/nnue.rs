@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::nnue_kernels::AffineKernel;
 use haitaka::{BitBoard, Board, Color, Move, Piece, Square};
 #[cfg(any(
     feature = "neko",
@@ -365,6 +366,15 @@ impl NnueModel {
         self.evaluate_from_state(board, &state)
     }
 
+    #[doc(hidden)]
+    pub fn force_affine_kernel(&mut self, kernel: AffineKernel) {
+        for bucket in &mut self.buckets {
+            bucket.hidden1.kernel = kernel;
+            bucket.hidden2.kernel = kernel;
+            bucket.output.kernel = kernel;
+        }
+    }
+
     pub fn apply_move(
         &self,
         parent_board: &Board,
@@ -607,6 +617,7 @@ struct AffineLayer {
     padded_input_dimensions: usize,
     biases: Vec<i32>,
     weights: Vec<i8>,
+    kernel: AffineKernel,
 }
 
 impl AffineLayer {
@@ -620,31 +631,25 @@ impl AffineLayer {
             padded_input_dimensions,
             biases: reader.read_i32_vec(output_dimensions)?,
             weights: reader.read_i8_vec(output_dimensions * padded_input_dimensions)?,
+            kernel: AffineKernel::detected(),
         })
     }
 
     fn forward_into(&self, input: &[u8], output: &mut [i32]) {
         debug_assert_eq!(output.len(), self.output_dimensions);
-        for (row, out) in output.iter_mut().enumerate() {
-            let offset = row * self.padded_input_dimensions;
-            let mut sum = self.biases[row];
-            for (value, &weight) in input
-                .iter()
-                .zip(&self.weights[offset..offset + input.len()])
-            {
-                sum += i32::from(weight) * i32::from(*value);
-            }
-            *out = sum;
-        }
+        self.kernel.forward_into(
+            input,
+            &self.weights,
+            &self.biases,
+            self.padded_input_dimensions,
+            output,
+        );
     }
 
     fn forward_single(&self, input: &[u8]) -> i32 {
         debug_assert_eq!(self.output_dimensions, 1);
-        let mut sum = self.biases[0];
-        for (value, &weight) in input.iter().zip(&self.weights[..input.len()]) {
-            sum += i32::from(weight) * i32::from(*value);
-        }
-        sum
+        self.kernel
+            .forward_single(input, &self.weights, self.biases[0])
     }
 }
 
@@ -1605,17 +1610,150 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use rand::prelude::IndexedRandom;
-    use rand::rng;
+    use rand::{Rng, SeedableRng, rng, rngs::StdRng};
     use std::path::PathBuf;
 
     fn load_test_nnue() -> Option<NnueModel> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
         let bytes = std::fs::read(path).ok()?;
         NnueModel::from_bytes(&bytes).ok()
+    }
+
+    fn load_phase6_test_nnue() -> Option<NnueModel> {
+        let path = std::env::var_os("HAITAKA_NNUE_TEST_MODEL")?;
+        let bytes = std::fs::read(path).ok()?;
+        NnueModel::from_bytes(&bytes).ok()
+    }
+
+    fn assert_affine_layer_matches_scalar(
+        layer: &AffineLayer,
+        input_dimensions: usize,
+        rng: &mut StdRng,
+    ) {
+        let input: Vec<u8> = (0..input_dimensions)
+            .map(|_| rng.random_range(0..=127))
+            .collect();
+        let mut scalar = vec![0; layer.output_dimensions];
+        let mut optimized = vec![0; layer.output_dimensions];
+        AffineKernel::scalar().forward_into(
+            &input,
+            &layer.weights,
+            &layer.biases,
+            layer.padded_input_dimensions,
+            &mut scalar,
+        );
+        layer.kernel.forward_into(
+            &input,
+            &layer.weights,
+            &layer.biases,
+            layer.padded_input_dimensions,
+            &mut optimized,
+        );
+        assert_eq!(optimized, scalar, "{} kernel", layer.kernel.name());
+    }
+
+    #[test]
+    fn real_donor_model_affine_layers_and_evaluation_match_scalar() {
+        let Some(model) = load_phase6_test_nnue() else {
+            return;
+        };
+        assert_eq!(model.family, FeatureFamily::HalfKAv2DonorSingle);
+        assert_ne!(AffineKernel::detected(), AffineKernel::scalar());
+
+        let mut rng = StdRng::seed_from_u64(0x600d_affe);
+        for bucket in &model.buckets {
+            assert_affine_layer_matches_scalar(
+                &bucket.hidden1,
+                FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS,
+                &mut rng,
+            );
+            assert_affine_layer_matches_scalar(
+                &bucket.hidden2,
+                HIDDEN_LAYER_1_DIMENSIONS,
+                &mut rng,
+            );
+            assert_affine_layer_matches_scalar(&bucket.output, HIDDEN_LAYER_2_DIMENSIONS, &mut rng);
+        }
+
+        let mut scalar_model = model.clone();
+        scalar_model.force_affine_kernel(AffineKernel::scalar());
+        for sfen in [haitaka::SFEN_STARTPOS, haitaka::SFEN_6PIECE_HANDICAP] {
+            let board = Board::from_sfen(sfen).unwrap();
+            let state = model.build_position_state_full(&board);
+            assert_eq!(
+                model.evaluate_from_state(&board, &state),
+                scalar_model.evaluate_from_state(&board, &state),
+            );
+        }
+
+        let optimized_search = crate::search_impl_with_eval_mode(
+            haitaka::SFEN_STARTPOS,
+            3,
+            std::sync::Arc::new(model),
+            crate::SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        let scalar_search = crate::search_impl_with_eval_mode(
+            haitaka::SFEN_STARTPOS,
+            3,
+            std::sync::Arc::new(scalar_model),
+            crate::SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        assert_eq!(optimized_search.best_move, scalar_search.best_move);
+        assert_eq!(optimized_search.best_score, scalar_search.best_score);
+    }
+
+    #[test]
+    fn phase6_100ms_nps_diagnostic() {
+        let Some(model) = load_phase6_test_nnue() else {
+            return;
+        };
+        let mut scalar_model = model.clone();
+        scalar_model.force_affine_kernel(AffineKernel::scalar());
+        let model = std::sync::Arc::new(model);
+        let scalar_model = std::sync::Arc::new(scalar_model);
+
+        let mut optimized_nps = Vec::new();
+        let mut scalar_nps = Vec::new();
+        for _ in 0..3 {
+            let scalar = crate::search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+                haitaka::SFEN_STARTPOS,
+                64,
+                100,
+                scalar_model.clone(),
+                crate::SearchEvalMode::Incremental,
+                false,
+            )
+            .unwrap();
+            let optimized = crate::search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+                haitaka::SFEN_STARTPOS,
+                64,
+                100,
+                model.clone(),
+                crate::SearchEvalMode::Incremental,
+                false,
+            )
+            .unwrap();
+            scalar_nps.push(scalar.nps);
+            optimized_nps.push(optimized.nps);
+        }
+        scalar_nps.sort_by(f64::total_cmp);
+        optimized_nps.sort_by(f64::total_cmp);
+        let scalar_median = scalar_nps[1];
+        let optimized_median = optimized_nps[1];
+        let speedup = optimized_median / scalar_median;
+        eprintln!(
+            "phase6 100ms diagnostic: scalar={scalar_median:.0} NPS, optimized={optimized_median:.0} NPS, speedup={speedup:.2}x"
+        );
+        assert!(
+            speedup >= 1.5,
+            "optimized NNUE NPS speedup {speedup:.2}x is below the Phase 6 gate"
+        );
     }
 
     fn collect_legal_moves(board: &Board) -> Vec<Move> {

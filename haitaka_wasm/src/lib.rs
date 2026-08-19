@@ -1,5 +1,7 @@
 mod movepick;
 mod nnue;
+#[doc(hidden)]
+pub mod nnue_kernels;
 mod tt;
 
 use std::str::FromStr;
@@ -1579,7 +1581,7 @@ pub fn search_board_iterative_deepening_impl(
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 fn search_iterative_deepening_impl_with_deadline(
     sfen: &str,
     max_depth: u8,
@@ -2457,7 +2459,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
     SEARCH_TT.get_or_init(|| RwLock::new(TranspositionTable::default()))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     #[cfg(not(any(

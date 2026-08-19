@@ -1,7 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: active implementation plan
+- Status: Phases 1–3 and 6 complete; Phase 4 pending
 - Created: 2026-08-17
+- Last checked: 2026-08-20
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -86,6 +87,35 @@ the required machine-readable artifacts and one Markdown result document.
 When a phase discovers follow-up work, record it in the plan instead of
 expanding that agent's scope.
 
+## Review Checkpoint (2026-08-20)
+
+Phases 1–3 are complete on this branch, with implementation commits
+`f187708` (Phase 1), `38f7007` (Phase 2), and `6a51121` (Phase 3). The later
+`3841b5e` commit corrects the self-play sampling/label feedback discovered by
+the Phase 3 pilot; it is part of the current v0.6 data path but does not claim
+to complete Phase 4.
+
+Verification completed:
+
+- `cargo test -p haitaka_learn --features anhoku`: 77 passed;
+- `cargo fmt --all -- --check` and `git diff --check` passed;
+- the preserved v0.5.1 audit and v0.6 smoke/pilot audits are present under the
+  ignored `out/` artifacts and match the phase result documents;
+- the v0.6 suite, grouped split, shuffle, identity checks, and teacher-move
+  contract are covered by focused tests and the checked-in configs/docs.
+
+Follow-up notes:
+
+- Phase 3's bounded-memory implementation is documented and its formula is
+  tested, but the focused test uses a small fixture chunk rather than running
+  a stress case at the 1,000,000-record validation cap. Add that benchmark or
+  stress test before relying on the bound for a large production run.
+- The corrected rollout pilot now passes the train-side balance gate, but its
+  small validation split still misses the 60% decisive-outcome bound. A larger
+  validation pilot and the Phase 7 gate are still required; do not start the
+  1M three-seed strength experiment yet.
+- Phase 4 remains the next implementation phase: fixed-node label budgeting.
+
 Common completion gate for implementation phases:
 
 - run `cargo fmt` and the focused package/feature tests;
@@ -114,6 +144,8 @@ Phase 9/10 pipeline-limited result --> Phase 11: one Feature V2 experiment
 ```
 
 ## Phase 1: Audit, Sampling, And Teacher-Move Contract
+
+**Status: complete.** See [the Phase 1 result](../docs/nnue-training-anhoku-v0.6-phase1.md).
 
 This is the first agent assignment. It combines the pieces that must change
 together to make the existing 72-byte dataset semantics measurable and safe.
@@ -184,6 +216,8 @@ search, qsearch-leaf extraction, SIMD, and a 1M run.
 
 ## Phase 2: Versioned Anhoku Opening Suite
 
+**Status: complete.** See [the Phase 2 result](../docs/nnue-training-anhoku-v0.6-phase2.md).
+
 This agent adds the first production-quality replacement for uniform-random
 openings. It does not implement near-best stochastic search.
 
@@ -226,6 +260,8 @@ changes, and training. Add searched-stochastic later only if the suite learning
 curve shows insufficient policy diversity.
 
 ## Phase 3: Deterministic Shuffle And Grouped Validation
+
+**Status: complete.** See [the Phase 3 result](../docs/nnue-training-anhoku-v0.6-phase3.md).
 
 This agent owns dataset ordering and split leakage only.
 
@@ -341,6 +377,8 @@ Out of scope: hard-position mining, multiple teacher types, trainer-format v2,
 SIMD, and training.
 
 ## Phase 6: Vectorized NNUE Inference
+
+**Status: complete.** See [the Phase 6 result](../docs/nnue-training-anhoku-v0.6-phase6.md).
 
 This is one performance-focused agent assignment and can proceed independently
 in a separate worktree.

@@ -117,6 +117,24 @@ cargo test -p haitaka_wasm --features annan
 cargo bench -p haitaka_wasm --bench nnue -- --noplot
 ```
 
+NNUE affine inference selects AVX2 or NEON once when a model is loaded and
+otherwise keeps the scalar kernel. WASM uses scalar inference by default; enable
+SIMD128 explicitly for compatible deployment targets:
+
+```bash
+RUSTFLAGS="-C target-feature=+simd128" \
+  wasm-pack build haitaka_wasm --target web --out-dir pkg --release
+```
+
+The NNUE Criterion benchmark always measures synthetic dense-layer shapes. Set
+`HAITAKA_NNUE_BENCH_MODEL` to include full-refresh, incremental-state, and
+search measurements using a real model:
+
+```bash
+HAITAKA_NNUE_BENCH_MODEL=/path/to/model.nnue \
+  cargo bench -p haitaka_wasm --features anhoku --bench nnue -- --noplot
+```
+
 ## Notes
 
 - NNUE loading is currently intended for standard shogi.
