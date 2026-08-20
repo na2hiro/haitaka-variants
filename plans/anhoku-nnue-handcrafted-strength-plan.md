@@ -122,6 +122,13 @@ Follow-up notes:
   for plumbing tests. The prepared lanes now use 50,000 nodes and versioned
   root/leaf-side, distance-parity, rejection-result, and per-opening telemetry;
   both lanes must be re-piloted before Phase 8 strength training.
+- The 50,000-node re-pilot passed incomplete-label rejection in train (0.29%)
+  but still failed validation (1.39%). Detailed telemetry ruled out a
+  side/orientation implementation bug: qsearch trace parity is correlated with
+  root side and opening, producing 43.10/56.90 train and 56.96/43.04 validation
+  leaf-side splits. Replacement sampling after leaf rejection and the two-group
+  validation set are avoidable amplifiers. Phase 8 remains gated pending an
+  attempted-candidate cap and a broader or cross-validated opening holdout.
 
 Common completion gate for implementation phases:
 
