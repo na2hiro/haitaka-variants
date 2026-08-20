@@ -40,7 +40,7 @@ CALIBRATION_BASES = {
     "root-position": REPO_ROOT / "haitaka_learn.anhoku-v0.6-phase4.smoke.toml",
     "qsearch-pv-leaf": REPO_ROOT / "haitaka_learn.anhoku-v0.6-phase5.smoke.toml",
 }
-PHASE8_NODE_BUDGET = 20_000
+PHASE8_NODE_BUDGET = 50_000
 
 TEACHER_DATA_KEYS = {
     "search_depth",
@@ -154,7 +154,7 @@ def check_configs(output: Path | None) -> int:
         "errors": errors,
         "launch_gates": [
             "Phase 7 explicitly approves Phase 8",
-            "a representative pilot keeps the 20,000-node incomplete-label rejection rate at or below 1%",
+            "a representative pilot keeps the 50,000-node incomplete-label rejection rate at or below 1%",
             "the external trainer records initialization seeds 80, 81, and 82",
         ],
     }

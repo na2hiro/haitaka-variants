@@ -38,6 +38,7 @@ use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
+const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -108,10 +109,13 @@ struct DatasetManifest {
     position_policy: String,
     training_trace_version: String,
     incomplete_label_policy: String,
+    position_selection_audit_version: String,
     candidate_positions: u64,
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
+    position_selection: PositionSelectionStats,
+    opening_position_selection: BTreeMap<String, PositionSelectionStats>,
     root_ply_min: Option<u16>,
     root_ply_max: Option<u16>,
     leaf_distance_min: Option<u16>,
@@ -204,6 +208,8 @@ struct ShardManifest {
     #[serde(default = "legacy_incomplete_label_policy")]
     incomplete_label_policy: String,
     #[serde(default)]
+    position_selection_audit_version: String,
+    #[serde(default)]
     candidate_positions: u64,
     #[serde(default)]
     rejected_incomplete_label_positions: u64,
@@ -211,6 +217,10 @@ struct ShardManifest {
     rejected_terminal_positions: u64,
     #[serde(default)]
     rejected_mate_score_positions: u64,
+    #[serde(default)]
+    position_selection: PositionSelectionStats,
+    #[serde(default)]
+    opening_position_selection: BTreeMap<String, PositionSelectionStats>,
     #[serde(default)]
     root_ply_min: Option<u16>,
     #[serde(default)]
@@ -378,6 +388,160 @@ struct GameEntries {
     opening: GameOpeningMetadata,
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+struct PositionSelectionStats {
+    candidate_root_black: u64,
+    candidate_root_white: u64,
+    stored_root_black_leaf_black: u64,
+    stored_root_black_leaf_white: u64,
+    stored_root_white_leaf_black: u64,
+    stored_root_white_leaf_white: u64,
+    stored_leaf_distance_even: u64,
+    stored_leaf_distance_odd: u64,
+    rejected_incomplete_root_black: u64,
+    rejected_incomplete_root_white: u64,
+    rejected_terminal_root_black: u64,
+    rejected_terminal_root_white: u64,
+    rejected_terminal_leaf_black: u64,
+    rejected_terminal_leaf_white: u64,
+    rejected_mate_root_black: u64,
+    rejected_mate_root_white: u64,
+    rejected_mate_leaf_black: u64,
+    rejected_mate_leaf_white: u64,
+    rejected_incomplete_game_win: u64,
+    rejected_incomplete_game_loss: u64,
+    rejected_incomplete_game_draw: u64,
+    rejected_terminal_game_win: u64,
+    rejected_terminal_game_loss: u64,
+    rejected_terminal_game_draw: u64,
+    rejected_mate_game_win: u64,
+    rejected_mate_game_loss: u64,
+    rejected_mate_game_draw: u64,
+}
+
+impl PositionSelectionStats {
+    fn add(&mut self, other: Self) {
+        macro_rules! add_fields {
+            ($($field:ident),+ $(,)?) => {
+                $(self.$field += other.$field;)+
+            };
+        }
+        add_fields!(
+            candidate_root_black,
+            candidate_root_white,
+            stored_root_black_leaf_black,
+            stored_root_black_leaf_white,
+            stored_root_white_leaf_black,
+            stored_root_white_leaf_white,
+            stored_leaf_distance_even,
+            stored_leaf_distance_odd,
+            rejected_incomplete_root_black,
+            rejected_incomplete_root_white,
+            rejected_terminal_root_black,
+            rejected_terminal_root_white,
+            rejected_terminal_leaf_black,
+            rejected_terminal_leaf_white,
+            rejected_mate_root_black,
+            rejected_mate_root_white,
+            rejected_mate_leaf_black,
+            rejected_mate_leaf_white,
+            rejected_incomplete_game_win,
+            rejected_incomplete_game_loss,
+            rejected_incomplete_game_draw,
+            rejected_terminal_game_win,
+            rejected_terminal_game_loss,
+            rejected_terminal_game_draw,
+            rejected_mate_game_win,
+            rejected_mate_game_loss,
+            rejected_mate_game_draw,
+        );
+    }
+
+    fn record_candidate(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.candidate_root_black += 1,
+            Color::White => self.candidate_root_white += 1,
+        }
+    }
+
+    fn record_stored(&mut self, root_side: Color, leaf_side: Color, leaf_distance: u16) {
+        match (root_side, leaf_side) {
+            (Color::Black, Color::Black) => self.stored_root_black_leaf_black += 1,
+            (Color::Black, Color::White) => self.stored_root_black_leaf_white += 1,
+            (Color::White, Color::Black) => self.stored_root_white_leaf_black += 1,
+            (Color::White, Color::White) => self.stored_root_white_leaf_white += 1,
+        }
+        if leaf_distance % 2 == 0 {
+            self.stored_leaf_distance_even += 1;
+        } else {
+            self.stored_leaf_distance_odd += 1;
+        }
+    }
+
+    fn record_incomplete(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_incomplete_root_black += 1,
+            Color::White => self.rejected_incomplete_root_white += 1,
+        }
+    }
+
+    fn record_terminal(&mut self, root_side: Color, leaf_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_terminal_root_black += 1,
+            Color::White => self.rejected_terminal_root_white += 1,
+        }
+        match leaf_side {
+            Color::Black => self.rejected_terminal_leaf_black += 1,
+            Color::White => self.rejected_terminal_leaf_white += 1,
+        }
+    }
+
+    fn record_mate(&mut self, root_side: Color, leaf_side: Option<Color>) {
+        match root_side {
+            Color::Black => self.rejected_mate_root_black += 1,
+            Color::White => self.rejected_mate_root_white += 1,
+        }
+        match leaf_side {
+            Some(Color::Black) => self.rejected_mate_leaf_black += 1,
+            Some(Color::White) => self.rejected_mate_leaf_white += 1,
+            None => {}
+        }
+    }
+
+    fn record_rejection_outcomes(&mut self, outcome: GameOutcome) {
+        let incomplete = relative_rejection_counts(
+            self.rejected_incomplete_root_black,
+            self.rejected_incomplete_root_white,
+            outcome,
+        );
+        let terminal = relative_rejection_counts(
+            self.rejected_terminal_root_black,
+            self.rejected_terminal_root_white,
+            outcome,
+        );
+        let mate = relative_rejection_counts(
+            self.rejected_mate_root_black,
+            self.rejected_mate_root_white,
+            outcome,
+        );
+        (
+            self.rejected_incomplete_game_win,
+            self.rejected_incomplete_game_loss,
+            self.rejected_incomplete_game_draw,
+        ) = incomplete;
+        (
+            self.rejected_terminal_game_win,
+            self.rejected_terminal_game_loss,
+            self.rejected_terminal_game_draw,
+        ) = terminal;
+        (
+            self.rejected_mate_game_win,
+            self.rejected_mate_game_loss,
+            self.rejected_mate_game_draw,
+        ) = mate;
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 struct SearchUseStats {
     label_searches: u64,
@@ -397,6 +561,7 @@ struct SearchUseStats {
     leaf_distance_min: Option<u16>,
     leaf_distance_max: Option<u16>,
     leaf_distance_total: u64,
+    position_selection: PositionSelectionStats,
 }
 
 impl SearchUseStats {
@@ -432,18 +597,28 @@ impl SearchUseStats {
         self.leaf_distance_min = option_min(self.leaf_distance_min, other.leaf_distance_min);
         self.leaf_distance_max = option_max(self.leaf_distance_max, other.leaf_distance_max);
         self.leaf_distance_total += other.leaf_distance_total;
+        self.position_selection.add(other.position_selection);
     }
 
-    fn record_candidate(&mut self) {
+    fn record_candidate(&mut self, root_side: Color) {
         self.candidate_positions += 1;
+        self.position_selection.record_candidate(root_side);
     }
 
-    fn record_stored_position(&mut self, root_ply: u16, leaf_distance: u16) {
+    fn record_stored_position(
+        &mut self,
+        root_ply: u16,
+        leaf_distance: u16,
+        root_side: Color,
+        leaf_side: Color,
+    ) {
         self.root_ply_min = option_min(self.root_ply_min, Some(root_ply));
         self.root_ply_max = option_max(self.root_ply_max, Some(root_ply));
         self.leaf_distance_min = option_min(self.leaf_distance_min, Some(leaf_distance));
         self.leaf_distance_max = option_max(self.leaf_distance_max, Some(leaf_distance));
         self.leaf_distance_total += u64::from(leaf_distance);
+        self.position_selection
+            .record_stored(root_side, leaf_side, leaf_distance);
     }
 }
 
@@ -478,6 +653,21 @@ fn leaf_distance_mean(stats: &SearchUseStats) -> f64 {
     }
 }
 
+fn aggregate_opening_position_selection(
+    shard_results: &[ShardResult],
+) -> BTreeMap<String, PositionSelectionStats> {
+    let mut aggregate = BTreeMap::new();
+    for result in shard_results {
+        for (opening_id, stats) in &result.manifest.opening_position_selection {
+            aggregate
+                .entry(opening_id.clone())
+                .or_insert_with(PositionSelectionStats::default)
+                .add(*stats);
+        }
+    }
+    aggregate
+}
+
 impl From<&ShardManifest> for SearchUseStats {
     fn from(manifest: &ShardManifest) -> Self {
         Self {
@@ -502,6 +692,7 @@ impl From<&ShardManifest> for SearchUseStats {
             leaf_distance_min: manifest.leaf_distance_min,
             leaf_distance_max: manifest.leaf_distance_max,
             leaf_distance_total: manifest.leaf_distance_total,
+            position_selection: manifest.position_selection,
         }
     }
 }
@@ -510,6 +701,18 @@ impl From<&ShardManifest> for SearchUseStats {
 enum GameOutcome {
     Draw,
     Winner(Color),
+}
+
+fn relative_rejection_counts(
+    black_root: u64,
+    white_root: u64,
+    outcome: GameOutcome,
+) -> (u64, u64, u64) {
+    match outcome {
+        GameOutcome::Draw => (0, 0, black_root + white_root),
+        GameOutcome::Winner(Color::Black) => (black_root, white_root, 0),
+        GameOutcome::Winner(Color::White) => (white_root, black_root, 0),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -724,6 +927,7 @@ fn apply_incomplete_label_policy(
     summary: TeacherSearchSummary,
     budget: LabelSearchBudget,
     policy: IncompleteLabelPolicy,
+    root_side: Color,
     stats: &mut SearchUseStats,
 ) -> Result<Option<TeacherSearchSummary>> {
     if !matches!(budget, LabelSearchBudget::Nodes { .. })
@@ -732,7 +936,7 @@ fn apply_incomplete_label_policy(
         return Ok(Some(summary));
     }
 
-    stats.record_candidate();
+    stats.record_candidate(root_side);
     match policy {
         IncompleteLabelPolicy::Error => {
             let nodes = budget.nodes().unwrap_or_default();
@@ -742,6 +946,7 @@ fn apply_incomplete_label_policy(
         }
         IncompleteLabelPolicy::RejectPosition => {
             stats.rejected_incomplete_label_positions += 1;
+            stats.position_selection.record_incomplete(root_side);
             Ok(None)
         }
     }
@@ -1067,6 +1272,7 @@ fn generate_split(
         .iter()
         .flat_map(|result| result.manifest.games.iter().cloned())
         .collect::<Vec<_>>();
+    let opening_position_selection = aggregate_opening_position_selection(&shard_results);
     let opening_ids = games
         .iter()
         .map(|game| game.opening_id.clone())
@@ -1139,10 +1345,13 @@ fn generate_split(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
         root_ply_max: search_stats.root_ply_max,
         leaf_distance_min: search_stats.leaf_distance_min,
@@ -1507,6 +1716,7 @@ fn generate_or_reuse_shard(
     let mut sampled_positions = 0u64;
     let mut search_stats = SearchUseStats::default();
     let mut games = Vec::with_capacity(plan.game_count as usize);
+    let mut opening_position_selection = BTreeMap::<String, PositionSelectionStats>::new();
     let mut search_workspace = SearchWorkspace::default();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
@@ -1525,6 +1735,10 @@ fn generate_or_reuse_shard(
         .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
         search_stats.add(game.stats);
+        opening_position_selection
+            .entry(game.opening.opening_id.clone())
+            .or_default()
+            .add(game.stats.position_selection);
         games.push(game.opening);
         writer.write_all(&game.entries)?;
     }
@@ -1582,10 +1796,13 @@ fn generate_or_reuse_shard(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
         root_ply_max: search_stats.root_ply_max,
         leaf_distance_min: search_stats.leaf_distance_min,
@@ -1739,6 +1956,7 @@ fn shard_manifest_matches(
         && manifest.training_trace_version_matches(loaded.config.data.position_policy)
         && manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name()
+        && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -1981,6 +2199,7 @@ fn generate_game_entries(
                 summary,
                 label_search_budget,
                 loaded.config.data.incomplete_label_policy,
+                board.side_to_move(),
                 &mut stats,
             )?
         } else {
@@ -2038,6 +2257,7 @@ fn generate_game_entries(
             haitaka::GameStatus::Ongoing => GameOutcome::Draw,
         }
     };
+    stats.position_selection.record_rejection_outcomes(outcome);
 
     let mut entries = Vec::with_capacity(samples.len() * ENTRY_BYTES);
     for sample in samples {
@@ -2067,14 +2287,15 @@ fn record_pending_sample(
     samples: &mut Vec<PendingSample>,
     stats: &mut SearchUseStats,
 ) -> Result<()> {
-    stats.record_candidate();
+    let root_side = root_board.side_to_move();
+    stats.record_candidate(root_side);
     match position_policy {
         PositionPolicy::RootPosition => {
             let score = summary
                 .best_score
                 .unwrap_or_else(|| terminal_teacher_score(root_board))
                 .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-            stats.record_stored_position(root_ply, 0);
+            stats.record_stored_position(root_ply, 0, root_side, root_side);
             samples.push(PendingSample {
                 board: root_board.clone(),
                 score,
@@ -2085,16 +2306,31 @@ fn record_pending_sample(
         PositionPolicy::QsearchPvLeaf => match summary.training_trace.as_ref() {
             Some(trace) if trace.terminal || !has_both_kings(&trace.leaf_board) => {
                 stats.rejected_terminal_positions += 1;
+                stats
+                    .position_selection
+                    .record_terminal(root_side, trace.leaf_board.side_to_move());
             }
             _ if summary
                 .best_score
                 .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD) =>
             {
                 stats.rejected_mate_score_positions += 1;
+                stats.position_selection.record_mate(
+                    root_side,
+                    summary
+                        .training_trace
+                        .as_ref()
+                        .map(|trace| trace.leaf_board.side_to_move()),
+                );
             }
             Some(trace) => {
                 let score = trace.static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-                stats.record_stored_position(root_ply, trace.root_ply_distance);
+                stats.record_stored_position(
+                    root_ply,
+                    trace.root_ply_distance,
+                    root_side,
+                    trace.leaf_board.side_to_move(),
+                );
                 samples.push(PendingSample {
                     board: trace.leaf_board.clone(),
                     score,
@@ -2388,6 +2624,7 @@ fn merge_split(
         .iter()
         .flat_map(|result| result.manifest.games.iter().cloned())
         .collect::<Vec<_>>();
+    let opening_position_selection = aggregate_opening_position_selection(&shard_results);
     let opening_ids = games
         .iter()
         .map(|game| game.opening_id.clone())
@@ -2459,10 +2696,13 @@ fn merge_split(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
         root_ply_max: search_stats.root_ply_max,
         leaf_distance_min: search_stats.leaf_distance_min,
@@ -2636,6 +2876,10 @@ fn validate_merge_shard(
         manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name(),
         "incomplete_label_policy does not match",
+    )?;
+    ensure_merge(
+        manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION,
+        "position_selection_audit_version does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -4824,6 +5068,26 @@ seed = 9
         assert!(manifest["leaf_distance_mean"].as_f64().unwrap() >= 1.0);
         assert!(manifest["root_ply_min"].is_number());
         assert!(manifest["root_ply_max"].is_number());
+        assert_eq!(
+            manifest["position_selection_audit_version"],
+            POSITION_SELECTION_AUDIT_VERSION
+        );
+        let selection = &manifest["position_selection"];
+        assert_eq!(
+            selection["candidate_root_black"].as_u64().unwrap()
+                + selection["candidate_root_white"].as_u64().unwrap(),
+            candidates
+        );
+        assert_eq!(
+            selection["stored_leaf_distance_even"].as_u64().unwrap()
+                + selection["stored_leaf_distance_odd"].as_u64().unwrap(),
+            stored
+        );
+        assert!(
+            manifest["opening_position_selection"]
+                .as_object()
+                .is_some_and(|openings| !openings.is_empty())
+        );
     }
 
     #[test]
@@ -4905,6 +5169,18 @@ seed = 9
         assert_eq!(stats.candidate_positions, 3);
         assert_eq!(stats.rejected_terminal_positions, 1);
         assert_eq!(stats.rejected_mate_score_positions, 1);
+        assert_eq!(stats.position_selection.candidate_root_black, 3);
+        assert_eq!(stats.position_selection.stored_root_black_leaf_white, 1);
+        assert_eq!(stats.position_selection.stored_leaf_distance_odd, 1);
+        assert_eq!(stats.position_selection.rejected_terminal_root_black, 1);
+        assert_eq!(stats.position_selection.rejected_terminal_leaf_white, 1);
+        assert_eq!(stats.position_selection.rejected_mate_root_black, 1);
+        assert_eq!(stats.position_selection.rejected_mate_leaf_white, 1);
+        stats
+            .position_selection
+            .record_rejection_outcomes(GameOutcome::Winner(root.side_to_move()));
+        assert_eq!(stats.position_selection.rejected_terminal_game_win, 1);
+        assert_eq!(stats.position_selection.rejected_mate_game_win, 1);
     }
 
     #[test]
@@ -4927,18 +5203,26 @@ seed = 9
             incomplete.clone(),
             budget,
             IncompleteLabelPolicy::RejectPosition,
+            Color::White,
             &mut rejected_stats,
         )
         .unwrap();
         assert!(accepted.is_none());
         assert_eq!(rejected_stats.candidate_positions, 1);
         assert_eq!(rejected_stats.rejected_incomplete_label_positions, 1);
+        assert_eq!(
+            rejected_stats
+                .position_selection
+                .rejected_incomplete_root_white,
+            1
+        );
 
         let mut strict_stats = SearchUseStats::default();
         let error = apply_incomplete_label_policy(
             incomplete,
             budget,
             IncompleteLabelPolicy::Error,
+            Color::Black,
             &mut strict_stats,
         )
         .unwrap_err();
@@ -5242,6 +5526,8 @@ run_search_smoke = false
         object.remove("rejected_incomplete_label_positions");
         object.remove("rejected_terminal_positions");
         object.remove("rejected_mate_score_positions");
+        object.remove("position_selection");
+        object.remove("opening_position_selection");
         object.remove("root_ply_min");
         object.remove("root_ply_max");
         object.remove("leaf_distance_min");

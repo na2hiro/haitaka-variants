@@ -119,8 +119,9 @@ Follow-up notes:
 - Phase 8's committed 20,000-node 200+40-game preparation pilots exceeded the
   incomplete-label gate in both splits (1.2% train, 2.84% validation). Leaf
   filtering also missed side/outcome balance bounds. The artifacts are valid
-  for plumbing tests, but the common budget and leaf-selection bias must be
-  re-piloted before Phase 8 strength training.
+  for plumbing tests. The prepared lanes now use 50,000 nodes and versioned
+  root/leaf-side, distance-parity, rejection-result, and per-opening telemetry;
+  both lanes must be re-piloted before Phase 8 strength training.
 
 Common completion gate for implementation phases:
 
@@ -476,14 +477,14 @@ Using the same opening policy, generation seeds, split policy, and training
 hyperparameters as Phase 7, compare:
 
 - depth-3 root labels from Phase 7;
-- 20,000-node root labels, using the calibrated common budget;
-- 20,000-node qsearch-leaf labels.
+- 50,000-node root labels, using the re-pilot common budget;
+- 50,000-node qsearch-leaf labels.
 
 Node-budget searches that cannot complete depth 1 are rejected and counted
 under the versioned `reject-position` policy instead of aborting a production
-shard. The 20,000-node preparation pilot rejected 5 of 2,301 candidates
-(0.22%); if either production lane exceeds 1%, pause before training and audit
-the rejected-position bias.
+shard. The larger persistent 20,000-node pilot exceeded the 1% gate, so the
+prepared lanes were raised to 50,000 nodes. If either re-pilot exceeds 1%,
+pause before training and audit the rejected-position bias.
 
 Train at least three initialization seeds per new lane. Record CPU-hours,
 positions/second, label node distributions, validation loss, tactical-suite

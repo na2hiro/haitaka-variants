@@ -63,6 +63,7 @@ struct AuditIdentity {
     position_policy: Option<String>,
     training_trace_version: Option<String>,
     incomplete_label_policy: Option<String>,
+    position_selection_audit_version: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -76,6 +77,8 @@ struct PositionTraceStats {
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
+    selection_by_side_parity_and_result: Value,
+    selection_by_opening: Value,
 }
 
 #[derive(Debug, Serialize)]
@@ -301,6 +304,10 @@ pub fn audit_dataset(
             value_string(&manifest, "incomplete_label_policy")
                 .unwrap_or_else(|| "error".to_string()),
         ),
+        position_selection_audit_version: value_string(
+            &manifest,
+            "position_selection_audit_version",
+        ),
     };
     let train_opening_ids = value_string_vec(&manifest, "train_opening_ids");
     let validation_opening_ids = value_string_vec(&manifest, "validation_opening_ids");
@@ -371,6 +378,14 @@ pub fn audit_dataset(
                 .unwrap_or(0),
             rejected_mate_score_positions: value_u64(&manifest, "rejected_mate_score_positions")
                 .unwrap_or(0),
+            selection_by_side_parity_and_result: manifest
+                .get("position_selection")
+                .cloned()
+                .unwrap_or_else(|| Value::Object(Default::default())),
+            selection_by_opening: manifest
+                .get("opening_position_selection")
+                .cloned()
+                .unwrap_or_else(|| Value::Object(Default::default())),
         },
         groups: GroupStats {
             game_count: games.map_or(0, |games| games.len() as u64),

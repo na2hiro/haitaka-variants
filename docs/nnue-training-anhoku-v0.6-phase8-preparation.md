@@ -25,7 +25,7 @@ cargo generate haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml
 cargo generate haitaka_learn.anhoku-v0.6-phase8-leaf.pilot.toml
 ```
 
-Both new configs use the calibrated 20,000-node budget, depth cap 64, and
+Both new configs now use the 50,000-node re-pilot budget, depth cap 64, and
 `incomplete_label_policy = "reject-position"`. Their
 opening suite, generation seed, grouped split, shuffle, sampling, rollout,
 training, verification, and selection settings are copied from the Phase 7
@@ -77,10 +77,10 @@ The 12+12-game root matrix measured:
 | 50,000 | 496 | 0 | 0.00% | 124.08 |
 
 An extended 48+48-game 20,000-node run attempted 2,301 labels, stored 2,296,
-and rejected 5 (0.22%) in 255.09 label CPU seconds. This was selected as the
-common production budget: it reduces the observed tactical-tail rejection rate
-by about 15x versus 5,000 nodes while remaining 2.4x cheaper than 50,000 in the
-bounded matrix. The matching 20,000-node leaf smoke attempted 499 labels,
+and rejected 5 (0.22%) in 255.09 label CPU seconds. This was the initial common
+budget: it reduced the observed tactical-tail rejection rate by about 15x
+versus 5,000 nodes while remaining 2.4x cheaper than 50,000 in the bounded
+matrix. The matching 20,000-node leaf smoke attempted 499 labels,
 rejected 1 incomplete label (0.20%), 17 terminal leaves, and 10 mate-saturated
 leaves, storing 471. Its incomplete rate matches the root smoke while the
 terminal and mate filters remain separate Phase 5 counters.
@@ -121,6 +121,15 @@ strength training. Before the 1M experiment, rerun the persistent pilots with a
 higher common node budget and re-audit the leaf-side selection effect. Do not
 relax either bound without a written ruleset-specific justification.
 
+The re-pilot instrumentation records candidate root side; stored root-to-leaf
+side transitions; even/odd leaf distance; incomplete, terminal, and mate
+rejections by root side; terminal/mate rejections by traced leaf side; rejected
+positions by eventual root-relative win/loss/draw; and the complete selection
+breakdown per opening ID. The audit report exposes these counters under
+`position_trace.selection_by_side_parity_and_result` and
+`position_trace.selection_by_opening`. The telemetry is versioned so shards
+without it cannot be silently reused or merged into the re-pilot.
+
 ## Training And Evaluation Matrix
 
 After Phase 7 explicitly approves Phase 8 and the node gate passes:
@@ -144,7 +153,7 @@ play. Phase 6 SIMD must remain enabled for the fixed-time binaries.
 ## Remaining Launch Gates
 
 1. Phase 7 passes its dataset/result gate and explicitly approves Phase 8.
-2. A representative 20,000-node pilot keeps incomplete-label rejection at or
+2. A representative 50,000-node pilot keeps incomplete-label rejection at or
    below 1% for both position policies.
 3. The external trainer demonstrates and records deterministic initialization
    seeds 80, 81, and 82.
