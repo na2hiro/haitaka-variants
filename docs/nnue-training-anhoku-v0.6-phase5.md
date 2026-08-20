@@ -39,10 +39,12 @@ same move, score, completed depth, and alpha-beta/qsearch counters.
 
 Candidate leaves are excluded when:
 
+- the fixed-node teacher cannot complete depth 1 and the explicit
+  `reject-position` policy is enabled;
 - the traced leaf is terminal or lacks either king; or
 - the backed-up search score is mate-saturated (`abs(score) >= 29000`).
 
-Terminal and mate-score rejections have separate counters. A mate result may
+Incomplete, terminal, and mate-score rejections have separate counters. A mate result may
 legitimately have no ordinary static leaf; it is still rejected and counted
 rather than causing generation to fall back to the root position.
 

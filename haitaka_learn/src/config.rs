@@ -37,6 +37,23 @@ impl PositionPolicy {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IncompleteLabelPolicy {
+    #[default]
+    Error,
+    RejectPosition,
+}
+
+impl IncompleteLabelPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::RejectPosition => "reject-position",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LabelSearchBudget {
     Depth { depth: u8 },
@@ -541,7 +558,17 @@ impl LearnConfig {
             "data.validation_games must be > 0"
         );
         ensure!(self.data.max_plies > 0, "data.max_plies must be > 0");
-        self.data.label_search_budget()?;
+        let label_search_budget = self.data.label_search_budget()?;
+        if self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition {
+            ensure!(
+                matches!(label_search_budget, LabelSearchBudget::Nodes { .. }),
+                "data.incomplete_label_policy=reject-position requires a fixed-node label budget"
+            );
+            ensure!(
+                self.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1,
+                "data.incomplete_label_policy=reject-position requires data.self_play_move_policy=uniform-rollout-v1"
+            );
+        }
         ensure!(
             self.data.rollout_search_depth > 0,
             "data.rollout_search_depth must be at least 1"
@@ -801,6 +828,8 @@ pub struct DataConfig {
     pub label_search_max_depth: Option<u8>,
     #[serde(default)]
     pub position_policy: PositionPolicy,
+    #[serde(default)]
+    pub incomplete_label_policy: IncompleteLabelPolicy,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
     #[serde(default)]
@@ -853,6 +882,7 @@ impl Default for DataConfig {
             label_search_nodes: None,
             label_search_max_depth: None,
             position_policy: PositionPolicy::default(),
+            incomplete_label_policy: IncompleteLabelPolicy::default(),
             rollout_search_depth: default_rollout_search_depth(),
             self_play_move_policy: SelfPlayMovePolicy::default(),
             opening_random_plies: default_opening_random_plies(),
@@ -1379,6 +1409,10 @@ validation_games = 1
             config.data.self_play_move_policy,
             SelfPlayMovePolicy::LabelOnSampleLegacy
         );
+        assert_eq!(
+            config.data.incomplete_label_policy,
+            IncompleteLabelPolicy::Error
+        );
         assert!(!config.training.teacher_move_consumers);
         assert_eq!(
             config.data.label_search_budget().unwrap(),
@@ -1459,6 +1493,44 @@ label_search_max_depth = 64
             format!("{:#}", config.validate().unwrap_err())
                 .contains("label_search_max_depth is required")
         );
+    }
+
+    #[test]
+    fn reject_incomplete_labels_requires_fixed_nodes_and_uniform_rollout() {
+        let depth = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+search_depth = 3
+self_play_move_policy = "uniform-rollout-v1"
+incomplete_label_policy = "reject-position"
+"#;
+        let config: LearnConfig = toml::from_str(depth).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("requires a fixed-node label budget")
+        );
+
+        let coupled = depth
+            .replace(
+                "search_depth = 3",
+                "label_search_nodes = 5000\nlabel_search_max_depth = 64",
+            )
+            .replace("self_play_move_policy = \"uniform-rollout-v1\"\n", "");
+        let config: LearnConfig = toml::from_str(&coupled).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("requires data.self_play_move_policy=uniform-rollout-v1")
+        );
+
+        let valid = coupled.replace(
+            "incomplete_label_policy = \"reject-position\"",
+            "self_play_move_policy = \"uniform-rollout-v1\"\nincomplete_label_policy = \"reject-position\"",
+        );
+        let config: LearnConfig = toml::from_str(&valid).unwrap();
+        config.validate().unwrap();
     }
 
     #[test]

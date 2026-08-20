@@ -118,6 +118,10 @@ Key fields:
   - fixed-node labels count both alpha-beta entries and qsearch entries under
     `node_counting_version = "alpha-beta-plus-qsearch-v1"`; the shared budget
     has zero overshoot, and the manifest reports the two counters separately
+  - `incomplete_label_policy = "error"` is the default when a fixed-node
+    search cannot complete depth 1; production fixed-node experiments may use
+    `"reject-position"` with `uniform-rollout-v1` to skip and explicitly count
+    those candidates without changing the self-play trajectory
   - `position_policy = "root-position"` preserves legacy records and is the
     default; `position_policy = "qsearch-pv-leaf"` stores the final traced PV
     leaf with its static evaluation while retaining the root game ply in the

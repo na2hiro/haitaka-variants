@@ -30,8 +30,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, LabelSearchBudget, LoadedConfig, PositionPolicy, Ruleset, SamplingPolicy,
-    SelfPlayMovePolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
+    ArtifactPaths, IncompleteLabelPolicy, LabelSearchBudget, LoadedConfig, PositionPolicy, Ruleset,
+    SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
 
@@ -107,7 +107,9 @@ struct DatasetManifest {
     node_counting_version: String,
     position_policy: String,
     training_trace_version: String,
+    incomplete_label_policy: String,
     candidate_positions: u64,
+    rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
     root_ply_min: Option<u16>,
@@ -199,8 +201,12 @@ struct ShardManifest {
     position_policy: String,
     #[serde(default)]
     training_trace_version: String,
+    #[serde(default = "legacy_incomplete_label_policy")]
+    incomplete_label_policy: String,
     #[serde(default)]
     candidate_positions: u64,
+    #[serde(default)]
+    rejected_incomplete_label_positions: u64,
     #[serde(default)]
     rejected_terminal_positions: u64,
     #[serde(default)]
@@ -258,6 +264,10 @@ fn legacy_sampling_phase() -> String {
 
 fn legacy_self_play_move_policy() -> String {
     "label-on-sample-legacy".to_string()
+}
+
+fn legacy_incomplete_label_policy() -> String {
+    "error".to_string()
 }
 
 fn legacy_opening_policy() -> String {
@@ -343,6 +353,14 @@ impl ShardManifest {
         self.training_trace_version == SEARCH_TRAINING_TRACE_VERSION
             || (self.training_trace_version.is_empty() && !policy.uses_training_trace())
     }
+
+    fn incomplete_label_policy(&self) -> &str {
+        if self.incomplete_label_policy.is_empty() {
+            "error"
+        } else {
+            &self.incomplete_label_policy
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -371,6 +389,7 @@ struct SearchUseStats {
     label_search_elapsed_seconds: f64,
     rollout_search_elapsed_seconds: f64,
     candidate_positions: u64,
+    rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
     root_ply_min: Option<u16>,
@@ -405,6 +424,7 @@ impl SearchUseStats {
         self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
         self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
         self.candidate_positions += other.candidate_positions;
+        self.rejected_incomplete_label_positions += other.rejected_incomplete_label_positions;
         self.rejected_terminal_positions += other.rejected_terminal_positions;
         self.rejected_mate_score_positions += other.rejected_mate_score_positions;
         self.root_ply_min = option_min(self.root_ply_min, other.root_ply_min);
@@ -444,6 +464,7 @@ fn option_max<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
 fn stored_position_count(stats: &SearchUseStats) -> u64 {
     stats
         .candidate_positions
+        .saturating_sub(stats.rejected_incomplete_label_positions)
         .saturating_sub(stats.rejected_terminal_positions)
         .saturating_sub(stats.rejected_mate_score_positions)
 }
@@ -473,6 +494,7 @@ impl From<&ShardManifest> for SearchUseStats {
             } else {
                 manifest.candidate_positions
             },
+            rejected_incomplete_label_positions: manifest.rejected_incomplete_label_positions,
             rejected_terminal_positions: manifest.rejected_terminal_positions,
             rejected_mate_score_positions: manifest.rejected_mate_score_positions,
             root_ply_min: manifest.root_ply_min,
@@ -671,8 +693,7 @@ impl Teacher {
                     .map_err(|err| anyhow!("NNUE traced node-budget teacher search failed: {err}"))
                 }
             }
-            .map(|(summary, trace)| TeacherSearchSummary::from_nodes_with_trace(summary, trace))
-            .and_then(|summary| validate_node_budget_summary(summary, nodes)),
+            .map(|(summary, trace)| TeacherSearchSummary::from_nodes_with_trace(summary, trace)),
             LabelSearchBudget::Nodes { nodes, max_depth } => match self {
                 Self::Handcrafted => search_board_impl_handcrafted_with_node_budget_in_workspace(
                     board, nodes, max_depth, workspace,
@@ -690,22 +711,40 @@ impl Teacher {
                     .map_err(|err| anyhow!("NNUE node-budget teacher search failed: {err}"))
                 }
             }
-            .map(TeacherSearchSummary::from)
-            .and_then(|summary| validate_node_budget_summary(summary, nodes)),
+            .map(TeacherSearchSummary::from),
         }
     }
 }
 
-fn validate_node_budget_summary(
+fn node_budget_summary_is_complete(summary: &TeacherSearchSummary) -> bool {
+    summary.best_move.is_some() && summary.best_score.is_some()
+}
+
+fn apply_incomplete_label_policy(
     summary: TeacherSearchSummary,
-    nodes: u64,
-) -> Result<TeacherSearchSummary> {
-    if summary.best_move.is_none() || summary.best_score.is_none() {
-        bail!(
-            "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes"
-        );
+    budget: LabelSearchBudget,
+    policy: IncompleteLabelPolicy,
+    stats: &mut SearchUseStats,
+) -> Result<Option<TeacherSearchSummary>> {
+    if !matches!(budget, LabelSearchBudget::Nodes { .. })
+        || node_budget_summary_is_complete(&summary)
+    {
+        return Ok(Some(summary));
     }
-    Ok(summary)
+
+    stats.record_candidate();
+    match policy {
+        IncompleteLabelPolicy::Error => {
+            let nodes = budget.nodes().unwrap_or_default();
+            bail!(
+                "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes or set data.incomplete_label_policy=reject-position"
+            );
+        }
+        IncompleteLabelPolicy::RejectPosition => {
+            stats.rejected_incomplete_label_positions += 1;
+            Ok(None)
+        }
+    }
 }
 
 pub fn generate_data(loaded: &LoadedConfig) -> Result<DatasetOutput> {
@@ -1094,7 +1133,14 @@ fn generate_split(
             .manifest_name()
             .to_string(),
         training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
         candidate_positions: search_stats.candidate_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
         root_ply_min: search_stats.root_ply_min,
@@ -1530,7 +1576,14 @@ fn generate_or_reuse_shard(
             .manifest_name()
             .to_string(),
         training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
         candidate_positions: search_stats.candidate_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
         root_ply_min: search_stats.root_ply_min,
@@ -1684,6 +1737,8 @@ fn shard_manifest_matches(
         && manifest.node_counting_version_matches(label_budget)
         && manifest.position_policy() == loaded.config.data.position_policy.manifest_name()
         && manifest.training_trace_version_matches(loaded.config.data.position_policy)
+        && manifest.incomplete_label_policy()
+            == loaded.config.data.incomplete_label_policy.manifest_name()
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -1922,7 +1977,12 @@ fn generate_game_entries(
                 search_workspace,
             )?;
             stats.record_label(&summary);
-            Some(summary)
+            apply_incomplete_label_policy(
+                summary,
+                label_search_budget,
+                loaded.config.data.incomplete_label_policy,
+                &mut stats,
+            )?
         } else {
             None
         };
@@ -1938,10 +1998,7 @@ fn generate_game_entries(
             None
         };
 
-        if should_sample {
-            let summary = label_summary
-                .as_ref()
-                .ok_or_else(|| anyhow!("teacher search unexpectedly missing"))?;
+        if let Some(summary) = label_summary.as_ref() {
             record_pending_sample(
                 loaded.config.data.position_policy,
                 &board,
@@ -2396,7 +2453,14 @@ fn merge_split(
             .manifest_name()
             .to_string(),
         training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
         candidate_positions: search_stats.candidate_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
         root_ply_min: search_stats.root_ply_min,
@@ -2567,6 +2631,11 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.training_trace_version_matches(loaded.config.data.position_policy),
         "training_trace_version does not match",
+    )?;
+    ensure_merge(
+        manifest.incomplete_label_policy()
+            == loaded.config.data.incomplete_label_policy.manifest_name(),
+        "incomplete_label_policy does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -3632,6 +3701,10 @@ run_search_smoke = false
             (
                 "node_counting_version",
                 serde_json::Value::String("different-node-contract".into()),
+            ),
+            (
+                "incomplete_label_policy",
+                serde_json::Value::String("reject-position".into()),
             ),
         ];
         for (field, value) in mismatches {
@@ -4735,6 +4808,9 @@ seed = 9
         let candidates = manifest["candidate_positions"].as_u64().unwrap();
         let terminal = manifest["rejected_terminal_positions"].as_u64().unwrap();
         let mate = manifest["rejected_mate_score_positions"].as_u64().unwrap();
+        let incomplete = manifest["rejected_incomplete_label_positions"]
+            .as_u64()
+            .unwrap();
 
         assert_eq!(manifest["position_policy"], "qsearch-pv-leaf");
         assert_eq!(
@@ -4742,7 +4818,7 @@ seed = 9
             SEARCH_TRAINING_TRACE_VERSION
         );
         assert!(stored > 0);
-        assert_eq!(candidates, stored + terminal + mate);
+        assert_eq!(candidates, stored + incomplete + terminal + mate);
         assert!(manifest["leaf_distance_min"].as_u64().unwrap() >= 1);
         assert!(manifest["leaf_distance_max"].as_u64().unwrap() >= 1);
         assert!(manifest["leaf_distance_mean"].as_f64().unwrap() >= 1.0);
@@ -4829,6 +4905,46 @@ seed = 9
         assert_eq!(stats.candidate_positions, 3);
         assert_eq!(stats.rejected_terminal_positions, 1);
         assert_eq!(stats.rejected_mate_score_positions, 1);
+    }
+
+    #[test]
+    fn incomplete_fixed_node_labels_are_rejected_only_by_explicit_policy() {
+        let incomplete = TeacherSearchSummary {
+            best_move: None,
+            best_score: None,
+            states: 1_000,
+            qnodes: 4_000,
+            elapsed_seconds: 0.25,
+            training_trace: None,
+        };
+        let budget = LabelSearchBudget::Nodes {
+            nodes: 5_000,
+            max_depth: 64,
+        };
+
+        let mut rejected_stats = SearchUseStats::default();
+        let accepted = apply_incomplete_label_policy(
+            incomplete.clone(),
+            budget,
+            IncompleteLabelPolicy::RejectPosition,
+            &mut rejected_stats,
+        )
+        .unwrap();
+        assert!(accepted.is_none());
+        assert_eq!(rejected_stats.candidate_positions, 1);
+        assert_eq!(rejected_stats.rejected_incomplete_label_positions, 1);
+
+        let mut strict_stats = SearchUseStats::default();
+        let error = apply_incomplete_label_policy(
+            incomplete,
+            budget,
+            IncompleteLabelPolicy::Error,
+            &mut strict_stats,
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("did not complete depth 1 within 5000 nodes"));
+        assert_eq!(strict_stats.candidate_positions, 1);
+        assert_eq!(strict_stats.rejected_incomplete_label_positions, 0);
     }
 
     #[test]
@@ -5121,7 +5237,9 @@ run_search_smoke = false
         object.remove("node_counting_version");
         object.remove("position_policy");
         object.remove("training_trace_version");
+        object.remove("incomplete_label_policy");
         object.remove("candidate_positions");
+        object.remove("rejected_incomplete_label_positions");
         object.remove("rejected_terminal_positions");
         object.remove("rejected_mate_score_positions");
         object.remove("root_ply_min");

@@ -30,8 +30,10 @@ is versioned as `alpha-beta-plus-qsearch-v1`:
 The result is the move and score from the last fully completed depth. Reaching
 the depth cap can finish below the node budget. If the budget is exhausted
 before depth 1 completes, generation fails with an actionable error instead of
-writing a partial label. Search itself is currently single-threaded; generation
-jobs have separate workspaces and budgets.
+writing a partial label. Phase 8 later adds the explicit opt-in
+`incomplete_label_policy = "reject-position"`; it skips and counts the candidate
+while the default remains an error. Search itself is currently single-threaded;
+generation jobs have separate workspaces and budgets.
 
 Depth-only mode remains the default when none of the label-budget keys is
 present, preserving the historical default depth of 2.
@@ -47,6 +49,8 @@ Shard and final manifests now identify:
 - `label_search_budget`, `label_search_nodes`, and
   `label_search_max_depth`;
 - `node_counting_version`;
+- `incomplete_label_policy` and
+  `rejected_incomplete_label_positions`;
 - alpha-beta and qsearch counters for both label and rollout searches;
 - combined label nodes and average nodes per label;
 - label, rollout, and summed teacher-search elapsed seconds.

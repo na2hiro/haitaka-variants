@@ -1,0 +1,119 @@
+# Anhoku NNUE v0.6 Phase 8 Preparation
+
+Phase 8 remains gated on the Phase 7 result. This preparation defines the two
+new teacher lanes, calibrates their common node budget, and prevents a rare
+incomplete depth-1 label from aborting a multi-day generation run. It does not
+start production generation or training.
+
+## Prepared Lanes
+
+The Phase 7 depth-3 root dataset is the control. The new configs are:
+
+- `haitaka_learn.anhoku-v0.6-phase8-root.toml`: fixed-node root positions;
+- `haitaka_learn.anhoku-v0.6-phase8-leaf.toml`: fixed-node qsearch-PV leaves.
+
+Persistent bounded data pilots use 200 train and 40 validation games:
+
+- `haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml`;
+- `haitaka_learn.anhoku-v0.6-phase8-leaf.pilot.toml`.
+
+These pilots exercise the production data contracts and rejection audit but are
+not strength experiments. Generate them from a committed revision with:
+
+```bash
+cargo generate haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml
+cargo generate haitaka_learn.anhoku-v0.6-phase8-leaf.pilot.toml
+```
+
+Both new configs use the calibrated 20,000-node budget, depth cap 64, and
+`incomplete_label_policy = "reject-position"`. Their
+opening suite, generation seed, grouped split, shuffle, sampling, rollout,
+training, verification, and selection settings are copied from the Phase 7
+config. Only output/export identity and the teacher budget, incomplete-label
+policy, and position policy may differ. Run the machine-readable identity check
+with:
+
+```bash
+python3 scripts/phase8_prepare.py check \
+  --output out/anhoku-v0.6-phase8-preflight.json
+```
+
+The report contains hashes for all three configs and a canonical hash of the
+shared non-teacher variables. Production manifests must later reproduce the
+same suite, generation, split, and shuffle identity; config equality alone is
+not accepted as evidence.
+
+## Fixed-Node Calibration Gate
+
+Phase 4 established that 5,000 nodes can expire before depth 1 completes. The
+strict calibration reproduced the failure at 5,000, 10,000, and 20,000 nodes;
+50,000 passed 496 candidates but later failed once in a 2,237-candidate tail
+run. No practical finite budget therefore guarantees that a 1M run will finish
+under the default `error` policy.
+
+The new opt-in `reject-position` policy is permitted only with a fixed-node
+budget and `uniform-rollout-v1`. It records the full search counters, increments
+`rejected_incomplete_label_positions`, skips the unusable label, and still uses
+the independent rollout search for the game move. Other configurations retain
+the fail-closed default. Run a bounded calibration with:
+
+```bash
+python3 scripts/phase8_prepare.py calibrate --reject-incomplete \
+  --output out/anhoku-v0.6-phase8-node-calibration.json
+```
+
+The default matrix tries 5,000, 10,000, 20,000, and 50,000 nodes on 12 train
+and 12 validation games with at most 24 labels per game. It records failures,
+label count, rejection count, exact node use, CPU time, and wall time. Use
+`--position-policy qsearch-pv-leaf` for the leaf smoke.
+
+The 12+12-game root matrix measured:
+
+| Nodes | Candidates | Rejected incomplete | Rate | Label CPU seconds |
+| ---: | ---: | ---: | ---: | ---: |
+| 5,000 | 504 | 17 | 3.37% | 14.43 |
+| 10,000 | 500 | 5 | 1.00% | 26.96 |
+| 20,000 | 496 | 1 | 0.20% | 51.04 |
+| 50,000 | 496 | 0 | 0.00% | 124.08 |
+
+An extended 48+48-game 20,000-node run attempted 2,301 labels, stored 2,296,
+and rejected 5 (0.22%) in 255.09 label CPU seconds. This was selected as the
+common production budget: it reduces the observed tactical-tail rejection rate
+by about 15x versus 5,000 nodes while remaining 2.4x cheaper than 50,000 in the
+bounded matrix. The matching 20,000-node leaf smoke attempted 499 labels,
+rejected 1 incomplete label (0.20%), 17 terminal leaves, and 10 mate-saturated
+leaves, storing 471. Its incomplete rate matches the root smoke while the
+terminal and mate filters remain separate Phase 5 counters.
+
+Production must report the rejection rate per split. If either lane exceeds
+1%, pause before training and audit the bias rather than accepting the dataset.
+
+## Training And Evaluation Matrix
+
+After Phase 7 explicitly approves Phase 8 and the node gate passes:
+
+| Lane | Data policy | Initialization seeds | Required comparisons |
+| --- | --- | --- | --- |
+| Phase 7 control | depth-3 root | existing Phase 7 seeds | reuse unchanged |
+| Phase 8 root | fixed-node root | 80, 81, 82 | control, handcrafted |
+| Phase 8 leaf | fixed-node qsearch leaf | 80, 81, 82 | control, handcrafted |
+
+The external trainer must record the three initialization seeds in its logs or
+run manifests; the current Haitaka config does not itself guarantee PyTorch
+initialization seeding. Do not claim the three-seed acceptance criterion until
+that evidence exists.
+
+For every seed, preserve all checkpoints and report validation loss, tactical
+fixtures, fixed-anchor Elo, handcrafted Elo, and NNUE NPS. The final matches use
+the same paired openings under equal-node diagnostics and 100 ms fixed-time
+play. Phase 6 SIMD must remain enabled for the fixed-time binaries.
+
+## Remaining Launch Gates
+
+1. Phase 7 passes its dataset/result gate and explicitly approves Phase 8.
+2. A representative 20,000-node pilot keeps incomplete-label rejection at or
+   below 1% for both position policies.
+3. The external trainer demonstrates and records deterministic initialization
+   seeds 80, 81, and 82.
+4. The generated root and leaf manifests verify identical non-teacher identity
+   by hashes before training begins.

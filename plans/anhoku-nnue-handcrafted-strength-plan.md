@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phases 1–6 complete; Phase 7 pending
+- Status: Phases 1–6 complete; Phase 7 pending; Phase 8 preflight prepared
 - Created: 2026-08-17
 - Last checked: 2026-08-20
 - Primary ruleset: Anhoku
@@ -471,8 +471,14 @@ Using the same opening policy, generation seeds, split policy, and training
 hyperparameters as Phase 7, compare:
 
 - depth-3 root labels from Phase 7;
-- 5,000-node root labels;
-- 5,000-node qsearch-leaf labels.
+- 20,000-node root labels, using the calibrated common budget;
+- 20,000-node qsearch-leaf labels.
+
+Node-budget searches that cannot complete depth 1 are rejected and counted
+under the versioned `reject-position` policy instead of aborting a production
+shard. The 20,000-node preparation pilot rejected 5 of 2,301 candidates
+(0.22%); if either production lane exceeds 1%, pause before training and audit
+the rejected-position bias.
 
 Train at least three initialization seeds per new lane. Record CPU-hours,
 positions/second, label node distributions, validation loss, tactical-suite
@@ -482,6 +488,8 @@ document containing all lanes; do not select only the favorable seed.
 Acceptance criteria:
 
 - the same non-teacher variables are verified by hashes, not assumed;
+- incomplete-label rejection counts and rates are reported for both new lanes
+  and remain at or below 1%;
 - median and per-seed results are reported;
 - qsearch leaves advance only if they improve median handcrafted Elo or
   held-out loss without a tactical-suite regression;

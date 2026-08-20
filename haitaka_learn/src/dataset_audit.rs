@@ -62,6 +62,7 @@ struct AuditIdentity {
     self_play_move_policy: Option<String>,
     position_policy: Option<String>,
     training_trace_version: Option<String>,
+    incomplete_label_policy: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,6 +73,7 @@ struct PositionTraceStats {
     leaf_distance_max: Option<u64>,
     leaf_distance_mean: f64,
     candidate_positions: u64,
+    rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
 }
@@ -295,6 +297,10 @@ pub fn audit_dataset(
                 .unwrap_or_else(|| "root-position".to_string()),
         ),
         training_trace_version: value_string(&manifest, "training_trace_version"),
+        incomplete_label_policy: Some(
+            value_string(&manifest, "incomplete_label_policy")
+                .unwrap_or_else(|| "error".to_string()),
+        ),
     };
     let train_opening_ids = value_string_vec(&manifest, "train_opening_ids");
     let validation_opening_ids = value_string_vec(&manifest, "validation_opening_ids");
@@ -356,6 +362,11 @@ pub fn audit_dataset(
             leaf_distance_mean: value_f64(&manifest, "leaf_distance_mean").unwrap_or(0.0),
             candidate_positions: value_u64(&manifest, "candidate_positions")
                 .unwrap_or(expected_entries),
+            rejected_incomplete_label_positions: value_u64(
+                &manifest,
+                "rejected_incomplete_label_positions",
+            )
+            .unwrap_or(0),
             rejected_terminal_positions: value_u64(&manifest, "rejected_terminal_positions")
                 .unwrap_or(0),
             rejected_mate_score_positions: value_u64(&manifest, "rejected_mate_score_positions")
