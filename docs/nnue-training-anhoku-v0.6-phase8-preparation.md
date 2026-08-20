@@ -88,6 +88,39 @@ terminal and mate filters remain separate Phase 5 counters.
 Production must report the rejection rate per split. If either lane exceeds
 1%, pause before training and audit the bias rather than accepting the dataset.
 
+## Persistent 200+40-Game Pilot Result
+
+The committed revision `b894685` generated both persistent pilots on
+2026-08-20. These artifacts are ignored under `out/` but retain their configs,
+manifests, shards, binaries, and audit reports.
+
+| Lane/split | Candidates | Stored | Incomplete | Terminal | Mate | Split seconds | Dataset SHA-256 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| root train | 7,880 | 7,785 | 95 (1.21%) | 0 | 0 | 298.52 | `ed488344a0d56c0392523d51bd59a420471c3bc5ff7aaf48ed0232d1d83331d1` |
+| root validation | 2,182 | 2,120 | 62 (2.84%) | 0 | 0 | 136.02 | `06af4d3031c712b735619933050ca57ce77a2b2843670527238ab5dcb311631e` |
+| leaf train | 7,917 | 7,429 | 95 (1.20%) | 256 | 137 | 303.71 | `ccde65c81b5d01e9cc15bfadac64656e0724cd2b2b4ae8ea824ebef8768b19d1` |
+| leaf validation | 2,186 | 1,910 | 62 (2.84%) | 182 | 32 | 141.02 | `e8a580f34b397354e639ab0042f91d785cac6009dab70be7f5dd65fc9e14ce14` |
+
+Both lanes used the same engine revision and reported zero train/validation
+opening-group overlap and zero samples before the opening boundary. The equal
+incomplete counts in corresponding splits support traced/untraced fixed-node
+parity; the leaf lane attempts a few replacement candidates after its separate
+terminal and mate rejections.
+
+The data-quality audit is not launch-passing:
+
+| Lane/split | Black / white | Win / loss among decisive | Status |
+| --- | ---: | ---: | --- |
+| root train | 50.38% / 49.62% | 49.38% / 50.62% | balance pass; rejection fail |
+| root validation | 44.43% / 55.57% | 47.83% / 52.17% | side and rejection fail |
+| leaf train | 43.00% / 57.00% | 41.76% / 58.24% | side and rejection fail |
+| leaf validation | 56.65% / 43.35% | 36.54% / 63.46% | side, outcome, and rejection fail |
+
+These files are suitable for loader/trainer plumbing tests, not Phase 8
+strength training. Before the 1M experiment, rerun the persistent pilots with a
+higher common node budget and re-audit the leaf-side selection effect. Do not
+relax either bound without a written ruleset-specific justification.
+
 ## Training And Evaluation Matrix
 
 After Phase 7 explicitly approves Phase 8 and the node gate passes:

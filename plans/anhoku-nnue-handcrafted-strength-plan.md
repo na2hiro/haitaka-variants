@@ -116,6 +116,11 @@ Follow-up notes:
   1M three-seed strength experiment yet.
 - Phases 4 and 5 are complete. Phase 7's root-position 1M baseline is the next
   experiment in the planned sequence.
+- Phase 8's committed 20,000-node 200+40-game preparation pilots exceeded the
+  incomplete-label gate in both splits (1.2% train, 2.84% validation). Leaf
+  filtering also missed side/outcome balance bounds. The artifacts are valid
+  for plumbing tests, but the common budget and leaf-selection bias must be
+  re-piloted before Phase 8 strength training.
 
 Common completion gate for implementation phases:
 
