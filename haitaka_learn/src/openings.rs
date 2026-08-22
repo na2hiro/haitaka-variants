@@ -135,6 +135,7 @@ impl OpeningSource {
         split_seed: u64,
         train_games: u32,
         validation_games: u32,
+        explicit_validation_ids: Option<&[String]>,
     ) -> Result<OpeningSplit> {
         let all_ids = match self {
             Self::UniformRandom { .. } => vec!["uniform-random".to_string()],
@@ -153,6 +154,31 @@ impl OpeningSource {
         }
         if all_ids.len() < 2 {
             bail!("opening-group-hash-v1 requires at least two opening IDs");
+        }
+        if let Some(explicit_validation_ids) = explicit_validation_ids {
+            let mut validation_ids = explicit_validation_ids.to_vec();
+            validation_ids.sort();
+            validation_ids.dedup();
+            if validation_ids.len() != explicit_validation_ids.len() {
+                bail!("explicit validation opening IDs must be unique");
+            }
+            if validation_ids.len() >= all_ids.len() {
+                bail!("explicit validation opening IDs must leave at least one training ID");
+            }
+            let all_id_set = all_ids.iter().collect::<BTreeSet<_>>();
+            if let Some(unknown) = validation_ids.iter().find(|id| !all_id_set.contains(id)) {
+                bail!("explicit validation opening ID `{unknown}` is not in the suite");
+            }
+            let validation_set = validation_ids.iter().collect::<BTreeSet<_>>();
+            let mut train_ids = all_ids
+                .into_iter()
+                .filter(|id| !validation_set.contains(id))
+                .collect::<Vec<_>>();
+            train_ids.sort();
+            return Ok(OpeningSplit {
+                train_ids,
+                validation_ids,
+            });
         }
         let total_games = u64::from(train_games) + u64::from(validation_games);
         let mut validation_count = ((all_ids.len() as u64 * u64::from(validation_games)
@@ -484,7 +510,7 @@ mod tests {
             }],
         };
         let split = source
-            .split_openings(SplitPolicy::IndependentLegacy, 1, 2, 2)
+            .split_openings(SplitPolicy::IndependentLegacy, 1, 2, 2, None)
             .unwrap();
         let first = source.select("train", &split, 123, 20).unwrap();
         let second = source.select("train", &split, 123, 21).unwrap();
@@ -512,6 +538,7 @@ mod tests {
                 loaded.config.data.split_seed,
                 loaded.config.data.train_games,
                 loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
             )
             .unwrap();
         let first = (0..40)
@@ -541,6 +568,27 @@ mod tests {
         assert_eq!(suite_id, "anhoku-v1");
         assert_eq!(count, 12);
         assert_eq!(hash.len(), 64);
+
+        let phase8_config = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8-root.toml");
+        let phase8_loaded = LoadedConfig::from_path(&phase8_config).unwrap();
+        let phase8_source =
+            OpeningSource::from_config(&phase8_loaded, &phase8_loaded.opening_sfen().unwrap())
+                .unwrap();
+        let phase8_split = phase8_source
+            .split_openings(
+                phase8_loaded.config.data.split_policy,
+                phase8_loaded.config.data.split_seed,
+                phase8_loaded.config.data.train_games,
+                phase8_loaded.config.data.validation_games,
+                phase8_loaded.config.data.validation_opening_ids.as_deref(),
+            )
+            .unwrap();
+        assert_eq!(phase8_split.validation_ids.len(), 12);
+        assert_eq!(phase8_split.validation_ids[0], "anhoku-v2-053");
+        assert_eq!(phase8_split.validation_ids[11], "anhoku-v2-064");
     }
 
     #[test]

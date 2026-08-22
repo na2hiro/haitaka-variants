@@ -41,6 +41,9 @@ CALIBRATION_BASES = {
     "qsearch-pv-leaf": REPO_ROOT / "haitaka_learn.anhoku-v0.6-phase5.smoke.toml",
 }
 PHASE8_NODE_BUDGET = 50_000
+C16_NNUE = REPO_ROOT / "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue"
+C16_SHA256 = "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0"
+OOD_V2_IDS = [f"anhoku-v2-{index:03d}" for index in range(53, 65)]
 
 TEACHER_DATA_KEYS = {
     "search_depth",
@@ -103,22 +106,24 @@ def lane_identity(path: Path, config: dict[str, Any]) -> dict[str, Any]:
         "label_search_max_depth": data.get("label_search_max_depth"),
         "position_policy": data.get("position_policy", "root-position"),
         "incomplete_label_policy": data.get("incomplete_label_policy", "error"),
+        "opening_suite": data.get("opening_suite"),
+        "opening_suite_id": data.get("opening_suite_id"),
+        "validation_opening_ids": data.get("validation_opening_ids", []),
+        "max_candidate_roots_per_game": data.get("max_candidate_roots_per_game"),
     }
 
 
 def check_configs(output: Path | None) -> int:
     configs = {
-        "phase7-depth3-root": (PHASE7_CONFIG, read_toml(PHASE7_CONFIG)),
         "phase8-fixed-node-root": (ROOT_CONFIG, read_toml(ROOT_CONFIG)),
         "phase8-fixed-node-leaf": (LEAF_CONFIG, read_toml(LEAF_CONFIG)),
     }
-    baseline_view = non_teacher_view(configs["phase7-depth3-root"][1])
+    root_view = non_teacher_view(configs["phase8-fixed-node-root"][1])
+    leaf_view = non_teacher_view(configs["phase8-fixed-node-leaf"][1])
     errors: list[str] = []
-
-    for lane, (_, config) in configs.items():
-        differences = mismatch_paths(baseline_view, non_teacher_view(config))
-        if differences:
-            errors.append(f"{lane}: non-teacher mismatch at {', '.join(differences)}")
+    differences = mismatch_paths(root_view, leaf_view)
+    if differences:
+        errors.append(f"root/leaf non-teacher mismatch at {', '.join(differences)}")
 
     root_data = configs["phase8-fixed-node-root"][1]["data"]
     leaf_data = configs["phase8-fixed-node-leaf"][1]["data"]
@@ -140,12 +145,45 @@ def check_configs(output: Path | None) -> int:
             errors.append(
                 f"fixed-node {lane} lane must reject and count incomplete labels"
             )
+        if data.get("max_candidate_roots_per_game") != data.get(
+            "max_positions_per_game"
+        ):
+            errors.append(
+                f"fixed-node {lane} lane must cap attempted roots at max_positions_per_game"
+            )
+
+    root_data = configs["phase8-fixed-node-root"][1]["data"]
+    suite_path = ROOT_CONFIG.parent / root_data["opening_suite"]
+    suite_ids = []
+    for raw_line in suite_path.read_text().splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if line:
+            suite_ids.append(line.split("\t", 1)[0].strip())
+    if len(suite_ids) < 64:
+        errors.append(f"OOD-v2 suite must contain at least 64 IDs, found {len(suite_ids)}")
+    validation_ids = root_data.get("validation_opening_ids", [])
+    if len(validation_ids) < 12:
+        errors.append("OOD-v2 must freeze at least 12 validation opening IDs")
+    if validation_ids != OOD_V2_IDS:
+        errors.append("validation_opening_ids must be the frozen anhoku-v2-053..064 list")
+    unknown_validation_ids = sorted(set(validation_ids) - set(suite_ids))
+    if unknown_validation_ids:
+        errors.append(f"OOD-v2 contains unknown suite IDs: {unknown_validation_ids}")
+
+    c16_sha256 = sha256_file(C16_NNUE) if C16_NNUE.exists() else None
+    if c16_sha256 != C16_SHA256:
+        errors.append(
+            f"C/16 control SHA-256 mismatch: expected {C16_SHA256}, found {c16_sha256}"
+        )
 
     report = {
-        "schema": "anhoku-phase8-preflight-v1",
+        "schema": "anhoku-phase8-preflight-v2",
         "config_identity_ready": not errors,
         "launch_ready": False,
-        "non_teacher_sha256": canonical_hash(baseline_view),
+        "non_teacher_sha256": canonical_hash(root_view),
+        "phase7_reference_config_sha256": sha256_file(PHASE7_CONFIG),
+        "c16_control": {"path": str(C16_NNUE), "sha256": c16_sha256},
+        "ood_v2_ids": validation_ids,
         "training_initialization_seeds": [80, 81, 82],
         "lanes": {
             name: lane_identity(path, config)
@@ -153,7 +191,10 @@ def check_configs(output: Path | None) -> int:
         },
         "errors": errors,
         "launch_gates": [
-            "Phase 7 explicitly approves Phase 8",
+            "C/16 control SHA-256 matches the preserved export",
+            "the anhoku-v2 suite has at least 64 IDs and freezes 12 OOD-v2 IDs",
+            "root and leaf use the same non-teacher config identity",
+            "root and leaf final manifests have equal candidate identity hashes",
             "a representative pilot keeps the 50,000-node incomplete-label rejection rate at or below 1%",
             "the external trainer records initialization seeds 80, 81, and 82",
         ],
@@ -165,6 +206,89 @@ def check_configs(output: Path | None) -> int:
         print(f"wrote {output}")
     print(rendered, end="")
     return 0 if not errors else 1
+
+
+def matched_manifest_check(
+    root_output: Path, leaf_output: Path, output: Path | None
+) -> int:
+    """Compare final root/leaf manifests after the bounded generation pass."""
+
+    report: dict[str, Any] = {
+        "schema": "anhoku-phase8-matched-manifest-v1",
+        "root_output": str(root_output),
+        "leaf_output": str(leaf_output),
+        "splits": {},
+        "matched": True,
+        "quality_gate_passed": True,
+        "errors": [],
+    }
+    shared_fields = (
+        "engine_revision",
+        "opening_suite_id",
+        "opening_suite_sha256",
+        "train_opening_ids",
+        "validation_opening_ids",
+        "split_policy",
+        "split_seed",
+        "shuffle_policy",
+        "shuffle_seed",
+        "candidate_roots_per_game",
+        "candidate_identity_version",
+    )
+    for split in ("train", "validation"):
+        root_manifest = json.loads(
+            (root_output / "datasets" / f"{split}.json").read_text()
+        )
+        leaf_manifest = json.loads(
+            (leaf_output / "datasets" / f"{split}.json").read_text()
+        )
+        errors: list[str] = []
+        for field in shared_fields:
+            if root_manifest.get(field) != leaf_manifest.get(field):
+                errors.append(f"{field} differs")
+        for field in (
+            "candidate_positions",
+            "candidate_identity_version",
+            "candidate_identity_sha256",
+        ):
+            if root_manifest.get(field) != leaf_manifest.get(field):
+                errors.append(f"{field} differs")
+        candidate_positions = root_manifest.get("candidate_positions", 0)
+        rates: dict[str, float] = {}
+        for lane, manifest in (("root", root_manifest), ("leaf", leaf_manifest)):
+            candidates = manifest.get("candidate_positions", 0)
+            rejected = manifest.get("rejected_incomplete_label_positions", 0)
+            rate = rejected / candidates if candidates else 0.0
+            rates[lane] = rate
+            if rate > 0.01:
+                errors.append(f"{lane} incomplete-label rate is {rate:.4%} (>1%)")
+        if candidate_positions == 0:
+            errors.append("candidate_positions is zero")
+        split_report = {
+            "root_candidate_positions": root_manifest.get("candidate_positions"),
+            "leaf_candidate_positions": leaf_manifest.get("candidate_positions"),
+            "root_candidate_identity_sha256": root_manifest.get(
+                "candidate_identity_sha256"
+            ),
+            "leaf_candidate_identity_sha256": leaf_manifest.get(
+                "candidate_identity_sha256"
+            ),
+            "root_incomplete_label_rejection_rate": rates["root"],
+            "leaf_incomplete_label_rejection_rate": rates["leaf"],
+            "errors": errors,
+        }
+        report["splits"][split] = split_report
+        report["errors"].extend(f"{split}: {error}" for error in errors)
+
+    report["matched"] = not report["errors"]
+    report["quality_gate_passed"] = report["matched"]
+    rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered)
+        print(f"wrote {output}")
+    print(rendered, end="")
+    return 0 if report["matched"] else 1
 
 
 def replace_one(text: str, pattern: str, replacement: str) -> str:
@@ -351,6 +475,13 @@ def parse_args() -> argparse.Namespace:
     check = subcommands.add_parser("check", help="verify Phase 8 lane identity")
     check.add_argument("--output", type=Path)
 
+    matched = subcommands.add_parser(
+        "check-matched", help="compare generated root/leaf candidate identities"
+    )
+    matched.add_argument("--root-output", type=Path, required=True)
+    matched.add_argument("--leaf-output", type=Path, required=True)
+    matched.add_argument("--output", type=Path)
+
     calibration = subcommands.add_parser(
         "calibrate", help="run a bounded fixed-node feasibility matrix"
     )
@@ -373,6 +504,8 @@ def main() -> int:
     args = parse_args()
     if args.command == "check":
         return check_configs(args.output)
+    if args.command == "check-matched":
+        return matched_manifest_check(args.root_output, args.leaf_output, args.output)
     if args.command == "calibrate":
         return calibrate(args)
     raise AssertionError(args.command)

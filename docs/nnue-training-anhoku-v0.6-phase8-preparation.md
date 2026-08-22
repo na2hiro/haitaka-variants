@@ -2,8 +2,10 @@
 
 Phase 8 remains gated on the Phase 7 result. This preparation defines the two
 new teacher lanes, calibrates their common node budget, and prevents a rare
-incomplete depth-1 label from aborting a multi-day generation run. It does not
-start production generation or training.
+incomplete depth-1 label from aborting a multi-day generation run. The Phase
+8A launch identity is frozen in the separate [Phase 8A handoff](nnue-training-anhoku-v0.6-phase8a.md);
+bounded data generation and its quality decision are still pending. It does
+not start training.
 
 ## Prepared Lanes
 
@@ -24,6 +26,13 @@ not strength experiments. Generate them from a committed revision with:
 cargo generate haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml
 cargo generate haitaka_learn.anhoku-v0.6-phase8-leaf.pilot.toml
 ```
+
+The Phase 8A configs now use the reviewed 64-ID `anhoku-v2` suite and freeze
+`anhoku-v2-053` through `anhoku-v2-064` as OOD-v2. They also set
+`max_candidate_roots_per_game = 64`, so root and leaf cannot drift by asking
+for replacement roots after leaf rejection. Each shard and final manifest
+records a `candidate_identity_sha256`; the two final lanes must match it
+before training.
 
 Both new configs now use the 50,000-node re-pilot budget, depth cap 64, and
 `incomplete_label_policy = "reject-position"`. Their

@@ -213,28 +213,35 @@ artifacts pass their SHA-256 checks. Rent a new GPU instance only after the
 Phase 8B prefix has been merged, audited, and bundled for training.
 
 Do not begin distributed generation until Phase 8A freezes one source commit,
-one versioned OOD-v2 suite, and one matched root/leaf config identity. Every
-machine must use that exact commit and config; do not use
+one versioned OOD-v2 suite, and one matched root/leaf config identity. The
+current implementation keeps root and leaf as separate trainer-compatible
+output configs, but their non-teacher identity and attempted-root sequence
+must match through `scripts/phase8_prepare.py check-matched`. Every machine
+must use that exact commit and lane config; do not use
 `--ignore-identity-mismatch`. Split a common lane count across machines, for
 example:
 
 ```bash
-# machine A
-cargo generate <phase8-matched-config.toml> --shard 1-4/16
+# machine A, root lane
+cargo generate haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml --shard 1-4/16
 
-# machine B
-cargo generate <phase8-matched-config.toml> --shard 5-8/16
+# machine B, root lane
+cargo generate haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml --shard 5-8/16
 ```
 
 Additional machines receive the remaining non-overlapping ranges. Generation
 is resumable, and a lane can later be subdivided because lanes cover contiguous
-shard ranges. Copy each machine's complete output directory back to one host
-and merge without an identity override:
+shard ranges. Repeat the same partition for the leaf pilot after the root lane
+is complete. Copy each machine's complete output directory back to one host and
+merge without an identity override:
 
 ```bash
-cargo merge <phase8-matched-config.toml> \
+cargo merge haitaka_learn.anhoku-v0.6-phase8-root.pilot.toml \
   --input path/to/machine-a-output \
   --input path/to/machine-b-output
+cargo merge haitaka_learn.anhoku-v0.6-phase8-leaf.pilot.toml \
+  --input path/to/leaf-machine-a-output \
+  --input path/to/leaf-machine-b-output
 ```
 
 Audit the merged train and OOD-v2 manifests before creating the pretrain

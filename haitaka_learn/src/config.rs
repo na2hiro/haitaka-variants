@@ -649,6 +649,33 @@ impl LearnConfig {
             self.data.max_positions_per_game > 0,
             "data.max_positions_per_game must be > 0"
         );
+        if let Some(max_candidates) = self.data.max_candidate_roots_per_game {
+            ensure!(
+                max_candidates > 0,
+                "data.max_candidate_roots_per_game must be > 0 when configured"
+            );
+            ensure!(
+                max_candidates <= self.data.max_positions_per_game,
+                "data.max_candidate_roots_per_game must be <= data.max_positions_per_game"
+            );
+        }
+        if let Some(validation_ids) = &self.data.validation_opening_ids {
+            ensure!(
+                self.data.split_policy == SplitPolicy::OpeningGroupHashV1,
+                "data.validation_opening_ids requires data.split_policy=opening-group-hash-v1"
+            );
+            ensure!(
+                !validation_ids.is_empty(),
+                "data.validation_opening_ids must not be empty when configured"
+            );
+            let unique = validation_ids
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>();
+            ensure!(
+                unique.len() == validation_ids.len(),
+                "data.validation_opening_ids must not contain duplicates"
+            );
+        }
         ensure!(self.data.shard_games > 0, "data.shard_games must be > 0");
         ensure!(
             self.training.initial_learning_rate.is_finite()
@@ -874,6 +901,10 @@ pub struct DataConfig {
     pub opening_suite: Option<PathBuf>,
     #[serde(default)]
     pub opening_suite_id: Option<String>,
+    /// Optional explicit validation opening groups. When set, these IDs are
+    /// frozen instead of being selected from split_seed and game counts.
+    #[serde(default)]
+    pub validation_opening_ids: Option<Vec<String>>,
     #[serde(default)]
     pub split_policy: SplitPolicy,
     #[serde(default = "default_split_seed")]
@@ -892,6 +923,10 @@ pub struct DataConfig {
     pub sampling_policy: SamplingPolicy,
     #[serde(default = "default_max_positions_per_game")]
     pub max_positions_per_game: u16,
+    /// Cap sampled root candidates independently of later position rejection.
+    /// None preserves the legacy accepted-position cap.
+    #[serde(default)]
+    pub max_candidate_roots_per_game: Option<u16>,
     #[serde(default = "default_seed")]
     pub seed: u64,
     #[serde(default = "default_jobs")]
@@ -921,6 +956,7 @@ impl Default for DataConfig {
             opening_policy: OpeningPolicy::default(),
             opening_suite: None,
             opening_suite_id: None,
+            validation_opening_ids: None,
             split_policy: SplitPolicy::default(),
             split_seed: default_split_seed(),
             shuffle_policy: ShufflePolicy::default(),
@@ -930,6 +966,7 @@ impl Default for DataConfig {
             sample_every_ply: default_sample_every_ply(),
             sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
+            max_candidate_roots_per_game: None,
             seed: default_seed(),
             jobs: default_jobs(),
             shard_games: default_shard_games(),
@@ -1487,6 +1524,40 @@ label_search_max_depth = 64
                 nodes: 5_000,
                 max_depth: 64
             }
+        );
+    }
+
+    #[test]
+    fn candidate_root_cap_is_independent_but_bounded_by_output_cap() {
+        let valid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+max_positions_per_game = 8
+max_candidate_roots_per_game = 8
+"#,
+        )
+        .unwrap();
+        valid.validate().unwrap();
+
+        let invalid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+max_positions_per_game = 8
+max_candidate_roots_per_game = 9
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", invalid.validate().unwrap_err())
+                .contains("<= data.max_positions_per_game")
         );
     }
 

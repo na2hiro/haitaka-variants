@@ -39,6 +39,7 @@ const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
 const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-v1";
+const CANDIDATE_IDENTITY_VERSION: &str = "sample-root-sha256-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -111,6 +112,9 @@ struct DatasetManifest {
     incomplete_label_policy: String,
     position_selection_audit_version: String,
     candidate_positions: u64,
+    candidate_roots_per_game: Option<u16>,
+    candidate_identity_version: String,
+    candidate_identity_sha256: String,
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
@@ -211,6 +215,12 @@ struct ShardManifest {
     position_selection_audit_version: String,
     #[serde(default)]
     candidate_positions: u64,
+    #[serde(default)]
+    candidate_roots_per_game: Option<u16>,
+    #[serde(default)]
+    candidate_identity_version: String,
+    #[serde(default)]
+    candidate_identity_sha256: String,
     #[serde(default)]
     rejected_incomplete_label_positions: u64,
     #[serde(default)]
@@ -386,6 +396,7 @@ struct GameEntries {
     entries: Vec<u8>,
     stats: SearchUseStats,
     opening: GameOpeningMetadata,
+    candidate_identity_sha256: String,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
@@ -971,6 +982,7 @@ pub fn generate_data_with_options(
         loaded.config.data.split_seed,
         loaded.config.data.train_games,
         loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
     )?;
 
     let artifacts = loaded.artifact_paths();
@@ -1272,6 +1284,12 @@ fn generate_split(
         .iter()
         .flat_map(|result| result.manifest.games.iter().cloned())
         .collect::<Vec<_>>();
+    let mut candidate_identity_hasher = Sha256::new();
+    for result in &shard_results {
+        candidate_identity_hasher.update(result.manifest.game_start.to_le_bytes());
+        candidate_identity_hasher.update(result.manifest.candidate_identity_sha256.as_bytes());
+    }
+    let candidate_identity_sha256 = format!("{:x}", candidate_identity_hasher.finalize());
     let opening_position_selection = aggregate_opening_position_selection(&shard_results);
     let opening_ids = games
         .iter()
@@ -1347,6 +1365,9 @@ fn generate_split(
             .to_string(),
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -1444,6 +1465,7 @@ pub fn merge_data(
         loaded.config.data.split_seed,
         loaded.config.data.train_games,
         loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
     )?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1718,6 +1740,7 @@ fn generate_or_reuse_shard(
     let mut games = Vec::with_capacity(plan.game_count as usize);
     let mut opening_position_selection = BTreeMap::<String, PositionSelectionStats>::new();
     let mut search_workspace = SearchWorkspace::default();
+    let mut candidate_identity_hasher = Sha256::new();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
         let shard_index = plan.shard_index;
@@ -1735,6 +1758,8 @@ fn generate_or_reuse_shard(
         .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
         search_stats.add(game.stats);
+        candidate_identity_hasher.update(game_index.to_le_bytes());
+        candidate_identity_hasher.update(game.candidate_identity_sha256.as_bytes());
         opening_position_selection
             .entry(game.opening.opening_id.clone())
             .or_default()
@@ -1798,6 +1823,9 @@ fn generate_or_reuse_shard(
             .to_string(),
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -1957,6 +1985,9 @@ fn shard_manifest_matches(
         && manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name()
         && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
+        && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
+        && (manifest.candidate_identity_version.is_empty()
+            || manifest.candidate_identity_version == CANDIDATE_IDENTITY_VERSION)
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -2171,6 +2202,8 @@ fn generate_game_entries(
     let mut played_plies = 0u16;
     let mut stats = SearchUseStats::default();
     let label_search_budget = loaded.config.data.label_search_budget()?;
+    let mut attempted_candidate_roots = 0u16;
+    let mut candidate_identity_hasher = Sha256::new();
 
     while played_plies < loaded.config.data.max_plies {
         if !has_both_kings(&board) {
@@ -2183,11 +2216,21 @@ fn generate_game_entries(
 
         let should_sample = played_plies >= sample_origin
             && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
-            && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
+            && match loaded.config.data.max_candidate_roots_per_game {
+                Some(limit) => attempted_candidate_roots < limit,
+                None => samples.len() < usize::from(loaded.config.data.max_positions_per_game),
+            };
         let needs_rollout_search = played_plies >= loaded.config.data.opening_random_plies
             && (loaded.config.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1
                 || !should_sample);
         let label_summary = if should_sample {
+            attempted_candidate_roots += 1;
+            update_candidate_identity(
+                &mut candidate_identity_hasher,
+                game_index,
+                played_plies,
+                &board,
+            );
             let summary = teacher.search_label(
                 &board,
                 label_search_budget,
@@ -2276,7 +2319,16 @@ fn generate_game_entries(
         entries,
         stats,
         opening: selected_opening.metadata,
+        candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
     })
+}
+
+fn update_candidate_identity(hasher: &mut Sha256, game_index: u32, root_ply: u16, board: &Board) {
+    let board = board.to_string();
+    hasher.update(game_index.to_le_bytes());
+    hasher.update(root_ply.to_le_bytes());
+    hasher.update((board.len() as u32).to_le_bytes());
+    hasher.update(board.as_bytes());
 }
 
 fn record_pending_sample(
@@ -2624,6 +2676,12 @@ fn merge_split(
         .iter()
         .flat_map(|result| result.manifest.games.iter().cloned())
         .collect::<Vec<_>>();
+    let mut candidate_identity_hasher = Sha256::new();
+    for result in &shard_results {
+        candidate_identity_hasher.update(result.manifest.game_start.to_le_bytes());
+        candidate_identity_hasher.update(result.manifest.candidate_identity_sha256.as_bytes());
+    }
+    let candidate_identity_sha256 = format!("{:x}", candidate_identity_hasher.finalize());
     let opening_position_selection = aggregate_opening_position_selection(&shard_results);
     let opening_ids = games
         .iter()
@@ -2698,6 +2756,9 @@ fn merge_split(
             .to_string(),
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -4211,6 +4272,7 @@ run_search_smoke = false
                 loaded.config.data.split_seed,
                 loaded.config.data.train_games,
                 loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
             )
             .unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
@@ -5062,6 +5124,8 @@ seed = 9
             SEARCH_TRAINING_TRACE_VERSION
         );
         assert!(stored > 0);
+        assert_eq!(manifest["candidate_roots_per_game"].as_u64(), Some(2));
+        assert!(candidates <= 2);
         assert_eq!(candidates, stored + incomplete + terminal + mate);
         assert!(manifest["leaf_distance_min"].as_u64().unwrap() >= 1);
         assert!(manifest["leaf_distance_max"].as_u64().unwrap() >= 1);
@@ -5452,6 +5516,7 @@ validation_games = 1
 max_plies = 6
 search_depth = 1
 position_policy = "qsearch-pv-leaf"
+max_candidate_roots_per_game = 2
 rollout_search_depth = 1
 self_play_move_policy = "uniform-rollout-v1"
 opening_random_plies = 0

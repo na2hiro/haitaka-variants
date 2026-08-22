@@ -126,6 +126,9 @@ Key fields:
     default; `position_policy = "qsearch-pv-leaf"` stores the final traced PV
     leaf with its static evaluation while retaining the root game ply in the
     72-byte record
+  - `max_candidate_roots_per_game` caps attempted sampled roots rather than
+    accepted records. Phase 8 uses `64` so terminal, mate, and incomplete leaf
+    rejection cannot request replacement roots
   - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
     shallow, for example `1`, when running expensive label depths
   - `self_play_move_policy = "uniform-rollout-v1"` makes label search observational:
@@ -243,6 +246,18 @@ For Anhoku, adjacent games form a pair. Both select the same opening ID; the sec
 uses the versioned `anhoku-rotate180-color-swap-v1` transformation (rotate the board
 180 degrees, exchange piece/hand colors, and exchange side to move). Shard and final
 manifests contain the suite hash and per-game opening metadata.
+
+Phase 8A uses `haitaka_learn/openings/anhoku-v2.tsv`. Its configs explicitly
+freeze `anhoku-v2-053` through `anhoku-v2-064` as the 12-opening OOD-v2 split.
+The generator records `candidate_identity_sha256` in every shard and final
+manifest; compare root and leaf outputs before training with:
+
+```bash
+python3 scripts/phase8_prepare.py check-matched \
+  --root-output out/anhoku-v0.6-phase8a-root \
+  --leaf-output out/anhoku-v0.6-phase8a-leaf \
+  --output out/anhoku-v0.6-phase8a-matched.json
+```
 
 The v0.6 configs also use `split_policy = "opening-group-hash-v1"`. Suite IDs are
 ranked from `split_seed` before any game is generated, and each ID is assigned wholly
