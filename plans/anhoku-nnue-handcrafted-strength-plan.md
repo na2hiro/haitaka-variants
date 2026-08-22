@@ -1,8 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phases 1–6 complete; Phase 7 pending; Phase 8 preflight prepared
+- Status: Phases 1–7.1 complete; Phase 8 blocked on its cost-controlled launch gate
 - Created: 2026-08-17
-- Last checked: 2026-08-20
+- Last checked: 2026-08-22
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -27,6 +27,17 @@ handcrafted with a 95% CI of `[-132.29, -87.87]`. The v0.5 rerun scored
 `-178.40 Elo`. These are decisive losses rather than checkpoint-selection
 noise.
 
+Phase 7.1 repaired the invalid original Phase 7.1 match evaluation and selected
+the warm-start lane C step 16 as the current experimental control. Its identity
+is NNUE SHA-256
+`049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0`.
+It scored `+27.2 Elo` with paired 95% CI `[+0.2, +54.2]` in its 256-game
+selection match against corrected v0.5.1. A separate 1,024-game seed-7104
+confirmation scored `+7.8 Elo`, CI `[-5.9, +21.5]`, and passed the predefined
+`-10 Elo` non-inferiority gate. It then scored `-128.4 Elo`, CI
+`[-150.4, -106.3]`, against handcrafted in 1,024 games. C/16 is therefore the
+control for further learning experiments, not a promotion candidate.
+
 Already implemented and not part of this plan:
 
 - `HalfKAv2^+DonorSingleEff` for Anhoku;
@@ -48,10 +59,14 @@ The generator also samples during the uniformly random opening and chooses
 those opening moves from every legal move. This produces positions unlike
 strong play and couples sampling to one side of the game.
 
-Runtime speed is a separate practical-strength problem. The latest 100 ms
-report recorded roughly 7,349 NNUE NPS versus 17,609 handcrafted NPS. A focused
-benchmark measured incremental evaluation at about 3.34 us and identified the
-scalar dense affine layers as the next optimization target.
+Phase 6 SIMD is complete on `strengthen`; do not schedule another general NNUE
+inference optimization phase before Phase 8. In the repaired C/16 versus
+handcrafted match, the NNUE recorded about 16,255 main-search NPS and
+handcrafted about 42,931 NPS. This remains useful match telemetry, but training,
+data generation, and statistically useful paired games are now the scarce
+resources. Do not add a standalone equal-node match campaign or another
+performance project unless a Phase 8 result would lead to a different decision
+depending on whether evaluation quality or runtime is dominant.
 
 ## Industry-Aligned Principles
 
@@ -87,48 +102,100 @@ the required machine-readable artifacts and one Markdown result document.
 When a phase discovers follow-up work, record it in the plan instead of
 expanding that agent's scope.
 
-## Review Checkpoint (2026-08-20)
+Expensive experiment phases may be split into a launch-gate assignment, a
+single-seed pilot assignment, and a confirmation assignment. Passing one does
+not authorize the agent to start the next. This subdivision takes precedence
+over completing an entire numbered phase in one rental.
 
-Phases 1–3 are complete on this branch, with implementation commits
-`f187708` (Phase 1), `38f7007` (Phase 2), and `6a51121` (Phase 3). The later
-`3841b5e` commit corrects the self-play sampling/label feedback discovered by
-the Phase 3 pilot; it is part of the current v0.6 data path but does not claim
-to complete Phase 4.
+## Compute-Budget Rules
 
-Verification completed:
+Data generation, GPU training, and paired games are the limiting resources.
+Apply these rules to Phase 8 and later experiments:
 
-- `cargo test -p haitaka_learn --features anhoku`: 77 passed;
-- `cargo fmt --all -- --check` and `git diff --check` passed;
-- the preserved v0.5.1 audit and v0.6 smoke/pilot audits are present under the
-  ignored `out/` artifacts and match the phase result documents;
-- the v0.6 suite, grouped split, shuffle, identity checks, and teacher-move
-  contract are covered by focused tests and the checked-in configs/docs.
+- reuse preserved datasets, checkpoints, NNUE exports, opening pairs, and match
+  reports whenever their identity matches; never rerun for presentation;
+- generate a resumable prefix first and extend it only after its policy passes;
+- start with one training seed and advance only one data policy to additional
+  seeds;
+- predeclare a small checkpoint schedule for strength screening instead of
+  matching every saved checkpoint;
+- screen each unique NNUE SHA once and map byte-identical exports back to all
+  checkpoints;
+- use 64-game screens only for ranking, extend at most one checkpoint per lane
+  to 256 games, and reserve 1,024+ games for an independently seeded final gate;
+- compare every experimental seed with the fixed C/16 control first;
+- run handcrafted matches only for the overall winner after it passes the
+  fixed-control gate;
+- stop a match at a predeclared CI or SPRT boundary; reaching a maximum game
+  count is not mandatory when the decision is already determined;
+- do not run CPU matches concurrently with data generation or GPU training;
+- record generation CPU-hours, GPU-hours, game-hours, and every early-stop
+  decision in the result artifact.
 
-Follow-up notes:
+## Review Checkpoint (2026-08-22)
 
-- Phase 3's bounded-memory implementation is documented and its formula is
-  tested, but the focused test uses a small fixture chunk rather than running
-  a stress case at the 1,000,000-record validation cap. Add that benchmark or
-  stress test before relying on the bound for a large production run.
-- The corrected rollout pilot now passes the train-side balance gate, but its
-  small validation split still misses the 60% decisive-outcome bound. A larger
-  validation pilot and the Phase 7 gate are still required; do not start the
-  1M three-seed strength experiment yet.
-- Phases 4 and 5 are complete. Phase 7's root-position 1M baseline is the next
-  experiment in the planned sequence.
-- Phase 8's committed 20,000-node 200+40-game preparation pilots exceeded the
-  incomplete-label gate in both splits (1.2% train, 2.84% validation). Leaf
-  filtering also missed side/outcome balance bounds. The artifacts are valid
-  for plumbing tests. The prepared lanes now use 50,000 nodes and versioned
-  root/leaf-side, distance-parity, rejection-result, and per-opening telemetry;
-  both lanes must be re-piloted before Phase 8 strength training.
-- The 50,000-node re-pilot passed incomplete-label rejection in train (0.29%)
-  but still failed validation (1.39%). Detailed telemetry ruled out a
-  side/orientation implementation bug: qsearch trace parity is correlated with
-  root side and opening, producing 43.10/56.90 train and 56.96/43.04 validation
-  leaf-side splits. Replacement sampling after leaf rejection and the two-group
-  validation set are avoidable amplifiers. Phase 8 remains gated pending an
-  attempted-candidate cap and a broader or cross-validated opening holdout.
+Phases 1–6 are complete on `strengthen`. This includes fixed-node teacher
+labeling, qsearch-PV leaf records, and vectorized NNUE inference. Phase 8
+preparation and its 20,000/50,000-node data pilots are also present. Further
+general engine optimization is not the next assignment.
+
+Phase 7.1 established:
+
+- the original 41 Phase 7.1 match reports are invalid because the overloaded
+  matcher produced zero-node games and insufficient opening diversity;
+- the repaired matcher passed calibration at 20 workers and all repaired
+  screens, extensions, confirmation, and handcrafted matches had zero
+  zero-node sides and no protocol failures;
+- lowering the fresh-start LR did not solve strength: B/14 and B/16 were about
+  `-74` and `-72 Elo` against corrected v0.5.1 in 256-game matches;
+- warm start is the supported recipe: C/16 passed independent v0.5.1
+  non-inferiority, while fresh A/B remained weaker;
+- changing lambda from `0.8` to pure-score `1.0` did not establish a gain;
+  do not spend another training lane on lambda without new evidence;
+- ID loss improved while paired strength did not track it reliably, so loss
+  may guard against regression but cannot select the winner;
+- C/16 still lost decisively to handcrafted, so Phase 7.1 did not satisfy the
+  project promotion condition.
+
+Phase 8 preparation established:
+
+- at 50,000 label nodes, incomplete-label rejection passed in train (`0.29%`)
+  but failed in the two-opening validation split (`1.39%`);
+- qsearch-leaf side/outcome imbalance is a real opening-dependent trace-parity
+  effect, not a packed-position orientation bug;
+- counting accepted samples allows leaf rejection to request replacement roots
+  and prevents an exact root/leaf A/B comparison;
+- the two-opening holdout is too small for selection. Phase 8 remains blocked
+  until a reviewed suite has at least 64 opening IDs with at least 12 held out.
+
+## Immediate Next Assignment: Phase 8A Launch Gate
+
+Work only on `strengthen`. Do not rent a GPU, start production generation,
+train a model, or launch strength matches in this assignment.
+
+1. Preserve C/16 as the immutable experimental control and verify its SHA-256
+   shown above after transfer or extraction.
+2. Expand and review the Anhoku opening suite to at least 64 IDs. Freeze at
+   least 12 IDs as OOD-v2 before looking at model results; prefer multiple
+   deterministic folds if one fixed holdout remains opening-sensitive.
+3. Cap attempted candidate roots rather than accepted records, so terminal,
+   mate, or incomplete leaf rejection cannot cause root/leaf candidate drift.
+4. Avoid paying for the same 50,000-node teacher search twice. Prefer one
+   deterministic generation pass that emits matched root and qsearch-leaf
+   records from the same search trace. If separate output files remain, prove
+   that both are derived from the same candidate/search identity.
+5. Run only a bounded, sequential root/leaf re-pilot over the expanded suite.
+   Keep 50,000 nodes initially; raise the budget only if the broader OOD-v2
+   pilot still exceeds the 1% incomplete-label gate.
+6. Demonstrate and record deterministic trainer/data seeds for the later
+   single-seed pilot. Do not train in this assignment.
+7. Update the Phase 8 preparation result with data quality, generation rate,
+   projected 262k/1M cost, and a pass/block decision for Phase 8B.
+
+Phase 8A passes only when root and leaf have identical candidate identity,
+train and OOD-v2 satisfy their written quality gates or have a reviewed
+policy-specific exception, and the projected compute cost is recorded. Its
+agent must stop after writing that decision.
 
 Common completion gate for implementation phases:
 
@@ -138,21 +205,27 @@ Common completion gate for implementation phases:
 - leave unrelated cleanup and the next numbered phase untouched;
 - report acceptance criteria individually as passed, failed, or not run.
 
-Phase 6 (SIMD) is code-independent from Phases 2-5 and may run in parallel in a
-separate worktree. The other phases should normally land in numeric order
-because they overlap in `haitaka_learn` config, dataset, and manifest code.
+Phase 6 SIMD is complete and must remain enabled in all fixed-time evaluation
+binaries. Do not reopen it without profiler evidence from a selected Phase 8
+model.
 
 ## Dependencies
 
 ```text
-Phase 1: audit + sampling contract
-    |
-    +--> Phase 2: opening suite --> Phase 3: shuffle/split --> Phase 7: 1M A
-    |
-    +--> Phase 4: fixed-node budget --> Phase 5: qsearch leaf --> Phase 8: 1M B
+Phases 1-6 complete --> Phase 7/7.1 repaired control C/16
+                                      |
+                                      v
+Phase 8A: OOD-v2 + matched-data gate (no training)
+                                      |
+                                      v
+Phase 8B: 262k one-seed root/leaf pilot
+                                      |
+                                      v
+Phase 8C: selected-policy 1M confirmation
+                                      |
+                                      v
+Phase 9: conditional 10M promotion candidate
 
-Phase 6: SIMD (independent) --> Phase 8 fixed-time evaluation
-Phase 7 + Phase 8 -----------> Phase 9: 10M promotion candidate
 Phase 9 data-limited result --> Phase 10: 50M/100M scale confirmation
 Phase 9/10 pipeline-limited result --> Phase 11: one Feature V2 experiment
 ```
@@ -439,6 +512,9 @@ and unrelated search optimization.
 
 ## Phase 7: Corrected-Data 1M Baseline Experiment
 
+**Status: complete, with Phase 7.1 repaired evaluation complete.** C/16 is the
+experimental control; Phase 7 produced no promotable model.
+
 This is one experiment-agent assignment after Phases 1-3. It measures data
 correction without mixing in the new teacher semantics.
 
@@ -475,37 +551,79 @@ fixed-ply artifact is not an acceptable explanation.
 
 ## Phase 8: Fixed-Node Qsearch-Leaf 1M Experiment
 
-This is one experiment-agent assignment after Phases 4, 5, and 7. Phase 6 must
-also be available for the final fixed-time comparison.
+**Status: blocked on Phase 8A.** Execute the launch gate, pilot, and confirmation
+as separate assignments because generation, training, and games are the
+bottleneck.
 
 ### Scope
 
-Using the same opening policy, generation seeds, split policy, and training
-hyperparameters as Phase 7, compare:
+After Phase 8A passes, compare:
 
 - depth-3 root labels from Phase 7;
 - 50,000-node root labels, using the re-pilot common budget;
 - 50,000-node qsearch-leaf labels.
 
-Node-budget searches that cannot complete depth 1 are rejected and counted
-under the versioned `reject-position` policy instead of aborting a production
-shard. The larger persistent 20,000-node pilot exceeded the 1% gate, so the
-prepared lanes were raised to 50,000 nodes. If either re-pilot exceeds 1%,
-pause before training and audit the rejected-position bias.
+Use C/16 as the common warm start and fixed-strength control. Retain lane C's
+`0.00015` initial LR and `lambda = 0.8`; do not reopen the failed lower-LR or
+lambda sweep. The Phase 7 depth-3 data remains an observational control and is
+not regenerated.
 
-Train at least three initialization seeds per new lane. Record CPU-hours,
-positions/second, label node distributions, validation loss, tactical-suite
-results, fixed-anchor Elo, handcrafted Elo, and NNUE NPS. Write one result
-document containing all lanes; do not select only the favorable seed.
+### Phase 8B: 262k Single-Seed Pilot
+
+- Generate a resumable prefix sufficient for approximately 262,144 accepted
+  root records and its matched leaf records. Do not generate 1M yet.
+- Train one deterministic seed for root and leaf, sequentially on one GPU.
+- Save all checkpoints, but predeclare strength screens only near 65k, 164k,
+  and 262k accepted positions. Offline ID/OOD-v2 loss and tactical tests may
+  veto a checkpoint but may not name the winner.
+- Screen each of those six unique candidates against C/16 with 64 games using
+  the same opening pairs. Extend only the best root and best leaf checkpoint to
+  256 games.
+- Advance at most one policy. It must have no verifier/tactical/OOD-v2
+  regression, a positive 256-game point estimate against C/16, and paired 95%
+  CI lower bound greater than `-10 Elo`.
+- Do not play against handcrafted and do not train more seeds in Phase 8B.
+- The Phase 8B fixed-control budget is at most 896 games: six 64-game screens
+  plus two 256-game lane extensions. Stop sooner when a lane is vetoed.
+
+If neither policy passes, stop Phase 8. Do not add seeds, increase the dataset,
+or tune LR/lambda on the same labels. Use the result to choose one new teacher,
+rollout, or representation hypothesis.
+
+### Phase 8C: Selected-Policy 1M Confirmation
+
+- Extend only the selected Phase 8B policy from its preserved prefix to 1M
+  records; do not generate the rejected policy to 1M.
+- Train two additional deterministic seeds, giving three total for the selected
+  policy. Continue to use C/16 as both warm start and fixed match control.
+- Use the same predeclared checkpoint schedule and 64-game screens. Extend only
+  one checkpoint per seed to 256 games against C/16.
+- Require positive median paired Elo versus C/16, at least two seeds whose
+  lower CI is greater than `-10 Elo`, and no OOD-v2/tactical regression.
+- Only then run the overall winner against handcrafted: start with 256 games
+  and extend with a fresh opening seed to 1,024 only while its interval leaves
+  the Phase 9 decision unresolved. This is a policy-selection result, not a
+  promotion match.
+- Equal-node games are optional diagnosis after the winner is known; omit them
+  when they would not change the Phase 9 decision.
+- Excluding an explicitly approved inconclusive continuation, Phase 8C may add
+  at most 1,920 games: six 64-game screens for the two new seeds, two 256-game
+  seed extensions, and up to 1,024 handcrafted games for the overall winner.
+
+Record CPU-hours, GPU-hours, positions/second, label node distributions,
+validation loss, tactical-suite results, fixed-control Elo, the conditional
+handcrafted result, and NNUE NPS. Write one result document containing the
+rejected policy and all seeds actually run.
 
 Acceptance criteria:
 
 - the same non-teacher variables are verified by hashes, not assumed;
+- Phase 8A's OOD-v2 and matched-candidate gates pass before training;
 - incomplete-label rejection counts and rates are reported for both new lanes
   and remain at or below 1%;
-- median and per-seed results are reported;
-- qsearch leaves advance only if they improve median handcrafted Elo or
-  held-out loss without a tactical-suite regression;
+- Phase 8B advances no more than one policy under its fixed-control gate;
+- Phase 8C reports the median and every per-seed fixed-control result;
+- qsearch leaves advance only if they beat root under the same staged criteria;
 - the result chooses exactly one data/label policy for Phase 9.
 
 Out of scope: 10M generation, hyperparameter sweeps, feature changes, and
@@ -514,14 +632,19 @@ promotion of a default model.
 ## Phase 9: 10M Promotion Candidate
 
 This is one end-to-end experiment-agent assignment using the single policy
-selected in Phase 8.
+selected in Phase 8. It is conditional: do not start it merely because Phase 8
+finished.
 
 ### Scope
 
-- Generate 10M unique positions and audit them.
-- Train four initialization seeds with checkpoint export/ranking.
+- Require Phase 8C to improve reproducibly over C/16 and to improve the
+  handcrafted point estimate without an OOD-v2 or tactical regression.
+- Extend the selected resumable dataset to 10M unique positions and audit it.
+- Train two initialization seeds first. Run the remaining two only if at least
+  one candidate can still satisfy promotion or seed variance prevents a
+  decision.
 - Use paired fixed-anchor matches to select one checkpoint per seed.
-- Use equal-node matches for evaluation-quality diagnosis.
+- Use equal-node matches only when they change the diagnosis.
 - Use 100 ms paired matches against handcrafted for the promotion decision.
 - Confirm a winning candidate with at least 2,048 paired games, extending the
   match while its confidence interval crosses zero.
@@ -531,7 +654,9 @@ into the result artifact. Record pentanomial pair bins for every match.
 
 Acceptance criteria:
 
-- all four seeds and rejected candidates remain visible in the result;
+- every seed and rejected candidate actually run remains visible in the result;
+- if an early gate stops after two seeds, preserve both and document why seeds
+  three and four were not run;
 - the winning NNUE's lower 95% confidence bound is above `0 Elo` against
   handcrafted, or the phase is explicitly recorded as not promoted;
 - a second seed or independently generated dataset reproduces the gain before
@@ -548,10 +673,12 @@ as the remaining bottleneck.
 
 ### Scope And Gate
 
-Run 50M positions with four seeds. Proceed to 100M with at least two seeds only
-if held-out loss still improves with unique data, 50M improves handcrafted Elo
-over 10M under the same policy, or seed variance narrows in a way consistent
-with data limitation.
+Run 50M positions with two seeds first. Add seeds three and four only if the
+first two preserve the Phase 9 gain and more replication can still change the
+scale decision. Proceed to 100M with at least two seeds only if held-out loss
+still improves with unique data, 50M improves handcrafted Elo over 10M under
+the same policy, or seed variance narrows in a way consistent with data
+limitation.
 
 Use the Phase 9 promotion protocol unchanged. Do not scale merely because the
 current model remains below zero Elo. The agent must end with a promote/stop
@@ -588,6 +715,7 @@ Every decision-making run preserves:
 - opening suite/hash or policy parameters;
 - training, data, split, and shuffle seeds;
 - logs and checkpoint-to-NNUE mapping;
+- generation CPU-hours, GPU-hours, game-hours, and projected-versus-actual cost;
 - per-game JSONL, aggregate JSON, pentanomial counts, Elo, and interval;
 - nodes, qnodes, NPS/QNPS, depth, elapsed time, and runtime target;
 - model hash and verification report;
@@ -600,5 +728,8 @@ Every decision-making run preserves:
 - Do not use the weak NNUE as rollout or label teacher.
 - Do not promote from one seed or a 100-game match.
 - Do not compare headline Elo across different openings, budgets, or runtimes.
+- Do not spend handcrafted games on every checkpoint or every seed; first use
+  the fixed C/16 control and advance only the overall winner.
+- Do not repeat the Phase 7.1 LR/lambda matrix without a new hypothesis.
 - Do not jump to hundreds of millions of positions before 1M/10M gates identify
   data scale as the bottleneck.
