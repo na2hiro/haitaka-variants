@@ -197,6 +197,43 @@ train and OOD-v2 satisfy their written quality gates or have a reviewed
 policy-specific exception, and the projected compute cost is recorded. Its
 agent must stop after writing that decision.
 
+### Local Distributed Generation Policy
+
+Phase 8 data generation is CPU-bound and should run slowly across the user's
+local machines. The Vast GPU instance used for Phase 7.1 is not required for
+Phase 8A or data generation and may be destroyed after the preserved local
+artifacts pass their SHA-256 checks. Rent a new GPU instance only after the
+Phase 8B prefix has been merged, audited, and bundled for training.
+
+Do not begin distributed generation until Phase 8A freezes one source commit,
+one versioned OOD-v2 suite, and one matched root/leaf config identity. Every
+machine must use that exact commit and config; do not use
+`--ignore-identity-mismatch`. Split a common lane count across machines, for
+example:
+
+```bash
+# machine A
+cargo generate <phase8-matched-config.toml> --shard 1-4/16
+
+# machine B
+cargo generate <phase8-matched-config.toml> --shard 5-8/16
+```
+
+Additional machines receive the remaining non-overlapping ranges. Generation
+is resumable, and a lane can later be subdivided because lanes cover contiguous
+shard ranges. Copy each machine's complete output directory back to one host
+and merge without an identity override:
+
+```bash
+cargo merge <phase8-matched-config.toml> \
+  --input path/to/machine-a-output \
+  --input path/to/machine-b-output
+```
+
+Audit the merged train and OOD-v2 manifests before creating the pretrain
+bundle. Preserve every per-machine shard directory until the merged hashes and
+record counts have been verified.
+
 Common completion gate for implementation phases:
 
 - run `cargo fmt` and the focused package/feature tests;
