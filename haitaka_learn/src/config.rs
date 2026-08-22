@@ -401,6 +401,14 @@ impl LoadedConfig {
             .map(|path| self.resolve_path(path))
     }
 
+    pub fn legacy_ood_validation_bin(&self) -> Option<PathBuf> {
+        self.config
+            .paths
+            .legacy_ood_validation_bin
+            .as_ref()
+            .map(|path| self.resolve_path(path))
+    }
+
     pub fn opening_suite(&self) -> Option<PathBuf> {
         self.config
             .data
@@ -562,6 +570,26 @@ impl LearnConfig {
         );
         ensure!(self.data.shard_games > 0, "data.shard_games must be > 0");
         ensure!(
+            self.training.initial_learning_rate.is_finite()
+                && self.training.initial_learning_rate > 0.0,
+            "training.initial_learning_rate must be finite and > 0"
+        );
+        for (name, value) in [
+            (
+                "training.checkpoint_interval_steps",
+                self.training.checkpoint_interval_steps,
+            ),
+            (
+                "training.validation_interval_steps",
+                self.training.validation_interval_steps,
+            ),
+            ("training.max_steps", self.training.max_steps),
+        ] {
+            if let Some(value) = value {
+                ensure!(value > 0, "{name} must be > 0 when configured");
+            }
+        }
+        ensure!(
             (1..=100).contains(&self.data.progress_every_percent),
             "data.progress_every_percent must be between 1 and 100"
         );
@@ -713,6 +741,9 @@ pub struct PathsConfig {
     pub trainer_checkout: Option<PathBuf>,
     #[serde(default)]
     pub bootstrap_nnue: Option<PathBuf>,
+    /// Optional legacy two-opening OOD validation binary used by diagnostic runs.
+    #[serde(default)]
+    pub legacy_ood_validation_bin: Option<PathBuf>,
     #[serde(default = "default_python")]
     pub python: String,
     #[serde(default = "default_cmake")]
@@ -725,6 +756,7 @@ impl Default for PathsConfig {
             output_dir: default_output_dir(),
             trainer_checkout: None,
             bootstrap_nnue: None,
+            legacy_ood_validation_bin: None,
             python: default_python(),
             cmake: default_cmake(),
         }
@@ -832,6 +864,14 @@ pub struct TrainingConfig {
     pub epoch_size: u32,
     #[serde(default = "default_validation_size")]
     pub validation_size: u32,
+    #[serde(default = "default_initial_learning_rate")]
+    pub initial_learning_rate: f32,
+    #[serde(default)]
+    pub checkpoint_interval_steps: Option<u64>,
+    #[serde(default)]
+    pub validation_interval_steps: Option<u64>,
+    #[serde(default)]
+    pub max_steps: Option<u64>,
     #[serde(default = "default_max_epochs")]
     pub max_epochs: u32,
     #[serde(default = "default_build_data_loader")]
@@ -853,6 +893,10 @@ impl Default for TrainingConfig {
             random_fen_skipping: default_random_fen_skipping(),
             epoch_size: default_epoch_size(),
             validation_size: default_validation_size(),
+            initial_learning_rate: default_initial_learning_rate(),
+            checkpoint_interval_steps: None,
+            validation_interval_steps: None,
+            max_steps: None,
             max_epochs: default_max_epochs(),
             build_data_loader: default_build_data_loader(),
             teacher_move_consumers: false,
@@ -1080,6 +1124,10 @@ fn default_epoch_size() -> u32 {
 
 fn default_validation_size() -> u32 {
     20_000
+}
+
+fn default_initial_learning_rate() -> f32 {
+    0.0015
 }
 
 fn default_max_epochs() -> u32 {

@@ -6,10 +6,7 @@ use std::time::SystemTime;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::config::{
-    FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
-    FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
-};
+use crate::config::{LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING};
 use crate::dataset::ENTRY_BYTES;
 
 #[derive(Debug, Serialize)]
@@ -111,6 +108,55 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     Ok(artifacts.exported_nnue)
 }
 
+/// Evaluate one arbitrary checkpoint against the configured ID validation set
+/// and the optional legacy two-opening OOD set without starting training.
+pub fn evaluate_checkpoint(
+    loaded: &LoadedConfig,
+    checkpoint: PathBuf,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let artifacts = loaded.artifact_paths();
+    let checkpoint = loaded.resolve_path(&checkpoint);
+    ensure_file_exists(&checkpoint, "checkpoint")?;
+    ensure_file_exists(&artifacts.validation_bin, "ID validation dataset")?;
+    let ood = loaded.legacy_ood_validation_bin().ok_or_else(|| {
+        anyhow!("paths.legacy_ood_validation_bin is required for offline ID/OOD evaluation")
+    })?;
+    ensure_file_exists(&ood, "legacy OOD validation dataset")?;
+
+    let output = output
+        .map(|path| loaded.resolve_path(&path))
+        .unwrap_or_else(|| artifacts.artifacts_dir.join("offline-evaluation.json"));
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    run_command(
+        &loaded.config.paths.python,
+        &[
+            "evaluate.py".to_string(),
+            checkpoint.display().to_string(),
+            "--id-validation".to_string(),
+            artifacts.validation_bin.display().to_string(),
+            "--ood-validation".to_string(),
+            ood.display().to_string(),
+            "--features".to_string(),
+            loaded.training_features().to_string(),
+            "--batch-size".to_string(),
+            loaded.config.training.batch_size.to_string(),
+            "--validation-size".to_string(),
+            loaded.config.training.validation_size.to_string(),
+            "--output".to_string(),
+            output.display().to_string(),
+        ],
+        &trainer_checkout,
+        "haitaka-variant-nnue-pytorch offline checkpoint evaluation",
+    )?;
+    Ok(output)
+}
+
 pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> {
     let artifacts = loaded.artifact_paths();
     ensure_training_dataset_ready(
@@ -124,7 +170,20 @@ pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> 
         &artifacts.validation_manifest,
         "validation dataset",
         loaded.config.data.validation_games,
-    )
+    )?;
+    if let Some(ood) = loaded.legacy_ood_validation_bin() {
+        ensure_file_exists(&ood, "legacy OOD validation dataset")?;
+        let metadata =
+            fs::metadata(&ood).with_context(|| format!("failed to stat {}", ood.display()))?;
+        if metadata.len() == 0 || metadata.len() % ENTRY_BYTES as u64 != 0 {
+            bail!(
+                "legacy OOD validation dataset {} must be a non-empty multiple of {} bytes",
+                ood.display(),
+                ENTRY_BYTES
+            );
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn training_args(
@@ -171,7 +230,25 @@ pub(crate) fn training_args(
         loaded.config.training.epoch_size.to_string(),
         "--validation-size".to_string(),
         loaded.config.training.validation_size.to_string(),
+        "--initial-learning-rate".to_string(),
+        loaded.config.training.initial_learning_rate.to_string(),
     ];
+    if let Some(interval) = loaded.config.training.checkpoint_interval_steps {
+        args.push("--checkpoint-interval-steps".to_string());
+        args.push(interval.to_string());
+    }
+    if let Some(interval) = loaded.config.training.validation_interval_steps {
+        args.push("--validation-interval-steps".to_string());
+        args.push(interval.to_string());
+    }
+    if let Some(max_steps) = loaded.config.training.max_steps {
+        args.push("--max-steps".to_string());
+        args.push(max_steps.to_string());
+    }
+    if let Some(ood) = loaded.legacy_ood_validation_bin() {
+        args.push("--ood-validation".to_string());
+        args.push(ood.display().to_string());
+    }
     if let Some(checkpoint) = resume_checkpoint {
         println!("resuming training from {}", checkpoint.display());
         args.push("--resume_from_checkpoint".to_string());
@@ -398,12 +475,11 @@ fn materialize_bootstrap_pt(
 }
 
 fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
-    match loaded.training_features() {
-        FEATURE_SET_DONOR_SINGLE | FEATURE_SET_DONOR_PAIR | FEATURE_SET_DONOR_KNIGHT8 => {
-            FEATURE_SET_HALFKAV2
-        }
-        features => features,
-    }
+    // A warm-start NNUE must be parsed with the exact family that produced its
+    // network hash.  The Phase 7.1 v0.5.1 anchor is already a donor-family
+    // network; importing it as plain HalfKAv2 makes serialize.py reject the
+    // header before any feature expansion can occur.
+    loaded.training_features()
 }
 
 fn bootstrap_base_model_pt_path(path: &Path) -> PathBuf {
@@ -682,23 +758,32 @@ mod tests {
     }
 
     #[test]
-    fn donor_training_imports_standard_bootstrap_with_base_features() {
+    fn donor_training_imports_bootstrap_with_exact_feature_family() {
         let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_PAIR.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+        loaded.config.training.features = Some("HalfKAv2^+DonorPairSlots".to_string());
+        assert_eq!(
+            bootstrap_import_features(&loaded),
+            "HalfKAv2^+DonorPairSlots"
+        );
 
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_SINGLE.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+        loaded.config.training.features = Some("HalfKAv2^+DonorSingleEff".to_string());
+        assert_eq!(
+            bootstrap_import_features(&loaded),
+            "HalfKAv2^+DonorSingleEff"
+        );
 
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_KNIGHT8.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+        loaded.config.training.features = Some("HalfKAv2^+DonorKnight8Slots".to_string());
+        assert_eq!(
+            bootstrap_import_features(&loaded),
+            "HalfKAv2^+DonorKnight8Slots"
+        );
     }
 
     #[test]
     fn standard_training_imports_bootstrap_with_training_features() {
         let mut loaded = loaded_config_for_tests(Ruleset::Standard);
-        loaded.config.training.features = Some(FEATURE_SET_HALFKAV2.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+        loaded.config.training.features = Some("HalfKAv2^".to_string());
+        assert_eq!(bootstrap_import_features(&loaded), "HalfKAv2^");
     }
 
     #[test]

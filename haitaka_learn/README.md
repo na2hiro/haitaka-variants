@@ -272,6 +272,27 @@ The bundle includes the config, configured `output_dir/datasets`, and optional
 `paths.bootstrap_nnue`. The bundled config is rewritten to use archive-local
 paths after extraction.
 
+### Diagnostic checkpoint evaluation
+
+Phase 7.1 configs add an explicit `training.initial_learning_rate`, optional
+step-based `checkpoint_interval_steps`, `validation_interval_steps`, and
+`max_steps`. Omitting these fields preserves the existing epoch checkpoint and
+trainer defaults. A diagnostic config may also set
+`paths.legacy_ood_validation_bin`; training then logs that two-opening set as
+secondary OOD validation data.
+
+After the trainer overlay is installed, evaluate any checkpoint without
+starting training:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- evaluate-checkpoint \
+  --config haitaka_learn.anhoku-v0.6-phase7.1-c.toml \
+  --checkpoint out/anhoku-v0.6-phase7.1/lane-c/logs/.../checkpoints/step=2.ckpt
+```
+
+The resulting JSON contains deterministic ID and legacy-OOD losses. The OOD
+loss is diagnostic only and must not select a Phase 7.1 checkpoint.
+
 ### 2. Train And Select The Best Checkpoint
 
 Run this on the CUDA machine:

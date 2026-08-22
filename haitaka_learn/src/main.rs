@@ -95,6 +95,22 @@ enum Command {
         #[arg(long)]
         config: PathBuf,
     },
+    ExportCheckpoint {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        checkpoint: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    EvaluateCheckpoint {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        checkpoint: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     Verify {
         #[arg(long)]
         config: PathBuf,
@@ -233,6 +249,26 @@ fn main() -> Result<()> {
             let loaded = LoadedConfig::from_path(&config)?;
             let exported = trainer::export(&loaded, None)?;
             println!("exported NNUE: {}", exported.display());
+        }
+        Command::ExportCheckpoint {
+            config,
+            checkpoint,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let trainer_checkout = loaded.trainer_checkout()?;
+            let _guard = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
+            trainer::export_checkpoint_to(&loaded, &trainer_checkout, &checkpoint, &output)?;
+            println!("exported NNUE: {}", output.display());
+        }
+        Command::EvaluateCheckpoint {
+            config,
+            checkpoint,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = trainer::evaluate_checkpoint(&loaded, checkpoint, output)?;
+            println!("offline ID/OOD evaluation written to {}", report.display());
         }
         Command::Verify { config } => {
             let loaded = LoadedConfig::from_path(&config)?;
