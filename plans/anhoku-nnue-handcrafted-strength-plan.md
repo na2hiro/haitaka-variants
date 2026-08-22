@@ -121,6 +121,13 @@ Apply these rules to Phase 8 and later experiments:
   matching every saved checkpoint;
 - screen each unique NNUE SHA once and map byte-identical exports back to all
   checkpoints;
+- retain every candidate `.ckpt` until that seed's strength selection is final;
+  after selection, permanently preserve the selected winner `.ckpt` together
+  with its exported `.nnue`, even when storage-saver cleanup removes rejected
+  checkpoints;
+- treat the winner `.ckpt` as the full-precision continuation artifact. An
+  exported quantized `.nnue` is not a substitute for it and must not be the
+  only surviving warm-start source;
 - use 64-game screens only for ranking, extend at most one checkpoint per lane
   to 256 games, and reserve 1,024+ games for an independently seeded final gate;
 - compare every experimental seed with the fixed C/16 control first;
@@ -613,6 +620,8 @@ not regenerated.
 - Save all checkpoints, but predeclare strength screens only near 65k, 164k,
   and 262k accepted positions. Offline ID/OOD-v2 loss and tactical tests may
   veto a checkpoint but may not name the winner.
+- Once root and leaf winners are selected, copy each winning `.ckpt` and its
+  `.nnue` to the persistent result artifacts before deleting any rental host.
 - Screen each of those six unique candidates against C/16 with 64 games using
   the same opening pairs. Extend only the best root and best leaf checkpoint to
   256 games.
@@ -752,6 +761,10 @@ Every decision-making run preserves:
 - opening suite/hash or policy parameters;
 - training, data, split, and shuffle seeds;
 - logs and checkpoint-to-NNUE mapping;
+- the selected winner `.ckpt` for every completed seed, its matching `.nnue`,
+  both SHA-256 values, and enough trainer metadata to reload the checkpoint;
+- a local archive containing those winner pairs before a remote instance is
+  stopped or destroyed; verify the archive checksum after transfer;
 - generation CPU-hours, GPU-hours, game-hours, and projected-versus-actual cost;
 - per-game JSONL, aggregate JSON, pentanomial counts, Elo, and interval;
 - nodes, qnodes, NPS/QNPS, depth, elapsed time, and runtime target;
