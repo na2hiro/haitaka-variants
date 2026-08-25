@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
     NnueModel, NodeBudgetSearchSummary, SEARCH_MATE_SCORE_THRESHOLD, SEARCH_NODE_COUNTING_VERSION,
@@ -92,6 +92,8 @@ struct DatasetManifest {
     split_seed: u64,
     train_opening_ids: Vec<String>,
     validation_opening_ids: Vec<String>,
+    validation_opening_schedule: String,
+    validation_opening_pairs_per_id: Option<u32>,
     opening_group_count: usize,
     opening_group_overlap: Vec<String>,
     shuffle_policy: String,
@@ -115,6 +117,7 @@ struct DatasetManifest {
     candidate_roots_per_game: Option<u16>,
     candidate_identity_version: String,
     candidate_identity_sha256: String,
+    minimum_train_positions: Option<u64>,
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
@@ -185,6 +188,10 @@ struct ShardManifest {
     train_opening_ids: Vec<String>,
     #[serde(default)]
     validation_opening_ids: Vec<String>,
+    #[serde(default = "legacy_validation_opening_schedule")]
+    validation_opening_schedule: String,
+    #[serde(default)]
+    validation_opening_pairs_per_id: Option<u32>,
     #[serde(default = "legacy_shuffle_policy")]
     shuffle_policy: String,
     #[serde(default = "legacy_shuffle_seed")]
@@ -221,6 +228,8 @@ struct ShardManifest {
     candidate_identity_version: String,
     #[serde(default)]
     candidate_identity_sha256: String,
+    #[serde(default)]
+    minimum_train_positions: Option<u64>,
     #[serde(default)]
     rejected_incomplete_label_positions: u64,
     #[serde(default)]
@@ -296,6 +305,10 @@ fn legacy_opening_policy() -> String {
 
 fn legacy_opening_transformation() -> String {
     "none".to_string()
+}
+
+fn legacy_validation_opening_schedule() -> String {
+    "hash-v1".to_string()
 }
 
 fn legacy_split_policy() -> String {
@@ -983,6 +996,8 @@ pub fn generate_data_with_options(
         loaded.config.data.train_games,
         loaded.config.data.validation_games,
         loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
     )?;
 
     let artifacts = loaded.artifact_paths();
@@ -1032,6 +1047,9 @@ pub fn generate_data_with_options(
         shard_selector,
         allow_identity_mismatch,
     )?;
+    if shard_selector.is_full_run() {
+        ensure_minimum_train_positions(loaded, train_positions)?;
+    }
     if graceful_stop_requested() {
         bail!(
             "generate-data stopped gracefully after training split elapsed={}; \
@@ -1328,6 +1346,11 @@ fn generate_split(
         split_seed: loaded.config.data.split_seed,
         train_opening_ids: opening_split.train_ids.clone(),
         validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
         opening_group_count: opening_split.ids_for(dataset_name)?.len(),
         opening_group_overlap: opening_split.overlap(),
         shuffle_policy: loaded
@@ -1368,6 +1391,7 @@ fn generate_split(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256,
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -1466,6 +1490,8 @@ pub fn merge_data(
         loaded.config.data.train_games,
         loaded.config.data.validation_games,
         loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
     )?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1485,6 +1511,7 @@ pub fn merge_data(
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
+    ensure_minimum_train_positions(loaded, train_positions)?;
     let validation_positions = merge_split(
         "validation",
         loaded,
@@ -1545,6 +1572,20 @@ impl ShardSelector {
         let end = partition_boundary(total_shards, self.index_end + 1, self.count);
         start..end
     }
+
+    fn is_full_run(self) -> bool {
+        self.count == 1 && self.index == 0 && self.index_end == 0
+    }
+}
+
+fn ensure_minimum_train_positions(loaded: &LoadedConfig, train_positions: u64) -> Result<()> {
+    if let Some(minimum) = loaded.config.data.minimum_train_positions {
+        ensure!(
+            train_positions >= minimum,
+            "training dataset contains {train_positions} accepted records, below the configured minimum of {minimum}; do not start training"
+        );
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1791,6 +1832,11 @@ fn generate_or_reuse_shard(
         split_seed: loaded.config.data.split_seed,
         train_opening_ids: opening_split.train_ids.clone(),
         validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
         shuffle_policy: loaded
             .config
             .data
@@ -1826,6 +1872,7 @@ fn generate_or_reuse_shard(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -1969,6 +2016,10 @@ fn shard_manifest_matches(
                 && manifest.split_seed == loaded.config.data.split_seed
                 && manifest.train_opening_ids == opening_split.train_ids
                 && manifest.validation_opening_ids == opening_split.validation_ids
+                && manifest.validation_opening_schedule
+                    == opening_split.validation_schedule.manifest_name()
+                && manifest.validation_opening_pairs_per_id
+                    == opening_split.validation_pairs_per_id
                 && manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name()
                 && manifest.shuffle_seed == loaded.config.data.shuffle_seed
                 && manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records))
@@ -1988,6 +2039,7 @@ fn shard_manifest_matches(
         && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
         && (manifest.candidate_identity_version.is_empty()
             || manifest.candidate_identity_version == CANDIDATE_IDENTITY_VERSION)
+        && manifest.minimum_train_positions == loaded.config.data.minimum_train_positions
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -2719,6 +2771,11 @@ fn merge_split(
         split_seed: loaded.config.data.split_seed,
         train_opening_ids: opening_split.train_ids.clone(),
         validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
         opening_group_count: opening_split.ids_for(dataset_name)?.len(),
         opening_group_overlap: opening_split.overlap(),
         shuffle_policy: loaded
@@ -2759,6 +2816,7 @@ fn merge_split(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256,
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
@@ -2889,6 +2947,15 @@ fn validate_merge_shard(
             "opening split groups do not match",
         )?;
         ensure_merge(
+            manifest.validation_opening_schedule
+                == opening_split.validation_schedule.manifest_name(),
+            "validation_opening_schedule does not match",
+        )?;
+        ensure_merge(
+            manifest.validation_opening_pairs_per_id == opening_split.validation_pairs_per_id,
+            "validation_opening_pairs_per_id does not match",
+        )?;
+        ensure_merge(
             manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name(),
             "shuffle_policy does not match",
         )?;
@@ -2941,6 +3008,10 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION,
         "position_selection_audit_version does not match",
+    )?;
+    ensure_merge(
+        manifest.minimum_train_positions == loaded.config.data.minimum_train_positions,
+        "minimum_train_positions does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -4273,6 +4344,8 @@ run_search_smoke = false
                 loaded.config.data.train_games,
                 loaded.config.data.validation_games,
                 loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
             )
             .unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();

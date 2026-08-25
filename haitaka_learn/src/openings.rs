@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
@@ -7,7 +7,7 @@ use haitaka::{Board, Color, Move, Piece};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{LoadedConfig, OpeningPolicy, SplitPolicy};
+use crate::config::{LoadedConfig, OpeningPolicy, SplitPolicy, ValidationOpeningSchedule};
 
 pub const ANHOKU_COLOR_SWAP_V1: &str = "anhoku-rotate180-color-swap-v1";
 pub const NO_OPENING_TRANSFORMATION: &str = "none";
@@ -52,6 +52,8 @@ pub struct GameOpeningMetadata {
 pub struct OpeningSplit {
     pub train_ids: Vec<String>,
     pub validation_ids: Vec<String>,
+    pub validation_schedule: ValidationOpeningSchedule,
+    pub validation_pairs_per_id: Option<u32>,
 }
 
 impl OpeningSplit {
@@ -136,6 +138,8 @@ impl OpeningSource {
         train_games: u32,
         validation_games: u32,
         explicit_validation_ids: Option<&[String]>,
+        validation_schedule: ValidationOpeningSchedule,
+        validation_pairs_per_id: Option<u32>,
     ) -> Result<OpeningSplit> {
         let all_ids = match self {
             Self::UniformRandom { .. } => vec!["uniform-random".to_string()],
@@ -147,6 +151,8 @@ impl OpeningSource {
             return Ok(OpeningSplit {
                 train_ids: all_ids.clone(),
                 validation_ids: all_ids,
+                validation_schedule,
+                validation_pairs_per_id,
             });
         }
         if !matches!(self, Self::Suite { .. }) {
@@ -178,6 +184,8 @@ impl OpeningSource {
             return Ok(OpeningSplit {
                 train_ids,
                 validation_ids,
+                validation_schedule,
+                validation_pairs_per_id,
             });
         }
         let total_games = u64::from(train_games) + u64::from(validation_games);
@@ -195,6 +203,8 @@ impl OpeningSource {
         Ok(OpeningSplit {
             train_ids,
             validation_ids,
+            validation_schedule,
+            validation_pairs_per_id,
         })
     }
 
@@ -221,7 +231,14 @@ impl OpeningSource {
             },
             Self::Suite { openings, .. } => {
                 let allowed = split.ids_for(dataset)?;
-                let index = (pair_seed % allowed.len() as u64) as usize;
+                let index = if dataset == "validation"
+                    && split.validation_schedule
+                        == ValidationOpeningSchedule::EqualColorSwappedPairsV1
+                {
+                    (pair_index % allowed.len() as u32) as usize
+                } else {
+                    (pair_seed % allowed.len() as u64) as usize
+                };
                 let opening_id = &allowed[index];
                 let opening = openings
                     .iter()
@@ -510,7 +527,15 @@ mod tests {
             }],
         };
         let split = source
-            .split_openings(SplitPolicy::IndependentLegacy, 1, 2, 2, None)
+            .split_openings(
+                SplitPolicy::IndependentLegacy,
+                1,
+                2,
+                2,
+                None,
+                ValidationOpeningSchedule::default(),
+                None,
+            )
             .unwrap();
         let first = source.select("train", &split, 123, 20).unwrap();
         let second = source.select("train", &split, 123, 21).unwrap();
@@ -539,6 +564,8 @@ mod tests {
                 loaded.config.data.train_games,
                 loaded.config.data.validation_games,
                 loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
             )
             .unwrap();
         let first = (0..40)
@@ -584,11 +611,60 @@ mod tests {
                 phase8_loaded.config.data.train_games,
                 phase8_loaded.config.data.validation_games,
                 phase8_loaded.config.data.validation_opening_ids.as_deref(),
+                phase8_loaded.config.data.validation_opening_schedule,
+                phase8_loaded.config.data.validation_opening_pairs_per_id,
             )
             .unwrap();
         assert_eq!(phase8_split.validation_ids.len(), 12);
         assert_eq!(phase8_split.validation_ids[0], "anhoku-v2-053");
         assert_eq!(phase8_split.validation_ids[11], "anhoku-v2-064");
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn equal_validation_schedule_assigns_each_reserved_id_the_same_pair_count() {
+        let config = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8c-root-1m.data.toml");
+        let loaded = LoadedConfig::from_path(&config).unwrap();
+        let source = OpeningSource::from_config(&loaded, &loaded.opening_sfen().unwrap()).unwrap();
+        let split = source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+
+        let validation = (0..loaded.config.data.validation_games)
+            .map(|game| {
+                source
+                    .select(
+                        "validation",
+                        &split,
+                        0x1234_5678 ^ u64::from(game / 2),
+                        game,
+                    )
+                    .unwrap()
+                    .metadata
+            })
+            .collect::<Vec<_>>();
+        let mut counts = BTreeMap::new();
+        for game in &validation {
+            *counts.entry(game.opening_id.clone()).or_insert(0u32) += 1;
+        }
+        assert_eq!(counts.len(), 12);
+        assert!(counts.values().all(|count| *count == 32));
+        for pair in validation.chunks_exact(2) {
+            assert_eq!(pair[0].opening_id, pair[1].opening_id);
+            assert_eq!(pair[0].color, "base");
+            assert_eq!(pair[1].color, "swapped");
+        }
     }
 
     #[test]

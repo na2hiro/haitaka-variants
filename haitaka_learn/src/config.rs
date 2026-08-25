@@ -124,6 +124,14 @@ pub enum SplitPolicy {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum ValidationOpeningSchedule {
+    #[default]
+    HashV1,
+    EqualColorSwappedPairsV1,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum ShufflePolicy {
     ChunkV1,
     #[default]
@@ -144,6 +152,15 @@ impl SplitPolicy {
         match self {
             Self::OpeningGroupHashV1 => "opening-group-hash-v1",
             Self::IndependentLegacy => "independent-legacy",
+        }
+    }
+}
+
+impl ValidationOpeningSchedule {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::HashV1 => "hash-v1",
+            Self::EqualColorSwappedPairsV1 => "equal-color-swapped-pairs-v1",
         }
     }
 }
@@ -565,6 +582,12 @@ impl LearnConfig {
             self.data.validation_games > 0,
             "data.validation_games must be > 0"
         );
+        if let Some(minimum) = self.data.minimum_train_positions {
+            ensure!(
+                minimum > 0,
+                "data.minimum_train_positions must be > 0 when configured"
+            );
+        }
         ensure!(self.data.max_plies > 0, "data.max_plies must be > 0");
         let label_search_budget = self.data.label_search_budget()?;
         if self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition {
@@ -623,6 +646,48 @@ impl LearnConfig {
                 self.data.train_games % 2 == 0 && self.data.validation_games % 2 == 0,
                 "data.split_policy=opening-group-hash-v1 requires even train_games and validation_games so color-swapped pairs stay together"
             );
+        }
+        match self.data.validation_opening_schedule {
+            ValidationOpeningSchedule::HashV1 => {
+                ensure!(
+                    self.data.validation_opening_pairs_per_id.is_none(),
+                    "data.validation_opening_pairs_per_id requires data.validation_opening_schedule=equal-color-swapped-pairs-v1"
+                );
+            }
+            ValidationOpeningSchedule::EqualColorSwappedPairsV1 => {
+                ensure!(
+                    self.data.opening_policy == OpeningPolicy::Suite,
+                    "equal-color-swapped-pairs-v1 requires data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data.split_policy == SplitPolicy::OpeningGroupHashV1,
+                    "equal-color-swapped-pairs-v1 requires data.split_policy=opening-group-hash-v1"
+                );
+                let validation_ids =
+                    self.data.validation_opening_ids.as_ref().ok_or_else(|| {
+                        anyhow!("equal-color-swapped-pairs-v1 requires data.validation_opening_ids")
+                    })?;
+                ensure!(
+                    !validation_ids.is_empty(),
+                    "equal-color-swapped-pairs-v1 requires at least one validation opening ID"
+                );
+                let pairs_per_id = self.data.validation_opening_pairs_per_id.ok_or_else(|| {
+                    anyhow!(
+                        "equal-color-swapped-pairs-v1 requires data.validation_opening_pairs_per_id"
+                    )
+                })?;
+                ensure!(
+                    pairs_per_id > 0,
+                    "data.validation_opening_pairs_per_id must be > 0"
+                );
+                let expected_games = u64::from(pairs_per_id)
+                    .saturating_mul(validation_ids.len() as u64)
+                    .saturating_mul(2);
+                ensure!(
+                    u64::from(self.data.validation_games) == expected_games,
+                    "data.validation_games must equal 2 * validation_opening_ids.len() * data.validation_opening_pairs_per_id ({expected_games}) for equal-color-swapped-pairs-v1"
+                );
+            }
         }
         ensure!(
             self.data.shuffle_chunk_records > 0,
@@ -906,6 +971,10 @@ pub struct DataConfig {
     #[serde(default)]
     pub validation_opening_ids: Option<Vec<String>>,
     #[serde(default)]
+    pub validation_opening_schedule: ValidationOpeningSchedule,
+    #[serde(default)]
+    pub validation_opening_pairs_per_id: Option<u32>,
+    #[serde(default)]
     pub split_policy: SplitPolicy,
     #[serde(default = "default_split_seed")]
     pub split_seed: u64,
@@ -927,6 +996,11 @@ pub struct DataConfig {
     /// None preserves the legacy accepted-position cap.
     #[serde(default)]
     pub max_candidate_roots_per_game: Option<u16>,
+    /// Minimum number of accepted training records required for a complete
+    /// (non-sharded) generation or merge. Partial machine lanes cannot prove
+    /// this global target and are checked when merged.
+    #[serde(default)]
+    pub minimum_train_positions: Option<u64>,
     #[serde(default = "default_seed")]
     pub seed: u64,
     #[serde(default = "default_jobs")]
@@ -957,6 +1031,8 @@ impl Default for DataConfig {
             opening_suite: None,
             opening_suite_id: None,
             validation_opening_ids: None,
+            validation_opening_schedule: ValidationOpeningSchedule::default(),
+            validation_opening_pairs_per_id: None,
             split_policy: SplitPolicy::default(),
             split_seed: default_split_seed(),
             shuffle_policy: ShufflePolicy::default(),
@@ -967,6 +1043,7 @@ impl Default for DataConfig {
             sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
             max_candidate_roots_per_game: None,
+            minimum_train_positions: None,
             seed: default_seed(),
             jobs: default_jobs(),
             shard_games: default_shard_games(),
