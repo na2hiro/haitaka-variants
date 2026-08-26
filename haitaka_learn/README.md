@@ -97,7 +97,9 @@ Key fields:
   - `opening_sfen` can override the default opening for any ruleset
 - `[paths]`
   - `trainer_checkout`
-  - `bootstrap_nnue`
+  - `bootstrap_nnue`; when present, `generate-data` requires the file to be
+    readable and loadable and uses it as the teacher. Omit the field to use the
+    handcrafted teacher.
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters

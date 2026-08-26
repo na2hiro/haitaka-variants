@@ -100,6 +100,10 @@ extra_args = ["--threads", "8", "--gpus", "1"]
   convert that same file into `bootstrap.pt` and resume PyTorch training from
   it.
 
+When `paths.bootstrap_nnue` is present, `generate-data` treats it as required
+and fails if the file is missing, unreadable, or invalid. Omit the field only
+when the handcrafted evaluator is intentionally the data-generation teacher.
+
 These are different compatibility checks. A `.nnue` can be valid for Haitaka
 search while failing as a PyTorch training seed.
 

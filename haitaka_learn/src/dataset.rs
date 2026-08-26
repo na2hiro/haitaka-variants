@@ -816,21 +816,22 @@ enum Teacher {
 
 impl Teacher {
     fn from_config(loaded: &LoadedConfig) -> Result<Self> {
-        if let Some(path) = loaded.bootstrap_nnue() {
-            if path.exists() {
-                let bytes = fs::read(&path)
-                    .with_context(|| format!("failed to read bootstrap NNUE {}", path.display()))?;
-                let bootstrap_sha256 = hash_bytes_hex(&bytes);
-                let model = NnueModel::from_bytes(&bytes).map_err(|err| {
-                    anyhow!("failed to load bootstrap NNUE {}: {err}", path.display())
-                })?;
-                return Ok(Self::Nnue {
-                    model: Arc::new(model),
-                    bootstrap_sha256,
-                });
-            }
-        }
-        Ok(Self::Handcrafted)
+        let Some(path) = loaded.bootstrap_nnue() else {
+            return Ok(Self::Handcrafted);
+        };
+        let bytes = fs::read(&path).with_context(|| {
+            format!(
+                "paths.bootstrap_nnue is configured but could not be read: {}",
+                path.display()
+            )
+        })?;
+        let bootstrap_sha256 = hash_bytes_hex(&bytes);
+        let model = NnueModel::from_bytes(&bytes)
+            .map_err(|err| anyhow!("failed to load bootstrap NNUE {}: {err}", path.display()))?;
+        Ok(Self::Nnue {
+            model: Arc::new(model),
+            bootstrap_sha256,
+        })
     }
 
     fn describe(&self) -> &'static str {
@@ -1000,10 +1001,10 @@ pub fn generate_data_with_options(
         loaded.config.data.validation_opening_pairs_per_id,
     )?;
 
+    let teacher = Teacher::from_config(loaded)?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
-    let teacher = Teacher::from_config(loaded)?;
     let engine_revision = detect_git_revision(loaded)?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -3646,6 +3647,25 @@ run_search_smoke = false
         assert!(artifacts.validation_bin.exists());
         assert!(fs::metadata(&artifacts.train_bin).unwrap().len() > 0);
         assert!(fs::metadata(&artifacts.validation_bin).unwrap().len() > 0);
+    }
+
+    #[test]
+    fn generate_data_rejects_a_configured_missing_bootstrap_nnue() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("missing-bootstrap.toml");
+        let config = deterministic_test_config(active_test_ruleset(), "out").replace(
+            "\n[data]",
+            "\nbootstrap_nnue = \"missing-bootstrap.nnue\"\n\n[data]",
+        );
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let missing_bootstrap = loaded.bootstrap_nnue().unwrap();
+
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+
+        assert!(error.contains("paths.bootstrap_nnue is configured but could not be read"));
+        assert!(error.contains(&missing_bootstrap.display().to_string()));
+        assert!(!loaded.artifact_paths().output_dir.exists());
     }
 
     #[test]
