@@ -4,6 +4,20 @@ Status: **PASS — pre-generation gate only** (2026-08-25). Production 1M data
 generation, multi-machine shard work, training, and Phase 8C strength matches
 were not started in this assignment.
 
+Post-launch update (2026-08-26): generation completed but produced only
+543,074 accepted train records from 16,600 games, so the dataset gate is now
+blocked before training. The 64-roots setting was a per-game cap, not achieved
+yield. See the
+[Phase 8C generation-recovery result](nnue-training-anhoku-v0.6-phase8c-generation-recovery.md).
+This does not revoke the historical pre-generation gate pass; it supersedes
+its cardinality estimate and next-step handoff.
+
+Second post-launch update (2026-08-27): GR2 reached 1,115,026 accepted records,
+but the newly enforced uniqueness audit found only 6,832 distinct records and
+published nothing. The launch gate failed to test whether the rollout could
+produce distinct trajectories. Phase 8D searched-stochastic trajectory repair
+now precedes any repaired Phase 8C generation or training.
+
 The machine-readable closeout is
 [`phase8c-launch-gate.json`](../out/anhoku-v0.6-phase8c-launch-gate/phase8c-launch-gate.json).
 The runner is [`scripts/phase8_launch_gate.py`](../scripts/phase8_launch_gate.py)
@@ -22,10 +36,11 @@ and never invokes `generate-data` or `merge-data`.
 | Accepted-record target | Pass | Config requires and generation/merge enforce at least `1,048,576` accepted train records |
 | Phase 8C experiment identity | Pass | Frozen data/training config SHA-256 is `e4471c3ff1a14f113dfd0bb78cfcf0c5268d819cd1292aff1a967a2339fea58a` |
 
-The source checkout used for the gate was `719c3dd236952d918937e6c0365256efae31f735`
-with a dirty worktree because the Phase 8R and launch-gate changes are still
-uncommitted. Before any machine starts generation, freeze these changes in one
-source revision and record that revision on every machine.
+The gate evidence was generated from source revision
+`719c3dd236952d918937e6c0365256efae31f735` before the launch-gate changes were
+committed. The reviewed Phase 8C source/config freeze is now commit
+`3a47c95` (parent `1b50bd6`). Before any machine starts generation, use a clean
+checkout of `3a47c95` and record that revision on every machine.
 
 ## Immutable Phase 8B closeout
 
@@ -164,14 +179,15 @@ inconclusive result; it does not authorize an unplanned extension.
 
 After the source revision and config hash are frozen, use four machines with
 the following contiguous shard ranges. The config has 1,660 train shards and
-39 validation shards; the same selector range applies to both splits.
+39 validation shards. The CLI selector values are lane indices (`0`–`3`),
+which partition both splits into the raw shard ranges shown below.
 
 | Machine | `--shard-index` | `--shard-index-end` | Train shards | Validation shards |
 | --- | ---: | ---: | ---: | ---: |
-| A | 0 | 414 | 0–414 | 0–8 |
-| B | 415 | 829 | 415–829 | 9–18 |
-| C | 830 | 1244 | 830–1244 | 19–28 |
-| D | 1245 | 1659 | 1245–1659 | 29–38 |
+| A | 0 | 0 | 0–414 | 0–8 |
+| B | 1 | 1 | 415–829 | 9–18 |
+| C | 2 | 2 | 830–1244 | 19–28 |
+| D | 3 | 3 | 1245–1659 | 29–38 |
 
 On each machine, first record the frozen source commit, clean/dirty status,
 config SHA-256, opening-suite SHA-256, and C/16 SHA-256. Then run the following
@@ -180,7 +196,7 @@ command with that machine's range:
 ```bash
 cargo run --release -p haitaka_learn --features anhoku -- generate-data \
   --config haitaka_learn.anhoku-v0.6-phase8c-root-1m.data.toml \
-  --shard-index <START> --shard-index-end <END> --shard-count 4
+  --shard-index <LANE_INDEX> --shard-index-end <LANE_INDEX> --shard-count 4
 ```
 
 Do not use `--ignore-identity-mismatch`. Copy each complete output directory

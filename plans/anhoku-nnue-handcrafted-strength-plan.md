@@ -1,8 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phases 1–8B measured; Phase 8R complete; Phase 8C launch gate passed; distributed generation is next
+- Status: Phase 8C GR2 rejected 1,115,026 repeated records; Phase 8D trajectory-diversity repair is next
 - Created: 2026-08-17
-- Last checked: 2026-08-25
+- Last checked: 2026-08-27
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -167,8 +167,10 @@ Phase 8B established:
   the dataset and target distribution;
 - root is the provisional continuation policy. Its preference over leaf is
   weak, but it is the better resource allocation because both strength point
-  estimates are higher and it retains 256,725 rather than 236,555 unique train
-  records from the matched candidates;
+  estimates are higher and it retains 256,725 rather than 236,555 accepted
+  records from the matched candidates; the later GR2 audit showed those files
+  contain heavily repeated deterministic trajectories, so they are not unique
+  position counts;
 - root still loses decisively to handcrafted, so 10M generation and default
   promotion are not authorized;
 - SIMD improved NNUE relative to its scalar path, but root still searched only
@@ -187,21 +189,21 @@ Phase 8B established:
 | Priority | Intervention | Expected strength upside | Confidence in decision value | Decision |
 | ---: | --- | --- | --- | --- |
 | 0 | Literal equal-node root-vs-handcrafted diagnosis | None directly | Complete | Phase 8R proved an evaluation-quality deficit: `-36.78 Elo [-51.30, -22.26]` |
-| 1 | Root-only 1M, three equal-budget seeds, direct 1M-vs-262k match | Small to moderate | High | Run through Phase 8C; 262k is underpowered for the remaining quality gap and 1M is the cheapest clean learning-curve point |
-| 2A | One searched-stochastic rollout policy | Moderate if 1M is flat | Medium | Run only as Phase 8D; the current depth-1 rollout is the largest untested data-distribution weakness |
+| 1 | One searched-stochastic rollout policy with a packed-board uniqueness gate | Moderate to high | High | Run Phase 8D now; deterministic depth-1 trajectories collapsed 1.115M records to only 6,832 boards |
+| 2A | Root-only 1M, three equal-budget seeds, direct 1M-vs-262k match | Small to moderate after diversity repair | Medium-high after Phase 8D | Return to Phase 8C only with a selected rollout and a genuinely unique 262k prefix |
 | 2B | One profiler-selected NNUE runtime hotspot | Potentially material after quality approaches parity | Medium-high after a Phase 8C equal-node gate | Defer Phase 8P until the 1M winner is within `-10 Elo` non-inferiority at equal nodes while still losing at 100 ms |
-| 3 | Same-policy 10M | Potentially moderate, currently unsupported | Low before Phase 8C | Allow only after a reproducible 1M scale gain while equal-node quality remains the bottleneck |
+| 3 | Same-policy 10M | Potentially moderate, currently unsupported | Low before repaired Phase 8C | Allow only after a reproducible unique-data 1M scale gain while equal-node quality remains the bottleneck |
 | 4 | One Feature V2 relation | Potentially material | Medium-low before the data-policy diagnosis | Defer until Phase 8D fails or Phase 9/10 identifies representation limits |
 | 5 | More qsearch-leaf, label-node, LR, or lambda lanes | Low on current evidence | High confidence to deprioritize | Do not schedule without a new falsifiable hypothesis |
 
 This ordering distinguishes confidence that an experiment will answer the next
 question from confidence that its model will be promotable. Phase 8R proves
-that runtime optimization alone cannot make the current 262k root model
-stronger than handcrafted: even with equal combined nodes it remains about 37
-Elo behind. The 100 ms deficit is much larger, so runtime remains a secondary
-bottleneck. Improve and reproduce evaluation quality at 1M first, then repeat
-the fixed equal-node diagnostic once to decide whether runtime has become the
-next limiting factor.
+that runtime optimization alone cannot make the current Phase 8B root stronger
+than handcrafted. GR2 then proved that the supposed 262k/1M data scale was not
+real: the deterministic policy repeated only a few thousand boards. Repair and
+validate trajectory diversity first, then test 262k and 1M unique-data scale;
+repeat the fixed equal-node diagnostic only after a reproducible stronger model
+exists.
 
 ## Completed Assignment: Phase 8R-A Equal-Node Support
 
@@ -280,18 +282,55 @@ record target, and Phase 8C config are reviewable in
 multi-machine handoff were intentionally not started; the next assignment is
 to freeze one source revision and run the recorded shard allocation.
 
+### Phase 8C Generation-Recovery Gate
+
+**Final status (2026-08-27): GR1/GR2 COMPLETE; DATASET REJECTED BEFORE
+TRAINING.** The strict extension correctly assembled all 3,400 train and 39
+validation shards. Train had 1,115,026 accepted records, but only 6,832 distinct
+packed boards (and the same 6,832 distinct 72-byte records). The 571,952 GR2
+extension records added zero boards beyond the predecessor union. No final
+dataset or `READY.json` was published.
+
+The same audit also found incomplete-label rates of 1.549% in train and 1.582%
+in OOD-v2, above the original 1% criterion. This is a second gate failure, not
+a transfer or identity failure. The detailed evidence and the two-assignment
+recovery protocol are in
+`docs/nnue-training-anhoku-v0.6-phase8c-generation-recovery.md`.
+
+The per-game RNG was valid but did not affect moves: `opening_random_plies=0`
+disabled its only random move branch, and `uniform-rollout-v1` deterministically
+played the depth-1 best move. Repeated selections from 52 fixed train openings
+and their color swaps therefore replayed the same trajectories. The changing
+game seed altered only the every-second-ply sampling phase. More shards under
+this policy cannot fix uniqueness.
+
+The Phase 8B root file has the same defect: 256,725 records contain only 8,641
+distinct packed boards. Its completed strength matches remain observations of
+the trained model, but it is no longer a valid 262k unique-data scale control.
+
+Preserve all GR2 shards as evidence, and preserve the exact recovery
+implementation only on `archive/phase8c-gr2-20260827`. The clean branch removes
+the predecessor, staged-publication, ready-marker, and distributed-continuation
+special cases. Do not lower the unique gate, deduplicate and upsample the
+records, extend the deterministic policy, or use them as a material prefix for
+a replacement dataset. Phase 8D is now the immediate assignment. The former
+2% incomplete-label exception applies only to the retired dataset and does not
+automatically carry into the replacement policy.
+
 ### Local Distributed Generation Policy
 
 Phase 8 data generation is CPU-bound and should run slowly across the user's
-local machines. A Vast GPU is not required for the Phase 8C launch gate or
-data generation. Rent one only after the root 1M dataset and stratified OOD-v2
-set have been merged, audited, and bundled for training.
+local machines. A Vast GPU is not required for the Phase 8C launch gate,
+generation recovery, or data generation. Rent one only after the extended root
+1M dataset and stratified OOD-v2 set have been merged, audited, marked ready,
+and bundled for training.
 
 The completed Phase 8B root/leaf generation used one frozen source commit, one
 versioned OOD-v2 suite, and matched candidate identities verified through
-`scripts/phase8_prepare.py check-matched`. Every Phase 8C machine must likewise
-use the exact frozen root config; do not use `--ignore-identity-mismatch`.
-Split a common lane count across machines, for example:
+`scripts/phase8_prepare.py check-matched`, but its deterministic trajectories
+are retired. Every replacement Phase 8D/8C machine must use the exact selected
+searched-stochastic config; do not use `--ignore-identity-mismatch`. Split a
+common lane count across machines, for example:
 
 - assign non-overlapping contiguous shard ranges from the versioned Phase 8C
   root config;
@@ -335,17 +374,26 @@ Phase 8B: 262k one-seed root/leaf pilot
 Phase 8R: equal-node quality failure (-36.78 Elo; complete)
                                       |
                                       v
-Phase 8C: root-only 1M three-seed + direct scale confirmation
+Phase 8C-GR1: strict predecessor + staged merge support
+                                      |
+                                      v
+Phase 8C-GR2: 1.115M records -> only 6,832 boards; rejected
+                                      |
+                                      v
+Phase 8D: searched-stochastic trajectory repair + unique 262k test
+                 |                                  |
+         success |                                  | failure
+                 v                                  v
+Phase 8C: unique 1M three-seed              Phase 11: one Feature V2
+       + direct scale confirmation
              |                     |                         |
  equal-node  | quality parity,     |                         | scale flat/
  deficit +   | fixed-time loss     |                         | inconclusive
  scale gain  |                     |                         |
              v                     v                         v
-Phase 9: conditional 10M     Phase 8P: one hotspot    Phase 8D: rollout A/B
-candidate                         |                          |
-                                 +--> remeasure             +--> if successful,
-                                      fixed time                  Phase 8C protocol
-                                                               if failed, Phase 11
+Phase 9: conditional 10M     Phase 8P: one hotspot          Phase 11
+candidate                         |
+                                 +--> remeasure fixed time
 
 Phase 8C fixed-time win --> separate promotion confirmation; do not scale by default
 
@@ -825,16 +873,19 @@ this list—chooses the assignment.
 
 ### Phase 8C: Root-Policy 1M Scale Confirmation
 
-**Status: next experiment after the launch gate.** This is a root-only data
-scale experiment. It is intended both to produce a stronger model and to
-determine whether quality scaling, rollout policy, or runtime is the next
-bottleneck.
+**Status: blocked on a successful Phase 8D unique-262k experiment.** This is a
+root-only data scale experiment using the selected searched-stochastic policy.
+It is intended both to produce a stronger model and to determine whether
+quality scaling, representation, or runtime is the next bottleneck.
 
-- Extend only fixed-node root data to at least 1,048,576 unique accepted train
-  records. Do not extend leaf data. Preserve the 262k root export as the scale
-  control, but train all 1M runs fresh from immutable C/16.
+- Extend only the selected Phase 8D fixed-node root prefix to at least
+  1,048,576 distinct packed-board train positions with at least 95% packed-board
+  uniqueness. Do not reuse the retired deterministic Phase 8B/GR2 records and
+  do not extend leaf data. Preserve the Phase 8D unique-262k root export as the
+  scale control, but train all 1M runs fresh from immutable C/16.
 - Train deterministic seeds 80, 81, and 82 at 1M. The Phase 8B 262k seed-80 run
-  is a separate learning-curve point and does not count as a 1M replication.
+  is a repeated-trajectory historical result, not a learning-curve point or a
+  1M replication.
 - Predeclare checkpoints near 262k, 524k, 786k, and 1M examples. Screen each
   unique NNUE hash once; byte-identical quantized exports are aliases, not
   separate candidates. Loss and tactical results may veto but not select.
@@ -843,7 +894,7 @@ bottleneck.
   least two seeds with lower 95% CI greater than `-10 Elo`, and no stratified
   OOD-v2, verifier, tactical, or fixed-time NPS regression.
 - Select the overall 1M root winner without using handcrafted results. Compare
-  it directly with the Phase 8B 262k root export using paired 100 ms games.
+  it directly with the Phase 8D unique-262k root export using paired 100 ms games.
   Start at 1,024 games and extend sequentially to at most 4,096. Declare scale
   success when the lower 95% CI is above `0 Elo`; declare scale failure when
   the upper 95% CI is below `+5 Elo`; otherwise record the result as
@@ -869,7 +920,7 @@ bottleneck.
     `0 Elo` without meeting the `-10 Elo` non-inferiority gate, evaluation
     quality remains limiting and Phase 9 may be authorized;
   - if reproducibility or direct scale fails or reaches its inconclusive cap,
-    route to Phase 8D instead of Phase 9;
+    route to one Phase 11 representation hypothesis instead of Phase 9;
   - any other interval combination is mixed/inconclusive and requires a new
     written boundary; do not silently choose runtime work or 10M generation.
 
@@ -877,8 +928,9 @@ Record CPU-hours, GPU-hours, positions/second, label node distributions,
 stratified per-opening and macro validation loss, tactical-suite results,
 fixed-control Elo, direct 1M-versus-262k Elo, fixed-time handcrafted result,
 equal-node handcrafted result, and NNUE NPS. Write one result document
-containing the rejected leaf policy, the Phase 8B scale control, all three 1M
-seeds, and the next-bottleneck classification.
+containing the rejected leaf policy, the Phase 8D unique-262k scale control,
+all three 1M seeds, and the next-bottleneck classification. Describe Phase 8B
+as a historical repeated-trajectory comparator.
 
 Acceptance criteria:
 
@@ -887,8 +939,12 @@ Acceptance criteria:
 - Phase 8R completed with literal combined-node equality and selected the
   evaluation-quality branch; Phase 8P was skipped for the 262k model and is
   run later only if the Phase 8C dual diagnostic meets its trigger;
-- incomplete-label rejection counts and rates are reported for the root 1M
-  train and stratified OOD-v2 data and remain at or below 1%;
+- distinct packed-board counts and duplicate rates are reported for train and
+  OOD-v2; train has at least 1,048,576 boards and at least 95% packed-board
+  uniqueness, while any repeated board with conflicting targets is reported;
+- incomplete-label rejection counts and rates are reported for the replacement
+  root 1M train and stratified OOD-v2 data and meet a gate frozen before
+  production generation; the retired GR2 exception is not inherited silently;
 - Phase 8B advances no more than one policy under its fixed-control gate;
 - Phase 8C reports the median and every per-seed fixed-control result at the
   same 1M training budget;
@@ -902,54 +958,98 @@ Acceptance criteria:
 - Phase 9 is authorized only by reproducible fixed-control improvement, direct
   scale success, no regression, and a remaining statistically significant
   equal-node evaluation-quality deficit;
-- failed or capped scale evidence routes to Phase 8D, while an unlisted mixed
+- failed or capped scale evidence routes to Phase 11, while an unlisted mixed
   interval result stops for a new written boundary instead of defaulting to
   10M.
 
 Out of scope: 10M generation, hyperparameter sweeps, feature changes, and
 promotion of a default model.
 
-## Phase 8D: Conditional Searched-Stochastic Rollout Experiment
+## Phase 8D: Immediate Searched-Stochastic Trajectory Repair
 
-Assign this phase only if Phase 8C rules out a practically meaningful root-data
-scale gain or reaches its inconclusive cap. The working hypothesis is that
-depth-1 best-move rollout produces a training trajectory distribution too far
-from 100 ms match play. This is a single rollout-policy experiment, not a
-teacher, lambda, LR, and feature sweep.
+**Status: next assignment.** GR2 proved deterministic trajectory collapse:
+1,115,026 accepted records contained only 6,832 packed boards. Phase 8D is no
+longer conditional on a Phase 8C strength result; it must repair data diversity
+before any further production labeling or training. This is one rollout-policy
+experiment, not a teacher, lambda, LR, and feature sweep.
 
-### Launch gate
+### Phase 8D-A: audit and label-free rollout launch gate
 
-- Implement a versioned deterministic searched-stochastic rollout policy that
-  scores several legal moves with a cheap search and samples only near-best
-  moves from a documented margin/temperature. The RNG must be derived from the
-  game seed, and resume/merge identity must include every policy parameter.
-- Calibrate its CPU cost and trajectory statistics on the frozen Anhoku v2
-  suite. Freeze one policy before training. Do not pick among rollout policies
-  using strength games in the same assignment.
-- Keep 50,000-node root labels, C/16 bootstrap, features, lambda, LR, sampling,
-  train openings, and OOD-v2 contract unchanged. This tests position
-  distribution, not label strength or representation.
+- Implement a small phase-independent dataset audit that counts both distinct
+  full 72-byte records and distinct packed boards from bytes `0..64`. Define
+  the training minimum by packed boards. Also report duplicate multiplicity
+  and repeated boards whose score, ply, or result fields disagree. Do not
+  restore a Phase-8C-specific ready marker or trainer special case.
+- Separate generation-semantic identity from schedule cardinality in the new
+  design. A frozen policy may extend ordinary non-overlapping shard ranges
+  without a cross-config predecessor exception, while any teacher, opening,
+  seed, rollout, sampling, label-budget, feature, or ABI change must still
+  produce a different semantic identity and fail a mixed merge.
+- Rename or supersede `uniform-rollout-v1`; it is deterministic depth-1
+  best-move rollout, not uniform sampling. Keep the old identity readable for
+  historical manifests but do not allow it in new Phase 8D/8C production data.
+- Implement one versioned searched-stochastic policy. At each rollout ply,
+  score a bounded set of legal moves with cheap search, retain only moves
+  within a frozen score margin of the best, and sample by a frozen temperature.
+  Every policy parameter and RNG version belongs in resume/merge identity.
+- Derive stochastic decisions from pair index and ply, use symmetry-canonical
+  candidate ordering, and require the swapped game to reproduce the exact
+  transformed move sequence. Different pairs must receive different random
+  streams. `opening_random_plies` remains zero; unsearched uniform legal moves
+  are not the production diversity fix.
+- Add a label-free trajectory-audit mode so rollout policies can be calibrated
+  without 50,000-node labels. On at most 4,096 games across all 52 train and 12
+  OOD-v2 IDs, report distinct packed boards, uniqueness ratio, new-board yield
+  by game-count tranche, trajectory hashes, selected-vs-best score gaps, game
+  lengths/outcomes, paired symmetry, and rollout CPU cost.
+- Freeze exactly one margin/temperature using only legality, symmetry, cost,
+  move-quality, and diversity telemetry. Do not use loss, NNUE training, or
+  strength games to choose it. The frozen pilot must be deterministic across
+  thread counts and shard partitions, have at least 95% packed-board
+  uniqueness, and project at least 30 new boards/game through its final tranche.
+- After freezing rollout, run one matched 128-game label calibration: one
+  color-swapped pair from each of the 64 suite IDs, with identical candidate
+  roots at 50k, 100k, and 200k combined label nodes. Freeze the smallest budget
+  for which train and OOD-v2 each have at most 1% incomplete labels, exact node
+  accounting, zero terminal/mate labels, and no material side/outcome rejection
+  bias. Use telemetry only; do not inspect strength. If none passes, stop and
+  define an adaptive-retry contract instead of accepting another post-hoc rate.
 
-### 262k test and decision
+Phase 8D-A stops after source/config hashes, tests, telemetry, and the pass or
+block decision are written. If no bounded near-best policy passes, do not fall
+back to arbitrary opening moves; write a new trajectory hypothesis.
 
-- Generate at least 262,144 unique root records under the new rollout and train
-  seed 80. Preserve every checkpoint and unique export.
-- Apply the same tactical/OOD-v2 veto and C/16 screen used by Phase 8C.
-- Compare the selected candidate directly with the Phase 8B depth-1-rollout
-  root export, starting at 1,024 paired 100 ms games and extending to at most
-  4,096. Retain the new rollout only when the lower 95% CI is above `0 Elo` and
-  it has no material generation-cost, OOD-v2, tactical, verifier, or NPS
-  regression.
-- On success, confirm the rollout at 1M with three fresh seeds using the Phase
-  8C protocol before Phase 9. On failure, stop rollout tuning and advance one
-  Feature V2 hypothesis under Phase 11. An inconclusive result may be extended
-  only under a written sequential boundary; do not try several temperatures.
+### Phase 8D-B: unique-262k strength test
 
-The expected value of this phase is higher than increasing the already
-50,000-node label budget: the 50,000-node root model improved only `+3.73 Elo`
-over the depth-3-derived C/16 control, and the qsearch-leaf transformation did
-not add strength, while rollout still controls every game trajectory using
-only depth 1.
+- Use the Phase 8D-A frozen root-label budget and keep C/16 bootstrap, features,
+  lambda, LR, sampling, train opening groups, and OOD-v2 groups unchanged.
+  Regenerate both train and OOD-v2 under the frozen stochastic policy; none of
+  the deterministic Phase 8B/GR2 records count toward the minimum.
+- Generate until there are at least 262,144 distinct packed train boards and
+  the final dataset remains at least 95% unique. Predeclare a record ceiling
+  from the label-free yield before generation. Report full-record and board
+  counts and all incomplete-label/balance telemetry before training.
+- Train seed 80 from immutable C/16 and preserve every checkpoint and unique
+  export. Loss and the repaired OOD-v2 set may veto but may not select among
+  checkpoints; use the fixed C/16 screen for selection.
+- Compare the selected candidate directly with the Phase 8B repeated-trajectory
+  root export in paired 100 ms games, starting at 1,024 and extending to at most
+  4,096 under a written sequential boundary. This comparison measures the
+  combined benefit of repaired trajectory policy and effective data size; it
+  is not described as a pure 262k scale test.
+- Retain the policy only when the lower 95% bound versus the Phase 8B root is
+  above `0 Elo`, the point estimate versus C/16 is positive, and there is no
+  verifier, tactical, OOD-v2, NPS, or material generation-cost regression.
+- On success, use this unique-262k dataset/export as the new Phase 8C prefix and
+  scale control, then run the three-seed unique-1M protocol. On failure, stop
+  production rollout tuning and review the trajectory telemetry before
+  authorizing one Phase 11 feature hypothesis. An inconclusive match may be
+  extended only under its written boundary; do not try several temperatures
+  against strength outcomes.
+
+This phase has higher expected value than more label nodes or runtime work:
+the current pipeline effectively trained on fewer than 10k boards, so position
+diversity is now the proven first-order bottleneck.
 
 ## Phase 9: 10M Promotion Candidate
 
@@ -962,9 +1062,8 @@ finished.
 - Require the selected 1M policy to improve reproducibly over C/16, win its
   direct 1M-versus-262k scale match, retain a statistically significant
   equal-node evaluation-quality deficit, and avoid OOD-v2, tactical, verifier,
-  and NPS regressions. This may be the original root policy from Phase 8C or a
-  Phase 8D rollout that subsequently passed the full three-seed Phase 8C
-  protocol.
+  and NPS regressions. It must be the Phase 8D searched-stochastic policy that
+  subsequently passed the full three-seed repaired Phase 8C protocol.
 - Extend the selected resumable dataset to 10M unique positions and audit it.
 - Train two initialization seeds first. Run the remaining two only if at least
   one candidate can still satisfy promotion or seed variance prevents a
