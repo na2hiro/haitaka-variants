@@ -76,6 +76,12 @@ for each consecutive color-swapped pair of games.
 The Elo output is only a small-sample estimate. It is useful for quick local
 checks, not for publishing serious engine ratings.
 
+For equal-budget diagnostics, use `--nodes-per-move N`. It applies a fresh
+combined alpha-beta plus qsearch budget to every move on both sides and is
+mutually exclusive with depth and movetime flags. The USI subprocess protocol
+uses `go nodes N`; see the self-play guide for the required telemetry and
+report identity.
+
 For the complete workflow, including raw external USI engines, native engine
 archives, opening suites, and JSON reports, see
 [`docs/self-play.md`](../docs/self-play.md).

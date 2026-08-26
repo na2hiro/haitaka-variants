@@ -12,7 +12,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
-use haitaka_wasm::{NnueModel, SearchEvalMode, UsiSession};
+use haitaka_wasm::{
+    NnueModel, SEARCH_NODE_BUDGET_MAX_DEPTH, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
+    SearchWorkspace, UsiSession,
+};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -158,6 +161,12 @@ struct SelfPlayArgs {
     /// Shared movetime budget in milliseconds. If set, both sides use movetime.
     #[arg(long)]
     movetime_ms: Option<u32>,
+    /// Shared combined alpha-beta plus qsearch node budget for every move.
+    #[arg(
+        long,
+        conflicts_with_all = ["a_depth", "b_depth", "movetime_ms"]
+    )]
+    nodes_per_move: Option<u64>,
     /// Starting SFEN. Defaults to the ruleset start position.
     #[arg(long)]
     sfen: Option<String>,
@@ -397,12 +406,20 @@ enum EngineEvaluator {
 enum SearchBudget {
     Depth(u8),
     Movetime { max_depth: Option<u8>, millis: u32 },
+    Nodes(u64),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 struct EngineSearchResult {
     best_move: Option<String>,
     total_nodes: u64,
+    requested_budget_nodes: u64,
+    consumed_budget_nodes: u64,
+    alpha_beta_nodes: u64,
+    completed_depth: u8,
+    incomplete_iterations: u64,
+    node_budget_cap_hits: u64,
+    fallback_used: bool,
     elapsed_ms: f64,
     qsearch: QsearchTelemetry,
 }
@@ -447,6 +464,20 @@ impl From<haitaka_wasm::SearchQsearchStats> for QsearchTelemetry {
 struct SearchBreakdown {
     #[serde(rename = "totalNodes", default)]
     total_nodes: u64,
+    #[serde(rename = "requestedBudgetNodes", default)]
+    requested_budget_nodes: u64,
+    #[serde(rename = "consumedBudgetNodes", default)]
+    consumed_budget_nodes: u64,
+    #[serde(rename = "alphaBetaNodes", default)]
+    alpha_beta_nodes: u64,
+    #[serde(rename = "completedDepth", default)]
+    completed_depth: u8,
+    #[serde(rename = "incompleteIterations", default)]
+    incomplete_iterations: u64,
+    #[serde(rename = "nodeBudgetCapHits", default)]
+    node_budget_cap_hits: u64,
+    #[serde(rename = "fallbacks", default)]
+    fallbacks: u64,
     #[serde(rename = "totalElapsedMs", default)]
     total_elapsed_ms: f64,
     #[serde(rename = "aggregateNps", default)]
@@ -468,10 +499,28 @@ struct SearchBreakdown {
 impl SearchBreakdown {
     fn add(&mut self, other: Self) {
         self.total_nodes += other.total_nodes;
+        self.requested_budget_nodes += other.requested_budget_nodes;
+        self.consumed_budget_nodes += other.consumed_budget_nodes;
+        self.completed_depth = self.completed_depth.max(other.completed_depth);
+        self.incomplete_iterations += other.incomplete_iterations;
+        self.node_budget_cap_hits += other.node_budget_cap_hits;
+        self.fallbacks += other.fallbacks;
         self.total_elapsed_ms += other.total_elapsed_ms;
         let mut qsearch = self.qsearch();
         qsearch.add(other.qsearch());
+        let requested_budget_nodes = self.requested_budget_nodes;
+        let consumed_budget_nodes = self.consumed_budget_nodes;
+        let completed_depth = self.completed_depth;
+        let incomplete_iterations = self.incomplete_iterations;
+        let node_budget_cap_hits = self.node_budget_cap_hits;
+        let fallbacks = self.fallbacks;
         *self = search_breakdown(self.total_nodes, self.total_elapsed_ms, qsearch);
+        self.requested_budget_nodes = requested_budget_nodes;
+        self.consumed_budget_nodes = consumed_budget_nodes;
+        self.completed_depth = completed_depth;
+        self.incomplete_iterations = incomplete_iterations;
+        self.node_budget_cap_hits = node_budget_cap_hits;
+        self.fallbacks = fallbacks;
     }
 
     fn qsearch(&self) -> QsearchTelemetry {
@@ -506,6 +555,13 @@ struct GameResult {
     winner: Option<Seat>,
     plies: u16,
     total_nodes: u64,
+    requested_budget_nodes: u64,
+    consumed_budget_nodes: u64,
+    alpha_beta_nodes: u64,
+    completed_depth: u8,
+    incomplete_iterations: u64,
+    node_budget_cap_hits: u64,
+    fallbacks: u64,
     total_elapsed_ms: f64,
     total_qsearch: QsearchTelemetry,
     a_breakdown: SearchBreakdown,
@@ -557,8 +613,24 @@ struct GameJsonRecord {
     plies: u16,
     #[serde(rename = "totalNodes")]
     total_nodes: u64,
+    #[serde(rename = "requestedBudgetNodes")]
+    requested_budget_nodes: u64,
+    #[serde(rename = "consumedBudgetNodes")]
+    consumed_budget_nodes: u64,
+    #[serde(rename = "alphaBetaNodes")]
+    alpha_beta_nodes: u64,
+    #[serde(rename = "completedDepth")]
+    completed_depth: u8,
+    #[serde(rename = "incompleteIterations")]
+    incomplete_iterations: u64,
+    #[serde(rename = "nodeBudgetCapHits")]
+    node_budget_cap_hits: u64,
+    #[serde(rename = "fallbacks")]
+    fallbacks: u64,
     #[serde(rename = "totalElapsedMs")]
     total_elapsed_ms: f64,
+    #[serde(rename = "aggregateNps")]
+    aggregate_nps: f64,
     #[serde(rename = "qnodes")]
     qnodes: u64,
     #[serde(rename = "aggregateQnps")]
@@ -618,6 +690,13 @@ struct ReportCommand {
     b_depth: Option<u8>,
     #[serde(rename = "movetimeMs")]
     movetime_ms: Option<u32>,
+    #[serde(rename = "nodesPerMove")]
+    nodes_per_move: Option<u64>,
+    #[serde(
+        rename = "nodeCountingVersion",
+        skip_serializing_if = "Option::is_none"
+    )]
+    node_counting_version: Option<String>,
     sfen: Option<String>,
     openings: Option<String>,
     #[serde(rename = "openingOrder")]
@@ -675,6 +754,20 @@ struct RatingSummary {
     avg_plies: f64,
     #[serde(rename = "totalNodes")]
     total_nodes: u64,
+    #[serde(rename = "requestedBudgetNodes", default)]
+    requested_budget_nodes: u64,
+    #[serde(rename = "consumedBudgetNodes", default)]
+    consumed_budget_nodes: u64,
+    #[serde(rename = "alphaBetaNodes", default)]
+    alpha_beta_nodes: u64,
+    #[serde(rename = "completedDepth", default)]
+    completed_depth: u8,
+    #[serde(rename = "incompleteIterations", default)]
+    incomplete_iterations: u64,
+    #[serde(rename = "nodeBudgetCapHits", default)]
+    node_budget_cap_hits: u64,
+    #[serde(rename = "fallbacks", default)]
+    fallbacks: u64,
     #[serde(rename = "totalElapsedMs", default)]
     total_elapsed_ms: f64,
     #[serde(rename = "aggregateNps")]
@@ -916,6 +1009,13 @@ fn search_in_process_handcrafted(
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
                 total_nodes: summary.states,
+                requested_budget_nodes: 0,
+                consumed_budget_nodes: 0,
+                alpha_beta_nodes: summary.states,
+                completed_depth: depth,
+                incomplete_iterations: 0,
+                node_budget_cap_hits: 0,
+                fallback_used: false,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -929,9 +1029,27 @@ fn search_in_process_handcrafted(
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
                 total_nodes: summary.states,
+                requested_budget_nodes: 0,
+                consumed_budget_nodes: 0,
+                alpha_beta_nodes: summary.states,
+                completed_depth: summary.completed_depth,
+                incomplete_iterations: u64::from(summary.timed_out),
+                node_budget_cap_hits: 0,
+                fallback_used: false,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
+        }
+        SearchBudget::Nodes(nodes) => {
+            let mut workspace = SearchWorkspace::default();
+            let summary =
+                haitaka_wasm::search_board_impl_handcrafted_with_node_budget_in_workspace(
+                    board,
+                    nodes,
+                    SEARCH_NODE_BUDGET_MAX_DEPTH,
+                    &mut workspace,
+                )?;
+            Ok(node_budget_engine_result(board, summary))
         }
     }
 }
@@ -952,6 +1070,13 @@ fn search_in_process_nnue(
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
                 total_nodes: summary.states,
+                requested_budget_nodes: 0,
+                consumed_budget_nodes: 0,
+                alpha_beta_nodes: summary.states,
+                completed_depth: depth,
+                incomplete_iterations: 0,
+                node_budget_cap_hits: 0,
+                fallback_used: false,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -967,10 +1092,56 @@ fn search_in_process_nnue(
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
                 total_nodes: summary.states,
+                requested_budget_nodes: 0,
+                consumed_budget_nodes: 0,
+                alpha_beta_nodes: summary.states,
+                completed_depth: summary.completed_depth,
+                incomplete_iterations: u64::from(summary.timed_out),
+                node_budget_cap_hits: 0,
+                fallback_used: false,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
         }
+        SearchBudget::Nodes(nodes) => {
+            let mut workspace = SearchWorkspace::default();
+            let summary =
+                haitaka_wasm::search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+                    board,
+                    nodes,
+                    SEARCH_NODE_BUDGET_MAX_DEPTH,
+                    model,
+                    SearchEvalMode::Incremental,
+                    &mut workspace,
+                )?;
+            Ok(node_budget_engine_result(board, summary))
+        }
+    }
+}
+
+fn node_budget_engine_result(
+    board: &Board,
+    summary: haitaka_wasm::NodeBudgetSearchSummary,
+) -> EngineSearchResult {
+    let fallback_used = summary.best_move.is_none();
+    let best_move = summary
+        .best_move
+        .or_else(|| legal_moves(board).first().map(ToString::to_string));
+    EngineSearchResult {
+        best_move,
+        total_nodes: summary.alpha_beta_nodes,
+        requested_budget_nodes: summary.node_limit,
+        consumed_budget_nodes: summary.total_nodes,
+        alpha_beta_nodes: summary.alpha_beta_nodes,
+        completed_depth: summary.completed_depth,
+        incomplete_iterations: u64::from(summary.incomplete_iterations),
+        node_budget_cap_hits: summary.cap_hits,
+        fallback_used,
+        elapsed_ms: summary.elapsed_ms,
+        qsearch: QsearchTelemetry {
+            qnodes: summary.qsearch_nodes,
+            ..QsearchTelemetry::default()
+        },
     }
 }
 
@@ -1015,6 +1186,9 @@ fn describe_budget(budget: SearchBudget) -> String {
             Some(max_depth) => format!("movetime_ms={millis} max_depth={max_depth}"),
             None => format!("movetime_ms={millis} max_depth=unlimited"),
         },
+        SearchBudget::Nodes(nodes) => format!(
+            "nodes_per_move={nodes} max_depth={SEARCH_NODE_BUDGET_MAX_DEPTH} counting={SEARCH_NODE_COUNTING_VERSION}"
+        ),
     }
 }
 
@@ -1025,7 +1199,20 @@ fn self_play_budget(
     default_depth: u8,
     depth: Option<u8>,
     movetime_ms: Option<u32>,
+    nodes_per_move: Option<u64>,
 ) -> Result<SearchBudget> {
+    if let Some(nodes) = nodes_per_move {
+        if depth.is_some() || movetime_ms.is_some() {
+            bail!(
+                "--nodes-per-move is mutually exclusive with --a-depth/--b-depth and --movetime-ms"
+            );
+        }
+        if nodes == 0 {
+            bail!("--nodes-per-move must be greater than 0");
+        }
+        return Ok(SearchBudget::Nodes(nodes));
+    }
+
     match movetime_ms {
         Some(0) => bail!("--movetime-ms must be greater than 0"),
         Some(millis) => Ok(SearchBudget::Movetime {
@@ -1263,9 +1450,17 @@ struct UsiEngineClient {
     stderr_lines: Arc<Mutex<Vec<String>>>,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct UsiInfoTelemetry {
     total_nodes: u64,
+    requested_budget_nodes: u64,
+    consumed_budget_nodes: u64,
+    alpha_beta_nodes: u64,
+    completed_depth: u8,
+    incomplete_iterations: u64,
+    node_budget_cap_hits: u64,
+    fallback_used: bool,
+    node_counting_version: Option<String>,
     qsearch: QsearchTelemetry,
 }
 
@@ -1352,9 +1547,41 @@ impl UsiEngineClient {
         self.send_command(&go_command(budget))?;
         let timeout = search_timeout(budget);
         let (bestmove, telemetry) = self.read_bestmove(timeout)?;
+        if let SearchBudget::Nodes(nodes) = budget {
+            if telemetry.node_counting_version.as_deref() != Some(SEARCH_NODE_COUNTING_VERSION) {
+                bail!(
+                    "external engine did not report node counting version {SEARCH_NODE_COUNTING_VERSION}"
+                );
+            }
+            if telemetry.requested_budget_nodes != nodes {
+                bail!(
+                    "external engine reported requested node budget {}, expected {nodes}",
+                    telemetry.requested_budget_nodes
+                );
+            }
+            let expected_consumed = telemetry.alpha_beta_nodes + telemetry.qsearch.qnodes;
+            if telemetry.consumed_budget_nodes != expected_consumed {
+                bail!(
+                    "external engine reported consumed node budget {}, but alpha-beta plus qsearch counters total {expected_consumed}",
+                    telemetry.consumed_budget_nodes
+                );
+            }
+        }
+        let alpha_beta_nodes = if telemetry.alpha_beta_nodes == 0 {
+            telemetry.total_nodes
+        } else {
+            telemetry.alpha_beta_nodes
+        };
         Ok(EngineSearchResult {
             best_move: bestmove,
-            total_nodes: telemetry.total_nodes,
+            total_nodes: alpha_beta_nodes,
+            requested_budget_nodes: telemetry.requested_budget_nodes,
+            consumed_budget_nodes: telemetry.consumed_budget_nodes,
+            alpha_beta_nodes,
+            completed_depth: telemetry.completed_depth,
+            incomplete_iterations: telemetry.incomplete_iterations,
+            node_budget_cap_hits: telemetry.node_budget_cap_hits,
+            fallback_used: telemetry.fallback_used,
             elapsed_ms: started_at.elapsed().as_secs_f64() * 1_000.0,
             qsearch: telemetry.qsearch,
         })
@@ -1472,10 +1699,54 @@ fn merge_usi_info_telemetry(telemetry: &mut UsiInfoTelemetry, line: &str) {
     while let Some(token) = tokens.next() {
         match token {
             "string" => break,
+            "depth" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.completed_depth = value;
+                }
+            }
             "nodes" => {
                 if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
                     telemetry.total_nodes = value;
+                    telemetry.alpha_beta_nodes = value;
                 }
+            }
+            "requestedBudgetNodes" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.requested_budget_nodes = value;
+                }
+            }
+            "consumedBudgetNodes" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.consumed_budget_nodes = value;
+                }
+            }
+            "alphaBetaNodes" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.alpha_beta_nodes = value;
+                }
+            }
+            "completedDepth" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.completed_depth = value;
+                }
+            }
+            "incompleteIterations" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.incomplete_iterations = value;
+                }
+            }
+            "nodeBudgetCapHits" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
+                    telemetry.node_budget_cap_hits = value;
+                }
+            }
+            "fallback" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.fallback_used = value != 0;
+                }
+            }
+            "nodeCountingVersion" => {
+                telemetry.node_counting_version = tokens.next().map(str::to_string);
             }
             "qnodes" => {
                 if let Some(value) = tokens.next().and_then(|value| value.parse::<u64>().ok()) {
@@ -1520,6 +1791,7 @@ fn go_command(budget: SearchBudget) -> String {
             max_depth: None,
             millis,
         } => format!("go movetime {millis}"),
+        SearchBudget::Nodes(nodes) => format!("go nodes {nodes}"),
     }
 }
 
@@ -1529,6 +1801,7 @@ fn search_timeout(budget: SearchBudget) -> Duration {
         SearchBudget::Movetime { millis, .. } => {
             Duration::from_millis(u64::from(millis)) + USI_SEARCH_TIMEOUT_GRACE
         }
+        SearchBudget::Nodes(_) => USI_DEPTH_SEARCH_TIMEOUT,
     }
 }
 
@@ -1551,20 +1824,37 @@ fn play_self_play_game(
     let pair_index = game_index / 2;
     let (mut board, opening) = game_opening(base_board, openings, args, pair_index)?;
     let start_sfen = board.to_string();
-    let a_color = if game_index % 2 == 0 {
-        Color::Black
-    } else {
-        Color::White
-    };
+    let a_color = game_a_color(game_index);
     let mut winner = None;
     let mut plies = 0;
     let mut total_nodes = 0;
+    let mut requested_budget_nodes = 0;
+    let mut consumed_budget_nodes = 0;
+    let mut alpha_beta_nodes = 0;
+    let mut completed_depth = 0;
+    let mut incomplete_iterations = 0;
+    let mut node_budget_cap_hits = 0;
+    let mut fallbacks = 0;
     let mut total_elapsed_ms = 0.0;
     let mut total_qsearch = QsearchTelemetry::default();
     let mut a_total_nodes = 0;
+    let mut a_requested_budget_nodes = 0;
+    let mut a_consumed_budget_nodes = 0;
+    let mut a_alpha_beta_nodes = 0;
+    let mut a_completed_depth = 0;
+    let mut a_incomplete_iterations = 0;
+    let mut a_node_budget_cap_hits = 0;
+    let mut a_fallbacks = 0;
     let mut a_total_elapsed_ms = 0.0;
     let mut a_qsearch = QsearchTelemetry::default();
     let mut b_total_nodes = 0;
+    let mut b_requested_budget_nodes = 0;
+    let mut b_consumed_budget_nodes = 0;
+    let mut b_alpha_beta_nodes = 0;
+    let mut b_completed_depth = 0;
+    let mut b_incomplete_iterations = 0;
+    let mut b_node_budget_cap_hits = 0;
+    let mut b_fallbacks = 0;
     let mut b_total_elapsed_ms = 0.0;
     let mut b_qsearch = QsearchTelemetry::default();
     let mut moves = Vec::new();
@@ -1602,14 +1892,35 @@ fn play_self_play_game(
             )
         })?;
         total_nodes += summary.total_nodes;
+        requested_budget_nodes += summary.requested_budget_nodes;
+        consumed_budget_nodes += summary.consumed_budget_nodes;
+        alpha_beta_nodes += summary.alpha_beta_nodes;
+        completed_depth = completed_depth.max(summary.completed_depth);
+        incomplete_iterations += summary.incomplete_iterations;
+        node_budget_cap_hits += summary.node_budget_cap_hits;
+        fallbacks += u64::from(summary.fallback_used);
         total_elapsed_ms += summary.elapsed_ms;
         total_qsearch.add(summary.qsearch);
         if board.side_to_move() == a_color {
             a_total_nodes += summary.total_nodes;
+            a_requested_budget_nodes += summary.requested_budget_nodes;
+            a_consumed_budget_nodes += summary.consumed_budget_nodes;
+            a_alpha_beta_nodes += summary.alpha_beta_nodes;
+            a_completed_depth = a_completed_depth.max(summary.completed_depth);
+            a_incomplete_iterations += summary.incomplete_iterations;
+            a_node_budget_cap_hits += summary.node_budget_cap_hits;
+            a_fallbacks += u64::from(summary.fallback_used);
             a_total_elapsed_ms += summary.elapsed_ms;
             a_qsearch.add(summary.qsearch);
         } else {
             b_total_nodes += summary.total_nodes;
+            b_requested_budget_nodes += summary.requested_budget_nodes;
+            b_consumed_budget_nodes += summary.consumed_budget_nodes;
+            b_alpha_beta_nodes += summary.alpha_beta_nodes;
+            b_completed_depth = b_completed_depth.max(summary.completed_depth);
+            b_incomplete_iterations += summary.incomplete_iterations;
+            b_node_budget_cap_hits += summary.node_budget_cap_hits;
+            b_fallbacks += u64::from(summary.fallback_used);
             b_total_elapsed_ms += summary.elapsed_ms;
             b_qsearch.add(summary.qsearch);
         }
@@ -1647,10 +1958,39 @@ fn play_self_play_game(
         winner,
         plies,
         total_nodes,
+        requested_budget_nodes,
+        consumed_budget_nodes,
+        alpha_beta_nodes,
+        completed_depth,
+        incomplete_iterations,
+        node_budget_cap_hits,
+        fallbacks,
         total_elapsed_ms,
         total_qsearch,
-        a_breakdown: search_breakdown(a_total_nodes, a_total_elapsed_ms, a_qsearch),
-        b_breakdown: search_breakdown(b_total_nodes, b_total_elapsed_ms, b_qsearch),
+        a_breakdown: search_breakdown_with_budget(
+            a_total_nodes,
+            a_total_elapsed_ms,
+            a_qsearch,
+            a_requested_budget_nodes,
+            a_consumed_budget_nodes,
+            a_alpha_beta_nodes,
+            a_completed_depth,
+            a_incomplete_iterations,
+            a_node_budget_cap_hits,
+            a_fallbacks,
+        ),
+        b_breakdown: search_breakdown_with_budget(
+            b_total_nodes,
+            b_total_elapsed_ms,
+            b_qsearch,
+            b_requested_budget_nodes,
+            b_consumed_budget_nodes,
+            b_alpha_beta_nodes,
+            b_completed_depth,
+            b_incomplete_iterations,
+            b_node_budget_cap_hits,
+            b_fallbacks,
+        ),
         start_sfen,
         opening,
         moves,
@@ -1671,6 +2011,14 @@ fn color_name(color: Color) -> &'static str {
     match color {
         Color::Black => "black",
         Color::White => "white",
+    }
+}
+
+fn game_a_color(game_index: u32) -> Color {
+    if game_index % 2 == 0 {
+        Color::Black
+    } else {
+        Color::White
     }
 }
 
@@ -1712,6 +2060,7 @@ fn search_breakdown(
 
     SearchBreakdown {
         total_nodes,
+        alpha_beta_nodes: total_nodes,
         total_elapsed_ms,
         aggregate_nps,
         qnodes: qsearch.qnodes,
@@ -1720,6 +2069,32 @@ fn search_breakdown(
         qsearch_cap_hits: qsearch.qsearch_cap_hits,
         qsearch_check_move_tries: qsearch.qsearch_check_move_tries,
         qsearch_delta_prunes: qsearch.qsearch_delta_prunes,
+        ..SearchBreakdown::default()
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_breakdown_with_budget(
+    total_nodes: u64,
+    total_elapsed_ms: f64,
+    qsearch: QsearchTelemetry,
+    requested_budget_nodes: u64,
+    consumed_budget_nodes: u64,
+    alpha_beta_nodes: u64,
+    completed_depth: u8,
+    incomplete_iterations: u64,
+    node_budget_cap_hits: u64,
+    fallbacks: u64,
+) -> SearchBreakdown {
+    SearchBreakdown {
+        requested_budget_nodes,
+        consumed_budget_nodes,
+        alpha_beta_nodes,
+        completed_depth,
+        incomplete_iterations,
+        node_budget_cap_hits,
+        fallbacks,
+        ..search_breakdown(total_nodes, total_elapsed_ms, qsearch)
     }
 }
 
@@ -1767,6 +2142,20 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
         paired_elo_95_ci,
         avg_plies: stats.total_plies as f64 / denom,
         total_nodes: stats.total_nodes,
+        requested_budget_nodes: stats.a_breakdown.requested_budget_nodes
+            + stats.b_breakdown.requested_budget_nodes,
+        consumed_budget_nodes: stats.a_breakdown.consumed_budget_nodes
+            + stats.b_breakdown.consumed_budget_nodes,
+        alpha_beta_nodes: stats.total_nodes,
+        completed_depth: stats
+            .a_breakdown
+            .completed_depth
+            .max(stats.b_breakdown.completed_depth),
+        incomplete_iterations: stats.a_breakdown.incomplete_iterations
+            + stats.b_breakdown.incomplete_iterations,
+        node_budget_cap_hits: stats.a_breakdown.node_budget_cap_hits
+            + stats.b_breakdown.node_budget_cap_hits,
+        fallbacks: stats.a_breakdown.fallbacks + stats.b_breakdown.fallbacks,
         total_elapsed_ms: stats.total_elapsed_ms,
         aggregate_nps: total_breakdown.aggregate_nps,
         qnodes: total_breakdown.qnodes,
@@ -1775,21 +2164,15 @@ fn rating_summary(stats: &MatchStats, games: u32) -> RatingSummary {
         qsearch_cap_hits: total_breakdown.qsearch_cap_hits,
         qsearch_check_move_tries: total_breakdown.qsearch_check_move_tries,
         qsearch_delta_prunes: total_breakdown.qsearch_delta_prunes,
-        a_breakdown: search_breakdown(
-            stats.a_breakdown.total_nodes,
-            stats.a_breakdown.total_elapsed_ms,
-            stats.a_breakdown.qsearch(),
-        ),
-        b_breakdown: search_breakdown(
-            stats.b_breakdown.total_nodes,
-            stats.b_breakdown.total_elapsed_ms,
-            stats.b_breakdown.qsearch(),
-        ),
+        a_breakdown: normalized_search_breakdown(stats.a_breakdown),
+        b_breakdown: normalized_search_breakdown(stats.b_breakdown),
         warnings,
     }
 }
 
 fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
+    let a_breakdown = normalized_search_breakdown(summary.a_breakdown);
+    let b_breakdown = normalized_search_breakdown(summary.b_breakdown);
     MatchStats {
         a_wins: summary.a_wins,
         b_wins: summary.b_wins,
@@ -1804,19 +2187,38 @@ fn stats_from_summary(summary: &RatingSummary) -> MatchStats {
             qsearch_delta_prunes: summary.qsearch_delta_prunes,
         },
         total_plies: (summary.avg_plies * f64::from(summary.games)).round() as u64,
-        a_breakdown: search_breakdown(
-            summary.a_breakdown.total_nodes,
-            summary.a_breakdown.total_elapsed_ms,
-            summary.a_breakdown.qsearch(),
-        ),
-        b_breakdown: search_breakdown(
-            summary.b_breakdown.total_nodes,
-            summary.b_breakdown.total_elapsed_ms,
-            summary.b_breakdown.qsearch(),
-        ),
+        a_breakdown,
+        b_breakdown,
         pair_score_bins: summary.pair_score_bins,
         pending_pair_scores: BTreeMap::new(),
     }
+}
+
+fn normalized_search_breakdown(mut breakdown: SearchBreakdown) -> SearchBreakdown {
+    let requested_budget_nodes = breakdown.requested_budget_nodes;
+    let consumed_budget_nodes = breakdown.consumed_budget_nodes;
+    let alpha_beta_nodes = if breakdown.alpha_beta_nodes == 0 {
+        breakdown.total_nodes
+    } else {
+        breakdown.alpha_beta_nodes
+    };
+    let completed_depth = breakdown.completed_depth;
+    let incomplete_iterations = breakdown.incomplete_iterations;
+    let node_budget_cap_hits = breakdown.node_budget_cap_hits;
+    let fallbacks = breakdown.fallbacks;
+    breakdown = search_breakdown(
+        breakdown.total_nodes,
+        breakdown.total_elapsed_ms,
+        breakdown.qsearch(),
+    );
+    breakdown.requested_budget_nodes = requested_budget_nodes;
+    breakdown.consumed_budget_nodes = consumed_budget_nodes;
+    breakdown.alpha_beta_nodes = alpha_beta_nodes;
+    breakdown.completed_depth = completed_depth;
+    breakdown.incomplete_iterations = incomplete_iterations;
+    breakdown.node_budget_cap_hits = node_budget_cap_hits;
+    breakdown.fallbacks = fallbacks;
+    breakdown
 }
 
 fn paired_rating(bins: [u32; 5]) -> (u32, f64, [f64; 2]) {
@@ -2064,7 +2466,7 @@ fn prepare_self_play_report_merge_output(
 fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
     GameJsonRecord {
         schema: "haitaka-self-play-game",
-        schema_version: 1,
+        schema_version: 2,
         game_index: game_index + 1,
         pair_index: game_index / 2,
         a_color: color_name(result.a_color).to_string(),
@@ -2076,7 +2478,20 @@ fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
         winner: result.winner.map(seat_name).map(str::to_string),
         plies: result.plies,
         total_nodes: result.total_nodes,
+        requested_budget_nodes: result.requested_budget_nodes,
+        consumed_budget_nodes: result.consumed_budget_nodes,
+        alpha_beta_nodes: result.alpha_beta_nodes,
+        completed_depth: result.completed_depth,
+        incomplete_iterations: result.incomplete_iterations,
+        node_budget_cap_hits: result.node_budget_cap_hits,
+        fallbacks: result.fallbacks,
         total_elapsed_ms: result.total_elapsed_ms,
+        aggregate_nps: search_breakdown(
+            result.total_nodes,
+            result.total_elapsed_ms,
+            result.total_qsearch,
+        )
+        .aggregate_nps,
         qnodes: result.total_qsearch.qnodes,
         aggregate_qnps: search_breakdown(
             result.total_nodes,
@@ -2167,6 +2582,10 @@ fn report_command(args: &SelfPlayArgs, threads: usize) -> ReportCommand {
         a_depth: args.a_depth,
         b_depth: args.b_depth,
         movetime_ms: args.movetime_ms,
+        nodes_per_move: args.nodes_per_move,
+        node_counting_version: args
+            .nodes_per_move
+            .map(|_| SEARCH_NODE_COUNTING_VERSION.to_string()),
         sfen: args.sfen.clone(),
         openings: args
             .openings
@@ -2194,7 +2613,7 @@ fn self_play_report(
 ) -> Result<SelfPlayReport> {
     Ok(SelfPlayReport {
         schema: "haitaka-self-play-report",
-        schema_version: 2,
+        schema_version: 3,
         generated_at_unix_seconds: unix_timestamp_seconds()?,
         package: ReportPackage {
             name: env!("CARGO_PKG_NAME"),
@@ -2465,8 +2884,18 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
     } else {
         args.b_engine.as_deref()
     };
-    let a_budget = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, args.a_depth, args.movetime_ms)?;
-    let b_budget = self_play_budget(DEFAULT_SELF_PLAY_B_DEPTH, args.b_depth, args.movetime_ms)?;
+    let a_budget = self_play_budget(
+        DEFAULT_SELF_PLAY_A_DEPTH,
+        args.a_depth,
+        args.movetime_ms,
+        args.nodes_per_move,
+    )?;
+    let b_budget = self_play_budget(
+        DEFAULT_SELF_PLAY_B_DEPTH,
+        args.b_depth,
+        args.movetime_ms,
+        args.nodes_per_move,
+    )?;
     let engine_a = engine_config(
         "A",
         a_budget,
@@ -3220,6 +3649,8 @@ mod tests {
             a_depth: Some(2),
             b_depth: Some(3),
             movetime_ms: None,
+            nodes_per_move: None,
+            node_counting_version: None,
             sfen: Some(SFEN_STARTPOS.to_string()),
             openings: Some("fixtures/openings.sfen".to_string()),
             opening_order: OpeningOrder::Random,
@@ -3674,6 +4105,54 @@ mod tests {
     }
 
     #[test]
+    fn cli_parses_nodes_per_move_and_rejects_mixed_search_budgets() {
+        let cli = Cli::try_parse_from([
+            "haitaka",
+            "self-play",
+            "--nodes-per-move",
+            "50000",
+            "--a-eval",
+            "handcrafted",
+            "--b-eval",
+            "handcrafted",
+        ])
+        .expect("node-budget CLI args should parse");
+
+        match cli.command {
+            Command::SelfPlay(args) => {
+                assert_eq!(args.nodes_per_move, Some(50_000));
+                assert_eq!(args.a_depth, None);
+                assert_eq!(args.b_depth, None);
+                assert_eq!(args.movetime_ms, None);
+            }
+            other => panic!("expected self-play command, got {other:?}"),
+        }
+
+        assert!(
+            Cli::try_parse_from([
+                "haitaka",
+                "self-play",
+                "--nodes-per-move",
+                "50000",
+                "--a-depth",
+                "3",
+            ])
+            .is_err()
+        );
+        assert!(
+            Cli::try_parse_from([
+                "haitaka",
+                "self-play",
+                "--nodes-per-move",
+                "50000",
+                "--movetime-ms",
+                "100",
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
     fn cli_parses_usi_flags() {
         let cli = Cli::try_parse_from([
             "haitaka",
@@ -3700,11 +4179,11 @@ mod tests {
     #[test]
     fn self_play_budget_prefers_movetime_when_set() {
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None).expect("depth budget"),
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None, None).expect("depth budget"),
             SearchBudget::Depth(DEFAULT_SELF_PLAY_A_DEPTH)
         );
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), Some(100))
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), Some(100), None)
                 .expect("movetime budget with cap"),
             SearchBudget::Movetime {
                 max_depth: Some(3),
@@ -3712,7 +4191,7 @@ mod tests {
             }
         );
         assert_eq!(
-            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(100))
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(100), None)
                 .expect("movetime budget without cap"),
             SearchBudget::Movetime {
                 max_depth: None,
@@ -3723,12 +4202,30 @@ mod tests {
 
     #[test]
     fn self_play_budget_rejects_zero_movetime() {
-        let err = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(0))
+        let err = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, Some(0), None)
             .expect_err("zero movetime should be rejected");
         assert!(
             err.to_string()
                 .contains("--movetime-ms must be greater than 0")
         );
+    }
+
+    #[test]
+    fn self_play_budget_validates_node_budget_and_conflicts() {
+        assert_eq!(
+            self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None, Some(50_000))
+                .expect("node budget"),
+            SearchBudget::Nodes(50_000)
+        );
+        let zero = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, None, None, Some(0))
+            .expect_err("zero node budget should be rejected");
+        assert!(
+            zero.to_string()
+                .contains("--nodes-per-move must be greater than 0")
+        );
+        let mixed = self_play_budget(DEFAULT_SELF_PLAY_A_DEPTH, Some(3), None, Some(50_000))
+            .expect_err("node and depth budgets should conflict");
+        assert!(mixed.to_string().contains("mutually exclusive"));
     }
 
     #[test]
@@ -3747,6 +4244,57 @@ mod tests {
             }),
             "go movetime 100"
         );
+        assert_eq!(go_command(SearchBudget::Nodes(50_000)), "go nodes 50000");
+    }
+
+    #[test]
+    fn in_process_node_search_has_exact_budget_accounting_and_repeats_deterministically() {
+        let board = Board::startpos();
+        let first = search_in_process_handcrafted(&board, SearchBudget::Nodes(5_000))
+            .expect("handcrafted node search should succeed");
+        let second = search_in_process_handcrafted(&board, SearchBudget::Nodes(5_000))
+            .expect("repeated handcrafted node search should succeed");
+
+        assert_eq!(first.requested_budget_nodes, 5_000);
+        assert_eq!(
+            first.consumed_budget_nodes,
+            first.alpha_beta_nodes + first.qsearch.qnodes
+        );
+        assert_eq!(first.total_nodes, first.alpha_beta_nodes);
+        assert_eq!(first.best_move, second.best_move);
+        assert_eq!(first.completed_depth, second.completed_depth);
+        assert_eq!(first.incomplete_iterations, second.incomplete_iterations);
+        assert_eq!(first.node_budget_cap_hits, second.node_budget_cap_hits);
+        assert_eq!(first.consumed_budget_nodes, second.consumed_budget_nodes);
+    }
+
+    #[test]
+    fn in_process_node_search_uses_a_legal_fallback_at_low_budget() {
+        let board = Board::startpos();
+        let result = search_in_process_handcrafted(&board, SearchBudget::Nodes(1))
+            .expect("low-budget handcrafted search should return a fallback");
+
+        let best_move = result.best_move.as_deref().expect("fallback move");
+        let mv = Move::from_str(best_move).expect("fallback should be a USI move");
+        assert!(board.is_legal(mv));
+        assert!(result.fallback_used);
+        assert_eq!(result.requested_budget_nodes, 1);
+        assert_eq!(result.consumed_budget_nodes, 1);
+        assert_eq!(
+            result.consumed_budget_nodes,
+            result.alpha_beta_nodes + result.qsearch.qnodes
+        );
+        assert_eq!(result.completed_depth, 0);
+        assert_eq!(result.incomplete_iterations, 1);
+        assert!(result.node_budget_cap_hits > 0);
+    }
+
+    #[test]
+    fn paired_game_indices_swap_engine_a_colors() {
+        assert_eq!(game_a_color(0), Color::Black);
+        assert_eq!(game_a_color(1), Color::White);
+        assert_eq!(game_a_color(2), Color::Black);
+        assert_eq!(game_a_color(3), Color::White);
     }
 
     #[test]
@@ -3966,6 +4514,34 @@ mod tests {
     }
 
     #[test]
+    fn report_identity_serializes_node_policy_and_rejects_budget_changes() {
+        let mut command = test_report_command();
+        command.nodes_per_move = Some(50_000);
+        command.node_counting_version = Some(SEARCH_NODE_COUNTING_VERSION.to_string());
+        let json = serde_json::to_value(&command).expect("serialize node report command");
+        assert_eq!(json["nodesPerMove"], 50_000);
+        assert_eq!(json["nodeCountingVersion"], SEARCH_NODE_COUNTING_VERSION);
+
+        let temp = unique_temp_dir("node-report-mismatch");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let report_path = temp.join(SELF_PLAY_REPORT_FILE);
+        let engines = test_report_engines();
+        write_existing_self_play_report(&report_path, default_ruleset(), &command, &engines);
+
+        let mut changed = command.clone();
+        changed.nodes_per_move = Some(100_000);
+        let error = load_existing_report_stats(&report_path, default_ruleset(), &changed, &engines)
+            .expect_err("changed node policy should reject merge");
+        assert!(
+            error
+                .to_string()
+                .contains("existing report command does not match")
+        );
+
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[test]
     fn usi_info_parser_captures_qsearch_telemetry() {
         let telemetry = parse_usi_info_telemetry(
             "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 string ignored",
@@ -4120,6 +4696,13 @@ mod tests {
             winner: Some(Seat::A),
             plies: 2,
             total_nodes: 10,
+            requested_budget_nodes: 20,
+            consumed_budget_nodes: 18,
+            alpha_beta_nodes: 10,
+            completed_depth: 4,
+            incomplete_iterations: 1,
+            node_budget_cap_hits: 1,
+            fallbacks: 1,
             total_elapsed_ms: 1.5,
             total_qsearch: QsearchTelemetry {
                 qnodes: 12,
@@ -4128,7 +4711,7 @@ mod tests {
                 qsearch_check_move_tries: 3,
                 qsearch_delta_prunes: 4,
             },
-            a_breakdown: search_breakdown(
+            a_breakdown: search_breakdown_with_budget(
                 6,
                 0.5,
                 QsearchTelemetry {
@@ -4138,8 +4721,15 @@ mod tests {
                     qsearch_check_move_tries: 2,
                     qsearch_delta_prunes: 1,
                 },
+                10,
+                9,
+                6,
+                3,
+                1,
+                1,
+                1,
             ),
-            b_breakdown: search_breakdown(
+            b_breakdown: search_breakdown_with_budget(
                 4,
                 1.0,
                 QsearchTelemetry {
@@ -4149,6 +4739,13 @@ mod tests {
                     qsearch_check_move_tries: 1,
                     qsearch_delta_prunes: 3,
                 },
+                10,
+                9,
+                4,
+                2,
+                0,
+                0,
+                0,
             ),
             start_sfen: haitaka::SFEN_STARTPOS.to_string(),
             opening: OpeningRecord {
@@ -4177,10 +4774,27 @@ mod tests {
         assert_eq!(json["qsearchCapHits"], 1);
         assert_eq!(json["qsearchCheckMoveTries"], 3);
         assert_eq!(json["qsearchDeltaPrunes"], 4);
+        assert!((json["aggregateNps"].as_f64().unwrap() - 6_666.666_666_666_667).abs() < 1e-9);
         assert_eq!(json["aBreakdown"]["totalNodes"], 6);
+        assert_eq!(json["requestedBudgetNodes"], 20);
+        assert_eq!(json["consumedBudgetNodes"], 18);
+        assert_eq!(json["alphaBetaNodes"], 10);
+        assert_eq!(json["completedDepth"], 4);
+        assert_eq!(json["incompleteIterations"], 1);
+        assert_eq!(json["nodeBudgetCapHits"], 1);
+        assert_eq!(json["fallbacks"], 1);
+        assert_eq!(json["aBreakdown"]["requestedBudgetNodes"], 10);
+        assert_eq!(json["aBreakdown"]["consumedBudgetNodes"], 9);
+        assert_eq!(json["aBreakdown"]["alphaBetaNodes"], 6);
+        assert_eq!(json["aBreakdown"]["completedDepth"], 3);
+        assert_eq!(json["aBreakdown"]["incompleteIterations"], 1);
+        assert_eq!(json["aBreakdown"]["nodeBudgetCapHits"], 1);
+        assert_eq!(json["aBreakdown"]["fallbacks"], 1);
         assert_eq!(json["aBreakdown"]["qnodes"], 7);
         assert_eq!(json["aBreakdown"]["qsearchDeltaPrunes"], 1);
         assert_eq!(json["bBreakdown"]["totalNodes"], 4);
+        assert_eq!(json["bBreakdown"]["requestedBudgetNodes"], 10);
+        assert_eq!(json["bBreakdown"]["consumedBudgetNodes"], 9);
         assert_eq!(json["bBreakdown"]["qnodes"], 5);
         assert_eq!(json["bBreakdown"]["qsearchDeltaPrunes"], 3);
         assert!(json["failureState"].is_null());
@@ -4588,6 +5202,7 @@ mod tests {
             b_engine_archive: None,
             b_engine_args: Vec::new(),
             movetime_ms: None,
+            nodes_per_move: None,
             sfen: None,
             openings: None,
             opening_order: OpeningOrder::Sequential,
@@ -4658,6 +5273,7 @@ mod tests {
             b_engine_archive: None,
             b_engine_args: Vec::new(),
             movetime_ms: None,
+            nodes_per_move: None,
             sfen: Some(base.to_string()),
             openings: None,
             opening_order: OpeningOrder::Sequential,

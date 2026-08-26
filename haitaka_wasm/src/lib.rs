@@ -35,6 +35,7 @@ static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
 pub const SEARCH_NODE_COUNTING_VERSION: &str = "alpha-beta-plus-qsearch-v1";
+pub const SEARCH_NODE_BUDGET_MAX_DEPTH: u8 = 64;
 pub const SEARCH_TRAINING_TRACE_VERSION: &str = "qsearch-pv-v1";
 pub const SEARCH_MATE_SCORE_THRESHOLD: i32 = 29_000;
 const DEFAULT_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
@@ -90,7 +91,6 @@ pub struct SearchSummary {
     pub qsearch_stats: SearchQsearchStats,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeBudgetSearchSummary {
@@ -103,6 +103,8 @@ pub struct NodeBudgetSearchSummary {
     pub alpha_beta_nodes: u64,
     pub qsearch_nodes: u64,
     pub total_nodes: u64,
+    pub cap_hits: u64,
+    pub incomplete_iterations: u8,
 }
 
 #[doc(hidden)]
@@ -297,25 +299,30 @@ struct SharedNodeBudget {
     total: AtomicU64,
     alpha_beta: AtomicU64,
     qsearch: AtomicU64,
+    cap_hits: AtomicU64,
 }
 
 impl SharedNodeBudget {
-    #[cfg(not(target_arch = "wasm32"))]
     fn new(limit: u64) -> Self {
         Self {
             limit,
             total: AtomicU64::new(0),
             alpha_beta: AtomicU64::new(0),
             qsearch: AtomicU64::new(0),
+            cap_hits: AtomicU64::new(0),
         }
     }
 
     fn record(&self, counter: &AtomicU64) -> Result<(), SearchInterrupted> {
-        self.total
-            .fetch_update(AtomicOrdering::Relaxed, AtomicOrdering::Relaxed, |nodes| {
-                (nodes < self.limit).then_some(nodes + 1)
-            })
-            .map_err(|_| SearchInterrupted)?;
+        let result =
+            self.total
+                .fetch_update(AtomicOrdering::Relaxed, AtomicOrdering::Relaxed, |nodes| {
+                    (nodes < self.limit).then_some(nodes + 1)
+                });
+        if result.is_err() {
+            self.cap_hits.fetch_add(1, AtomicOrdering::Relaxed);
+            return Err(SearchInterrupted);
+        }
         counter.fetch_add(1, AtomicOrdering::Relaxed);
         Ok(())
     }
@@ -328,12 +335,12 @@ impl SharedNodeBudget {
         self.record(&self.qsearch)
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn counts(&self) -> (u64, u64, u64) {
+    fn counts(&self) -> (u64, u64, u64, u64) {
         (
             self.alpha_beta.load(AtomicOrdering::Relaxed),
             self.qsearch.load(AtomicOrdering::Relaxed),
             self.total.load(AtomicOrdering::Relaxed),
+            self.cap_hits.load(AtomicOrdering::Relaxed),
         )
     }
 }
@@ -1151,13 +1158,13 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
     })
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn search_board_with_node_budget_in_workspace(
+fn search_board_with_node_budget_in_tt(
     board: &Board,
     max_nodes: u64,
     max_depth: u8,
     evaluation: EvaluationStrategy,
-    workspace: &mut SearchWorkspace,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
     collect_training_trace: bool,
 ) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
     if max_nodes == 0 {
@@ -1167,8 +1174,8 @@ fn search_board_with_node_budget_in_workspace(
         return Err("node-budget depth cap must be at least 1".to_string());
     }
 
-    workspace.tt.clear();
-    workspace.ordering = SearchOrdering::default();
+    tt.clear();
+    *ordering = SearchOrdering::default();
     let started_at = Instant::now();
     let budget = Arc::new(SharedNodeBudget::new(max_nodes));
     let mut best_move = None;
@@ -1182,8 +1189,8 @@ fn search_board_with_node_budget_in_workspace(
             depth,
             evaluation.clone(),
             None,
-            &mut workspace.tt,
-            &mut workspace.ordering,
+            tt,
+            ordering,
             qsearch_limits(),
             Some(Arc::clone(&budget)),
             collect_training_trace,
@@ -1198,7 +1205,7 @@ fn search_board_with_node_budget_in_workspace(
         }
     }
 
-    let (alpha_beta_nodes, qsearch_nodes, total_nodes) = budget.counts();
+    let (alpha_beta_nodes, qsearch_nodes, total_nodes, cap_hits) = budget.counts();
     Ok((
         NodeBudgetSearchSummary {
             best_move,
@@ -1210,15 +1217,38 @@ fn search_board_with_node_budget_in_workspace(
             alpha_beta_nodes,
             qsearch_nodes,
             total_nodes,
+            cap_hits,
+            incomplete_iterations: u8::from(cap_hits > 0),
         },
         training_trace,
     ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+    collect_training_trace: bool,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_tt(
+        board,
+        max_nodes,
+        max_depth,
+        evaluation,
+        &mut workspace.tt,
+        &mut workspace.ordering,
+        collect_training_trace,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum UsiSearchBudget {
     Depth(u8),
     Movetime { max_depth: u8, millis: u32 },
+    Nodes(u64),
 }
 
 pub struct UsiSession {
@@ -1429,6 +1459,7 @@ impl UsiSession {
                     ]
                 })
             }
+            UsiSearchBudget::Nodes(nodes) => Ok(self.search_outputs_for_nodes(nodes)),
         }
         .unwrap_or_else(|err| {
             let _ = err;
@@ -1437,12 +1468,79 @@ impl UsiSession {
     }
 
     fn fallback_bestmove(&self) -> String {
-        let ordering = SearchOrdering::default();
-        let mut picker = MovePicker::new(&self.board, None, &ordering, 0);
-        picker
-            .next()
-            .map(|picked| picked.mv.to_string())
+        let mut moves = Vec::new();
+        self.board.generate_moves(|piece_moves| {
+            moves.extend(piece_moves);
+            false
+        });
+        moves.sort_unstable_by_key(ToString::to_string);
+        moves
+            .first()
+            .map(ToString::to_string)
             .unwrap_or_else(|| "resign".to_string())
+    }
+
+    fn search_outputs_for_nodes(&mut self, nodes: u64) -> Vec<String> {
+        let evaluation = self.evaluation_strategy();
+        let mut ordering = SearchOrdering::default();
+        let result = search_board_with_node_budget_in_tt(
+            &self.board,
+            nodes,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            evaluation,
+            &mut self.tt,
+            &mut ordering,
+            false,
+        );
+        let Ok((summary, _)) = result else {
+            return vec![
+                "info string node-budget search failed".to_string(),
+                format!("bestmove {}", self.fallback_bestmove()),
+            ];
+        };
+
+        let fallback_used = summary.best_move.is_none();
+        let best_move = summary
+            .best_move
+            .unwrap_or_else(|| self.fallback_bestmove());
+        let elapsed_ms = summary.elapsed_ms.max(0.0);
+        let elapsed_seconds = elapsed_ms / 1_000.0;
+        let nps = if elapsed_seconds > 0.0 {
+            summary.alpha_beta_nodes as f64 / elapsed_seconds
+        } else {
+            0.0
+        };
+        let qnps = if elapsed_seconds > 0.0 {
+            summary.qsearch_nodes as f64 / elapsed_seconds
+        } else {
+            0.0
+        };
+        vec![
+            format!(
+                "info depth {} time {:.0} nodes {} nps {:.0} qnodes {} qnps {:.0} \
+                 requestedBudgetNodes {} consumedBudgetNodes {} alphaBetaNodes {} \
+                 completedDepth {} incompleteIterations {} nodeBudgetCapHits {} \
+                 fallback {} nodeCountingVersion {}",
+                summary.completed_depth,
+                elapsed_ms,
+                summary.alpha_beta_nodes,
+                nps,
+                summary.qsearch_nodes,
+                qnps,
+                summary.node_limit,
+                summary.total_nodes,
+                summary.alpha_beta_nodes,
+                summary.completed_depth,
+                summary.incomplete_iterations,
+                summary.cap_hits,
+                u8::from(fallback_used),
+                SEARCH_NODE_COUNTING_VERSION,
+            )
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+            format!("bestmove {best_move}"),
+        ]
     }
 
     fn evaluation_strategy(&self) -> EvaluationStrategy {
@@ -1511,6 +1609,7 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
     let mut index = 0;
     let mut depth = None;
     let mut movetime = None;
+    let mut nodes = None;
 
     while index < tokens.len() {
         match tokens[index] {
@@ -1536,9 +1635,29 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
                         .map_err(|_| format!("invalid movetime {value}"))?,
                 );
             }
+            "nodes" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| "missing nodes value".to_string())?;
+                let parsed = value
+                    .parse::<u64>()
+                    .map_err(|_| format!("invalid nodes {value}"))?;
+                if parsed == 0 {
+                    return Err("nodes value must be greater than 0".to_string());
+                }
+                nodes = Some(parsed);
+            }
             _ => {}
         }
         index += 1;
+    }
+
+    if nodes.is_some() && (depth.is_some() || movetime.is_some()) {
+        return Err("go nodes N is mutually exclusive with depth and movetime".to_string());
+    }
+    if let Some(nodes) = nodes {
+        return Ok(UsiSearchBudget::Nodes(nodes));
     }
 
     if let Some(millis) = movetime {
@@ -1550,7 +1669,10 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
     if let Some(depth) = depth {
         return Ok(UsiSearchBudget::Depth(depth.max(1)));
     }
-    Err("only go depth N, go movetime N, and go movetime N depth D are supported".to_string())
+    Err(
+        "only go depth N, go movetime N, go movetime N depth D, and go nodes N are supported"
+            .to_string(),
+    )
 }
 
 fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
@@ -3209,6 +3331,41 @@ mod tests {
     }
 
     #[test]
+    fn usi_go_nodes_parses_and_rejects_mixed_budgets() {
+        assert_eq!(
+            parse_usi_go("go nodes 50000", 64).expect("go nodes should parse"),
+            UsiSearchBudget::Nodes(50_000)
+        );
+        let error = parse_usi_go("go nodes 50000 depth 3", 64)
+            .expect_err("nodes and depth should be mutually exclusive");
+        assert!(error.contains("mutually exclusive"));
+        let error = parse_usi_go("go nodes 0", 64).expect_err("zero nodes should fail");
+        assert!(error.contains("greater than 0"));
+    }
+
+    #[test]
+    fn usi_session_node_budget_returns_legal_deterministic_fallback() {
+        let mut first = UsiSession::default();
+        let first_output = first.handle_line("go nodes 1");
+        assert_eq!(first_output.len(), 2);
+        assert!(first_output[0].contains("requestedBudgetNodes 1"));
+        assert!(first_output[0].contains("consumedBudgetNodes 1"));
+        assert!(first_output[0].contains("alphaBetaNodes 1"));
+        assert!(first_output[0].contains("incompleteIterations 1"));
+        assert!(first_output[0].contains("fallback 1"));
+        let first_move = first_output[1]
+            .strip_prefix("bestmove ")
+            .expect("expected bestmove")
+            .to_string();
+
+        let mut second = UsiSession::default();
+        let second_output = second.handle_line("go nodes 1");
+        assert_eq!(second_output[1], format!("bestmove {first_move}"));
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        assert!(board.is_legal(Move::from_str(&first_move).expect("fallback should be a move")));
+    }
+
+    #[test]
     fn usi_session_accepts_hash_option() {
         let mut session = UsiSession::default();
         let output = session.handle_line("setoption name Hash value 16");
@@ -3357,6 +3514,28 @@ mod tests {
         assert_eq!(first.alpha_beta_nodes, second.alpha_beta_nodes);
         assert_eq!(first.qsearch_nodes, second.qsearch_nodes);
         assert_eq!(first.total_nodes, second.total_nodes);
+        assert_eq!(first.total_nodes, first.node_limit);
+        assert!(first.cap_hits > 0);
+        assert_eq!(first.incomplete_iterations, 1);
+    }
+
+    #[test]
+    fn fixed_node_search_reports_a_legal_fallback_when_depth_one_cannot_finish() {
+        let board = Board::startpos();
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            1,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert_eq!(summary.incomplete_iterations, 1);
+        assert!(summary.cap_hits > 0);
+        assert_eq!(summary.total_nodes, 1);
+        assert!(summary.best_move.is_none());
     }
 
     #[test]
