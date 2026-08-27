@@ -142,6 +142,9 @@ Key fields:
     `label-on-sample-legacy` policy reproduces older biased data.
   - `rollout_candidate_limit`, `rollout_score_margin`, `rollout_temperature`,
     and `rollout_rng_version` are part of the generation-semantic identity.
+    The current implementation accepts only
+    `rollout_rng_version = "splitmix64-v1"`; unknown names are configuration
+    errors.
     `opening_random_plies` must be zero for searched-stochastic production.
   - `minimum_train_boards` gates generation, merge, and training using distinct
     packed board payloads (`bin` bytes `0..64`), not accepted-record count.
@@ -217,10 +220,12 @@ cargo run --release -p haitaka_learn --features anhoku -- calibrate-labels \
   --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
 ```
 
-The audit is label-free, assigns a base/swapped pair to every one of the 52
+The audit is label-free, assigns two base/swapped pairs to every one of the 52
 train and 12 OOD-v2 IDs, and writes opening coverage, deterministic trajectory
-hashes, packed-board uniqueness, tranche yield, pair symmetry, legal/scored/
-truncated candidate counts, score gaps, outcomes, and rollout CPU telemetry.
+hashes, packed-board uniqueness, post-initial-coverage tranche yield, pair
+symmetry, legal/scored/truncated candidate counts, score gaps, outcomes, and
+rollout CPU telemetry. The repeat-yield gate is evaluated only after every ID
+has completed its first pair.
 Calibration regenerates one pair per ID for the predeclared 50k/100k/200k node
 budgets. It cannot select a budget unless all 64 IDs produce at least one
 matched root; otherwise it records a block requiring a revised calibration

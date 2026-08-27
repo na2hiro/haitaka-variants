@@ -1267,9 +1267,10 @@ fn transform_move(move_: Move) -> Move {
     }
 }
 
-const TRAJECTORY_AUDIT_SCHEMA: &str = "haitaka-trajectory-audit-v1";
+const TRAJECTORY_AUDIT_SCHEMA: &str = "haitaka-trajectory-audit-v2";
 const LABEL_CALIBRATION_SCHEMA: &str = "haitaka-label-calibration-v1";
 const TRAJECTORY_TRANCHE_GAMES: usize = 64;
+const TRAJECTORY_MIN_PAIRS_PER_OPENING: u64 = 2;
 const TRAJECTORY_MIN_UNIQUE_RATIO: f64 = 0.95;
 const TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME: f64 = 30.0;
 const CALIBRATION_MAX_INCOMPLETE_PERCENT: u64 = 1;
@@ -1332,8 +1333,10 @@ struct TrajectoryAuditLimits {
     games_audited: u64,
     max_games: u64,
     tranche_games: usize,
+    minimum_pairs_per_opening: u64,
+    initial_coverage_games: u64,
     minimum_packed_board_unique_ratio: f64,
-    minimum_final_new_boards_per_game: f64,
+    minimum_final_post_coverage_new_boards_per_game: f64,
     jobs: usize,
     shard_index: Option<u32>,
     shard_index_end: Option<u32>,
@@ -1376,6 +1379,7 @@ struct TrajectoryTranche {
     new_packed_boards: u64,
     new_packed_boards_per_game: f64,
     cumulative_distinct_packed_boards: u64,
+    post_initial_coverage: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -1419,6 +1423,9 @@ struct TrajectoryOpeningCoverage {
     ood_v2_pair_counts: BTreeMap<String, u64>,
     missing_train_ids: Vec<String>,
     missing_ood_v2_ids: Vec<String>,
+    train_ids_below_minimum_pairs: Vec<String>,
+    ood_v2_ids_below_minimum_pairs: Vec<String>,
+    minimum_pairs_per_opening: u64,
     unexpected_ids: Vec<String>,
     complete: bool,
 }
@@ -1428,6 +1435,7 @@ struct TrajectoryAuditDecision {
     passed: bool,
     packed_board_unique_ratio: f64,
     final_tranche_new_packed_boards_per_game: f64,
+    final_post_coverage_tranche_new_packed_boards_per_game: Option<f64>,
     failures: Vec<String>,
 }
 
@@ -1732,6 +1740,32 @@ fn dataset_sort_key(dataset_name: &str) -> u8 {
     }
 }
 
+fn trajectory_audit_sort_key(
+    opening_split: &OpeningSplit,
+    game: &TrajectoryGame,
+) -> (u32, u8, u32, u32) {
+    trajectory_task_audit_sort_key(opening_split, game.task)
+}
+
+fn trajectory_task_audit_sort_key(
+    opening_split: &OpeningSplit,
+    task: TrajectoryTask,
+) -> (u32, u8, u32, u32) {
+    let opening_count = match task.dataset_name {
+        "train" => opening_split.train_ids.len(),
+        "validation" => opening_split.validation_ids.len(),
+        _ => 1,
+    }
+    .max(1) as u32;
+    let pair_index = task.game_index / 2;
+    (
+        pair_index / opening_count,
+        dataset_sort_key(task.dataset_name),
+        pair_index % opening_count,
+        task.game_index % 2,
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 fn play_label_free_trajectory(
     loaded: &LoadedConfig,
@@ -1926,7 +1960,7 @@ fn build_trajectory_audit_report(
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
     engine_revision: Option<String>,
-    trajectories: Vec<TrajectoryGame>,
+    mut trajectories: Vec<TrajectoryGame>,
     jobs: usize,
     options: TrajectoryAuditOptions,
 ) -> Result<TrajectoryAuditReport> {
@@ -1938,6 +1972,9 @@ fn build_trajectory_audit_report(
         engine_revision,
     )?;
     let policy = trajectory_policy_identity(loaded);
+    trajectories.sort_by_key(|game| trajectory_audit_sort_key(opening_split, game));
+    let initial_coverage_games =
+        ((opening_split.train_ids.len() + opening_split.validation_ids.len()) * 2) as u64;
     let mut all_boards = BTreeSet::<[u8; PACKED_SFEN_BYTES]>::new();
     let mut total_stats = SearchUseStats::default();
     let mut summaries = Vec::with_capacity(trajectories.len());
@@ -2028,6 +2065,7 @@ fn build_trajectory_audit_report(
                 tranche_new_boards as f64 / chunk.len() as f64
             },
             cumulative_distinct_packed_boards: all_boards.len() as u64,
+            post_initial_coverage: ordinal_start >= initial_coverage_games,
         });
     }
 
@@ -2038,6 +2076,11 @@ fn build_trajectory_audit_report(
         .last()
         .map(|tranche| tranche.new_packed_boards_per_game)
         .unwrap_or_default();
+    let final_post_coverage_tranche_new_boards_per_game = tranches
+        .iter()
+        .filter(|tranche| tranche.post_initial_coverage)
+        .next_back()
+        .map(|tranche| tranche.new_packed_boards_per_game);
     let mut failures = Vec::new();
     if packed_board_unique_ratio < TRAJECTORY_MIN_UNIQUE_RATIO {
         failures.push(format!(
@@ -2045,11 +2088,16 @@ fn build_trajectory_audit_report(
             packed_board_unique_ratio, TRAJECTORY_MIN_UNIQUE_RATIO
         ));
     }
-    if final_tranche_new_boards_per_game < TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME {
-        failures.push(format!(
-            "final-tranche new-board yield {:.2}/game is below {:.2}/game",
-            final_tranche_new_boards_per_game, TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME
-        ));
+    match final_post_coverage_tranche_new_boards_per_game {
+        Some(yield_per_game)
+            if yield_per_game >= TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME => {}
+        Some(yield_per_game) => failures.push(format!(
+            "final post-coverage tranche new-board yield {:.2}/game is below {:.2}/game",
+            yield_per_game, TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME
+        )),
+        None => failures.push(format!(
+            "trajectory audit has no complete tranche after the initial {initial_coverage_games}-game opening-coverage cycle"
+        )),
     }
     if paired_symmetry.mismatched_pairs > 0 {
         failures.push(format!(
@@ -2065,9 +2113,12 @@ fn build_trajectory_audit_report(
     }
     if !opening_coverage.complete {
         failures.push(format!(
-            "trajectory opening coverage is incomplete: missing {} train IDs and {} OOD-v2 IDs; unexpected IDs: {}",
+            "trajectory opening coverage is incomplete: missing {} train IDs and {} OOD-v2 IDs; {} train IDs and {} OOD-v2 IDs have fewer than {} pairs; unexpected IDs: {}",
             opening_coverage.missing_train_ids.len(),
             opening_coverage.missing_ood_v2_ids.len(),
+            opening_coverage.train_ids_below_minimum_pairs.len(),
+            opening_coverage.ood_v2_ids_below_minimum_pairs.len(),
+            opening_coverage.minimum_pairs_per_opening,
             opening_coverage.unexpected_ids.len()
         ));
     }
@@ -2127,8 +2178,11 @@ fn build_trajectory_audit_report(
             games_audited: games,
             max_games: 4096,
             tranche_games: TRAJECTORY_TRANCHE_GAMES,
+            minimum_pairs_per_opening: TRAJECTORY_MIN_PAIRS_PER_OPENING,
+            initial_coverage_games,
             minimum_packed_board_unique_ratio: TRAJECTORY_MIN_UNIQUE_RATIO,
-            minimum_final_new_boards_per_game: TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME,
+            minimum_final_post_coverage_new_boards_per_game:
+                TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME,
             jobs,
             shard_index: options.shard_index,
             shard_index_end: options.shard_index_end,
@@ -2143,6 +2197,8 @@ fn build_trajectory_audit_report(
             passed: failures.is_empty(),
             packed_board_unique_ratio,
             final_tranche_new_packed_boards_per_game: final_tranche_new_boards_per_game,
+            final_post_coverage_tranche_new_packed_boards_per_game:
+                final_post_coverage_tranche_new_boards_per_game,
             failures,
         },
     })
@@ -2289,9 +2345,26 @@ fn audit_trajectory_opening_coverage(
         .filter(|id| !ood_pair_counts.contains_key(*id))
         .cloned()
         .collect::<Vec<_>>();
+    let train_ids_below_minimum_pairs = expected_train
+        .iter()
+        .filter(|id| {
+            train_pair_counts.get(*id).copied().unwrap_or_default()
+                < TRAJECTORY_MIN_PAIRS_PER_OPENING
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let ood_v2_ids_below_minimum_pairs = expected_ood
+        .iter()
+        .filter(|id| {
+            ood_pair_counts.get(*id).copied().unwrap_or_default() < TRAJECTORY_MIN_PAIRS_PER_OPENING
+        })
+        .cloned()
+        .collect::<Vec<_>>();
     let unexpected_ids = unexpected.into_iter().collect::<Vec<_>>();
     let complete = missing_train_ids.is_empty()
         && missing_ood_v2_ids.is_empty()
+        && train_ids_below_minimum_pairs.is_empty()
+        && ood_v2_ids_below_minimum_pairs.is_empty()
         && unexpected_ids.is_empty()
         && expected_train.len() == 52
         && expected_ood.len() == 12
@@ -2304,6 +2377,9 @@ fn audit_trajectory_opening_coverage(
         ood_v2_pair_counts: ood_pair_counts,
         missing_train_ids,
         missing_ood_v2_ids,
+        train_ids_below_minimum_pairs,
+        ood_v2_ids_below_minimum_pairs,
+        minimum_pairs_per_opening: TRAJECTORY_MIN_PAIRS_PER_OPENING,
         unexpected_ids,
         complete,
     }
@@ -6129,6 +6205,55 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "anhoku")]
+    fn searched_stochastic_generation_is_deterministic_across_jobs_and_shard_lanes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("searched-stochastic.toml");
+        fs::write(
+            &config_path,
+            searched_stochastic_test_config("anhoku", "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let artifacts = loaded.artifact_paths();
+        let options = |jobs, shard_index, shard_count| GenerateOptions {
+            jobs: Some(jobs),
+            resume: Some(false),
+            shard_index,
+            shard_index_end: shard_index,
+            shard_count,
+            ignore_identity_mismatch: false,
+        };
+
+        generate_data_with_options(&loaded, options(1, None, None)).unwrap();
+        let expected_train = fs::read(&artifacts.train_bin).unwrap();
+        let expected_validation = fs::read(&artifacts.validation_bin).unwrap();
+        fs::rename(&artifacts.output_dir, temp.path().join("full-jobs-one")).unwrap();
+
+        generate_data_with_options(&loaded, options(2, None, None)).unwrap();
+        assert_eq!(fs::read(&artifacts.train_bin).unwrap(), expected_train);
+        assert_eq!(
+            fs::read(&artifacts.validation_bin).unwrap(),
+            expected_validation
+        );
+        fs::rename(&artifacts.output_dir, temp.path().join("full-jobs-two")).unwrap();
+
+        let mut lanes = Vec::new();
+        for lane in 0..2 {
+            generate_data_with_options(&loaded, options(2, Some(lane), Some(2))).unwrap();
+            let lane_path = temp.path().join(format!("lane-{lane}"));
+            fs::rename(&artifacts.output_dir, &lane_path).unwrap();
+            lanes.push(lane_path);
+        }
+        merge_data(&loaded, &lanes, false).unwrap();
+        assert_eq!(fs::read(&artifacts.train_bin).unwrap(), expected_train);
+        assert_eq!(
+            fs::read(&artifacts.validation_bin).unwrap(),
+            expected_validation
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
     fn suite_generation_records_deterministic_color_swapped_pair_metadata() {
         let temp = tempdir().unwrap();
         let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -7856,6 +7981,23 @@ run_search_smoke = false
     }
 
     #[cfg(feature = "anhoku")]
+    fn searched_stochastic_test_config(ruleset: &str, output_dir: &str) -> String {
+        deterministic_test_config(ruleset, output_dir)
+            .replace("validation_games = 2", "validation_games = 4")
+            .replace("max_plies = 8", "max_plies = 4")
+            .replace(
+                "opening_random_plies = 2",
+                r#"opening_random_plies = 0
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_search_depth = 1
+rollout_candidate_limit = 4
+rollout_score_margin = 80
+rollout_temperature = 40.0
+rollout_rng_version = "splitmix64-v1""#,
+            )
+    }
+
+    #[cfg(feature = "anhoku")]
     fn suite_test_config(output_dir: &str, suite: &str) -> String {
         format!(
             r#"
@@ -8481,7 +8623,7 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "anhoku")]
-    fn phase8d_trajectory_schedule_covers_every_opening_with_a_pair() {
+    fn phase8d_trajectory_schedule_covers_every_opening_with_two_pairs() {
         let config_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
@@ -8500,13 +8642,13 @@ run_search_smoke = false
                 loaded.config.data.validation_opening_pairs_per_id,
             )
             .unwrap();
-        let tasks = trajectory_tasks(
+        let mut tasks = trajectory_tasks(
             &loaded,
             &opening_split,
             ShardSelector::new(None, None, None).unwrap(),
         )
         .unwrap();
-        assert_eq!(tasks.len(), 128);
+        assert_eq!(tasks.len(), 256);
         let mut game_counts = BTreeMap::new();
         for (task, opening_id) in &tasks {
             *game_counts
@@ -8514,11 +8656,22 @@ run_search_smoke = false
                 .or_insert(0u64) += 1;
         }
         assert_eq!(game_counts.len(), 64);
-        assert!(game_counts.values().all(|games| *games == 2));
+        assert!(game_counts.values().all(|games| *games == 4));
         for pair in tasks.chunks_exact(2) {
             assert_eq!(pair[0].0.dataset_name, pair[1].0.dataset_name);
             assert_eq!(pair[0].0.game_index / 2, pair[1].0.game_index / 2);
             assert_eq!(pair[0].1, pair[1].1);
+        }
+        tasks.sort_by_key(|(task, _)| trajectory_task_audit_sort_key(&opening_split, *task));
+        for cycle in tasks.chunks_exact(128) {
+            let mut cycle_game_counts = BTreeMap::new();
+            for (task, opening_id) in cycle {
+                *cycle_game_counts
+                    .entry((task.dataset_name, opening_id.clone()))
+                    .or_insert(0u64) += 1;
+            }
+            assert_eq!(cycle_game_counts.len(), 64);
+            assert!(cycle_game_counts.values().all(|games| *games == 2));
         }
     }
 }

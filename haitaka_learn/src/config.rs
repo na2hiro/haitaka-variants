@@ -620,8 +620,9 @@ impl LearnConfig {
             "data.rollout_temperature must be finite and > 0"
         );
         ensure!(
-            !self.data.rollout_rng_version.trim().is_empty(),
-            "data.rollout_rng_version must not be empty"
+            self.data.rollout_rng_version == "splitmix64-v1",
+            "unsupported data.rollout_rng_version `{}`; supported value: splitmix64-v1",
+            self.data.rollout_rng_version
         );
         if self.data.self_play_move_policy.is_searched_stochastic() {
             ensure!(
@@ -1730,6 +1731,24 @@ opening_random_plies = 1
 "#;
         let config: LearnConfig = toml::from_str(raw).unwrap();
         assert!(format!("{:#}", config.validate().unwrap_err()).contains("opening_random_plies=0"));
+    }
+
+    #[test]
+    fn rejects_unknown_rollout_rng_version() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_rng_version = "splitmix64-vl"
+opening_random_plies = 0
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        let error = format!("{:#}", config.validate().unwrap_err());
+        assert!(error.contains("unsupported data.rollout_rng_version `splitmix64-vl`"));
+        assert!(error.contains("splitmix64-v1"));
     }
 
     #[test]

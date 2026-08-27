@@ -978,8 +978,10 @@ experiment, not a teacher, lambda, LR, and feature sweep.
 **Implementation status (2026-08-27):** the phase-independent packed-board
 audit, semantic/schedule identity split, searched-stochastic rollout, label-free
 trajectory audit, and matched label-calibration commands are implemented. The
-audit uses one color-swapped pair per train/OOD opening before repetition and
-gates complete 64-ID coverage; calibration rejects empty matched root sets.
+audit uses two cycles of color-swapped pairs over every train/OOD opening and
+gates new-board yield only after the first complete 64-ID cycle; calibration
+rejects empty matched root sets. Searched-stochastic generation is regression
+tested across job counts and shard lanes, and only `splitmix64-v1` is accepted.
 The production freeze and Phase 8D-B remain gated on running the full
 configured telemetry and recording its pass/block decision.
 
@@ -1009,12 +1011,15 @@ configured telemetry and recording its pass/block decision.
   without 50,000-node labels. On at most 4,096 games across all 52 train and 12
   OOD-v2 IDs, report distinct packed boards, uniqueness ratio, new-board yield
   by game-count tranche, trajectory hashes, selected-vs-best score gaps, game
-  lengths/outcomes, paired symmetry, and rollout CPU cost.
+  lengths/outcomes, paired symmetry, and rollout CPU cost. Complete at least
+  two pairs per ID and apply the final-tranche yield gate only after the first
+  complete 64-ID cycle so repeated-opening collapse is observable.
 - Freeze exactly one margin/temperature using only legality, symmetry, cost,
   move-quality, and diversity telemetry. Do not use loss, NNUE training, or
   strength games to choose it. The frozen pilot must be deterministic across
   thread counts and shard partitions, have at least 95% packed-board
-  uniqueness, and project at least 30 new boards/game through its final tranche.
+  uniqueness, and project at least 30 new boards/game through its final
+  post-initial-coverage tranche.
 - After freezing rollout, run one matched 128-game label calibration: one
   color-swapped pair from each of the 64 suite IDs, with identical candidate
   roots at 50k, 100k, and 200k combined label nodes. Freeze the smallest budget

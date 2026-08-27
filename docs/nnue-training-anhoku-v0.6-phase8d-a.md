@@ -18,11 +18,12 @@ telemetry is run and reviewed.
 - `searched-stochastic-rollout-v1`, which scores a canonical bounded legal-move
   set that always contains the canonical root search's best move, retains a
   score window, and samples with a named SplitMix64 stream keyed by dataset,
-  pair index, and ply;
+  pair index, and ply; `splitmix64-v1` is the only accepted RNG version;
 - `trajectory-audit`, which performs no label searches and reports hashes,
-  complete 52-train/12-OOD opening coverage, packed-board uniqueness, tranche
-  yield, legal/scored/truncated candidate counts, selected-vs-best gaps, game
-  lengths/outcomes, pair symmetry, and summed rollout CPU time;
+  two complete cycles across all 52 train and 12 OOD openings, packed-board
+  uniqueness, post-initial-coverage tranche yield, legal/scored/truncated
+  candidate counts, selected-vs-best gaps, game lengths/outcomes, pair
+  symmetry, and summed rollout CPU time;
 - `calibrate-labels`, which regenerates one matched base/swapped pair per suite
   ID, requires every ID to produce a non-empty matched root set, and labels the
   same candidate roots at 50k, 100k, and 200k combined nodes;
@@ -39,9 +40,11 @@ There is no arbitrary-opening or unsearched-uniform fallback.
 The production-shaped pilot config is
 `haitaka_learn.anhoku-v0.6-phase8d-a.toml`. It fixes the v2 suite, 52 train and
 12 OOD-v2 IDs, zero random opening plies, C/16 bootstrap, the existing donor
-feature family, and deterministic sharding. Its initial rollout candidate is
-`margin=80`, `temperature=40`; these values are candidates for the launch gate,
-not a strength-selected result.
+feature family, deterministic sharding, and two pairs per opening for a
+256-game audit. The first 128 games establish complete opening coverage; the
+second cycle detects repeat-opening trajectory collapse. Its initial rollout
+candidate is `margin=80`, `temperature=40`; these values are candidates for the
+launch gate, not a strength-selected result.
 
 Run the label-free gate first:
 
@@ -71,14 +74,17 @@ game so the implementation can be checked quickly. Its reports are written
 under `out/anhoku-v0.6-phase8d-a-smoke/` when the commands above are adapted to
 that config.
 
-- trajectory audit: 312 board occurrences, 312 distinct packed boards, 1.0
-  uniqueness, 13/13 exact transformed move-sequence pairs, and a 4.64 mean
-  selected-vs-best score gap; it intentionally blocks the 30-board/game final
-  tranche threshold because a 12-ply smoke can yield only 12 boards/game;
-- label calibration: the earlier 128-game smoke produced only 126 candidate
-  roots. That result is now explicitly blocked because two opening IDs had no
-  matched root; no node budget is selected from an incomplete 64-ID sample.
+- trajectory audit, remeasured after root-best candidate inclusion: 312 board
+  occurrences, 312 distinct packed boards, 1.0 uniqueness, 13/13 exact
+  transformed move-sequence pairs, 8,246 legal moves, 2,466 scored candidates,
+  5,780 truncated candidates, a 5.51 mean selected-vs-best score gap, and 0.729
+  summed rollout CPU seconds in the remeasurement run;
+- the previous label-calibration smoke predates root-best candidate inclusion
+  and is no longer evidence. Its 126-root result would also be blocked because
+  two opening IDs had no matched root.
 
-The short trajectory smoke also omits 51 train IDs and therefore fails the new
-64-ID coverage gate in addition to its intentional final-tranche failure. These
-smoke results do not freeze the production rollout values or label budget.
+The short trajectory smoke omits 51 train IDs, gives every visited ID only one
+pair, and has no tranche after the initial 128-game coverage boundary. It is
+therefore intentionally blocked by both the two-cycle coverage and repeat-yield
+gates. These smoke results do not freeze the production rollout values or label
+budget.
