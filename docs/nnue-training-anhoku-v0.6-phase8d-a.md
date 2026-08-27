@@ -1,8 +1,9 @@
 # Anhoku v0.6 Phase 8D-A: searched-stochastic trajectory repair
 
-Status: the Phase 8D-A trajectory gate and sampled cross-host reproduction
-passed, but label calibration is blocked. Phase 8D-A.2 adaptive-label recovery
-is next; Phase 8D-B data generation remains unauthorized.
+Status: the original Phase 8D-A trajectory gate passed and its label
+calibration blocked as expected. The Phase 8D-A.2 adaptive-label implementation
+and v3 config are now present; the v3 trajectory/cross-host/calibration gates
+are the next execution step. Phase 8D-B data generation remains unauthorized.
 
 ## Implemented contract
 
@@ -11,7 +12,7 @@ is next; Phase 8D-B data generation remains unauthorized.
 - `audit-data`, with deterministic counts for distinct 72-byte records and
   distinct packed boards (`bin` bytes `0..64`), duplicate multiplicity, and
   conflicting `(score, ply, result)` targets;
-- separate `generation-semantic-v1` and `schedule-readiness-v1` identities;
+- separate `generation-semantic-v2` and `schedule-readiness-v1` identities;
   semantic changes cannot be hidden by a shard-cardinality extension, while
   complete non-overlapping ranges can be reused when only the schedule or
   packed-board readiness floor grows;
@@ -24,9 +25,12 @@ is next; Phase 8D-B data generation remains unauthorized.
   uniqueness, post-initial-coverage tranche yield, legal/scored/truncated
   candidate counts, selected-vs-best gaps, game lengths/outcomes, pair
   symmetry, and summed rollout CPU time;
-- `calibrate-labels`, which regenerates one matched base/swapped pair per suite
-  ID, requires every ID to produce a non-empty matched root set, and labels the
-  same candidate roots at 50k, 100k, and 200k combined nodes;
+- `root-position-adaptive-retry-v1`, which replaces rejected incomplete,
+  accounting-invalid, terminal, missing-King, or mate roots at the next normal
+  sampling ply without consuming the accepted quota;
+- `calibrate-labels`, which symmetry-couples base/swapped retry attempts,
+  targets one accepted root per game, tests 50k first, and escalates only for
+  incomplete-search or accounting failures;
 - packed-board minimum enforcement during full generation, merge, and training
   readiness. The old `minimum_train_positions` spelling remains readable as a
   deprecated packed-board floor.
@@ -37,8 +41,9 @@ There is no arbitrary-opening or unsearched-uniform fallback.
 
 ## Reproduction
 
-The production-shaped pilot config is
-`haitaka_learn.anhoku-v0.6-phase8d-a.toml`. It fixes the v2 suite, 52 train and
+The completed v2 evidence remains reproducible with
+`haitaka_learn.anhoku-v0.6-phase8d-a.toml`. The recovery config is
+`haitaka_learn.anhoku-v0.6-phase8d-a2.toml`. It fixes the v3 suite, 52 train and
 12 OOD-v2 IDs, zero random opening plies, C/16 bootstrap, the existing donor
 feature family, deterministic sharding, and two pairs per opening for a
 256-game audit. The first 128 games establish complete opening coverage; the
@@ -50,9 +55,9 @@ Run the label-free gate first:
 
 ```bash
 cargo run --release -p haitaka_learn --features anhoku -- trajectory-audit \
-  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml \
-  --jobs 1 \
-  --output out/anhoku-v0.6-phase8d-a/trajectory-audit-jobs1.json
+  --config haitaka_learn.anhoku-v0.6-phase8d-a2.toml \
+  --jobs 0 \
+  --output out/anhoku-v0.6-phase8d-a2/trajectory-audit-jobs0.json
 ```
 
 Then, only after the rollout values are frozen from legality/symmetry/cost,
@@ -60,14 +65,14 @@ move-quality, and diversity telemetry:
 
 ```bash
 cargo run --release -p haitaka_learn --features anhoku -- calibrate-labels \
-  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+  --config haitaka_learn.anhoku-v0.6-phase8d-a2.toml
 ```
 
-The calibration report selects the smallest budget only when both train and
-OOD-v2 satisfy the 1% incomplete-label, exact-accounting, zero-terminal/mate,
-and side/outcome rejection-rate delta <= 0.05 gates. If none passes, its
-decision is `blocked` and requires an explicitly written adaptive-retry
-contract.
+The adaptive report requires 128 accepted roots, zero exhausted games or bad
+stored labels, exact accounting and paired symmetry, and mean attempts per
+accepted root <=1.25 overall and <=1.50 in either split. Side/outcome retry
+bias remains telemetry, not a gate, because every rejected requested slot must
+now be deterministically replaced.
 
 ## Phase 8D-A.1 legality recovery
 
@@ -140,6 +145,15 @@ Additional nodes did not change the aggregate rejection counts. No budget is
 selected and the original calibration must not be overridden.
 
 ## Phase 8D-A.2 adaptive-label contract
+
+Implementation status: complete locally; production evidence not yet run.
+`anhoku-v3` preserves 63 positions and replaces `048` with generator pair
+index 52, chosen before any label or strength inspection. The parser now also
+rejects duplicate color-swap orbits. Policy version, attempt cap, rejection
+counts by reason/side/outcome/opening/root ply, exhaustion, and attempts per
+accepted position are recorded in semantic identity or manifests as
+appropriate. Regression tests cover mate retry, exhaustion logic, transformed
+root matching, and jobs/shard determinism.
 
 1. Version the suite as `anhoku-v3`, replacing only the unusable train opening
    `anhoku-v2-048`. Choose its replacement without label, loss, or strength

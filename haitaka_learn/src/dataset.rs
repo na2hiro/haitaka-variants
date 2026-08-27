@@ -30,17 +30,18 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, IncompleteLabelPolicy, LabelSearchBudget, LoadedConfig, PositionPolicy, Ruleset,
-    SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
+    ArtifactPaths, IncompleteLabelPolicy, LabelRetryPolicy, LabelSearchBudget, LoadedConfig,
+    PositionPolicy, Ruleset, SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy,
+    TEACHER_MOVE_ENCODING,
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit, color_swap_anhoku_sfen};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
-const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-v1";
+const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-ply-v2";
 const CANDIDATE_IDENTITY_VERSION: &str = "sample-root-sha256-v1";
-const GENERATION_SEMANTIC_IDENTITY_VERSION: &str = "generation-semantic-v1";
+const GENERATION_SEMANTIC_IDENTITY_VERSION: &str = "generation-semantic-v2";
 const SCHEDULE_IDENTITY_VERSION: &str = "schedule-readiness-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
@@ -114,6 +115,8 @@ struct DatasetManifest {
     position_policy: String,
     training_trace_version: String,
     incomplete_label_policy: String,
+    label_retry_policy: String,
+    max_label_attempts_per_game: Option<u16>,
     position_selection_audit_version: String,
     candidate_positions: u64,
     candidate_roots_per_game: Option<u16>,
@@ -128,6 +131,13 @@ struct DatasetManifest {
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
+    rejected_node_accounting_positions: u64,
+    label_retry_exhausted_games: u64,
+    label_retry_attempts_per_accepted_position: f64,
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
     position_selection: PositionSelectionStats,
     opening_position_selection: BTreeMap<String, PositionSelectionStats>,
     root_ply_min: Option<u16>,
@@ -236,6 +246,10 @@ struct ShardManifest {
     training_trace_version: String,
     #[serde(default = "legacy_incomplete_label_policy")]
     incomplete_label_policy: String,
+    #[serde(default = "legacy_label_retry_policy")]
+    label_retry_policy: String,
+    #[serde(default)]
+    max_label_attempts_per_game: Option<u16>,
     #[serde(default)]
     position_selection_audit_version: String,
     #[serde(default)]
@@ -264,6 +278,20 @@ struct ShardManifest {
     rejected_terminal_positions: u64,
     #[serde(default)]
     rejected_mate_score_positions: u64,
+    #[serde(default)]
+    rejected_node_accounting_positions: u64,
+    #[serde(default)]
+    label_retry_exhausted_games: u64,
+    #[serde(default)]
+    label_retry_attempts_per_accepted_position: f64,
+    #[serde(default)]
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
     #[serde(default)]
     position_selection: PositionSelectionStats,
     #[serde(default)]
@@ -349,6 +377,10 @@ fn legacy_self_play_move_policy() -> String {
 
 fn legacy_incomplete_label_policy() -> String {
     "error".to_string()
+}
+
+fn legacy_label_retry_policy() -> String {
+    "none".to_string()
 }
 
 fn legacy_opening_policy() -> String {
@@ -482,6 +514,8 @@ struct PositionSelectionStats {
     rejected_terminal_leaf_white: u64,
     rejected_mate_root_black: u64,
     rejected_mate_root_white: u64,
+    rejected_node_accounting_root_black: u64,
+    rejected_node_accounting_root_white: u64,
     rejected_mate_leaf_black: u64,
     rejected_mate_leaf_white: u64,
     rejected_incomplete_game_win: u64,
@@ -493,6 +527,9 @@ struct PositionSelectionStats {
     rejected_mate_game_win: u64,
     rejected_mate_game_loss: u64,
     rejected_mate_game_draw: u64,
+    rejected_node_accounting_game_win: u64,
+    rejected_node_accounting_game_loss: u64,
+    rejected_node_accounting_game_draw: u64,
 }
 
 impl PositionSelectionStats {
@@ -519,6 +556,8 @@ impl PositionSelectionStats {
             rejected_terminal_leaf_white,
             rejected_mate_root_black,
             rejected_mate_root_white,
+            rejected_node_accounting_root_black,
+            rejected_node_accounting_root_white,
             rejected_mate_leaf_black,
             rejected_mate_leaf_white,
             rejected_incomplete_game_win,
@@ -530,6 +569,9 @@ impl PositionSelectionStats {
             rejected_mate_game_win,
             rejected_mate_game_loss,
             rejected_mate_game_draw,
+            rejected_node_accounting_game_win,
+            rejected_node_accounting_game_loss,
+            rejected_node_accounting_game_draw,
         );
     }
 
@@ -584,6 +626,13 @@ impl PositionSelectionStats {
         }
     }
 
+    fn record_node_accounting(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_node_accounting_root_black += 1,
+            Color::White => self.rejected_node_accounting_root_white += 1,
+        }
+    }
+
     fn record_rejection_outcomes(&mut self, outcome: GameOutcome) {
         let incomplete = relative_rejection_counts(
             self.rejected_incomplete_root_black,
@@ -598,6 +647,11 @@ impl PositionSelectionStats {
         let mate = relative_rejection_counts(
             self.rejected_mate_root_black,
             self.rejected_mate_root_white,
+            outcome,
+        );
+        let node_accounting = relative_rejection_counts(
+            self.rejected_node_accounting_root_black,
+            self.rejected_node_accounting_root_white,
             outcome,
         );
         (
@@ -615,10 +669,15 @@ impl PositionSelectionStats {
             self.rejected_mate_game_loss,
             self.rejected_mate_game_draw,
         ) = mate;
+        (
+            self.rejected_node_accounting_game_win,
+            self.rejected_node_accounting_game_loss,
+            self.rejected_node_accounting_game_draw,
+        ) = node_accounting;
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 struct SearchUseStats {
     label_searches: u64,
     rollout_searches: u64,
@@ -639,6 +698,12 @@ struct SearchUseStats {
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
     rejected_mate_score_positions: u64,
+    rejected_node_accounting_positions: u64,
+    label_retry_exhausted_games: u64,
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
     root_ply_min: Option<u16>,
     root_ply_max: Option<u16>,
     leaf_distance_min: Option<u16>,
@@ -700,6 +765,24 @@ impl SearchUseStats {
         self.rejected_incomplete_label_positions += other.rejected_incomplete_label_positions;
         self.rejected_terminal_positions += other.rejected_terminal_positions;
         self.rejected_mate_score_positions += other.rejected_mate_score_positions;
+        self.rejected_node_accounting_positions += other.rejected_node_accounting_positions;
+        self.label_retry_exhausted_games += other.label_retry_exhausted_games;
+        merge_count_map(
+            &mut self.rejected_incomplete_root_plies,
+            other.rejected_incomplete_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_terminal_root_plies,
+            other.rejected_terminal_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_mate_root_plies,
+            other.rejected_mate_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_node_accounting_root_plies,
+            other.rejected_node_accounting_root_plies,
+        );
         self.root_ply_min = option_min(self.root_ply_min, other.root_ply_min);
         self.root_ply_max = option_max(self.root_ply_max, other.root_ply_max);
         self.leaf_distance_min = option_min(self.leaf_distance_min, other.leaf_distance_min);
@@ -730,6 +813,12 @@ impl SearchUseStats {
     }
 }
 
+fn merge_count_map(target: &mut BTreeMap<u16, u64>, source: BTreeMap<u16, u64>) {
+    for (key, count) in source {
+        *target.entry(key).or_default() += count;
+    }
+}
+
 fn option_min<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
     match (left, right) {
         (Some(left), Some(right)) => Some(left.min(right)),
@@ -750,6 +839,7 @@ fn stored_position_count(stats: &SearchUseStats) -> u64 {
         .saturating_sub(stats.rejected_incomplete_label_positions)
         .saturating_sub(stats.rejected_terminal_positions)
         .saturating_sub(stats.rejected_mate_score_positions)
+        .saturating_sub(stats.rejected_node_accounting_positions)
 }
 
 fn leaf_distance_mean(stats: &SearchUseStats) -> f64 {
@@ -802,6 +892,14 @@ impl From<&ShardManifest> for SearchUseStats {
             rejected_incomplete_label_positions: manifest.rejected_incomplete_label_positions,
             rejected_terminal_positions: manifest.rejected_terminal_positions,
             rejected_mate_score_positions: manifest.rejected_mate_score_positions,
+            rejected_node_accounting_positions: manifest.rejected_node_accounting_positions,
+            label_retry_exhausted_games: manifest.label_retry_exhausted_games,
+            rejected_incomplete_root_plies: manifest.rejected_incomplete_root_plies.clone(),
+            rejected_terminal_root_plies: manifest.rejected_terminal_root_plies.clone(),
+            rejected_mate_root_plies: manifest.rejected_mate_root_plies.clone(),
+            rejected_node_accounting_root_plies: manifest
+                .rejected_node_accounting_root_plies
+                .clone(),
             root_ply_min: manifest.root_ply_min,
             root_ply_max: manifest.root_ply_max,
             leaf_distance_min: manifest.leaf_distance_min,
@@ -1272,7 +1370,7 @@ fn transform_move(move_: Move) -> Move {
 }
 
 const TRAJECTORY_AUDIT_SCHEMA: &str = "haitaka-trajectory-audit-v2";
-const LABEL_CALIBRATION_SCHEMA: &str = "haitaka-label-calibration-v1";
+const LABEL_CALIBRATION_SCHEMA: &str = "haitaka-label-calibration-v2";
 const TRAJECTORY_TRANCHE_GAMES: usize = 64;
 const TRAJECTORY_MIN_PAIRS_PER_OPENING: u64 = 2;
 const TRAJECTORY_MIN_UNIQUE_RATIO: f64 = 0.95;
@@ -1280,6 +1378,8 @@ const TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME: f64 = 30.0;
 const CALIBRATION_MAX_INCOMPLETE_PERCENT: u64 = 1;
 const CALIBRATION_MAX_BIAS_DELTA: f64 = 0.05;
 const CALIBRATION_BUDGETS: [u64; 3] = [50_000, 100_000, 200_000];
+const CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT: f64 = 1.25;
+const CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT: f64 = 1.50;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TrajectoryAuditOptions {
@@ -1495,8 +1595,13 @@ struct LabelCalibrationIdentity {
     opening_ids_without_matched_roots: Vec<String>,
     trajectory_hashes_sha256: String,
     label_position_policy: String,
+    label_retry_policy: String,
+    max_label_attempts_per_game: Option<u16>,
     max_depth: u8,
     max_rejection_rate_delta: f64,
+    rejection_rate_delta_is_gate: bool,
+    max_overall_attempts_per_accepted_root: f64,
+    max_split_attempts_per_accepted_root: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -1514,12 +1619,17 @@ struct CalibrationBudgetReport {
     nodes: u64,
     train: CalibrationSplitReport,
     ood_v2: CalibrationSplitReport,
+    attempts_per_accepted_root: f64,
     passed: bool,
 }
 
 #[derive(Debug, Serialize)]
 struct CalibrationSplitReport {
     candidate_roots: u64,
+    accepted_roots: u64,
+    exhausted_games: u64,
+    attempts_per_accepted_root: f64,
+    accepted_bad_labels: u64,
     incomplete_labels: u64,
     incomplete_rate: f64,
     terminal_labels: u64,
@@ -1824,12 +1934,23 @@ fn play_label_free_trajectory(
         if legal_moves.is_empty() {
             break;
         }
+        let calibration_root_limit =
+            if calibration_root_schedule && loaded.config.data.label_retry_policy.is_adaptive() {
+                loaded
+                    .config
+                    .data
+                    .max_label_attempts_per_game
+                    .expect("validated adaptive retry attempt cap")
+            } else {
+                loaded
+                    .config
+                    .data
+                    .max_candidate_roots_per_game
+                    .unwrap_or(loaded.config.data.max_positions_per_game)
+            };
         let should_collect_root = played_plies >= sample_origin
             && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
-            && match loaded.config.data.max_candidate_roots_per_game {
-                Some(limit) => attempted_candidate_roots < limit,
-                None => attempted_candidate_roots < loaded.config.data.max_positions_per_game,
-            };
+            && attempted_candidate_roots < calibration_root_limit;
         if should_collect_root {
             attempted_candidate_roots += 1;
             if calibration_root_schedule {
@@ -2025,7 +2146,7 @@ fn build_trajectory_audit_report(
                 GameOutcome::Winner(Color::White) => white_wins += 1,
                 GameOutcome::Draw => draws += 1,
             }
-            total_stats.add(game.stats);
+            total_stats.add(game.stats.clone());
             let game_gap_sum = game
                 .score_gaps
                 .iter()
@@ -2503,7 +2624,16 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             .find(|game| game.opening.opening_id == *opening_id && game.task.game_index % 2 == 1)
             .ok_or_else(|| anyhow!("missing swapped calibration trajectory for `{opening_id}`"))?;
         trajectories_by_id.insert(opening_id.clone(), (base, swapped));
-        let roots_match = calibration_roots_match(base, swapped)?;
+        let roots_match = calibration_roots_match(base, swapped)?
+            && (!loaded.config.data.label_retry_policy.is_adaptive()
+                || base.calibration_roots.len()
+                    == usize::from(
+                        loaded
+                            .config
+                            .data
+                            .max_label_attempts_per_game
+                            .expect("validated adaptive retry attempt cap"),
+                    ));
         if !roots_match {
             paired_root_mismatches += 1;
         }
@@ -2546,48 +2676,114 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
     let max_depth = label_budget.max_depth();
     let mut budget_reports = Vec::with_capacity(CALIBRATION_BUDGETS.len());
     for nodes in CALIBRATION_BUDGETS {
-        let mut train_roots = Vec::new();
-        let mut ood_roots = Vec::new();
-        for opening_id in &suite_ids {
-            let (base, swapped) = trajectories_by_id
-                .get(opening_id)
-                .expect("calibration trajectory map contains every suite ID");
-            let target = if train_ids.contains(opening_id) {
-                &mut train_roots
-            } else {
-                &mut ood_roots
-            };
-            target.extend(base.calibration_roots.iter());
-            target.extend(swapped.calibration_roots.iter());
-        }
-        let train = calibrate_label_split(
-            &teacher,
-            loaded.config.data.position_policy,
-            max_depth,
-            nodes,
-            &train_roots,
-        )?;
-        let ood_v2 = calibrate_label_split(
-            &teacher,
-            loaded.config.data.position_policy,
-            max_depth,
-            nodes,
-            &ood_roots,
-        )?;
+        let (train, ood_v2) = if loaded.config.data.label_retry_policy.is_adaptive() {
+            let mut train_pairs = Vec::new();
+            let mut ood_pairs = Vec::new();
+            for opening_id in &suite_ids {
+                let (base, swapped) = trajectories_by_id
+                    .get(opening_id)
+                    .expect("calibration trajectory map contains every suite ID");
+                let target = if train_ids.contains(opening_id) {
+                    &mut train_pairs
+                } else {
+                    &mut ood_pairs
+                };
+                target.push((
+                    base.calibration_roots.as_slice(),
+                    swapped.calibration_roots.as_slice(),
+                ));
+            }
+            (
+                calibrate_adaptive_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &train_pairs,
+                )?,
+                calibrate_adaptive_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &ood_pairs,
+                )?,
+            )
+        } else {
+            let mut train_roots = Vec::new();
+            let mut ood_roots = Vec::new();
+            for opening_id in &suite_ids {
+                let (base, swapped) = trajectories_by_id
+                    .get(opening_id)
+                    .expect("calibration trajectory map contains every suite ID");
+                let target = if train_ids.contains(opening_id) {
+                    &mut train_roots
+                } else {
+                    &mut ood_roots
+                };
+                target.extend(base.calibration_roots.iter());
+                target.extend(swapped.calibration_roots.iter());
+            }
+            (
+                calibrate_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &train_roots,
+                )?,
+                calibrate_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &ood_roots,
+                )?,
+            )
+        };
+        let attempts_per_accepted_root = ratio_f64(
+            train.candidate_roots.saturating_add(ood_v2.candidate_roots),
+            train.accepted_roots.saturating_add(ood_v2.accepted_roots),
+        );
+        let passed = train.passed
+            && ood_v2.passed
+            && (!loaded.config.data.label_retry_policy.is_adaptive()
+                || attempts_per_accepted_root <= CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT);
+        let retryable_failure = train.incomplete_labels > 0
+            || ood_v2.incomplete_labels > 0
+            || train.node_accounting_errors > 0
+            || ood_v2.node_accounting_errors > 0;
         budget_reports.push(CalibrationBudgetReport {
             nodes,
-            passed: train.passed && ood_v2.passed,
+            attempts_per_accepted_root,
+            passed,
             train,
             ood_v2,
         });
+        if loaded.config.data.label_retry_policy.is_adaptive() && (passed || !retryable_failure) {
+            break;
+        }
     }
     let mut failures = Vec::new();
     if !opening_ids_without_matched_roots.is_empty() {
-        failures.push(format!(
-            "{} of 64 opening IDs did not produce at least one matched candidate root: {}",
-            opening_ids_without_matched_roots.len(),
-            opening_ids_without_matched_roots.join(", ")
-        ));
+        failures.push(if loaded.config.data.label_retry_policy.is_adaptive() {
+            format!(
+                "{} of 64 opening IDs did not produce the full matched {}-attempt candidate pool: {}",
+                opening_ids_without_matched_roots.len(),
+                loaded
+                    .config
+                    .data
+                    .max_label_attempts_per_game
+                    .expect("validated adaptive retry attempt cap"),
+                opening_ids_without_matched_roots.join(", ")
+            )
+        } else {
+            format!(
+                "{} of 64 opening IDs did not produce at least one matched candidate root: {}",
+                opening_ids_without_matched_roots.len(),
+                opening_ids_without_matched_roots.join(", ")
+            )
+        });
     }
     if paired_root_mismatches > 0 {
         failures.push(format!(
@@ -2606,10 +2802,13 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
         && opening_ids_without_matched_roots.is_empty()
         && paired_root_mismatches == 0
     {
-        failures.push(
+        failures.push(if loaded.config.data.label_retry_policy.is_adaptive() {
+            "adaptive retry did not satisfy accepted-root, exhaustion, node-accounting, and attempts-per-accept gates at an eligible predeclared budget"
+                .to_string()
+        } else {
             "none of the predeclared 50k/100k/200k node budgets passed both train and OOD-v2 calibration gates; define an adaptive-retry contract before proceeding"
-                .to_string(),
-        );
+                .to_string()
+        });
     }
     let status = if failures.is_empty() {
         format!("passed; selected smallest budget {selected_budget_nodes:?}")
@@ -2632,7 +2831,11 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             suite_ids,
             train_suite_ids: train_ids.into_iter().collect(),
             ood_v2_suite_ids: ood_ids.into_iter().collect(),
-            candidate_root_schedule: "fixed-phase-calibration-v1".to_string(),
+            candidate_root_schedule: if loaded.config.data.label_retry_policy.is_adaptive() {
+                "pair-coupled-adaptive-retry-v1".to_string()
+            } else {
+                "fixed-phase-calibration-v1".to_string()
+            },
             candidate_root_count,
             candidate_roots_sha256,
             paired_root_mismatches,
@@ -2645,8 +2848,18 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
                 .position_policy
                 .manifest_name()
                 .to_string(),
+            label_retry_policy: loaded
+                .config
+                .data
+                .label_retry_policy
+                .manifest_name()
+                .to_string(),
+            max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
             max_depth,
             max_rejection_rate_delta: CALIBRATION_MAX_BIAS_DELTA,
+            rejection_rate_delta_is_gate: !loaded.config.data.label_retry_policy.is_adaptive(),
+            max_overall_attempts_per_accepted_root: CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT,
+            max_split_attempts_per_accepted_root: CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT,
         },
         trajectories: calibration_summaries,
         budgets: budget_reports,
@@ -2754,6 +2967,179 @@ fn calibration_root_slices_match(
     Ok(true)
 }
 
+#[derive(Debug)]
+struct CalibrationSearchObservation {
+    incomplete: bool,
+    terminal: bool,
+    mate: bool,
+    accounting_error: bool,
+    alpha_beta_nodes: u64,
+    qsearch_nodes: u64,
+    accounted_nodes: u64,
+}
+
+impl CalibrationSearchObservation {
+    fn is_admissible(&self) -> bool {
+        !self.incomplete && !self.terminal && !self.mate
+    }
+}
+
+fn observe_calibration_label(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    root: &CalibrationRoot,
+    workspace: &mut SearchWorkspace,
+) -> Result<CalibrationSearchObservation> {
+    let summary = teacher.search_label(
+        &root.board,
+        LabelSearchBudget::Nodes { nodes, max_depth },
+        position_policy,
+        workspace,
+    )?;
+    let counter_sum = summary.states.checked_add(summary.qnodes);
+    let terminal = !has_both_kings(&root.board)
+        || root.board.status() != haitaka::GameStatus::Ongoing
+        || summary
+            .training_trace
+            .as_ref()
+            .is_some_and(|trace| trace.terminal || !has_both_kings(&trace.leaf_board));
+    Ok(CalibrationSearchObservation {
+        incomplete: !node_budget_summary_is_complete(&summary),
+        terminal,
+        mate: summary
+            .best_score
+            .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32),
+        accounting_error: summary.node_limit != Some(nodes)
+            || counter_sum != Some(summary.total_nodes)
+            || summary.total_nodes > nodes,
+        alpha_beta_nodes: summary.states,
+        qsearch_nodes: summary.qnodes,
+        accounted_nodes: summary.total_nodes,
+    })
+}
+
+fn calibrate_adaptive_label_split(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    root_pairs: &[(&[CalibrationRoot], &[CalibrationRoot])],
+) -> Result<CalibrationSplitReport> {
+    let mut workspace = SearchWorkspace::default();
+    let mut candidate_roots = 0u64;
+    let mut accepted_roots = 0u64;
+    let mut exhausted_games = 0u64;
+    let mut incomplete_labels = 0u64;
+    let mut terminal_labels = 0u64;
+    let mut mate_labels = 0u64;
+    let mut alpha_beta_nodes = 0u64;
+    let mut qsearch_nodes = 0u64;
+    let mut accounted_nodes = 0u64;
+    let mut node_accounting_errors = 0u64;
+    let mut incomplete_by_side = BinaryCalibrationCounts::default();
+    let mut rejected_by_side = BinaryCalibrationCounts::default();
+    let mut incomplete_by_outcome = OutcomeCalibrationCounts::default();
+    let mut rejected_by_outcome = OutcomeCalibrationCounts::default();
+    let mut candidate_by_side = BinaryCalibrationCounts::default();
+    let mut candidate_by_outcome = OutcomeCalibrationCounts::default();
+
+    for (base_roots, swapped_roots) in root_pairs {
+        let mut pair_accepted = false;
+        for (base, swapped) in base_roots.iter().zip(*swapped_roots) {
+            let roots = [base, swapped];
+            let mut observations = Vec::with_capacity(2);
+            for root in roots {
+                candidate_roots += 1;
+                increment_binary(&mut candidate_by_side, root.side_to_move);
+                increment_outcome(
+                    &mut candidate_by_outcome,
+                    root.outcome.relative_to(root.side_to_move),
+                );
+                let observation = observe_calibration_label(
+                    teacher,
+                    position_policy,
+                    max_depth,
+                    nodes,
+                    root,
+                    &mut workspace,
+                )?;
+                alpha_beta_nodes = alpha_beta_nodes.saturating_add(observation.alpha_beta_nodes);
+                qsearch_nodes = qsearch_nodes.saturating_add(observation.qsearch_nodes);
+                accounted_nodes = accounted_nodes.saturating_add(observation.accounted_nodes);
+                node_accounting_errors += u64::from(observation.accounting_error);
+                incomplete_labels += u64::from(observation.incomplete);
+                terminal_labels += u64::from(observation.terminal);
+                mate_labels += u64::from(observation.mate);
+                if observation.incomplete {
+                    increment_binary(&mut incomplete_by_side, root.side_to_move);
+                    increment_outcome(
+                        &mut incomplete_by_outcome,
+                        root.outcome.relative_to(root.side_to_move),
+                    );
+                }
+                observations.push(observation);
+            }
+            if observations
+                .iter()
+                .all(CalibrationSearchObservation::is_admissible)
+            {
+                accepted_roots += 2;
+                pair_accepted = true;
+                break;
+            }
+            for root in roots {
+                increment_binary(&mut rejected_by_side, root.side_to_move);
+                increment_outcome(
+                    &mut rejected_by_outcome,
+                    root.outcome.relative_to(root.side_to_move),
+                );
+            }
+        }
+        if !pair_accepted {
+            exhausted_games += 2;
+        }
+    }
+
+    let rejected_labels = candidate_roots.saturating_sub(accepted_roots);
+    let attempts_per_accepted_root = ratio_f64(candidate_roots, accepted_roots);
+    let requested_node_budget = nodes.saturating_mul(candidate_roots);
+    let side_rejection_rate_delta = binary_rate_delta(&rejected_by_side, &candidate_by_side);
+    let outcome_rejection_rate_delta =
+        outcome_rate_delta(&rejected_by_outcome, &candidate_by_outcome);
+    let expected_accepted_roots = (root_pairs.len() as u64).saturating_mul(2);
+    let passed = accepted_roots == expected_accepted_roots
+        && exhausted_games == 0
+        && node_accounting_errors == 0
+        && attempts_per_accepted_root <= CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT;
+    Ok(CalibrationSplitReport {
+        candidate_roots,
+        accepted_roots,
+        exhausted_games,
+        attempts_per_accepted_root,
+        accepted_bad_labels: 0,
+        incomplete_labels,
+        incomplete_rate: ratio_f64(incomplete_labels, candidate_roots),
+        terminal_labels,
+        mate_labels,
+        rejected_labels,
+        alpha_beta_nodes,
+        qsearch_nodes,
+        accounted_nodes,
+        requested_node_budget,
+        node_accounting_exact: node_accounting_errors == 0,
+        node_accounting_errors,
+        incomplete_by_side,
+        rejected_by_side,
+        incomplete_by_outcome,
+        rejected_by_outcome,
+        side_rejection_rate_delta,
+        outcome_rejection_rate_delta,
+        passed,
+    })
+}
+
 fn calibrate_label_split(
     teacher: &Teacher,
     position_policy: PositionPolicy,
@@ -2842,6 +3228,13 @@ fn calibrate_label_split(
         && outcome_rejection_rate_delta <= CALIBRATION_MAX_BIAS_DELTA;
     Ok(CalibrationSplitReport {
         candidate_roots: candidate_count,
+        accepted_roots: candidate_count.saturating_sub(rejected_labels),
+        exhausted_games: 0,
+        attempts_per_accepted_root: ratio_f64(
+            candidate_count,
+            candidate_count.saturating_sub(rejected_labels),
+        ),
+        accepted_bad_labels: 0,
         incomplete_labels,
         incomplete_rate: ratio_f64(incomplete_labels, candidate_count),
         terminal_labels,
@@ -2954,11 +3347,26 @@ fn node_budget_summary_is_complete(summary: &TeacherSearchSummary) -> bool {
     summary.best_move.is_some() && summary.best_score.is_some()
 }
 
+fn label_node_accounting_is_exact(
+    summary: &TeacherSearchSummary,
+    budget: LabelSearchBudget,
+) -> bool {
+    match budget {
+        LabelSearchBudget::Depth { .. } => true,
+        LabelSearchBudget::Nodes { nodes, .. } => {
+            summary.node_limit == Some(nodes)
+                && summary.states.checked_add(summary.qnodes) == Some(summary.total_nodes)
+                && summary.total_nodes <= nodes
+        }
+    }
+}
+
 fn apply_incomplete_label_policy(
     summary: TeacherSearchSummary,
     budget: LabelSearchBudget,
     policy: IncompleteLabelPolicy,
     root_side: Color,
+    root_ply: u16,
     stats: &mut SearchUseStats,
 ) -> Result<Option<TeacherSearchSummary>> {
     if !matches!(budget, LabelSearchBudget::Nodes { .. })
@@ -2978,6 +3386,10 @@ fn apply_incomplete_label_policy(
         IncompleteLabelPolicy::RejectPosition => {
             stats.rejected_incomplete_label_positions += 1;
             stats.position_selection.record_incomplete(root_side);
+            *stats
+                .rejected_incomplete_root_plies
+                .entry(root_ply)
+                .or_default() += 1;
             Ok(None)
         }
     }
@@ -3412,6 +3824,13 @@ fn generate_split(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
@@ -3426,6 +3845,18 @@ fn generate_split(
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
         position_selection: search_stats.position_selection,
         opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
@@ -3714,8 +4145,10 @@ struct GenerationSemanticIdentityMaterial {
     position_policy: String,
     training_trace_version: &'static str,
     incomplete_label_policy: String,
+    label_retry_policy: String,
     max_positions_per_game: u16,
     max_candidate_roots_per_game: Option<u16>,
+    max_label_attempts_per_game: Option<u16>,
     candidate_identity_version: &'static str,
     self_play_move_policy: String,
     rollout_search_depth: u8,
@@ -3816,8 +4249,15 @@ fn generation_semantic_identity_sha256(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
         max_positions_per_game: loaded.config.data.max_positions_per_game,
         max_candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION,
         self_play_move_policy: loaded
             .config
@@ -4038,13 +4478,13 @@ fn generate_or_reuse_shard(
         )
         .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
-        search_stats.add(game.stats);
         candidate_identity_hasher.update(game_index.to_le_bytes());
         candidate_identity_hasher.update(game.candidate_identity_sha256.as_bytes());
         opening_position_selection
             .entry(game.opening.opening_id.clone())
             .or_default()
             .add(game.stats.position_selection);
+        search_stats.add(game.stats);
         games.push(game.opening);
         writer.write_all(&game.entries)?;
     }
@@ -4125,6 +4565,13 @@ fn generate_or_reuse_shard(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
@@ -4139,6 +4586,18 @@ fn generate_or_reuse_shard(
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
         position_selection: search_stats.position_selection,
         opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
@@ -4344,6 +4803,8 @@ fn shard_manifest_matches(
         && manifest.training_trace_version_matches(loaded.config.data.position_policy)
         && manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name()
+        && manifest.label_retry_policy == loaded.config.data.label_retry_policy.manifest_name()
+        && manifest.max_label_attempts_per_game == loaded.config.data.max_label_attempts_per_game
         && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
         && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
         && (manifest.candidate_identity_version.is_empty()
@@ -4595,12 +5056,23 @@ fn generate_game_entries(
             break;
         }
 
-        let should_sample = played_plies >= sample_origin
-            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
-            && match loaded.config.data.max_candidate_roots_per_game {
+        let candidate_limit_available = if loaded.config.data.label_retry_policy.is_adaptive() {
+            samples.len() < usize::from(loaded.config.data.max_positions_per_game)
+                && attempted_candidate_roots
+                    < loaded
+                        .config
+                        .data
+                        .max_label_attempts_per_game
+                        .expect("validated adaptive retry attempt cap")
+        } else {
+            match loaded.config.data.max_candidate_roots_per_game {
                 Some(limit) => attempted_candidate_roots < limit,
                 None => samples.len() < usize::from(loaded.config.data.max_positions_per_game),
-            };
+            }
+        };
+        let should_sample = played_plies >= sample_origin
+            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
+            && candidate_limit_available;
         let needs_rollout_search = played_plies >= loaded.config.data.opening_random_plies
             && (loaded.config.data.self_play_move_policy.is_rollout_policy() || !should_sample);
         let label_summary = if should_sample {
@@ -4618,13 +5090,31 @@ fn generate_game_entries(
                 search_workspace,
             )?;
             stats.record_label(&summary);
-            apply_incomplete_label_policy(
+            let summary = apply_incomplete_label_policy(
                 summary,
                 label_search_budget,
                 loaded.config.data.incomplete_label_policy,
                 board.side_to_move(),
+                played_plies,
                 &mut stats,
-            )?
+            )?;
+            match summary {
+                Some(summary)
+                    if loaded.config.data.label_retry_policy.is_adaptive()
+                        && !label_node_accounting_is_exact(&summary, label_search_budget) =>
+                {
+                    let root_side = board.side_to_move();
+                    stats.record_candidate(root_side);
+                    stats.rejected_node_accounting_positions += 1;
+                    stats.position_selection.record_node_accounting(root_side);
+                    *stats
+                        .rejected_node_accounting_root_plies
+                        .entry(played_plies)
+                        .or_default() += 1;
+                    None
+                }
+                summary => summary,
+            }
         } else {
             None
         };
@@ -4675,6 +5165,7 @@ fn generate_game_entries(
         if let Some(summary) = label_summary.as_ref() {
             record_pending_sample(
                 loaded.config.data.position_policy,
+                loaded.config.data.label_retry_policy,
                 &board,
                 summary,
                 played_plies,
@@ -4699,6 +5190,12 @@ fn generate_game_entries(
 
         board.play_unchecked(mv);
         played_plies += 1;
+    }
+
+    if loaded.config.data.label_retry_policy.is_adaptive()
+        && samples.len() < usize::from(loaded.config.data.max_positions_per_game)
+    {
+        stats.label_retry_exhausted_games += 1;
     }
 
     let outcome = if played_plies >= loaded.config.data.max_plies {
@@ -4747,6 +5244,7 @@ fn update_candidate_identity(hasher: &mut Sha256, game_index: u32, root_ply: u16
 
 fn record_pending_sample(
     position_policy: PositionPolicy,
+    label_retry_policy: LabelRetryPolicy,
     root_board: &Board,
     summary: &TeacherSearchSummary,
     root_ply: u16,
@@ -4757,6 +5255,32 @@ fn record_pending_sample(
     stats.record_candidate(root_side);
     match position_policy {
         PositionPolicy::RootPosition => {
+            if label_retry_policy.is_adaptive()
+                && (!has_both_kings(root_board)
+                    || root_board.status() != haitaka::GameStatus::Ongoing)
+            {
+                stats.rejected_terminal_positions += 1;
+                *stats
+                    .rejected_terminal_root_plies
+                    .entry(root_ply)
+                    .or_default() += 1;
+                stats
+                    .position_selection
+                    .record_terminal(root_side, root_side);
+                return Ok(());
+            }
+            if label_retry_policy.is_adaptive()
+                && summary
+                    .best_score
+                    .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32)
+            {
+                stats.rejected_mate_score_positions += 1;
+                *stats.rejected_mate_root_plies.entry(root_ply).or_default() += 1;
+                stats
+                    .position_selection
+                    .record_mate(root_side, Some(root_side));
+                return Ok(());
+            }
             let score = summary
                 .best_score
                 .unwrap_or_else(|| terminal_teacher_score(root_board))
@@ -4772,6 +5296,10 @@ fn record_pending_sample(
         PositionPolicy::QsearchPvLeaf => match summary.training_trace.as_ref() {
             Some(trace) if trace.terminal || !has_both_kings(&trace.leaf_board) => {
                 stats.rejected_terminal_positions += 1;
+                *stats
+                    .rejected_terminal_root_plies
+                    .entry(root_ply)
+                    .or_default() += 1;
                 stats
                     .position_selection
                     .record_terminal(root_side, trace.leaf_board.side_to_move());
@@ -4781,6 +5309,7 @@ fn record_pending_sample(
                 .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD) =>
             {
                 stats.rejected_mate_score_positions += 1;
+                *stats.rejected_mate_root_plies.entry(root_ply).or_default() += 1;
                 stats.position_selection.record_mate(
                     root_side,
                     summary
@@ -5208,6 +5737,13 @@ fn merge_split(
             .incomplete_label_policy
             .manifest_name()
             .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
         position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
         candidate_positions: search_stats.candidate_positions,
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
@@ -5222,6 +5758,18 @@ fn merge_split(
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
         rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
         position_selection: search_stats.position_selection,
         opening_position_selection,
         root_ply_min: search_stats.root_ply_min,
@@ -6212,11 +6760,7 @@ run_search_smoke = false
     fn searched_stochastic_generation_is_deterministic_across_jobs_and_shard_lanes() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("searched-stochastic.toml");
-        fs::write(
-            &config_path,
-            searched_stochastic_test_config("anhoku", "out"),
-        )
-        .unwrap();
+        fs::write(&config_path, adaptive_retry_test_config("out")).unwrap();
         let loaded = LoadedConfig::from_path(&config_path).unwrap();
         let artifacts = loaded.artifact_paths();
         let options = |jobs, shard_index, shard_count| GenerateOptions {
@@ -6231,6 +6775,18 @@ run_search_smoke = false
         generate_data_with_options(&loaded, options(1, None, None)).unwrap();
         let expected_train = fs::read(&artifacts.train_bin).unwrap();
         let expected_validation = fs::read(&artifacts.validation_bin).unwrap();
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(&artifacts.train_manifest).unwrap()).unwrap();
+        assert_eq!(
+            manifest["label_retry_policy"].as_str(),
+            Some("root-position-adaptive-retry-v1")
+        );
+        assert_eq!(manifest["max_label_attempts_per_game"].as_u64(), Some(4));
+        assert_eq!(manifest["label_retry_exhausted_games"].as_u64(), Some(0));
+        assert_eq!(
+            manifest["label_retry_attempts_per_accepted_position"].as_f64(),
+            Some(1.0)
+        );
         fs::rename(&artifacts.output_dir, temp.path().join("full-jobs-one")).unwrap();
 
         generate_data_with_options(&loaded, options(2, None, None)).unwrap();
@@ -7796,6 +8352,7 @@ seed = 9
 
         record_pending_sample(
             PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
             &root,
             &traced(123, false),
             8,
@@ -7829,6 +8386,7 @@ seed = 9
 
         record_pending_sample(
             PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
             &root,
             &traced(123, true),
             10,
@@ -7838,6 +8396,7 @@ seed = 9
         .unwrap();
         record_pending_sample(
             PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
             &root,
             &traced(SEARCH_MATE_SCORE_THRESHOLD, false),
             12,
@@ -7864,6 +8423,53 @@ seed = 9
     }
 
     #[test]
+    fn adaptive_root_retry_rejects_mate_then_accepts_an_ordinary_label() {
+        let root = Board::startpos();
+        let best_move = collect_legal_moves(&root)[0].to_string();
+        let summary = |score| TeacherSearchSummary {
+            best_move: Some(best_move.clone()),
+            best_score: Some(score),
+            states: 10,
+            qnodes: 5,
+            total_nodes: 15,
+            node_limit: Some(50_000),
+            elapsed_seconds: 0.0,
+            training_trace: None,
+        };
+        let mut samples = Vec::new();
+        let mut stats = SearchUseStats::default();
+
+        record_pending_sample(
+            PositionPolicy::RootPosition,
+            LabelRetryPolicy::RootPositionAdaptiveRetryV1,
+            &root,
+            &summary(SEARCH_MATE_SCORE_THRESHOLD),
+            8,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert!(samples.is_empty());
+        assert_eq!(stats.candidate_positions, 1);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+
+        record_pending_sample(
+            PositionPolicy::RootPosition,
+            LabelRetryPolicy::RootPositionAdaptiveRetryV1,
+            &root,
+            &summary(321),
+            10,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].score, 321);
+        assert_eq!(stats.candidate_positions, 2);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+    }
+
+    #[test]
     fn incomplete_fixed_node_labels_are_rejected_only_by_explicit_policy() {
         let incomplete = TeacherSearchSummary {
             best_move: None,
@@ -7886,6 +8492,7 @@ seed = 9
             budget,
             IncompleteLabelPolicy::RejectPosition,
             Color::White,
+            8,
             &mut rejected_stats,
         )
         .unwrap();
@@ -7905,6 +8512,7 @@ seed = 9
             budget,
             IncompleteLabelPolicy::Error,
             Color::Black,
+            8,
             &mut strict_stats,
         )
         .unwrap_err();
@@ -7999,6 +8607,22 @@ rollout_score_margin = 80
 rollout_temperature = 40.0
 rollout_rng_version = "splitmix64-v1""#,
             )
+    }
+
+    #[cfg(feature = "anhoku")]
+    fn adaptive_retry_test_config(output_dir: &str) -> String {
+        searched_stochastic_test_config("anhoku", output_dir)
+            .replace(
+                "\nsearch_depth = 1\n",
+                r#"
+label_search_nodes = 5000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 4
+"#,
+            )
+            .replace("max_positions_per_game = 4", "max_positions_per_game = 1")
     }
 
     #[cfg(feature = "anhoku")]
@@ -8538,6 +9162,52 @@ run_search_smoke = false
     #[test]
     fn empty_calibration_root_pairs_do_not_match() {
         assert!(!calibration_root_slices_match(&[], &[]).unwrap());
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn adaptive_calibration_retries_pairs_and_detects_exhaustion_symmetrically() {
+        let observation = |mate| CalibrationSearchObservation {
+            incomplete: false,
+            terminal: false,
+            mate,
+            accounting_error: false,
+            alpha_beta_nodes: 1,
+            qsearch_nodes: 1,
+            accounted_nodes: 2,
+        };
+        let attempts = [
+            [observation(true), observation(false)],
+            [observation(false), observation(false)],
+        ];
+        assert_eq!(
+            attempts
+                .iter()
+                .position(|pair| pair.iter().all(CalibrationSearchObservation::is_admissible)),
+            Some(1)
+        );
+        assert!(
+            attempts[..1]
+                .iter()
+                .all(|pair| !pair.iter().all(CalibrationSearchObservation::is_admissible))
+        );
+
+        let base_board = Board::startpos();
+        let swapped_board =
+            Board::from_sfen(&color_swap_anhoku_sfen(&base_board.to_string()).unwrap()).unwrap();
+        let base = CalibrationRoot {
+            board: base_board,
+            root_ply: 8,
+            side_to_move: Color::Black,
+            outcome: GameOutcome::Draw,
+        };
+        let swapped = CalibrationRoot {
+            board: swapped_board,
+            root_ply: 8,
+            side_to_move: Color::White,
+            outcome: GameOutcome::Draw,
+        };
+        assert!(calibration_root_slices_match(&[base], &[swapped]).unwrap());
     }
 
     #[test]

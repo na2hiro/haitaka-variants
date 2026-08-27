@@ -358,6 +358,7 @@ fn parse_suite(path: &Path, text: &str) -> Result<Vec<SuiteOpening>> {
     let mut openings = Vec::new();
     let mut ids = BTreeSet::new();
     let mut positions = BTreeSet::new();
+    let mut color_swap_orbits = BTreeSet::new();
     for (line_index, raw_line) in text.lines().enumerate() {
         let line = raw_line
             .split_once('#')
@@ -404,6 +405,18 @@ fn parse_suite(path: &Path, text: &str) -> Result<Vec<SuiteOpening>> {
         }
         if color_swap_anhoku_sfen(&swapped.to_string())? != base_sfen {
             bail!("opening `{id}` color transformation is not reversible");
+        }
+        let orbit_identity = if base_sfen <= swapped_sfen {
+            base_sfen.clone()
+        } else {
+            swapped_sfen.clone()
+        };
+        if !color_swap_orbits.insert(orbit_identity) {
+            bail!(
+                "opening suite {} has duplicate position under color swap at line {}",
+                path.display(),
+                line_index + 1
+            );
         }
         openings.push(SuiteOpening {
             id: id.to_string(),
@@ -708,6 +721,29 @@ mod tests {
         assert_eq!(phase8_split.validation_ids.len(), 12);
         assert_eq!(phase8_split.validation_ids[0], "anhoku-v2-053");
         assert_eq!(phase8_split.validation_ids[11], "anhoku-v2-064");
+
+        let phase8d_a2_config = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8d-a2.toml");
+        let phase8d_a2 = LoadedConfig::from_path(&phase8d_a2_config).unwrap();
+        let phase8d_a2_source =
+            OpeningSource::from_config(&phase8d_a2, &phase8d_a2.opening_sfen().unwrap()).unwrap();
+        let phase8d_a2_split = phase8d_a2_source
+            .split_openings(
+                phase8d_a2.config.data.split_policy,
+                phase8d_a2.config.data.split_seed,
+                phase8d_a2.config.data.train_games,
+                phase8d_a2.config.data.validation_games,
+                phase8d_a2.config.data.validation_opening_ids.as_deref(),
+                phase8d_a2.config.data.validation_opening_schedule,
+                phase8d_a2.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+        assert_eq!(phase8d_a2_source.suite_id(), Some("anhoku-v3"));
+        assert_eq!(phase8d_a2_source.opening_ids().len(), 64);
+        assert_eq!(phase8d_a2_split.validation_ids[0], "anhoku-v3-053");
+        assert_eq!(phase8d_a2_split.validation_ids[11], "anhoku-v3-064");
     }
 
     #[test]

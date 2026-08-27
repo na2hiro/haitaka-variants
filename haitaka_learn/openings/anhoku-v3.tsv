@@ -1,0 +1,71 @@
+# Haitaka Anhoku opening suite v3
+# Format: <stable-opening-id><TAB><SFEN>
+#
+# v3 preserves the v2 contract but replaces the prematurely terminal v2-048
+# with the next deterministic legal 12-ply position from seed 20260822
+# (generator pair index 52). The v2 OOD boundary is preserved under the new
+# IDs as anhoku-v3-053 through -064 and must be frozen before model inspection.
+anhoku-v3-001	1ng3snl/lrs1kg1b1/ppp1ppp1p/3p3p1/1P7/3P5/P1P1PPPPP/LBGK1S1RL/1NS2G1N1 b - 17
+anhoku-v3-002	1nsg1g1nl/l1r1ks1b1/p1p1pppp1/1p6p/3p5/P4P2P/1PPPP1PPL/LBG2S1R1/1NS1KGN2 b - 17
+anhoku-v3-003	1nsg2s1l/lr2k1gbn/ppp1p1ppp/3p1p3/P8/7P1/1PPPPPP1P/NB1KG1G1R/L1S3SNL b - 17
+anhoku-v3-004	l1n1k1snl/1r2gg1b1/ppsp1pp1p/2p1p2p1/8P/P5P2/1PPPPP1P1/LBGS1K1R1/1N3GSNL b - 17
+anhoku-v3-005	l3ng1nl/1rgkss1b1/ppppp1ppp/9/5p3/P3PP3/LPPP2PPP/1B2G2RL/1NS1KGSN1 b - 17
+anhoku-v3-006	ln1gg3l/1r1s1ksbn/pp1pp2pp/2p2pp2/1P7/P3P2P1/2PPGPP1P/1BR6/LNS1KGSNL b - 17
+anhoku-v3-007	ln1gk2nl/1s2gs1b1/p2pppp1p/1rp3Np1/1p7/3P1P2P/PPP1P1PP1/1BG3GRL/L1S1KS1N1 b - 17
+anhoku-v3-008	ln1gk3l/1r1s2sbn/pppp1pgp1/4p1p1p/1P7/9/P1PPPPPPP/LBG1KS1R1/1N1SG2NL b - 17
+anhoku-v3-009	ln2kgs2/1rs3nbl/ppppg1ppp/5p3/4p4/1P5P1/P1PPPPP1P/1BSGGS1R1/LN2K2NL b - 17
+anhoku-v3-010	lns2gsn1/1rgk3bl/ppp5p/3ppppp1/9/2P3P1P/PP1PPP1PL/1BGK2GR1/LNS3SN1 b - 17
+anhoku-v3-011	lns2ks1l/1rg3nb1/p1p1gpppp/1p1pp4/9/5P3/PPPPP1PPP/1BGK2GRL/LN1S3SN b - 17
+anhoku-v3-012	n1s2gs1l/lrgk3b1/ppp1pp1pp/3p2pn1/1P5P1/4P4/P1PP1PP1P/1BG1KG1R1/LNS3SNL b - 17
+anhoku-v3-013	1n2kgsnl/lrgs3b1/ppp2pp1p/3pp2p1/9/1P7/P1PPPPPPP/1BS1G1SR1/LN1KG2NL b - 13
+anhoku-v3-014	1ns1g2sl/lr2k1gbn/ppppppppp/9/9/1P4P2/P1PPPP1PP/LBS1G2R1/1N1K1GSNL b - 13
+anhoku-v3-015	1ns1k2nl/lr1g1sgb1/p1ppppp1p/1p5p1/9/3P2P2/PPP1PP1PP/NB1GGK1R1/L1S3SNL b - 13
+anhoku-v3-016	1ns1kgs1l/lr2g1nb1/p2pppp1p/1pp4p1/9/P1P1P3P/1P1P1PPPL/1B3S1R1/LNSGKG1N1 b - 13
+anhoku-v3-017	1ns1kgsnl/lr2g2b1/ppppppp2/8p/9/3P2PpP/PPP1PP1P1/1BS1K1GR1/LN1G2SNL b - 13
+anhoku-v3-018	1nsg1ksnl/lr4gb1/pppp1p+Bpp/4p4/9/1PPP1P3/P3P1PPP/4G2R1/LNSGK1SNL b P 13
+anhoku-v3-019	1nsg2sn1/lr3kgbl/pp2ppppp/2pp5/8P/5P3/PPPPP1PP1/1BNKG2R1/L1SG2SNL b - 13
+anhoku-v3-020	1nsg2snl/lr3kg2/ppppppb1p/6pp1/9/P8/1PPPPPPPP/1B1GKGSRL/LNS4N1 b - 13
+anhoku-v3-021	1nsgg2nl/1r2k1sb1/lppp1pppp/p3p4/9/8P/PPPPPPPP1/1BN1KS1R1/L1SG1G1NL b - 13
+anhoku-v3-022	1nsgk1snl/lr3g1b1/1pp1ppp1p/3p3p1/p4P3/8P/PPPPP1PP1/1BNG3R1/L1SK1GSNL b - 13
+anhoku-v3-023	1nsk1gs1l/lr1g3bn/pp1pppppp/2p6/9/P2P1P3/1PP1P1PPP/1BN1GS1R1/L1SGK2NL b - 13
+anhoku-v3-024	l1n1kgsnl/1rs1g2b1/ppppp1ppp/5p3/9/2P4PP/PP1PPPP2/NBGK3R1/L1S2GSNL b - 13
+anhoku-v3-025	l1ngkg1nl/1r1s1s1b1/1ppppppp1/p8/1P6p/3P3P1/P1P1PPP1P/1B1R4L/LNSGKGSN1 b - 13
+anhoku-v3-026	l1ngkg1nl/1rs3sb1/ppppp1p2/5p1pp/9/8P/PPPPPPPP1/NBGK3RL/LS3GSN1 b - 13
+anhoku-v3-027	l2nkgs1l/1rs1g2bn/ppp1pppp1/3p4p/5P3/2P1P4/PP1P2PPP/1B2G1SR1/LNS1KG1NL b - 13
+anhoku-v3-028	ln1g1gs1l/1r1s1knb1/ppp1pp1p1/3p2p1p/9/P1P2P3/1P1PPKPPP/1B4GR1/LNSG2SNL b - 13
+anhoku-v3-029	ln1g2sn1/1rsk1g1bl/ppp1pp1pp/3p2p2/8P/2P1P4/PP1P1PPP1/1B2KS1R1/LNSG1G1NL b - 13
+anhoku-v3-030	ln1g2snl/3sk1gb1/pr1pppppp/1Pp6/9/8P/P1PPPPPP1/1B1G3RL/LNS1KGSN1 b P 13
+anhoku-v3-031	ln1gk1sn1/1r1sg2bl/2ppppp1p/pp5p1/9/3PP2P1/PPP2PP1P/1B1S1S1R1/LN1GKGN1L b - 13
+anhoku-v3-032	ln1gk1sn1/3sg1rbl/p1ppppp1p/1p5p1/9/8P/PPPPPPPP1/1BSGKSGR1/LN5NL b - 13
+anhoku-v3-033	ln1gkgsn1/1rs4bl/1p1pppp2/p1p4pp/9/4P1P2/PPPP1P1PP/NB2G2RL/L1SGK1S1N b - 13
+anhoku-v3-034	ln1gkgsnl/1r1s3b1/5pppp/ppppp4/9/6PP1/PPPPPP2P/NB1KG1SR1/L1SG3NL b - 13
+anhoku-v3-035	ln2k1s1l/rsg1g1nb1/p1ppppppp/1p7/9/8P/PPPPPPPP1/LB2KG1R1/1NS2GSNL b - 13
+anhoku-v3-036	ln2k1snl/1r1sgg1b1/pp2p1ppp/2pp1p3/9/P6P1/1PPPPPP1P/1BNKG1SR1/L1S2G1NL b - 13
+anhoku-v3-037	ln2kg1n1/1rgs2sbl/ppp1pppp1/3p4p/5P3/P5P1P/1PPPP2P1/1B2G2R1/LNSGK1SNL b - 13
+anhoku-v3-038	ln3gsn1/1rsg1k1bl/1pppppppp/9/p8/9/PPPPPPPPP/LBG2S1RL/1NSK1G2N b - 13
+anhoku-v3-039	lns1g1s1l/1r2kgnb1/pppp1pppp/4p4/5P3/7P1/PPPPP1P1P/1BS1GR3/LN1GK1SNL b - 13
+anhoku-v3-040	lns1g1snl/1r2k1gb1/1p1ppp1pp/p1p3p2/9/P3P4/1PPP1PPPP/1BGG3RL/LNS1K1SN1 b - 13
+anhoku-v3-041	lns1k1s1l/1r2gg1b1/2ppp1ppp/pp3p3/9/6P2/PnPPPP1PP/LBG2KGR1/1NS2S1NL b p 13
+anhoku-v3-042	lns1k2nl/1r1gg1sb1/pppp2ppp/4p4/5p3/5P2P/PPPPP1PP1/1BS1GKGR1/LN4SNL b - 13
+anhoku-v3-043	lns1kgs1l/1r2g2b1/1pppp2pp/p4pp2/8P/6P2/PPPPnP1P1/NB1G2GR1/L1S1K1SNL b p 13
+anhoku-v3-044	lns1kgs1l/1rg4bn/1p2ppppp/p1pp5/9/2PN3P1/PP1PPPP1P/1B1G1S1R1/L1S1KG1NL b - 13
+anhoku-v3-045	lns1kgs2/1r1g3bn/ppppp1pl1/5p1pp/2P6/P8/1P1PPPPPP/NB2KG1R1/L1SG2SNL b - 13
+anhoku-v3-046	lns2g1nl/1rg1ks1b1/1ppp2ppp/p3pp3/9/2PP3P1/PP2PPP1P/1BG3R2/LNS1KGSNL b - 13
+anhoku-v3-047	lns2gsnl/1r2gk1b1/p1p1p1p1p/1p1p1p1p1/9/P2P2P2/1PP1PP1PP/1B1G1G1RL/LNS1K1SN1 b - 13
+anhoku-v3-048	lns1k1s2/1r2ggnbl/p1p1ppppp/1p1p5/9/P2P1P3/1PP1P1PPP/1BG2SGR1/LNS1K2NL b - 13
+anhoku-v3-049	lns2ksnl/1r1g2gb1/ppppp1p2/5p1pp/9/1PP1P1P2/P2P1P1PP/1BN1G2R1/L1SGK1SNL b - 13
+anhoku-v3-050	lns3s1l/1r1gkg1bn/pppp1ppp1/4p1N1p/9/1P1P2P2/P1P1PP1PP/1B2G2R1/L1S1KGSNL b - 13
+anhoku-v3-051	lns3s2/1rg1kgnbl/1pppppppp/p8/9/2PP5/PP2PPPPP/NB3G1R1/LS1GK1SNL b - 13
+anhoku-v3-052	lns3sn1/1r1kg1gbl/pppp2ppp/4pp3/9/1PPP5/P3PPPPP/1B3SGR1/LNSGK2NL b - 13
+anhoku-v3-053	lnsg1g1nl/1r1k1s1b1/p1pp1p1p1/1p2p1p1p/9/3PNP3/PPP1P1PPP/1BG1G2R1/L1S2KSNL b - 13
+anhoku-v3-054	lnsg1g1nl/1r1k1s1b1/ppp1pp2p/3p3p1/6p2/8P/PPPPPPPP1/NB1G1K1RL/L1S2GS1N b - 13
+anhoku-v3-055	lnsg1g1nl/1r3ksb1/ppppp1pp1/5p2p/9/6PP1/PPPPPP2P/LB2K1G1R/1NSG2SNL b - 13
+anhoku-v3-056	lnsg2s1l/1r2k1gbn/pp2ppp1p/2pp3p1/7P1/1P7/P1PPPPP1P/NB1G1R3/L1S1KGSNL b - 13
+anhoku-v3-057	lnsg2sn1/1r1k1g1bl/pp1ppp2p/2p3pp1/9/P3P4/1PPP1PPPP/NB2G1SR1/L1S1K1GNL b - 13
+anhoku-v3-058	lnsg2snl/1r1k1g1b1/1pp1ppp1p/p2p5/7p1/3P2P2/PPP1PP1PP/NB3G1RL/L1SG1KSN1 b - 13
+anhoku-v3-059	lnsgk1s2/1r2g1nbl/pppp1p2p/4p1pp1/9/P4P3/LPPPP1PPP/1BS1GS1R1/1N1GK2NL b - 13
+anhoku-v3-060	lnsgk3l/1r2gs1bn/ppp1pp1pp/6p2/3p5/2P3P2/PP1PPP1PP/1BN1KG1RL/L1SG2SN1 b - 13
+anhoku-v3-061	lnsgkg2l/1r3snb1/ppp1pp1pp/6p2/9/2PpP4/PP1P1PPPP/1B1GGK1R1/LNS3SNL b - 13
+anhoku-v3-062	lnsk1g1nl/4gs1b1/pr1pppppp/1pp6/9/2P6/PP1PPPPPP/1B2GSGRL/LNS2K1N1 b - 13
+anhoku-v3-063	lnsk3n1/1r1ggs1bl/p1ppppppp/1p7/4B4/1PP6/P2PPPPPP/2N1G1GR1/L1S1K1SNL b - 13
+anhoku-v3-064	n3kg1nl/lr1sgs1b1/ppp1ppppp/3p5/9/1PP1PPP2/P2P3PP/1B1K3R1/LNSG1GSNL b - 13

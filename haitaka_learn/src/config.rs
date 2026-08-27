@@ -45,6 +45,27 @@ pub enum IncompleteLabelPolicy {
     RejectPosition,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LabelRetryPolicy {
+    #[default]
+    None,
+    RootPositionAdaptiveRetryV1,
+}
+
+impl LabelRetryPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::RootPositionAdaptiveRetryV1 => "root-position-adaptive-retry-v1",
+        }
+    }
+
+    pub const fn is_adaptive(self) -> bool {
+        matches!(self, Self::RootPositionAdaptiveRetryV1)
+    }
+}
+
 impl IncompleteLabelPolicy {
     pub const fn manifest_name(self) -> &'static str {
         match self {
@@ -641,6 +662,35 @@ impl LearnConfig {
                 "data.incomplete_label_policy=reject-position requires data.self_play_move_policy=uniform-rollout-v1 or searched-stochastic-rollout-v1"
             );
         }
+        if self.data.label_retry_policy.is_adaptive() {
+            ensure!(
+                self.data.position_policy == PositionPolicy::RootPosition,
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.position_policy=root-position"
+            );
+            ensure!(
+                self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition,
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.incomplete_label_policy=reject-position"
+            );
+            ensure!(
+                self.data.self_play_move_policy.is_searched_stochastic(),
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.self_play_move_policy=searched-stochastic-rollout-v1"
+            );
+            ensure!(
+                self.data.max_candidate_roots_per_game.is_none(),
+                "data.max_candidate_roots_per_game must be omitted when adaptive label retry is enabled; use data.max_label_attempts_per_game"
+            );
+            ensure!(
+                self.data
+                    .max_label_attempts_per_game
+                    .is_some_and(|attempts| attempts > 0),
+                "data.max_label_attempts_per_game must be > 0 when adaptive label retry is enabled"
+            );
+        } else {
+            ensure!(
+                self.data.max_label_attempts_per_game.is_none(),
+                "data.max_label_attempts_per_game requires data.label_retry_policy=root-position-adaptive-retry-v1"
+            );
+        }
         ensure!(
             self.data.rollout_search_depth > 0,
             "data.rollout_search_depth must be at least 1"
@@ -995,6 +1045,8 @@ pub struct DataConfig {
     pub position_policy: PositionPolicy,
     #[serde(default)]
     pub incomplete_label_policy: IncompleteLabelPolicy,
+    #[serde(default)]
+    pub label_retry_policy: LabelRetryPolicy,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
     #[serde(default)]
@@ -1050,6 +1102,10 @@ pub struct DataConfig {
     /// None preserves the legacy accepted-position cap.
     #[serde(default)]
     pub max_candidate_roots_per_game: Option<u16>,
+    /// Maximum number of label roots searched while filling the accepted
+    /// position quota under an adaptive retry policy.
+    #[serde(default)]
+    pub max_label_attempts_per_game: Option<u16>,
     /// Minimum number of distinct packed training boards required for a
     /// complete (non-sharded) generation or merge. Partial machine lanes
     /// cannot prove this global target and are checked when merged.
@@ -1083,6 +1139,7 @@ impl Default for DataConfig {
             label_search_max_depth: None,
             position_policy: PositionPolicy::default(),
             incomplete_label_policy: IncompleteLabelPolicy::default(),
+            label_retry_policy: LabelRetryPolicy::default(),
             rollout_search_depth: default_rollout_search_depth(),
             self_play_move_policy: SelfPlayMovePolicy::default(),
             rollout_candidate_limit: default_rollout_candidate_limit(),
@@ -1106,6 +1163,7 @@ impl Default for DataConfig {
             sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
             max_candidate_roots_per_game: None,
+            max_label_attempts_per_game: None,
             minimum_train_boards: None,
             minimum_train_positions: None,
             seed: default_seed(),
@@ -1782,6 +1840,52 @@ max_candidate_roots_per_game = 9
         assert!(
             format!("{:#}", invalid.validate().unwrap_err())
                 .contains("<= data.max_positions_per_game")
+        );
+    }
+
+    #[test]
+    fn adaptive_root_label_retry_has_an_explicit_bounded_contract() {
+        let valid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 8
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        valid.validate().unwrap();
+        assert!(valid.data.label_retry_policy.is_adaptive());
+
+        let conflicting: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 8
+max_candidate_roots_per_game = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", conflicting.validate().unwrap_err())
+                .contains("max_candidate_roots_per_game must be omitted")
         );
     }
 

@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-A trajectory gate passed; label calibration blocked; Phase 8D-A.2 adaptive-label recovery is next
+- Status: Phase 8D-A.2 adaptive-label recovery implemented; v3 trajectory, cross-host, and calibration gates are next
 - Created: 2026-08-17
 - Last checked: 2026-08-27
 - Primary ruleset: Anhoku
@@ -1061,9 +1061,14 @@ back to arbitrary opening moves; write a new trajectory hypothesis.
 
 ### Phase 8D-A.2: adaptive-label eligibility recovery
 
-**Status: next assignment.** Repair candidate eligibility without changing
-the frozen rollout policy, C/16 teacher, feature family, sampling cadence, or
-label-quality thresholds.
+**Status: implementation complete; execution gates pending.** Candidate
+eligibility is repaired without changing the frozen rollout policy, C/16
+teacher, feature family, sampling cadence, or label-quality thresholds. The
+implementation adds `anhoku-v3`,
+`haitaka_learn.anhoku-v0.6-phase8d-a2.toml`, semantic identity v2, bounded
+adaptive retry, explicit exhaustion/accounting telemetry, symmetry-coupled
+calibration, and deterministic jobs/shard regressions. Do not begin 8D-B until
+the v3 evidence below passes.
 
 - Create `anhoku-v3` by replacing only the train opening currently named
   `anhoku-v2-048`. Select the replacement without label scores, loss, or
