@@ -134,10 +134,12 @@ Key fields:
   - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
     shallow, for example `1`, when running expensive label depths
   - `self_play_move_policy = "searched-stochastic-rollout-v1"` scores a bounded,
-    canonically ordered legal-move set with cheap search, samples within the
-    configured score margin, and derives the choice from the pair-index/ply
-    stream. `uniform-rollout-v1` remains readable only for historical data; the
-    explicit `label-on-sample-legacy` policy reproduces older biased data.
+    canonically ordered legal-move set with cheap search, always includes the
+    canonical root search's best move, samples within the configured score
+    margin, and derives the choice from the pair-index/ply stream. Manifests
+    report total legal moves and candidates truncated by the bound.
+    `uniform-rollout-v1` remains readable only for historical data; the explicit
+    `label-on-sample-legacy` policy reproduces older biased data.
   - `rollout_candidate_limit`, `rollout_score_margin`, `rollout_temperature`,
     and `rollout_rng_version` are part of the generation-semantic identity.
     `opening_random_plies` must be zero for searched-stochastic production.
@@ -215,12 +217,14 @@ cargo run --release -p haitaka_learn --features anhoku -- calibrate-labels \
   --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
 ```
 
-The audit is label-free and writes deterministic trajectory hashes, packed-board
-uniqueness, tranche yield, pair symmetry, score-gap, outcome, and rollout CPU
-telemetry. Calibration reuses the same 128 trajectory games and candidate roots
-for the predeclared 50k/100k/200k node budgets; its JSON decision selects the
-smallest passing budget when side/outcome rejection-rate deltas stay within
-0.05, or records a block requiring an adaptive-retry contract.
+The audit is label-free, assigns a base/swapped pair to every one of the 52
+train and 12 OOD-v2 IDs, and writes opening coverage, deterministic trajectory
+hashes, packed-board uniqueness, tranche yield, pair symmetry, legal/scored/
+truncated candidate counts, score gaps, outcomes, and rollout CPU telemetry.
+Calibration regenerates one pair per ID for the predeclared 50k/100k/200k node
+budgets. It cannot select a budget unless all 64 IDs produce at least one
+matched root; otherwise it records a block requiring a revised calibration
+contract.
 
 Validate the configured suite without generating games:
 

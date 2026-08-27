@@ -6,8 +6,8 @@ output_dir = "out/anhoku-v0.6-phase8d-a"
 bootstrap_nnue = "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue"
 
 [data]
-# 52 train IDs and 12 OOD-v2 IDs.  calibrate-labels explicitly visits one
-# base/swapped pair per ID; trajectory-audit uses the configured game schedule.
+# 52 train IDs and 12 OOD-v2 IDs. Both Phase 8D-A commands explicitly visit
+# one base/swapped pair per ID; ordinary data generation keeps its own schedule.
 train_games = 104
 validation_games = 24
 max_plies = 180

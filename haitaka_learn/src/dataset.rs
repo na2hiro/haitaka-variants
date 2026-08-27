@@ -41,7 +41,7 @@ const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
 const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-v1";
 const CANDIDATE_IDENTITY_VERSION: &str = "sample-root-sha256-v1";
 const GENERATION_SEMANTIC_IDENTITY_VERSION: &str = "generation-semantic-v1";
-const SCHEDULE_IDENTITY_VERSION: &str = "schedule-cardinality-v1";
+const SCHEDULE_IDENTITY_VERSION: &str = "schedule-readiness-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -150,7 +150,9 @@ struct DatasetManifest {
     rollout_search_states: u64,
     rollout_search_qnodes: u64,
     rollout_decisions: u64,
+    rollout_legal_moves: u64,
     rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
     rollout_near_best_candidates: u64,
     rollout_selected_score_gap_sum: i64,
     rollout_selected_score_gap_max: i32,
@@ -303,7 +305,11 @@ struct ShardManifest {
     #[serde(default)]
     rollout_decisions: u64,
     #[serde(default)]
+    rollout_legal_moves: u64,
+    #[serde(default)]
     rollout_candidates_scored: u64,
+    #[serde(default)]
+    rollout_candidates_truncated: u64,
     #[serde(default)]
     rollout_near_best_candidates: u64,
     #[serde(default)]
@@ -623,7 +629,9 @@ struct SearchUseStats {
     label_search_elapsed_seconds: f64,
     rollout_search_elapsed_seconds: f64,
     rollout_decisions: u64,
+    rollout_legal_moves: u64,
     rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
     rollout_near_best_candidates: u64,
     rollout_selected_score_gap_sum: i64,
     rollout_selected_score_gap_max: i32,
@@ -654,9 +662,17 @@ impl SearchUseStats {
         self.rollout_search_elapsed_seconds += summary.elapsed_seconds;
     }
 
-    fn record_rollout_decision(&mut self, candidates: u64, near_best: u64, score_gap: i32) {
+    fn record_rollout_decision(
+        &mut self,
+        legal_moves: u64,
+        candidates: u64,
+        near_best: u64,
+        score_gap: i32,
+    ) {
         self.rollout_decisions += 1;
+        self.rollout_legal_moves += legal_moves;
         self.rollout_candidates_scored += candidates;
+        self.rollout_candidates_truncated += legal_moves.saturating_sub(candidates);
         self.rollout_near_best_candidates += near_best;
         self.rollout_selected_score_gap_sum += i64::from(score_gap);
         self.rollout_selected_score_gap_max = self.rollout_selected_score_gap_max.max(score_gap);
@@ -672,7 +688,9 @@ impl SearchUseStats {
         self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
         self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
         self.rollout_decisions += other.rollout_decisions;
+        self.rollout_legal_moves += other.rollout_legal_moves;
         self.rollout_candidates_scored += other.rollout_candidates_scored;
+        self.rollout_candidates_truncated += other.rollout_candidates_truncated;
         self.rollout_near_best_candidates += other.rollout_near_best_candidates;
         self.rollout_selected_score_gap_sum += other.rollout_selected_score_gap_sum;
         self.rollout_selected_score_gap_max = self
@@ -770,7 +788,9 @@ impl From<&ShardManifest> for SearchUseStats {
             label_search_elapsed_seconds: manifest.label_search_cpu_seconds,
             rollout_search_elapsed_seconds: manifest.rollout_search_cpu_seconds,
             rollout_decisions: manifest.rollout_decisions,
+            rollout_legal_moves: manifest.rollout_legal_moves,
             rollout_candidates_scored: manifest.rollout_candidates_scored,
+            rollout_candidates_truncated: manifest.rollout_candidates_truncated,
             rollout_near_best_candidates: manifest.rollout_near_best_candidates,
             rollout_selected_score_gap_sum: manifest.rollout_selected_score_gap_sum,
             rollout_selected_score_gap_max: manifest.rollout_selected_score_gap_max,
@@ -1034,6 +1054,26 @@ struct RolloutDecision {
     selected_score: i32,
 }
 
+fn bounded_rollout_candidates(
+    mut legal_moves: Vec<Move>,
+    root_best_move: Move,
+    candidate_limit: usize,
+) -> Vec<Move> {
+    debug_assert!(candidate_limit > 0);
+    debug_assert!(legal_moves.contains(&root_best_move));
+    legal_moves.sort_by_key(ToString::to_string);
+    if legal_moves.len() <= candidate_limit {
+        return legal_moves;
+    }
+
+    let mut candidates = legal_moves[..candidate_limit].to_vec();
+    if !candidates.contains(&root_best_move) {
+        candidates[candidate_limit - 1] = root_best_move;
+        candidates.sort_by_key(ToString::to_string);
+    }
+    candidates
+}
+
 /// Choose one move from a bounded, cheap-search-ranked candidate set.
 ///
 /// Candidate ordering is performed in the canonical orientation of the board
@@ -1078,23 +1118,28 @@ fn choose_searched_stochastic_rollout_move(
         &current_sfen
     })
     .map_err(|err| anyhow!("failed to parse canonical rollout position: {err}"))?;
-    let mut candidates = legal_moves
+    let canonical_legal_moves = legal_moves
         .iter()
         .copied()
         .map(|move_| {
-            let canonical_move = if use_swapped_orientation {
+            if use_swapped_orientation {
                 transform_move(move_)
             } else {
                 move_
-            };
-            (canonical_move.to_string(), move_, canonical_move)
+            }
         })
         .collect::<Vec<_>>();
-    candidates.sort_by(|left, right| left.0.cmp(&right.0));
-    candidates.truncate(usize::from(candidate_limit).min(candidates.len()));
+    let root_summary = teacher.search_depth(&canonical_board, search_depth, workspace)?;
+    stats.record_rollout(&root_summary);
+    let root_best_move = searched_best_move(&canonical_board, &root_summary)?;
+    let candidates = bounded_rollout_candidates(
+        canonical_legal_moves,
+        root_best_move,
+        usize::from(candidate_limit),
+    );
 
     let mut scored = Vec::with_capacity(candidates.len());
-    for (_, _original_move, canonical_move) in candidates {
+    for canonical_move in candidates {
         ensure!(
             canonical_board.is_legal(canonical_move),
             "canonical rollout candidate `{canonical_move}` is not legal"
@@ -1138,6 +1183,7 @@ fn choose_searched_stochastic_rollout_move(
         "searched-stochastic rollout selected illegal move `{selected_move}`"
     );
     stats.record_rollout_decision(
+        legal_moves.len() as u64,
         scored.len() as u64,
         near_best_candidates as u64,
         best_score.saturating_sub(selected.score),
@@ -1245,6 +1291,7 @@ pub struct TrajectoryAuditReport {
     policy: TrajectoryPolicyIdentity,
     limits: TrajectoryAuditLimits,
     totals: TrajectoryTotals,
+    opening_coverage: TrajectoryOpeningCoverage,
     tranches: Vec<TrajectoryTranche>,
     trajectories: Vec<TrajectorySummary>,
     paired_symmetry: PairedSymmetry,
@@ -1307,7 +1354,9 @@ struct TrajectoryTotals {
     white_wins: u64,
     draws: u64,
     rollout_decisions: u64,
+    rollout_legal_moves: u64,
     rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
     rollout_near_best_candidates: u64,
     selected_score_gap_mean: f64,
     selected_score_gap_max: i32,
@@ -1344,6 +1393,9 @@ struct TrajectorySummary {
     selected_score_gap_mean: f64,
     selected_score_gap_max: i32,
     rollout_decisions: u64,
+    rollout_legal_moves: u64,
+    rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
     rollout_cpu_seconds: f64,
     trajectory_sha256: String,
 }
@@ -1356,6 +1408,19 @@ struct PairedSymmetry {
     mismatched_pairs: u64,
     unpaired_games: u64,
     mismatch_examples: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryOpeningCoverage {
+    schedule: &'static str,
+    expected_train_ids: Vec<String>,
+    expected_ood_v2_ids: Vec<String>,
+    train_pair_counts: BTreeMap<String, u64>,
+    ood_v2_pair_counts: BTreeMap<String, u64>,
+    missing_train_ids: Vec<String>,
+    missing_ood_v2_ids: Vec<String>,
+    unexpected_ids: Vec<String>,
+    complete: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -1414,6 +1479,8 @@ struct LabelCalibrationIdentity {
     candidate_root_count: u64,
     candidate_roots_sha256: String,
     paired_root_mismatches: u64,
+    opening_ids_with_matched_roots: Vec<String>,
+    opening_ids_without_matched_roots: Vec<String>,
     trajectory_hashes_sha256: String,
     label_position_policy: String,
     max_depth: u8,
@@ -1517,7 +1584,7 @@ pub fn audit_trajectories(
         options.shard_index_end,
         options.shard_count,
     )?;
-    let tasks = trajectory_tasks(loaded, selector);
+    let tasks = trajectory_tasks(loaded, &opening_split, selector)?;
     ensure!(
         tasks.len() <= 4096,
         "trajectory-audit selected {} games, above the hard limit of 4096; use shard selectors or reduce data.train_games/data.validation_games",
@@ -1549,22 +1616,36 @@ pub fn audit_trajectories(
     )
 }
 
-fn trajectory_tasks(loaded: &LoadedConfig, selector: ShardSelector) -> Vec<TrajectoryTask> {
+fn trajectory_tasks(
+    loaded: &LoadedConfig,
+    opening_split: &OpeningSplit,
+    selector: ShardSelector,
+) -> Result<Vec<(TrajectoryTask, String)>> {
     let mut tasks = Vec::new();
     for (dataset_name, game_count) in [
         ("train", loaded.config.data.train_games),
         ("validation", loaded.config.data.validation_games),
     ] {
+        let opening_ids = opening_split.ids_for(dataset_name)?;
+        ensure!(
+            !opening_ids.is_empty(),
+            "trajectory-audit requires at least one {dataset_name} opening ID"
+        );
         for plan in shard_plans(game_count, loaded.config.data.shard_games, selector) {
             for game_index in plan.game_start..plan.game_start + plan.game_count {
-                tasks.push(TrajectoryTask {
-                    dataset_name,
-                    game_index,
-                });
+                let opening_id =
+                    opening_ids[(game_index / 2 % opening_ids.len() as u32) as usize].clone();
+                tasks.push((
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index,
+                    },
+                    opening_id,
+                ));
             }
         }
     }
-    tasks
+    Ok(tasks)
 }
 
 fn collect_trajectory_games(
@@ -1572,7 +1653,7 @@ fn collect_trajectory_games(
     teacher: &Teacher,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
-    tasks: &[TrajectoryTask],
+    tasks: &[(TrajectoryTask, String)],
     jobs: usize,
     calibration_root_schedule: bool,
 ) -> Result<Vec<TrajectoryGame>> {
@@ -1588,7 +1669,8 @@ fn collect_trajectory_games(
             scope.spawn(move || {
                 let mut workspace = SearchWorkspace::default();
                 loop {
-                    let Some(task) = queue.lock().expect("trajectory queue poisoned").pop_front()
+                    let Some((task, opening_id)) =
+                        queue.lock().expect("trajectory queue poisoned").pop_front()
                     else {
                         break;
                     };
@@ -1598,7 +1680,7 @@ fn collect_trajectory_games(
                         opening_source,
                         opening_split,
                         task,
-                        None,
+                        Some(&opening_id),
                         calibration_root_schedule,
                         &mut workspace,
                     )
@@ -1926,6 +2008,9 @@ fn build_trajectory_audit_report(
                 },
                 selected_score_gap_max: game.score_gaps.iter().copied().max().unwrap_or_default(),
                 rollout_decisions: game.stats.rollout_decisions,
+                rollout_legal_moves: game.stats.rollout_legal_moves,
+                rollout_candidates_scored: game.stats.rollout_candidates_scored,
+                rollout_candidates_truncated: game.stats.rollout_candidates_truncated,
                 rollout_cpu_seconds: game.stats.rollout_search_elapsed_seconds,
                 trajectory_sha256: game.trajectory_sha256.clone(),
             });
@@ -1947,6 +2032,7 @@ fn build_trajectory_audit_report(
     }
 
     let paired_symmetry = audit_paired_symmetry(&trajectories);
+    let opening_coverage = audit_trajectory_opening_coverage(opening_split, &trajectories);
     let packed_board_unique_ratio = ratio_f64(all_boards.len() as u64, packed_board_occurrences);
     let final_tranche_new_boards_per_game = tranches
         .last()
@@ -1975,6 +2061,14 @@ fn build_trajectory_audit_report(
         failures.push(format!(
             "{} audited games had no color-swapped partner",
             paired_symmetry.unpaired_games
+        ));
+    }
+    if !opening_coverage.complete {
+        failures.push(format!(
+            "trajectory opening coverage is incomplete: missing {} train IDs and {} OOD-v2 IDs; unexpected IDs: {}",
+            opening_coverage.missing_train_ids.len(),
+            opening_coverage.missing_ood_v2_ids.len(),
+            opening_coverage.unexpected_ids.len()
         ));
     }
     if trajectories.is_empty() {
@@ -2009,7 +2103,9 @@ fn build_trajectory_audit_report(
         white_wins,
         draws,
         rollout_decisions: total_stats.rollout_decisions,
+        rollout_legal_moves: total_stats.rollout_legal_moves,
         rollout_candidates_scored: total_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: total_stats.rollout_candidates_truncated,
         rollout_near_best_candidates: total_stats.rollout_near_best_candidates,
         selected_score_gap_mean: if total_stats.rollout_decisions == 0 {
             0.0
@@ -2039,6 +2135,7 @@ fn build_trajectory_audit_report(
             shard_count: options.shard_count,
         },
         totals,
+        opening_coverage,
         tranches,
         trajectories: summaries,
         paired_symmetry,
@@ -2126,6 +2223,89 @@ fn audit_paired_symmetry(trajectories: &[TrajectoryGame]) -> PairedSymmetry {
         mismatched_pairs: compared.saturating_sub(exact),
         unpaired_games,
         mismatch_examples,
+    }
+}
+
+fn audit_trajectory_opening_coverage(
+    opening_split: &OpeningSplit,
+    trajectories: &[TrajectoryGame],
+) -> TrajectoryOpeningCoverage {
+    let expected_train = opening_split
+        .train_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let expected_ood = opening_split
+        .validation_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let mut pairs = BTreeMap::<(u8, u32), Vec<&TrajectoryGame>>::new();
+    let mut unexpected = BTreeSet::new();
+    for game in trajectories {
+        let expected = if game.task.dataset_name == "train" {
+            &expected_train
+        } else {
+            &expected_ood
+        };
+        if !expected.contains(&game.opening.opening_id) {
+            unexpected.insert(game.opening.opening_id.clone());
+        }
+        pairs
+            .entry((
+                dataset_sort_key(game.task.dataset_name),
+                game.task.game_index / 2,
+            ))
+            .or_default()
+            .push(game);
+    }
+
+    let mut train_pair_counts = BTreeMap::new();
+    let mut ood_pair_counts = BTreeMap::new();
+    for games in pairs.values() {
+        let base = games.iter().find(|game| game.task.game_index % 2 == 0);
+        let swapped = games.iter().find(|game| game.task.game_index % 2 == 1);
+        let (Some(base), Some(swapped)) = (base, swapped) else {
+            continue;
+        };
+        if base.opening.opening_id != swapped.opening.opening_id {
+            continue;
+        }
+        let counts = if base.task.dataset_name == "train" {
+            &mut train_pair_counts
+        } else {
+            &mut ood_pair_counts
+        };
+        *counts.entry(base.opening.opening_id.clone()).or_default() += 1;
+    }
+
+    let missing_train_ids = expected_train
+        .iter()
+        .filter(|id| !train_pair_counts.contains_key(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let missing_ood_v2_ids = expected_ood
+        .iter()
+        .filter(|id| !ood_pair_counts.contains_key(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let unexpected_ids = unexpected.into_iter().collect::<Vec<_>>();
+    let complete = missing_train_ids.is_empty()
+        && missing_ood_v2_ids.is_empty()
+        && unexpected_ids.is_empty()
+        && expected_train.len() == 52
+        && expected_ood.len() == 12
+        && expected_train.is_disjoint(&expected_ood);
+    TrajectoryOpeningCoverage {
+        schedule: "equal-color-swapped-pairs-per-split-v1",
+        expected_train_ids: expected_train.into_iter().collect(),
+        expected_ood_v2_ids: expected_ood.into_iter().collect(),
+        train_pair_counts,
+        ood_v2_pair_counts: ood_pair_counts,
+        missing_train_ids,
+        missing_ood_v2_ids,
+        unexpected_ids,
+        complete,
     }
 }
 
@@ -2231,6 +2411,8 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
     let mut calibration_summaries = Vec::with_capacity(suite_ids.len());
     let mut candidate_root_count = 0u64;
     let mut paired_root_mismatches = 0u64;
+    let mut opening_ids_with_matched_roots = Vec::new();
+    let mut opening_ids_without_matched_roots = Vec::new();
     for opening_id in &suite_ids {
         let base = trajectories
             .iter()
@@ -2244,6 +2426,11 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
         let roots_match = calibration_roots_match(base, swapped)?;
         if !roots_match {
             paired_root_mismatches += 1;
+        }
+        if roots_match {
+            opening_ids_with_matched_roots.push(opening_id.clone());
+        } else {
+            opening_ids_without_matched_roots.push(opening_id.clone());
         }
         candidate_root_count +=
             (base.calibration_roots.len() + swapped.calibration_roots.len()) as u64;
@@ -2314,17 +2501,31 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             ood_v2,
         });
     }
-    let selected_budget_nodes = budget_reports
-        .iter()
-        .find(|report| report.passed)
-        .map(|report| report.nodes);
     let mut failures = Vec::new();
+    if !opening_ids_without_matched_roots.is_empty() {
+        failures.push(format!(
+            "{} of 64 opening IDs did not produce at least one matched candidate root: {}",
+            opening_ids_without_matched_roots.len(),
+            opening_ids_without_matched_roots.join(", ")
+        ));
+    }
     if paired_root_mismatches > 0 {
         failures.push(format!(
             "{paired_root_mismatches} color-swapped calibration pairs did not have identical transformed candidate roots"
         ));
     }
-    if selected_budget_nodes.is_none() {
+    let selected_budget_nodes = if failures.is_empty() {
+        budget_reports
+            .iter()
+            .find(|report| report.passed)
+            .map(|report| report.nodes)
+    } else {
+        None
+    };
+    if selected_budget_nodes.is_none()
+        && opening_ids_without_matched_roots.is_empty()
+        && paired_root_mismatches == 0
+    {
         failures.push(
             "none of the predeclared 50k/100k/200k node budgets passed both train and OOD-v2 calibration gates; define an adaptive-retry contract before proceeding"
                 .to_string(),
@@ -2355,6 +2556,8 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             candidate_root_count,
             candidate_roots_sha256,
             paired_root_mismatches,
+            opening_ids_with_matched_roots,
+            opening_ids_without_matched_roots,
             trajectory_hashes_sha256,
             label_position_policy: loaded
                 .config
@@ -2450,14 +2653,17 @@ fn collect_calibration_trajectory_games(
 }
 
 fn calibration_roots_match(base: &TrajectoryGame, swapped: &TrajectoryGame) -> Result<bool> {
-    if base.calibration_roots.len() != swapped.calibration_roots.len() {
+    calibration_root_slices_match(&base.calibration_roots, &swapped.calibration_roots)
+}
+
+fn calibration_root_slices_match(
+    base_roots: &[CalibrationRoot],
+    swapped_roots: &[CalibrationRoot],
+) -> Result<bool> {
+    if base_roots.is_empty() || base_roots.len() != swapped_roots.len() {
         return Ok(false);
     }
-    for (base_root, swapped_root) in base
-        .calibration_roots
-        .iter()
-        .zip(&swapped.calibration_roots)
-    {
+    for (base_root, swapped_root) in base_roots.iter().zip(swapped_roots) {
         if base_root.root_ply != swapped_root.root_ply
             || color_swap_anhoku_sfen(&base_root.board.to_string())?
                 != swapped_root.board.to_string()
@@ -3167,7 +3373,9 @@ fn generate_split(
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
         rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
         rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
         rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
         rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
         rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
@@ -3429,7 +3637,6 @@ struct GenerationSemanticIdentityMaterial {
     max_positions_per_game: u16,
     max_candidate_roots_per_game: Option<u16>,
     candidate_identity_version: &'static str,
-    minimum_train_boards: Option<u64>,
     self_play_move_policy: String,
     rollout_search_depth: u8,
     rollout_candidate_limit: u16,
@@ -3452,6 +3659,7 @@ struct ScheduleIdentityMaterial {
     validation_games: u32,
     shard_games: u32,
     requested_game_count: u32,
+    minimum_train_boards: Option<u64>,
     shard_index: Option<u32>,
     game_start: Option<u32>,
     game_count: Option<u32>,
@@ -3531,7 +3739,6 @@ fn generation_semantic_identity_sha256(
         max_positions_per_game: loaded.config.data.max_positions_per_game,
         max_candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION,
-        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
         self_play_move_policy: loaded
             .config
             .data
@@ -3566,6 +3773,7 @@ fn schedule_identity_sha256(
         validation_games: loaded.config.data.validation_games,
         shard_games: loaded.config.data.shard_games,
         requested_game_count,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
         shard_index: plan.map(|plan| plan.shard_index),
         game_start: plan.map(|plan| plan.game_start),
         game_count: plan.map(|plan| plan.game_count),
@@ -3876,7 +4084,9 @@ fn generate_or_reuse_shard(
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
         rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
         rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
         rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
         rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
         rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
@@ -4055,8 +4265,6 @@ fn shard_manifest_matches(
         && manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name()
         && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
-        && manifest.minimum_train_boards == loaded.config.data.minimum_train_boards()?
-        && manifest.minimum_train_positions == loaded.config.data.minimum_train_positions
         && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
         && (manifest.candidate_identity_version.is_empty()
             || manifest.candidate_identity_version == CANDIDATE_IDENTITY_VERSION)
@@ -4961,7 +5169,9 @@ fn merge_split(
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
         rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
         rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
         rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
         rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
         rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
@@ -5139,14 +5349,6 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION,
         "position_selection_audit_version does not match",
-    )?;
-    ensure_merge(
-        manifest.minimum_train_boards == loaded.config.data.minimum_train_boards()?,
-        "minimum_train_boards does not match",
-    )?;
-    ensure_merge(
-        manifest.minimum_train_positions == loaded.config.data.minimum_train_positions,
-        "minimum_train_positions does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -8164,5 +8366,159 @@ run_search_smoke = false
             weighted_choice_index(&candidates, 40.0, pair_zero),
             weighted_choice_index(&candidates, 40.0, pair_zero)
         );
+    }
+
+    #[test]
+    fn bounded_rollout_candidates_always_include_the_root_best_move() {
+        let mut legal_moves = collect_legal_moves(&Board::startpos());
+        legal_moves.sort_by_key(ToString::to_string);
+        let root_best_move = *legal_moves.last().unwrap();
+        assert!(!legal_moves[..2].contains(&root_best_move));
+
+        let candidates = bounded_rollout_candidates(legal_moves.clone(), root_best_move, 2);
+        assert_eq!(candidates.len(), 2);
+        assert!(candidates.contains(&root_best_move));
+
+        let mut stats = SearchUseStats::default();
+        stats.record_rollout_decision(legal_moves.len() as u64, candidates.len() as u64, 1, 0);
+        assert_eq!(stats.rollout_legal_moves, legal_moves.len() as u64);
+        assert_eq!(stats.rollout_candidates_scored, 2);
+        assert_eq!(
+            stats.rollout_candidates_truncated,
+            legal_moves.len() as u64 - 2
+        );
+    }
+
+    #[test]
+    fn empty_calibration_root_pairs_do_not_match() {
+        assert!(!calibration_root_slices_match(&[], &[]).unwrap());
+    }
+
+    #[test]
+    fn minimum_train_boards_changes_schedule_but_not_generation_semantics() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("identity.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let mut small = LoadedConfig::from_path(&config_path).unwrap();
+        small.config.data.minimum_train_boards = Some(262_144);
+        let mut large = small.clone();
+        large.config.data.minimum_train_boards = Some(1_048_576);
+        let opening_sfen = small.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&small, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                small.config.data.split_policy,
+                small.config.data.split_seed,
+                small.config.data.train_games,
+                small.config.data.validation_games,
+                small.config.data.validation_opening_ids.as_deref(),
+                small.config.data.validation_opening_schedule,
+                small.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+        let semantic = |loaded: &LoadedConfig| {
+            generation_semantic_identity_sha256(
+                loaded,
+                "train",
+                &opening_sfen,
+                &opening_source,
+                &opening_split,
+                "handcrafted",
+                None,
+                Some("test-revision"),
+            )
+            .unwrap()
+        };
+        assert_eq!(semantic(&small), semantic(&large));
+        assert_ne!(
+            schedule_identity_sha256(&small, "train", small.config.data.train_games, None).unwrap(),
+            schedule_identity_sha256(&large, "train", large.config.data.train_games, None).unwrap()
+        );
+    }
+
+    #[test]
+    fn minimum_train_boards_extension_reuses_semantically_identical_shards() {
+        let temp = tempdir().unwrap();
+        let first_config = temp.path().join("minimum-one.toml");
+        let second_config = temp.path().join("minimum-two.toml");
+        let base = deterministic_test_config(active_test_ruleset(), "out");
+        fs::write(
+            &first_config,
+            base.replace(
+                "max_positions_per_game = 4",
+                "max_positions_per_game = 4\nminimum_train_boards = 1",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            &second_config,
+            base.replace(
+                "max_positions_per_game = 4",
+                "max_positions_per_game = 4\nminimum_train_boards = 2",
+            ),
+        )
+        .unwrap();
+
+        let first = LoadedConfig::from_path(&first_config).unwrap();
+        generate_data(&first).unwrap();
+        let second = LoadedConfig::from_path(&second_config).unwrap();
+        generate_data(&second).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(second.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert_eq!(manifest["generated_shards"].as_u64(), Some(0));
+        assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
+        assert_eq!(
+            manifest["schedule_identity_version"].as_str(),
+            Some(SCHEDULE_IDENTITY_VERSION)
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn phase8d_trajectory_schedule_covers_every_opening_with_a_pair() {
+        let config_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8d-a.toml");
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let opening_sfen = loaded.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+        let tasks = trajectory_tasks(
+            &loaded,
+            &opening_split,
+            ShardSelector::new(None, None, None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(tasks.len(), 128);
+        let mut game_counts = BTreeMap::new();
+        for (task, opening_id) in &tasks {
+            *game_counts
+                .entry((task.dataset_name, opening_id.clone()))
+                .or_insert(0u64) += 1;
+        }
+        assert_eq!(game_counts.len(), 64);
+        assert!(game_counts.values().all(|games| *games == 2));
+        for pair in tasks.chunks_exact(2) {
+            assert_eq!(pair[0].0.dataset_name, pair[1].0.dataset_name);
+            assert_eq!(pair[0].0.game_index / 2, pair[1].0.game_index / 2);
+            assert_eq!(pair[0].1, pair[1].1);
+        }
     }
 }

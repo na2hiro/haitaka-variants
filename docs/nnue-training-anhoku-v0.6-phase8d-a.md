@@ -11,17 +11,21 @@ telemetry is run and reviewed.
 - `audit-data`, with deterministic counts for distinct 72-byte records and
   distinct packed boards (`bin` bytes `0..64`), duplicate multiplicity, and
   conflicting `(score, ply, result)` targets;
-- separate `generation-semantic-v1` and `schedule-cardinality-v1` identities;
+- separate `generation-semantic-v1` and `schedule-readiness-v1` identities;
   semantic changes cannot be hidden by a shard-cardinality extension, while
-  complete non-overlapping ranges can be reused when only the schedule grows;
+  complete non-overlapping ranges can be reused when only the schedule or
+  packed-board readiness floor grows;
 - `searched-stochastic-rollout-v1`, which scores a canonical bounded legal-move
-  set, retains a score window, and samples with a named SplitMix64 stream keyed
-  by dataset, pair index, and ply;
+  set that always contains the canonical root search's best move, retains a
+  score window, and samples with a named SplitMix64 stream keyed by dataset,
+  pair index, and ply;
 - `trajectory-audit`, which performs no label searches and reports hashes,
-  packed-board uniqueness, tranche yield, selected-vs-best gaps, game
+  complete 52-train/12-OOD opening coverage, packed-board uniqueness, tranche
+  yield, legal/scored/truncated candidate counts, selected-vs-best gaps, game
   lengths/outcomes, pair symmetry, and summed rollout CPU time;
 - `calibrate-labels`, which regenerates one matched base/swapped pair per suite
-  ID and labels the same candidate roots at 50k, 100k, and 200k combined nodes;
+  ID, requires every ID to produce a non-empty matched root set, and labels the
+  same candidate roots at 50k, 100k, and 200k combined nodes;
 - packed-board minimum enforcement during full generation, merge, and training
   readiness. The old `minimum_train_positions` spelling remains readable as a
   deprecated packed-board floor.
@@ -71,9 +75,10 @@ that config.
   uniqueness, 13/13 exact transformed move-sequence pairs, and a 4.64 mean
   selected-vs-best score gap; it intentionally blocks the 30-board/game final
   tranche threshold because a 12-ply smoke can yield only 12 boards/game;
-- label calibration: 128 games, 126 candidate roots, zero paired-root
-  mismatches, exact accounting, zero incomplete/terminal/mate labels at all
-  three budgets, and 50k selected for the smoke's depth-2 label contract.
+- label calibration: the earlier 128-game smoke produced only 126 candidate
+  roots. That result is now explicitly blocked because two opening IDs had no
+  matched root; no node budget is selected from an incomplete 64-ID sample.
 
-These smoke results validate the implementation and symmetry contract only;
-they do not freeze the production rollout values or label budget.
+The short trajectory smoke also omits 51 train IDs and therefore fails the new
+64-ID coverage gate in addition to its intentional final-tranche failure. These
+smoke results do not freeze the production rollout values or label budget.

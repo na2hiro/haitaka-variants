@@ -978,8 +978,10 @@ experiment, not a teacher, lambda, LR, and feature sweep.
 **Implementation status (2026-08-27):** the phase-independent packed-board
 audit, semantic/schedule identity split, searched-stochastic rollout, label-free
 trajectory audit, and matched label-calibration commands are implemented. The
-production freeze and Phase 8D-B remain gated on running the full configured
-telemetry and recording its pass/block decision.
+audit uses one color-swapped pair per train/OOD opening before repetition and
+gates complete 64-ID coverage; calibration rejects empty matched root sets.
+The production freeze and Phase 8D-B remain gated on running the full
+configured telemetry and recording its pass/block decision.
 
 - Implement a small phase-independent dataset audit that counts both distinct
   full 72-byte records and distinct packed boards from bytes `0..64`. Define
