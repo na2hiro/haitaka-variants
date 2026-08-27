@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8C GR2 rejected 1,115,026 repeated records; Phase 8D trajectory-diversity repair is next
+- Status: Phase 8D-A trajectory gate passed; label calibration blocked; Phase 8D-A.2 adaptive-label recovery is next
 - Created: 2026-08-17
 - Last checked: 2026-08-27
 - Primary ruleset: Anhoku
@@ -967,7 +967,7 @@ promotion of a default model.
 
 ## Phase 8D: Immediate Searched-Stochastic Trajectory Repair
 
-**Status: next assignment.** GR2 proved deterministic trajectory collapse:
+**Status: in progress.** GR2 proved deterministic trajectory collapse:
 1,115,026 accepted records contained only 6,832 packed boards. Phase 8D is no
 longer conditional on a Phase 8C strength result; it must repair data diversity
 before any further production labeling or training. This is one rollout-policy
@@ -975,7 +975,7 @@ experiment, not a teacher, lambda, LR, and feature sweep.
 
 ### Phase 8D-A: audit and label-free rollout launch gate
 
-**Implementation status (2026-08-27):** the phase-independent packed-board
+**Result status (2026-08-27):** the phase-independent packed-board
 audit, semantic/schedule identity split, searched-stochastic rollout, label-free
 trajectory audit, and matched label-calibration commands are implemented. The
 audit uses two cycles of color-swapped pairs over every train/OOD opening and
@@ -994,7 +994,23 @@ adjacency ban; exact-position move-generation and color-swap regressions cover
 the repair. The failed pre-fix local/remote runs are invalid. The production
 freeze and Phase 8D-B remain gated on rerunning the full configured telemetry,
 publishing its JSON report, reproducing trajectory hashes across execution
-layouts, and recording the pass/block decision.
+layouts, and recording the pass/block decision. The repaired production audit
+then passed: 34,210/34,492 packed boards were distinct (99.18%), the final
+post-coverage tranche yielded 111.53 new boards/game, all 128 transformed
+pairs matched, all 64 opening IDs had two pairs, and a 16-game `jobs=1` nubu
+sample matched the local `jobs=0` trajectories, source identity, and policy
+exactly. Keep `margin=80`, `temperature=40`, candidate limit 16, depth 1, and
+`splitmix64-v1` fixed during label recovery; do not reopen rollout tuning.
+
+The subsequent 128-game label calibration is blocked. It produced 126 roots
+because both `anhoku-v2-048` trajectories ended after one ply, before the
+ply-8 sampling origin. Across 50k, 100k, and 200k nodes, both splits had zero
+incomplete and terminal labels, exact node accounting, and zero side rejection
+delta, but every budget reported six train and two OOD-v2 mate labels. The
+aggregate rejection counts were unchanged across budgets. The resulting
+outcome rejection-rate deltas were 0.2222 train and 0.20
+OOD-v2, above 0.05. More label nodes did not improve eligibility, so no budget
+is selected and Phase 8D-B remains unauthorized.
 
 - Implement a small phase-independent dataset audit that counts both distinct
   full 72-byte records and distinct packed boards from bytes `0..64`. Define
@@ -1042,6 +1058,53 @@ layouts, and recording the pass/block decision.
 Phase 8D-A stops after source/config hashes, tests, telemetry, and the pass or
 block decision are written. If no bounded near-best policy passes, do not fall
 back to arbitrary opening moves; write a new trajectory hypothesis.
+
+### Phase 8D-A.2: adaptive-label eligibility recovery
+
+**Status: next assignment.** Repair candidate eligibility without changing
+the frozen rollout policy, C/16 teacher, feature family, sampling cadence, or
+label-quality thresholds.
+
+- Create `anhoku-v3` by replacing only the train opening currently named
+  `anhoku-v2-048`. Select the replacement without label scores, loss, or
+  strength results. It must be unique under the existing color-swap transform,
+  parse legally in both orientations, and under the frozen rollout produce at
+  least the eight matched candidate plies `8,10,...,22` in both orientations.
+  Preserve the other 63 positions and the 12-ID OOD-v2 holdout boundary. The
+  suite file and hash are new generation-semantic identity; no v2 shards may be
+  reused.
+- Implement one versioned `root-position-adaptive-retry-v1` policy. At each
+  scheduled candidate ply, require exact node accounting, a complete search,
+  both Kings, a non-terminal trace, and a non-mate score. A rejected attempt is
+  counted by reason, side, outcome, opening ID, and root ply, does not consume
+  the accepted-position quota, and advances to the next ordinary sampling ply.
+  Calibration permits at most eight attempts for one accepted root per game;
+  exhaustion is explicit rather than silently dropping the game. All retry
+  limits and the policy version belong to semantic identity and shard manifests.
+- Keep base/swapped retries symmetry-coupled in calibration: the accepted roots
+  must use the same ply, be exact color-swapped boards, and either both pass or
+  both retry. Add exact regressions for a first-attempt mate followed by an
+  accepted root, retry exhaustion, and jobs/shard determinism.
+- Rerun the full v3 trajectory audit because the suite hash changed. Require
+  the existing 95% uniqueness, 30 new boards/game, complete opening coverage,
+  and 128/128 symmetry gates. The cross-host `jobs=1` sample must include the
+  replacement opening and at least one OOD-v2 pair; it need not duplicate all
+  256 games.
+- Recalibrate sequentially. Test 50k first on one color-swapped pair per all 64
+  IDs. Run 100k only if 50k fails for incomplete search or node accounting,
+  and 200k only for the same reason at 100k; mate/terminal attempts trigger
+  position retry, not a larger budget. Select the smallest passing budget.
+- A calibration pass requires exactly 128 accepted roots, at least one matched
+  accepted pair from every opening ID, zero accepted incomplete/terminal/mate
+  labels, exact accounting, zero exhausted games, exact accepted-root symmetry,
+  and no missing requested slots by side or outcome. Report raw retry bias as
+  telemetry, and cap cost at a mean of 1.25 attempts per accepted root overall
+  and 1.50 in either split. This replaces the old rejection-rate-delta gate only
+  because rejected slots are now deterministically replaced; it does not relax
+  admissibility of stored labels.
+- If no budget passes by 200k, or if retry cost/coverage fails, stop and review
+  the position policy or opening source. Do not relax the thresholds, inspect
+  strength, or begin Phase 8D-B data generation.
 
 ### Phase 8D-B: unique-262k strength test
 

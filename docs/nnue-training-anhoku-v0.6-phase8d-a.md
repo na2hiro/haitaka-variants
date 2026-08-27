@@ -1,9 +1,8 @@
 # Anhoku v0.6 Phase 8D-A: searched-stochastic trajectory repair
 
-Status: implementation and Phase 8D-A.1 legality recovery complete; the
-checked-in short smoke and the one-game recovery diagnostic are not a
-production freeze. Phase 8D-B remains unauthorized until the full launch-gate
-telemetry is rerun successfully and reviewed.
+Status: the Phase 8D-A trajectory gate and sampled cross-host reproduction
+passed, but label calibration is blocked. Phase 8D-A.2 adaptive-label recovery
+is next; Phase 8D-B data generation remains unauthorized.
 
 ## Implemented contract
 
@@ -114,12 +113,57 @@ retains the unconditional ban. Millisecond-scale regressions cover legality,
 move generation, SFEN reparsing, and color-swap round-trip on the exact game-102
 position; full trajectory replay is left to the production audit.
 
-Resume with the full local `jobs=0` audit and require a published JSON report.
-Reproduce its trajectory hashes with `jobs=1` on the separately chosen remote
-machine before freezing the policy. At the measured roughly 124.5 rollout CPU
-seconds per 180-ply game, 256 games project to about 8.9 hours with `jobs=1`,
-whereas the 12-way local `jobs=0` run should take roughly one hour plus workload
-imbalance and system overhead.
+The full repaired local `jobs=0` audit completed at commit `7dac0ee`: all 256
+games and 128 transformed pairs completed, 34,210 of 34,492 packed boards were
+distinct (99.18%), and the final post-coverage tranche produced 111.53 new
+boards/game. A 16-game `jobs=1` nubu sample contained eight exact transformed
+pairs and matched the corresponding local trajectory hashes, source identity,
+and policy. Both the production trajectory gate and sampled reproducibility
+gate passed. The rollout parameters are fixed during label recovery.
+
+## Production label-calibration result
+
+The report at `out/anhoku-v0.6-phase8d-a/artifacts/label-calibration.json` has
+matching commit, config, C/16 teacher, suite, and rollout provenance. It is safe
+to use for the stop decision but does not select a production budget.
+
+- 128 games produced 126 candidate roots. `anhoku-v2-048` produced none: both
+  orientations ended after one ply, before the fixed ply-8 sampling origin.
+- At 50k, 100k, and 200k, train and OOD-v2 each had zero incomplete labels,
+  zero terminal labels, exact node accounting, and zero side rejection delta.
+- Every budget reported six train and two OOD-v2 mate labels, with identical
+  aggregate rejection counts. Train's outcome rejection-rate delta was 0.2222
+  and OOD-v2's was 0.20, both above the frozen 0.05 gate.
+
+This is candidate-eligibility failure, not evidence that 200k is too small.
+Additional nodes did not change the aggregate rejection counts. No budget is
+selected and the original calibration must not be overridden.
+
+## Phase 8D-A.2 adaptive-label contract
+
+1. Version the suite as `anhoku-v3`, replacing only the unusable train opening
+   `anhoku-v2-048`. Choose its replacement without label, loss, or strength
+   results; require legal unique base/swapped positions and eight matched
+   frozen-rollout candidate plies from 8 through 22. Preserve all other
+   positions and the 12-ID OOD-v2 boundary.
+2. Add `root-position-adaptive-retry-v1`. Incomplete, terminal, missing-King,
+   or mate candidates are rejected and counted, then the next normal sampling
+   ply is tried without consuming the accepted quota. Calibration targets one
+   accepted root per game and permits eight attempts. Retry parameters and
+   counters are semantic identity and manifest fields.
+3. Require base/swapped calibration roots to accept or retry together at the
+   same transformed ply. Test mate retry, exhaustion, symmetry, and jobs/shard
+   determinism.
+4. Because the suite hash changes, rerun the full trajectory gate and a bounded
+   cross-host sample containing the replacement opening plus OOD-v2 evidence.
+5. Recalibrate at 50k first. Escalate to 100k and then 200k only for incomplete
+   search or accounting failure, never to cure mate/terminal roots. A pass
+   requires 128 accepted roots, every opening represented, zero inadmissible
+   stored labels or exhausted games, exact accounting and symmetry, no missing
+   requested slots by side/outcome, mean attempts/accept <=1.25 overall and
+   <=1.50 per split. Raw retry bias remains reported telemetry.
+6. If this contract fails at 200k or exceeds its retry-cost bounds, stop for a
+   position-policy/opening-source review. Do not generate Phase 8D-B data.
 
 ## Smoke evidence
 
