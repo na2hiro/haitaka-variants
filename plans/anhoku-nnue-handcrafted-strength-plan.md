@@ -1,8 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-A.2 adaptive-label recovery implemented; v3 trajectory, cross-host, and calibration gates are next
+- Status: Phase 8D-A.2 passed; Phase 8D-B unique-262k data generation is the next action and has not started
 - Created: 2026-08-17
-- Last checked: 2026-08-27
+- Last checked: 2026-08-28
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -991,11 +991,12 @@ not an illegal move: under Anhoku, adjacent Kings are permitted when their
 effective movements do not attack each other. Influence-variant SFEN validation
 now uses effective attacks while standard Shogi keeps its unconditional
 adjacency ban; exact-position move-generation and color-swap regressions cover
-the repair. The failed pre-fix local/remote runs are invalid. The production
-freeze and Phase 8D-B remain gated on rerunning the full configured telemetry,
-publishing its JSON report, reproducing trajectory hashes across execution
-layouts, and recording the pass/block decision. The repaired production audit
-then passed: 34,210/34,492 packed boards were distinct (99.18%), the final
+the repair. The failed pre-fix local/remote runs are invalid. At that point,
+the production freeze and Phase 8D-B remained gated on rerunning the full
+configured telemetry, publishing its JSON report, reproducing trajectory hashes
+across execution layouts, and recording the pass/block decision. The repaired
+production audit then passed: 34,210/34,492 packed boards were distinct
+(99.18%), the final
 post-coverage tranche yielded 111.53 new boards/game, all 128 transformed
 pairs matched, all 64 opening IDs had two pairs, and a 16-game `jobs=1` nubu
 sample matched the local `jobs=0` trajectories, source identity, and policy
@@ -1061,14 +1062,18 @@ back to arbitrary opening moves; write a new trajectory hypothesis.
 
 ### Phase 8D-A.2: adaptive-label eligibility recovery
 
-**Status: implementation complete; execution gates pending.** Candidate
+**Status: passed at commit `6da4ce7`.** Candidate
 eligibility is repaired without changing the frozen rollout policy, C/16
 teacher, feature family, sampling cadence, or label-quality thresholds. The
 implementation adds `anhoku-v3`,
 `haitaka_learn.anhoku-v0.6-phase8d-a2.toml`, semantic identity v2, bounded
 adaptive retry, explicit exhaustion/accounting telemetry, symmetry-coupled
-calibration, and deterministic jobs/shard regressions. Do not begin 8D-B until
-the v3 evidence below passes.
+calibration, and deterministic jobs/shard regressions. The v3 evidence passed:
+the full audit had 99.19% uniqueness, 114.09 final new boards/game, complete
+64-ID coverage, and 128/128 symmetry; the 24-game nubu sample matched local
+trajectory hashes, source identity, and policy; and calibration selected 50k
+with 128 accepted roots, zero exhaustion/bad stored labels/accounting errors,
+and 1.0625 attempts per accepted root overall.
 
 - Create `anhoku-v3` by replacing only the train opening currently named
   `anhoku-v2-048`. Select the replacement without label scores, loss, or
@@ -1112,6 +1117,17 @@ the v3 evidence below passes.
   strength, or begin Phase 8D-B data generation.
 
 ### Phase 8D-B: unique-262k strength test
+
+**Status: authorized, data generation not started.** The frozen launch config
+is `haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml`. It uses 6,200 train
+games, 96 equal-schedule OOD games, 64 accepted slots and at most 72 label
+attempts per game, and requires 262,144 distinct packed train boards. The v3
+audit projects 52.875--53.067 scheduled slots/game, or about 327,825 records;
+even treating the observed 6.25% retry rate as wholly unreplaced and applying
+the 95% uniqueness floor projects about 291,969 unique boards. The hard
+accepted-record ceiling is 396,800 and the hard label-attempt ceiling is
+446,400. Do not revise these counts after inspecting generated yield; stop and
+review if the frozen readiness gate fails.
 
 - Use the Phase 8D-A frozen root-label budget and keep C/16 bootstrap, features,
   lambda, LR, sampling, train opening groups, and OOD-v2 groups unchanged.

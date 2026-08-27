@@ -744,6 +744,21 @@ mod tests {
         assert_eq!(phase8d_a2_source.opening_ids().len(), 64);
         assert_eq!(phase8d_a2_split.validation_ids[0], "anhoku-v3-053");
         assert_eq!(phase8d_a2_split.validation_ids[11], "anhoku-v3-064");
+
+        let phase8d_b_config = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml");
+        let phase8d_b = LoadedConfig::from_path(&phase8d_b_config).unwrap();
+        assert_eq!(phase8d_b.config.data.label_search_nodes, Some(50_000));
+        assert_eq!(phase8d_b.config.data.max_positions_per_game, 64);
+        assert_eq!(phase8d_b.config.data.max_label_attempts_per_game, Some(72));
+        assert_eq!(phase8d_b.config.data.minimum_train_boards, Some(262_144));
+        assert_eq!(phase8d_b.config.data.validation_games, 96);
+        assert_eq!(
+            phase8d_b.config.data.validation_opening_pairs_per_id,
+            Some(4)
+        );
     }
 
     #[test]

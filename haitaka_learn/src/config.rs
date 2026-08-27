@@ -685,6 +685,12 @@ impl LearnConfig {
                     .is_some_and(|attempts| attempts > 0),
                 "data.max_label_attempts_per_game must be > 0 when adaptive label retry is enabled"
             );
+            ensure!(
+                self.data
+                    .max_label_attempts_per_game
+                    .is_some_and(|attempts| attempts >= self.data.max_positions_per_game),
+                "data.max_label_attempts_per_game must be >= data.max_positions_per_game when adaptive label retry is enabled"
+            );
         } else {
             ensure!(
                 self.data.max_label_attempts_per_game.is_none(),
@@ -1856,6 +1862,7 @@ label_search_nodes = 50000
 label_search_max_depth = 64
 incomplete_label_policy = "reject-position"
 label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 1
 max_label_attempts_per_game = 8
 self_play_move_policy = "searched-stochastic-rollout-v1"
 opening_random_plies = 0
@@ -1876,6 +1883,7 @@ label_search_nodes = 50000
 label_search_max_depth = 64
 incomplete_label_policy = "reject-position"
 label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 1
 max_label_attempts_per_game = 8
 max_candidate_roots_per_game = 1
 self_play_move_policy = "searched-stochastic-rollout-v1"
@@ -1886,6 +1894,29 @@ opening_random_plies = 0
         assert!(
             format!("{:#}", conflicting.validate().unwrap_err())
                 .contains("max_candidate_roots_per_game must be omitted")
+        );
+
+        let insufficient_attempts: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 9
+max_label_attempts_per_game = 8
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", insufficient_attempts.validate().unwrap_err())
+                .contains(">= data.max_positions_per_game")
         );
     }
 

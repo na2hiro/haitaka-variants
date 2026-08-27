@@ -1,9 +1,9 @@
 # Anhoku v0.6 Phase 8D-A: searched-stochastic trajectory repair
 
-Status: the original Phase 8D-A trajectory gate passed and its label
-calibration blocked as expected. The Phase 8D-A.2 adaptive-label implementation
-and v3 config are now present; the v3 trajectory/cross-host/calibration gates
-are the next execution step. Phase 8D-B data generation remains unauthorized.
+Status: complete. The original Phase 8D-A calibration blocked as expected;
+Phase 8D-A.2 then passed its v3 full-trajectory, sampled cross-host, and
+adaptive-label calibration gates at commit `6da4ce7`. Phase 8D-B data
+generation is authorized but has not started.
 
 ## Implemented contract
 
@@ -146,7 +146,7 @@ selected and the original calibration must not be overridden.
 
 ## Phase 8D-A.2 adaptive-label contract
 
-Implementation status: complete locally; production evidence not yet run.
+Implementation and production-gate status: complete.
 `anhoku-v3` preserves 63 positions and replaces `048` with generator pair
 index 52, chosen before any label or strength inspection. The parser now also
 rejects duplicate color-swap orbits. Policy version, attempt cap, rejection
@@ -178,6 +178,62 @@ root matching, and jobs/shard determinism.
    <=1.50 per split. Raw retry bias remains reported telemetry.
 6. If this contract fails at 200k or exceeds its retry-cost bounds, stop for a
    position-policy/opening-source review. Do not generate Phase 8D-B data.
+
+## Phase 8D-A.2 production evidence
+
+The local `jobs=0` full audit completed 256/256 games. It covered all 52 train
+and 12 OOD IDs with two pairs each, matched all 128/128 transformed move
+sequences, produced 34,732 distinct boards from 35,014 occurrences (99.19%),
+and yielded 114.09 new boards/game in the final post-coverage tranche. The
+replacement `anhoku-v3-048` produced complete matched trajectories in both
+cycles, with game lengths 180 and 83 plies.
+
+The bounded nubu `jobs=1` sample selected lanes 11--12 of 26: 24 games and 12
+pairs covering `anhoku-v3-045` through `-052`, including replacement `-048`,
+plus OOD IDs `-061` through `-064`. All 12 transformed pairs and every sampled
+trajectory hash matched the local run exactly; source identity and rollout
+policy also matched. Its own full-audit decision is intentionally false because
+a 24-game sample cannot meet the 64-ID/two-cycle coverage gate; the dedicated
+cross-host comparison passed.
+
+Adaptive calibration then passed at the first budget, 50,000 nodes. All 64 IDs
+provided eight matched candidate attempts. It accepted exactly 128 roots with
+zero exhausted games, zero incomplete/terminal/accounting-invalid labels, zero
+bad stored labels, and exact node accounting. Six train and two OOD mate
+attempts were replaced at the next paired sampling ply. Attempts per accepted
+root were 1.0577 train, 1.0833 OOD, and 1.0625 overall, below the respective
+1.50/1.25 gates. Therefore 100k and 200k were not run and 50k is frozen for
+Phase 8D-B.
+
+Evidence:
+
+- `out/anhoku-v0.6-phase8d-a2/trajectory-audit-jobs0-6da4ce7.json`
+- `out/anhoku-v0.6-phase8d-a2/trajectory-audit-cross-host-comparison-6da4ce7.json`
+- `out/anhoku-v0.6-phase8d-a2/artifacts/label-calibration.json`
+
+## Phase 8D-B handoff
+
+The frozen next config is
+`haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml`. It retains the selected
+50k budget, C/16, v3 suite, searched-stochastic policy, feature family,
+sampling, LR/lambda, and seed 80. It requests 6,200 train games and 96 balanced
+OOD games, permits 64 accepted roots and 72 attempts/game, and enforces at
+least 262,144 distinct packed train boards. The label-free yield projection and
+record ceilings are recorded inline in the config and in the main plan.
+
+The next command below is intentionally documented but has not been run:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml
+```
+
+For distributed generation, freeze one source/config/suite/teacher identity on
+all machines and add `--shard-index <LANE> --shard-index-end <LANE>
+--shard-count <COUNT>`. Never use `--ignore-identity-mismatch`; merge only
+complete, contiguous, non-overlapping lanes. Before training, require the
+packed-board floor, at least 95% uniqueness, exact label accounting, zero bad
+stored labels, and review retry/exhaustion and balance telemetry.
 
 ## Smoke evidence
 

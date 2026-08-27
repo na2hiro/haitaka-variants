@@ -5193,7 +5193,16 @@ fn generate_game_entries(
     }
 
     if loaded.config.data.label_retry_policy.is_adaptive()
-        && samples.len() < usize::from(loaded.config.data.max_positions_per_game)
+        && label_retry_attempt_cap_exhausted(
+            samples.len(),
+            loaded.config.data.max_positions_per_game,
+            attempted_candidate_roots,
+            loaded
+                .config
+                .data
+                .max_label_attempts_per_game
+                .expect("validated adaptive retry attempt cap"),
+        )
     {
         stats.label_retry_exhausted_games += 1;
     }
@@ -5232,6 +5241,16 @@ fn generate_game_entries(
         opening: selected_opening.metadata,
         candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
     })
+}
+
+fn label_retry_attempt_cap_exhausted(
+    accepted_positions: usize,
+    max_positions_per_game: u16,
+    attempted_candidate_roots: u16,
+    max_label_attempts_per_game: u16,
+) -> bool {
+    accepted_positions < usize::from(max_positions_per_game)
+        && attempted_candidate_roots >= max_label_attempts_per_game
 }
 
 fn update_candidate_identity(hasher: &mut Sha256, game_index: u32, root_ply: u16, board: &Board) {
@@ -6417,6 +6436,13 @@ mod tests {
     #[test]
     fn packed_entry_size_matches_trainer_layout() {
         assert_eq!(ENTRY_BYTES, 72);
+    }
+
+    #[test]
+    fn adaptive_retry_exhaustion_requires_the_attempt_cap() {
+        assert!(!label_retry_attempt_cap_exhausted(10, 64, 10, 72));
+        assert!(label_retry_attempt_cap_exhausted(10, 64, 72, 72));
+        assert!(!label_retry_attempt_cap_exhausted(64, 64, 72, 72));
     }
 
     #[test]
