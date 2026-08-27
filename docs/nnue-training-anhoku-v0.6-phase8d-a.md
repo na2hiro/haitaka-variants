@@ -98,10 +98,28 @@ transformed SFEN context.
 The repaired game 62 completed all 180 plies with per-ply source-SFEN
 validation enabled and wrote a diagnostic JSON. That one-game report is
 expected to fail full coverage gates and is not launch evidence. Resume the
-phase by rerunning the full 256-game `jobs=1` command above; require a published
-JSON report, then reproduce its trajectory hashes across the declared parallel
-or remote shard layout. Any run from before this legality fix is invalid and
-must not be compared or merged.
+phase only after applying the adjacent-King validation repair below. Any run
+from before both legality fixes is invalid and must not be compared or merged.
+
+The next local `jobs=0` audit reached train game 102, pair 51, ply 114 before
+the color-swap canonicalizer rejected the position after `4d4e`. This move
+legally leaves the Kings adjacent: the opposing King receives Pawn movement
+from its Anhoku donor and does not attack the moved King. Move generation used
+the effective movement and accepted the move correctly, but the generic SFEN
+validator still imposed standard Shogi's unconditional adjacent-King ban.
+
+Influence-variant SFEN validation now relies on the existing variant-aware
+effective-attack check instead of geometric King adjacency. Standard Shogi
+retains the unconditional ban. Millisecond-scale regressions cover legality,
+move generation, SFEN reparsing, and color-swap round-trip on the exact game-102
+position; full trajectory replay is left to the production audit.
+
+Resume with the full local `jobs=0` audit and require a published JSON report.
+Reproduce its trajectory hashes with `jobs=1` on the separately chosen remote
+machine before freezing the policy. At the measured roughly 124.5 rollout CPU
+seconds per 180-ply game, 256 games project to about 8.9 hours with `jobs=1`,
+whereas the 12-way local `jobs=0` run should take roughly one hour plus workload
+imbalance and system overhead.
 
 ## Smoke evidence
 

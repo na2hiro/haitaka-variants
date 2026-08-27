@@ -595,6 +595,17 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
+    fn anhoku_color_swap_accepts_non_attacking_adjacent_kings() {
+        let sfen =
+            "2+B1R1+N+R1/3s2N1+B/4s4/2p3+L2/p2pPk1P1/2PPKp3/P4P3/+p1G6/4+pNG2 b 2G2SNL4P2l2p 127";
+        let board = Board::from_sfen(sfen).unwrap();
+        let swapped = color_swap_anhoku_sfen(sfen).unwrap();
+
+        assert_eq!(color_swap_anhoku_sfen(&swapped).unwrap(), board.to_string());
+    }
+
+    #[test]
     fn suite_pair_uses_same_id_with_opposite_colors() {
         let source = OpeningSource::Suite {
             suite_id: "fixture-v1".to_string(),

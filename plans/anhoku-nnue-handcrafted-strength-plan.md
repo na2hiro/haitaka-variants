@@ -986,10 +986,15 @@ Phase 8D-A.1 fixed the game-62 same-side-donor capture legality bug: captures
 of active opposing donors now receive a post-move king-safety replay while
 other moves retain the batched fast path. The exact position and dynamic
 color-swap are regression tested, and the repaired game completed 180 plies
-under per-ply validation. The failed pre-fix local/remote runs are invalid. The
-production freeze and Phase 8D-B remain gated on rerunning the full configured
-telemetry, publishing its JSON report, reproducing trajectory hashes across
-execution layouts, and recording the pass/block decision.
+under per-ply validation. A second game-102 failure was a validator mismatch,
+not an illegal move: under Anhoku, adjacent Kings are permitted when their
+effective movements do not attack each other. Influence-variant SFEN validation
+now uses effective attacks while standard Shogi keeps its unconditional
+adjacency ban; exact-position move-generation and color-swap regressions cover
+the repair. The failed pre-fix local/remote runs are invalid. The production
+freeze and Phase 8D-B remain gated on rerunning the full configured telemetry,
+publishing its JSON report, reproducing trajectory hashes across execution
+layouts, and recording the pass/block decision.
 
 - Implement a small phase-independent dataset audit that counts both distinct
   full 72-byte records and distinct packed boards from bytes `0..64`. Define
