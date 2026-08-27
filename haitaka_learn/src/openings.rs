@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -128,6 +128,71 @@ impl OpeningSource {
         match self {
             Self::UniformRandom { .. } => NO_OPENING_TRANSFORMATION,
             Self::Suite { .. } => ANHOKU_COLOR_SWAP_V1,
+        }
+    }
+
+    /// Return the stable IDs in the configured source.  This is used by the
+    /// label calibration path, which must visit every predeclared suite ID
+    /// exactly once instead of sampling IDs from the normal split schedule.
+    pub fn opening_ids(&self) -> Vec<String> {
+        match self {
+            Self::UniformRandom { .. } => vec!["uniform-random".to_string()],
+            Self::Suite { openings, .. } => {
+                openings.iter().map(|opening| opening.id.clone()).collect()
+            }
+        }
+    }
+
+    pub fn select_for_id(
+        &self,
+        dataset: &str,
+        opening_id: &str,
+        game_index: u32,
+    ) -> Result<SelectedOpening> {
+        let pair_index = game_index / 2;
+        let game_id = format!("{dataset}-{game_index:010}");
+        match self {
+            Self::UniformRandom { base_sfen } if opening_id == "uniform-random" => {
+                Ok(SelectedOpening {
+                    sfen: base_sfen.clone(),
+                    metadata: GameOpeningMetadata {
+                        game_id,
+                        game_index,
+                        pair_index,
+                        opening_id: opening_id.to_string(),
+                        color: "unpaired".to_string(),
+                        sfen: base_sfen.clone(),
+                    },
+                })
+            }
+            Self::UniformRandom { .. } => {
+                bail!("opening ID `{opening_id}` is not present in the uniform source")
+            }
+            Self::Suite { openings, .. } => {
+                let opening = openings
+                    .iter()
+                    .find(|opening| opening.id == opening_id)
+                    .ok_or_else(|| {
+                        anyhow!("opening ID `{opening_id}` is not present in the suite")
+                    })?;
+                let swapped = game_index % 2 == 1;
+                let sfen = if swapped {
+                    opening.swapped_sfen.clone()
+                } else {
+                    opening.base_sfen.clone()
+                };
+                Ok(SelectedOpening {
+                    sfen: sfen.clone(),
+                    metadata: GameOpeningMetadata {
+                        game_id,
+                        game_index,
+                        pair_index,
+                        opening_id: opening.id.clone(),
+                        color: if swapped { "swapped" } else { "base" }.to_string(),
+                        sfen,
+                    },
+                })
+            }
         }
     }
 
@@ -504,6 +569,9 @@ fn hash_bytes_hex(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "anhoku")]
+    use std::collections::BTreeMap;
+
     use super::*;
     use tempfile::tempdir;
 

@@ -975,6 +975,12 @@ experiment, not a teacher, lambda, LR, and feature sweep.
 
 ### Phase 8D-A: audit and label-free rollout launch gate
 
+**Implementation status (2026-08-27):** the phase-independent packed-board
+audit, semantic/schedule identity split, searched-stochastic rollout, label-free
+trajectory audit, and matched label-calibration commands are implemented. The
+production freeze and Phase 8D-B remain gated on running the full configured
+telemetry and recording its pass/block decision.
+
 - Implement a small phase-independent dataset audit that counts both distinct
   full 72-byte records and distinct packed boards from bytes `0..64`. Define
   the training minimum by packed boards. Also report duplicate multiplicity

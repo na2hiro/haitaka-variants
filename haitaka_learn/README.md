@@ -122,8 +122,8 @@ Key fields:
     has zero overshoot, and the manifest reports the two counters separately
   - `incomplete_label_policy = "error"` is the default when a fixed-node
     search cannot complete depth 1; production fixed-node experiments may use
-    `"reject-position"` with `uniform-rollout-v1` to skip and explicitly count
-    those candidates without changing the self-play trajectory
+    `"reject-position"` with a versioned rollout policy to skip and explicitly
+    count those candidates without changing the self-play trajectory
   - `position_policy = "root-position"` preserves legacy records and is the
     default; `position_policy = "qsearch-pv-leaf"` stores the final traced PV
     leaf with its static evaluation while retaining the root game ply in the
@@ -133,9 +133,16 @@ Key fields:
     rejection cannot request replacement roots
   - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
     shallow, for example `1`, when running expensive label depths
-  - `self_play_move_policy = "uniform-rollout-v1"` makes label search observational:
-    every post-opening move uses rollout search even when the position is sampled. The
-    explicit `label-on-sample-legacy` compatibility policy reproduces older biased data.
+  - `self_play_move_policy = "searched-stochastic-rollout-v1"` scores a bounded,
+    canonically ordered legal-move set with cheap search, samples within the
+    configured score margin, and derives the choice from the pair-index/ply
+    stream. `uniform-rollout-v1` remains readable only for historical data; the
+    explicit `label-on-sample-legacy` policy reproduces older biased data.
+  - `rollout_candidate_limit`, `rollout_score_margin`, `rollout_temperature`,
+    and `rollout_rng_version` are part of the generation-semantic identity.
+    `opening_random_plies` must be zero for searched-stochastic production.
+  - `minimum_train_boards` gates generation, merge, and training using distinct
+    packed board payloads (`bin` bytes `0..64`), not accepted-record count.
   - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
@@ -194,10 +201,26 @@ This:
 - optionally replaces each sampled root with its deterministic qsearch-PV leaf,
   rejects terminal and mate-saturated examples, and orients the final game
   result to the leaf side to move
-- uses `data.rollout_search_depth` for every post-opening self-play move under
-  `uniform-rollout-v1`, independently of whether the position is sampled
+  - uses the versioned searched-stochastic rollout for every move under the
+    Phase 8D policy, independently of whether the position is sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
+
+Phase 8D-A trajectory and label calibration telemetry:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- trajectory-audit \
+  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+cargo run --release -p haitaka_learn --features anhoku -- calibrate-labels \
+  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+```
+
+The audit is label-free and writes deterministic trajectory hashes, packed-board
+uniqueness, tranche yield, pair symmetry, score-gap, outcome, and rollout CPU
+telemetry. Calibration reuses the same 128 trajectory games and candidate roots
+for the predeclared 50k/100k/200k node budgets; its JSON decision selects the
+smallest passing budget when side/outcome rejection-rate deltas stay within
+0.05, or records a block requiring an adaptive-retry contract.
 
 Validate the configured suite without generating games:
 

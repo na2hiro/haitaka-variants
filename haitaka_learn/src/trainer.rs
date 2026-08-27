@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::{LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING};
 use crate::dataset::ENTRY_BYTES;
+use crate::dataset_audit::audit_dataset;
 
 #[derive(Debug, Serialize)]
 pub(crate) struct ExportMetadata {
@@ -165,6 +166,7 @@ pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> 
         "training dataset",
         loaded.config.data.train_games,
     )?;
+    ensure_training_board_minimum(loaded, &artifacts.train_bin, &artifacts.train_manifest)?;
     ensure_training_dataset_ready(
         &artifacts.validation_bin,
         &artifacts.validation_manifest,
@@ -516,6 +518,26 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     } else {
         bail!("{label} is missing: {}", path.display())
     }
+}
+
+fn ensure_training_board_minimum(
+    loaded: &LoadedConfig,
+    bin_path: &Path,
+    manifest_path: &Path,
+) -> Result<()> {
+    let Some(minimum) = loaded.config.data.minimum_train_boards()? else {
+        return Ok(());
+    };
+    let report = audit_dataset(bin_path, manifest_path, None).with_context(|| {
+        format!("failed to audit the training dataset before applying the {minimum}-board minimum")
+    })?;
+    let distinct_boards = report.distinct_packed_boards();
+    if distinct_boards < minimum {
+        bail!(
+            "training dataset contains {distinct_boards} distinct packed boards, below the configured minimum of {minimum}; do not start training"
+        );
+    }
+    Ok(())
 }
 
 fn ensure_training_dataset_ready(

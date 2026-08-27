@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::{self, File};
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -21,6 +22,7 @@ const MATE_SCORE_THRESHOLD: i32 = 29_000;
 pub struct AuditReport {
     schema: &'static str,
     file: AuditFile,
+    uniqueness: UniquenessStats,
     identity: AuditIdentity,
     side_to_move: BinaryCounts,
     ply_parity: ParityCounts,
@@ -32,6 +34,18 @@ pub struct AuditReport {
     groups: GroupStats,
 }
 
+impl AuditReport {
+    /// Number of distinct packed board payloads in the audited dataset.
+    ///
+    /// The training minimum is intentionally defined in terms of this value,
+    /// rather than the number of complete 72-byte records.  The latter also
+    /// includes labels and game metadata and can therefore hide a collapsed
+    /// trajectory policy.
+    pub(crate) fn distinct_packed_boards(&self) -> u64 {
+        self.uniqueness.distinct_packed_boards
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct AuditFile {
     path: String,
@@ -39,6 +53,47 @@ struct AuditFile {
     entry_bytes: usize,
     entries: u64,
     sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct UniquenessStats {
+    records: u64,
+    distinct_full_records: u64,
+    distinct_packed_boards: u64,
+    full_record_unique_ratio: f64,
+    packed_board_unique_ratio: f64,
+    duplicate_full_record_groups: u64,
+    duplicate_full_record_entries: u64,
+    max_full_record_multiplicity: u64,
+    full_record_multiplicity_histogram: BTreeMap<String, u64>,
+    duplicate_packed_board_groups: u64,
+    duplicate_packed_board_entries: u64,
+    max_packed_board_multiplicity: u64,
+    packed_board_multiplicity_histogram: BTreeMap<String, u64>,
+    conflicting_packed_board_groups: u64,
+    conflicting_packed_board_entries: u64,
+    conflicting_packed_board_examples: Vec<PackedBoardConflict>,
+    conflicting_packed_board_examples_truncated: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct PackedBoardConflict {
+    board_sha256: String,
+    multiplicity: u64,
+    targets: Vec<PackedBoardTarget>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+struct PackedBoardTarget {
+    score: i16,
+    ply: u16,
+    result: i8,
+}
+
+#[derive(Debug, Default)]
+struct PackedBoardAggregate {
+    multiplicity: u64,
+    targets: BTreeSet<PackedBoardTarget>,
 }
 
 #[derive(Debug, Serialize)]
@@ -195,6 +250,8 @@ pub fn audit_dataset(
             .with_context(|| format!("failed to open dataset {}", bin_path.display()))?,
     );
     let mut hash = Sha256::new();
+    let mut full_record_counts = HashMap::<[u8; ENTRY_BYTES], u64>::new();
+    let mut packed_board_counts = HashMap::<[u8; SCORE_OFFSET], PackedBoardAggregate>::new();
     let mut record = [0u8; ENTRY_BYTES];
     let mut sides = BinaryCounts { black: 0, white: 0 };
     let mut parity = ParityCounts { even: 0, odd: 0 };
@@ -216,6 +273,7 @@ pub fn audit_dataset(
     for _ in 0..expected_entries {
         reader.read_exact(&mut record)?;
         hash.update(record);
+        *full_record_counts.entry(record).or_default() += 1;
         // The packer mirrors Haitaka colors for the trainer: bit 0 means original White.
         if record[0] & 1 == 0 {
             sides.black += 1;
@@ -229,6 +287,13 @@ pub fn audit_dataset(
         root_ply_min = root_ply_min.min(ply);
         root_ply_max = root_ply_max.max(ply);
         let result = record[RESULT_OFFSET] as i8;
+        let mut packed_board = [0u8; SCORE_OFFSET];
+        packed_board.copy_from_slice(&record[..SCORE_OFFSET]);
+        let board_stats = packed_board_counts.entry(packed_board).or_default();
+        board_stats.multiplicity += 1;
+        board_stats
+            .targets
+            .insert(PackedBoardTarget { score, ply, result });
         if ply % 2 == 0 {
             parity.even += 1;
         } else {
@@ -326,6 +391,8 @@ pub fn audit_dataset(
         .filter_map(|game| game.get("game_id").and_then(Value::as_str))
         .collect::<std::collections::BTreeSet<_>>()
         .len() as u64;
+    let uniqueness =
+        build_uniqueness_stats(expected_entries, &full_record_counts, &packed_board_counts);
     Ok(AuditReport {
         schema: "haitaka-dataset-audit-v1",
         file: AuditFile {
@@ -335,6 +402,7 @@ pub fn audit_dataset(
             entries: expected_entries,
             sha256: format!("{:x}", hash.finalize()),
         },
+        uniqueness,
         identity,
         side_to_move: sides,
         ply_parity: parity,
@@ -397,6 +465,119 @@ pub fn audit_dataset(
             opening_group_overlap_ids,
         },
     })
+}
+
+fn build_uniqueness_stats(
+    records: u64,
+    full_record_counts: &HashMap<[u8; ENTRY_BYTES], u64>,
+    packed_board_counts: &HashMap<[u8; SCORE_OFFSET], PackedBoardAggregate>,
+) -> UniquenessStats {
+    let full_record_multiplicity_histogram =
+        multiplicity_histogram(full_record_counts.values().copied());
+    let packed_board_multiplicity_histogram = multiplicity_histogram(
+        packed_board_counts
+            .values()
+            .map(|aggregate| aggregate.multiplicity),
+    );
+    let duplicate_full_record_groups = full_record_counts
+        .values()
+        .filter(|&&multiplicity| multiplicity > 1)
+        .count() as u64;
+    let duplicate_packed_board_groups = packed_board_counts
+        .values()
+        .filter(|aggregate| aggregate.multiplicity > 1)
+        .count() as u64;
+    let conflicting = packed_board_counts
+        .values()
+        .filter(|aggregate| aggregate.targets.len() > 1)
+        .collect::<Vec<_>>();
+    let conflicting_packed_board_entries = conflicting
+        .iter()
+        .map(|aggregate| aggregate.multiplicity)
+        .sum();
+
+    // HashMap iteration is intentionally not used for report ordering.  Sort
+    // conflict examples by the packed payload's SHA-256 so repeated audits
+    // produce byte-identical JSON on every process/hash seed.
+    let mut conflict_examples = packed_board_counts
+        .iter()
+        .filter(|(_, aggregate)| aggregate.targets.len() > 1)
+        .map(|(board, aggregate)| {
+            let board_sha256 = hash_bytes_hex(board);
+            let targets = aggregate
+                .targets
+                .iter()
+                .map(|target| PackedBoardTarget {
+                    score: target.score,
+                    ply: target.ply,
+                    result: target.result,
+                })
+                .collect::<Vec<_>>();
+            (
+                board_sha256.clone(),
+                PackedBoardConflict {
+                    board_sha256,
+                    multiplicity: aggregate.multiplicity,
+                    targets,
+                },
+            )
+        })
+        .collect::<Vec<_>>();
+    conflict_examples.sort_by(|left, right| left.0.cmp(&right.0));
+    const MAX_CONFLICT_EXAMPLES: usize = 32;
+    let conflicting_packed_board_examples_truncated =
+        conflict_examples.len() > MAX_CONFLICT_EXAMPLES;
+    let conflicting_packed_board_examples = conflict_examples
+        .into_iter()
+        .take(MAX_CONFLICT_EXAMPLES)
+        .map(|(_, example)| example)
+        .collect();
+
+    UniquenessStats {
+        records,
+        distinct_full_records: full_record_counts.len() as u64,
+        distinct_packed_boards: packed_board_counts.len() as u64,
+        full_record_unique_ratio: ratio(full_record_counts.len() as u64, records),
+        packed_board_unique_ratio: ratio(packed_board_counts.len() as u64, records),
+        duplicate_full_record_groups,
+        duplicate_full_record_entries: records.saturating_sub(full_record_counts.len() as u64),
+        max_full_record_multiplicity: full_record_counts.values().copied().max().unwrap_or(0),
+        full_record_multiplicity_histogram,
+        duplicate_packed_board_groups,
+        duplicate_packed_board_entries: records.saturating_sub(packed_board_counts.len() as u64),
+        max_packed_board_multiplicity: packed_board_counts
+            .values()
+            .map(|aggregate| aggregate.multiplicity)
+            .max()
+            .unwrap_or(0),
+        packed_board_multiplicity_histogram,
+        conflicting_packed_board_groups: conflicting.len() as u64,
+        conflicting_packed_board_entries,
+        conflicting_packed_board_examples,
+        conflicting_packed_board_examples_truncated,
+    }
+}
+
+fn multiplicity_histogram(values: impl IntoIterator<Item = u64>) -> BTreeMap<String, u64> {
+    let mut histogram = BTreeMap::new();
+    for multiplicity in values {
+        *histogram.entry(multiplicity.to_string()).or_default() += 1;
+    }
+    histogram
+}
+
+fn ratio(numerator: u64, denominator: u64) -> f64 {
+    if denominator == 0 {
+        0.0
+    } else {
+        numerator as f64 / denominator as f64
+    }
+}
+
+fn hash_bytes_hex(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 pub fn write_report(report: &AuditReport, output: Option<&Path>) -> Result<Option<PathBuf>> {
@@ -519,5 +700,38 @@ mod tests {
         let two =
             serde_json::to_vec_pretty(&audit_dataset(&bin, &manifest, None).unwrap()).unwrap();
         assert_eq!(one, two);
+    }
+
+    #[test]
+    fn reports_full_record_and_packed_board_duplicates_and_conflicting_targets() {
+        let temp = tempdir().unwrap();
+        let bin = temp.path().join("fixture.bin");
+        let manifest = temp.path().join("fixture.json");
+        let records = [
+            entry(false, 100, 0, 8, 1),
+            entry(false, 100, 0, 8, 1),
+            // Keep bytes 0..64 unchanged while changing score, ply, and result.
+            entry(false, 101, 0, 9, -1),
+        ];
+        fs::write(&bin, records.concat()).unwrap();
+        fs::write(&manifest, r#"{"sampled_positions":3,"entry_bytes":72}"#).unwrap();
+
+        let report = audit_dataset(&bin, &manifest, None).unwrap();
+        assert_eq!(report.uniqueness.records, 3);
+        assert_eq!(report.uniqueness.distinct_full_records, 2);
+        assert_eq!(report.uniqueness.distinct_packed_boards, 1);
+        assert_eq!(report.uniqueness.duplicate_full_record_groups, 1);
+        assert_eq!(report.uniqueness.duplicate_full_record_entries, 1);
+        assert_eq!(report.uniqueness.duplicate_packed_board_groups, 1);
+        assert_eq!(report.uniqueness.duplicate_packed_board_entries, 2);
+        assert_eq!(report.uniqueness.conflicting_packed_board_groups, 1);
+        assert_eq!(report.uniqueness.conflicting_packed_board_entries, 3);
+        assert_eq!(report.uniqueness.conflicting_packed_board_examples.len(), 1);
+        assert_eq!(
+            report.uniqueness.conflicting_packed_board_examples[0]
+                .targets
+                .len(),
+            2
+        );
     }
 }

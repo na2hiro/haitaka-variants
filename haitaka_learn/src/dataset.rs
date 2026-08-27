@@ -33,13 +33,15 @@ use crate::config::{
     ArtifactPaths, IncompleteLabelPolicy, LabelSearchBudget, LoadedConfig, PositionPolicy, Ruleset,
     SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy, TEACHER_MOVE_ENCODING,
 };
-use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit};
+use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit, color_swap_anhoku_sfen};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
 const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-v1";
 const CANDIDATE_IDENTITY_VERSION: &str = "sample-root-sha256-v1";
+const GENERATION_SEMANTIC_IDENTITY_VERSION: &str = "generation-semantic-v1";
+const SCHEDULE_IDENTITY_VERSION: &str = "schedule-cardinality-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -117,6 +119,11 @@ struct DatasetManifest {
     candidate_roots_per_game: Option<u16>,
     candidate_identity_version: String,
     candidate_identity_sha256: String,
+    generation_semantic_identity_version: String,
+    generation_semantic_identity_sha256: String,
+    schedule_identity_version: String,
+    schedule_identity_sha256: String,
+    minimum_train_boards: Option<u64>,
     minimum_train_positions: Option<u64>,
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
@@ -130,6 +137,10 @@ struct DatasetManifest {
     leaf_distance_mean: f64,
     rollout_search_depth: u8,
     self_play_move_policy: String,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
@@ -138,6 +149,11 @@ struct DatasetManifest {
     label_nodes_per_search: f64,
     rollout_search_states: u64,
     rollout_search_qnodes: u64,
+    rollout_decisions: u64,
+    rollout_candidates_scored: u64,
+    rollout_near_best_candidates: u64,
+    rollout_selected_score_gap_sum: i64,
+    rollout_selected_score_gap_max: i32,
     label_search_cpu_seconds: f64,
     rollout_search_cpu_seconds: f64,
     generation_cpu_seconds: f64,
@@ -229,6 +245,16 @@ struct ShardManifest {
     #[serde(default)]
     candidate_identity_sha256: String,
     #[serde(default)]
+    generation_semantic_identity_version: String,
+    #[serde(default)]
+    generation_semantic_identity_sha256: String,
+    #[serde(default)]
+    schedule_identity_version: String,
+    #[serde(default)]
+    schedule_identity_sha256: String,
+    #[serde(default)]
+    minimum_train_boards: Option<u64>,
+    #[serde(default)]
     minimum_train_positions: Option<u64>,
     #[serde(default)]
     rejected_incomplete_label_positions: u64,
@@ -255,6 +281,14 @@ struct ShardManifest {
     #[serde(default = "legacy_self_play_move_policy")]
     self_play_move_policy: String,
     #[serde(default)]
+    rollout_candidate_limit: u16,
+    #[serde(default)]
+    rollout_score_margin: i32,
+    #[serde(default)]
+    rollout_temperature: f64,
+    #[serde(default)]
+    rollout_rng_version: String,
+    #[serde(default)]
     label_searches: u64,
     #[serde(default)]
     rollout_searches: u64,
@@ -266,6 +300,16 @@ struct ShardManifest {
     rollout_search_states: u64,
     #[serde(default)]
     rollout_search_qnodes: u64,
+    #[serde(default)]
+    rollout_decisions: u64,
+    #[serde(default)]
+    rollout_candidates_scored: u64,
+    #[serde(default)]
+    rollout_near_best_candidates: u64,
+    #[serde(default)]
+    rollout_selected_score_gap_sum: i64,
+    #[serde(default)]
+    rollout_selected_score_gap_max: i32,
     #[serde(default)]
     label_search_cpu_seconds: f64,
     #[serde(default)]
@@ -281,6 +325,8 @@ struct ShardManifest {
     sample_after_opening: bool,
     #[serde(default = "legacy_teacher_move_encoding")]
     teacher_move_encoding: String,
+    #[serde(default)]
+    feature_family: String,
     generated_at_unix_ms: u128,
     build_mode: String,
     entry_bytes: usize,
@@ -576,6 +622,11 @@ struct SearchUseStats {
     rollout_search_qnodes: u64,
     label_search_elapsed_seconds: f64,
     rollout_search_elapsed_seconds: f64,
+    rollout_decisions: u64,
+    rollout_candidates_scored: u64,
+    rollout_near_best_candidates: u64,
+    rollout_selected_score_gap_sum: i64,
+    rollout_selected_score_gap_max: i32,
     candidate_positions: u64,
     rejected_incomplete_label_positions: u64,
     rejected_terminal_positions: u64,
@@ -603,6 +654,14 @@ impl SearchUseStats {
         self.rollout_search_elapsed_seconds += summary.elapsed_seconds;
     }
 
+    fn record_rollout_decision(&mut self, candidates: u64, near_best: u64, score_gap: i32) {
+        self.rollout_decisions += 1;
+        self.rollout_candidates_scored += candidates;
+        self.rollout_near_best_candidates += near_best;
+        self.rollout_selected_score_gap_sum += i64::from(score_gap);
+        self.rollout_selected_score_gap_max = self.rollout_selected_score_gap_max.max(score_gap);
+    }
+
     fn add(&mut self, other: Self) {
         self.label_searches += other.label_searches;
         self.rollout_searches += other.rollout_searches;
@@ -612,6 +671,13 @@ impl SearchUseStats {
         self.rollout_search_qnodes += other.rollout_search_qnodes;
         self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
         self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
+        self.rollout_decisions += other.rollout_decisions;
+        self.rollout_candidates_scored += other.rollout_candidates_scored;
+        self.rollout_near_best_candidates += other.rollout_near_best_candidates;
+        self.rollout_selected_score_gap_sum += other.rollout_selected_score_gap_sum;
+        self.rollout_selected_score_gap_max = self
+            .rollout_selected_score_gap_max
+            .max(other.rollout_selected_score_gap_max);
         self.candidate_positions += other.candidate_positions;
         self.rejected_incomplete_label_positions += other.rejected_incomplete_label_positions;
         self.rejected_terminal_positions += other.rejected_terminal_positions;
@@ -703,6 +769,11 @@ impl From<&ShardManifest> for SearchUseStats {
             rollout_search_qnodes: manifest.rollout_search_qnodes,
             label_search_elapsed_seconds: manifest.label_search_cpu_seconds,
             rollout_search_elapsed_seconds: manifest.rollout_search_cpu_seconds,
+            rollout_decisions: manifest.rollout_decisions,
+            rollout_candidates_scored: manifest.rollout_candidates_scored,
+            rollout_near_best_candidates: manifest.rollout_near_best_candidates,
+            rollout_selected_score_gap_sum: manifest.rollout_selected_score_gap_sum,
+            rollout_selected_score_gap_max: manifest.rollout_selected_score_gap_max,
             candidate_positions: if manifest.candidate_positions == 0 {
                 manifest.sampled_positions
             } else {
@@ -745,6 +816,8 @@ struct TeacherSearchSummary {
     best_score: Option<i32>,
     states: u64,
     qnodes: u64,
+    total_nodes: u64,
+    node_limit: Option<u64>,
     elapsed_seconds: f64,
     training_trace: Option<SearchTrainingTrace>,
 }
@@ -756,6 +829,8 @@ impl From<SearchSummary> for TeacherSearchSummary {
             best_score: summary.best_score,
             states: summary.states,
             qnodes: summary.qsearch_stats.qnodes,
+            total_nodes: summary.states.saturating_add(summary.qsearch_stats.qnodes),
+            node_limit: None,
             elapsed_seconds: summary.elapsed_ms / 1_000.0,
             training_trace: None,
         }
@@ -769,6 +844,8 @@ impl From<NodeBudgetSearchSummary> for TeacherSearchSummary {
             best_score: summary.best_score,
             states: summary.alpha_beta_nodes,
             qnodes: summary.qsearch_nodes,
+            total_nodes: summary.total_nodes,
+            node_limit: Some(summary.node_limit),
             elapsed_seconds: summary.elapsed_ms / 1_000.0,
             training_trace: None,
         }
@@ -944,6 +1021,1649 @@ impl Teacher {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ScoredRolloutMove {
+    move_: Move,
+    score: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RolloutDecision {
+    move_: Move,
+    best_score: i32,
+    selected_score: i32,
+}
+
+/// Choose one move from a bounded, cheap-search-ranked candidate set.
+///
+/// Candidate ordering is performed in the canonical orientation of the board
+/// and its 180-degree color-swapped image.  The same pair-index/ply stream is
+/// therefore used for both games in a color-swapped opening pair, while the
+/// selected canonical move is transformed back for the swapped game.
+fn choose_searched_stochastic_rollout_move(
+    board: &Board,
+    legal_moves: &[Move],
+    teacher: &Teacher,
+    search_depth: u8,
+    candidate_limit: u16,
+    score_margin: i32,
+    temperature: f64,
+    base_seed: u64,
+    dataset_name: &str,
+    pair_index: u32,
+    ply: u16,
+    rng_version: &str,
+    workspace: &mut SearchWorkspace,
+    stats: &mut SearchUseStats,
+) -> Result<RolloutDecision> {
+    ensure!(
+        !legal_moves.is_empty(),
+        "searched-stochastic rollout requires at least one legal move"
+    );
+    ensure!(
+        candidate_limit > 0,
+        "rollout candidate limit must be positive"
+    );
+    ensure!(
+        temperature.is_finite() && temperature > 0.0,
+        "rollout temperature must be finite and positive"
+    );
+
+    let current_sfen = board.to_string();
+    let swapped_sfen = color_swap_anhoku_sfen(&current_sfen)?;
+    let use_swapped_orientation = swapped_sfen < current_sfen;
+    let canonical_board = Board::from_sfen(if use_swapped_orientation {
+        &swapped_sfen
+    } else {
+        &current_sfen
+    })
+    .map_err(|err| anyhow!("failed to parse canonical rollout position: {err}"))?;
+    let mut candidates = legal_moves
+        .iter()
+        .copied()
+        .map(|move_| {
+            let canonical_move = if use_swapped_orientation {
+                transform_move(move_)
+            } else {
+                move_
+            };
+            (canonical_move.to_string(), move_, canonical_move)
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| left.0.cmp(&right.0));
+    candidates.truncate(usize::from(candidate_limit).min(candidates.len()));
+
+    let mut scored = Vec::with_capacity(candidates.len());
+    for (_, _original_move, canonical_move) in candidates {
+        ensure!(
+            canonical_board.is_legal(canonical_move),
+            "canonical rollout candidate `{canonical_move}` is not legal"
+        );
+        let mut child = canonical_board.clone();
+        child.play_unchecked(canonical_move);
+        let summary = teacher.search_depth(&child, search_depth, workspace)?;
+        stats.record_rollout(&summary);
+        let score = summary.best_score.map_or(0, |score| -score);
+        scored.push(ScoredRolloutMove {
+            move_: canonical_move,
+            score,
+        });
+    }
+
+    scored.sort_by(|left, right| {
+        right
+            .score
+            .cmp(&left.score)
+            .then_with(|| left.move_.to_string().cmp(&right.move_.to_string()))
+    });
+    let best_score = scored[0].score;
+    let cutoff = best_score.saturating_sub(score_margin);
+    let near_best_candidates = scored
+        .iter()
+        .filter(|candidate| candidate.score >= cutoff)
+        .count();
+    let selected_index = weighted_choice_index(
+        &scored[..near_best_candidates],
+        temperature,
+        rollout_stream_seed(base_seed, dataset_name, pair_index, ply, rng_version),
+    );
+    let selected = scored[selected_index];
+    let selected_move = if use_swapped_orientation {
+        transform_move(selected.move_)
+    } else {
+        selected.move_
+    };
+    ensure!(
+        legal_moves.contains(&selected_move),
+        "searched-stochastic rollout selected illegal move `{selected_move}`"
+    );
+    stats.record_rollout_decision(
+        scored.len() as u64,
+        near_best_candidates as u64,
+        best_score.saturating_sub(selected.score),
+    );
+    Ok(RolloutDecision {
+        move_: selected_move,
+        best_score,
+        selected_score: selected.score,
+    })
+}
+
+fn weighted_choice_index(candidates: &[ScoredRolloutMove], temperature: f64, seed: u64) -> usize {
+    debug_assert!(!candidates.is_empty());
+    if candidates.len() == 1 {
+        return 0;
+    }
+    let best_score = candidates[0].score;
+    let weights = candidates
+        .iter()
+        .map(|candidate| {
+            (f64::from(candidate.score.saturating_sub(best_score)) / temperature)
+                .exp()
+                .max(f64::MIN_POSITIVE)
+        })
+        .collect::<Vec<_>>();
+    let total = weights.iter().sum::<f64>();
+    let target = unit_interval(splitmix64(seed)) * total;
+    let mut cumulative = 0.0;
+    for (index, weight) in weights.iter().enumerate() {
+        cumulative += weight;
+        if target < cumulative || index + 1 == weights.len() {
+            return index;
+        }
+    }
+    candidates.len() - 1
+}
+
+fn unit_interval(value: u64) -> f64 {
+    // Use the top 53 bits so the conversion is exact for the generated
+    // double and independent of rand crate implementation details.
+    (value >> 11) as f64 / (1u64 << 53) as f64
+}
+
+fn rollout_stream_seed(
+    base_seed: u64,
+    dataset_name: &str,
+    pair_index: u32,
+    ply: u16,
+    rng_version: &str,
+) -> u64 {
+    let mut hasher = Sha256::new();
+    hasher.update(b"haitaka-rollout-stream\0");
+    hasher.update(rng_version.as_bytes());
+    hasher.update([0]);
+    hasher.update(dataset_name.as_bytes());
+    hasher.update([0]);
+    hasher.update(base_seed.to_le_bytes());
+    hasher.update(pair_index.to_le_bytes());
+    hasher.update(ply.to_le_bytes());
+    let digest = hasher.finalize();
+    splitmix64(u64::from_le_bytes(
+        digest[..8].try_into().expect("SHA-256 prefix is 8 bytes"),
+    ))
+}
+
+fn transform_move(move_: Move) -> Move {
+    match move_ {
+        Move::Drop { piece, to } => Move::Drop {
+            piece,
+            to: to.flip(),
+        },
+        Move::BoardMove {
+            from,
+            to,
+            promotion,
+        } => Move::BoardMove {
+            from: from.flip(),
+            to: to.flip(),
+            promotion,
+        },
+    }
+}
+
+const TRAJECTORY_AUDIT_SCHEMA: &str = "haitaka-trajectory-audit-v1";
+const LABEL_CALIBRATION_SCHEMA: &str = "haitaka-label-calibration-v1";
+const TRAJECTORY_TRANCHE_GAMES: usize = 64;
+const TRAJECTORY_MIN_UNIQUE_RATIO: f64 = 0.95;
+const TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME: f64 = 30.0;
+const CALIBRATION_MAX_INCOMPLETE_PERCENT: u64 = 1;
+const CALIBRATION_MAX_BIAS_DELTA: f64 = 0.05;
+const CALIBRATION_BUDGETS: [u64; 3] = [50_000, 100_000, 200_000];
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TrajectoryAuditOptions {
+    pub jobs: Option<u32>,
+    pub shard_index: Option<u32>,
+    pub shard_index_end: Option<u32>,
+    pub shard_count: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TrajectoryAuditReport {
+    schema: &'static str,
+    source: TrajectorySourceIdentity,
+    policy: TrajectoryPolicyIdentity,
+    limits: TrajectoryAuditLimits,
+    totals: TrajectoryTotals,
+    tranches: Vec<TrajectoryTranche>,
+    trajectories: Vec<TrajectorySummary>,
+    paired_symmetry: PairedSymmetry,
+    decision: TrajectoryAuditDecision,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectorySourceIdentity {
+    config_path: String,
+    config_sha256: String,
+    ruleset: String,
+    rule_id: u16,
+    teacher_build_mode: String,
+    teacher_sha256: Option<String>,
+    engine_revision: Option<String>,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    train_opening_ids: Vec<String>,
+    ood_v2_opening_ids: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryPolicyIdentity {
+    self_play_move_policy: String,
+    rollout_search_depth: u8,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
+    opening_random_plies: u16,
+    stream_key: String,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryAuditLimits {
+    games_requested: u32,
+    games_audited: u64,
+    max_games: u64,
+    tranche_games: usize,
+    minimum_packed_board_unique_ratio: f64,
+    minimum_final_new_boards_per_game: f64,
+    jobs: usize,
+    shard_index: Option<u32>,
+    shard_index_end: Option<u32>,
+    shard_count: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryTotals {
+    games: u64,
+    game_plies: u64,
+    game_length_min: u16,
+    game_length_max: u16,
+    game_length_mean: f64,
+    packed_board_occurrences: u64,
+    distinct_packed_boards: u64,
+    packed_board_unique_ratio: f64,
+    black_wins: u64,
+    white_wins: u64,
+    draws: u64,
+    rollout_decisions: u64,
+    rollout_candidates_scored: u64,
+    rollout_near_best_candidates: u64,
+    selected_score_gap_mean: f64,
+    selected_score_gap_max: i32,
+    rollout_searches: u64,
+    rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    rollout_cpu_seconds: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryTranche {
+    ordinal_start: u64,
+    ordinal_end_exclusive: u64,
+    dataset_counts: BTreeMap<String, u64>,
+    games: u64,
+    packed_board_occurrences: u64,
+    new_packed_boards: u64,
+    new_packed_boards_per_game: f64,
+    cumulative_distinct_packed_boards: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectorySummary {
+    dataset: String,
+    game_index: u32,
+    pair_index: u32,
+    opening_id: String,
+    color: String,
+    game_length: u16,
+    outcome: String,
+    packed_board_occurrences: u64,
+    distinct_packed_boards_in_game: u64,
+    new_packed_boards: u64,
+    selected_score_gap_mean: f64,
+    selected_score_gap_max: i32,
+    rollout_decisions: u64,
+    rollout_cpu_seconds: f64,
+    trajectory_sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PairedSymmetry {
+    pairs_expected: u64,
+    pairs_compared: u64,
+    exact_transformed_move_sequence_pairs: u64,
+    mismatched_pairs: u64,
+    unpaired_games: u64,
+    mismatch_examples: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryAuditDecision {
+    passed: bool,
+    packed_board_unique_ratio: f64,
+    final_tranche_new_packed_boards_per_game: f64,
+    failures: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TrajectoryTask {
+    dataset_name: &'static str,
+    game_index: u32,
+}
+
+#[derive(Debug)]
+struct TrajectoryGame {
+    task: TrajectoryTask,
+    opening: GameOpeningMetadata,
+    boards: Vec<[u8; PACKED_SFEN_BYTES]>,
+    moves: Vec<Move>,
+    score_gaps: Vec<i32>,
+    stats: SearchUseStats,
+    outcome: GameOutcome,
+    trajectory_sha256: String,
+    calibration_roots: Vec<CalibrationRoot>,
+}
+
+#[derive(Debug, Clone)]
+struct CalibrationRoot {
+    board: Board,
+    root_ply: u16,
+    side_to_move: Color,
+    outcome: GameOutcome,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LabelCalibrationReport {
+    schema: &'static str,
+    source: TrajectorySourceIdentity,
+    policy: TrajectoryPolicyIdentity,
+    calibration: LabelCalibrationIdentity,
+    trajectories: Vec<CalibrationTrajectorySummary>,
+    budgets: Vec<CalibrationBudgetReport>,
+    decision: LabelCalibrationDecision,
+}
+
+#[derive(Debug, Serialize)]
+struct LabelCalibrationIdentity {
+    games: u64,
+    suite_ids: Vec<String>,
+    train_suite_ids: Vec<String>,
+    ood_v2_suite_ids: Vec<String>,
+    candidate_root_schedule: String,
+    candidate_root_count: u64,
+    candidate_roots_sha256: String,
+    paired_root_mismatches: u64,
+    trajectory_hashes_sha256: String,
+    label_position_policy: String,
+    max_depth: u8,
+    max_rejection_rate_delta: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationTrajectorySummary {
+    dataset: String,
+    opening_id: String,
+    pair_index: u32,
+    base_trajectory_sha256: String,
+    swapped_trajectory_sha256: String,
+    candidate_roots: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationBudgetReport {
+    nodes: u64,
+    train: CalibrationSplitReport,
+    ood_v2: CalibrationSplitReport,
+    passed: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationSplitReport {
+    candidate_roots: u64,
+    incomplete_labels: u64,
+    incomplete_rate: f64,
+    terminal_labels: u64,
+    mate_labels: u64,
+    rejected_labels: u64,
+    alpha_beta_nodes: u64,
+    qsearch_nodes: u64,
+    accounted_nodes: u64,
+    requested_node_budget: u64,
+    node_accounting_exact: bool,
+    node_accounting_errors: u64,
+    incomplete_by_side: BinaryCalibrationCounts,
+    rejected_by_side: BinaryCalibrationCounts,
+    incomplete_by_outcome: OutcomeCalibrationCounts,
+    rejected_by_outcome: OutcomeCalibrationCounts,
+    side_rejection_rate_delta: f64,
+    outcome_rejection_rate_delta: f64,
+    passed: bool,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct BinaryCalibrationCounts {
+    black: u64,
+    white: u64,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct OutcomeCalibrationCounts {
+    win: u64,
+    loss: u64,
+    draw: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct LabelCalibrationDecision {
+    passed: bool,
+    selected_budget_nodes: Option<u64>,
+    status: String,
+    failures: Vec<String>,
+}
+
+pub fn audit_trajectories(
+    loaded: &LoadedConfig,
+    options: TrajectoryAuditOptions,
+) -> Result<TrajectoryAuditReport> {
+    loaded.ruleset_requires_matching_engine()?;
+    ensure!(
+        loaded
+            .config
+            .data
+            .self_play_move_policy
+            .is_searched_stochastic(),
+        "trajectory-audit requires data.self_play_move_policy=searched-stochastic-rollout-v1; historical uniform-rollout-v1 is readable but not a Phase 8D production policy"
+    );
+    ensure!(
+        loaded.config.data.opening_random_plies == 0,
+        "trajectory-audit requires data.opening_random_plies=0"
+    );
+
+    let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
+    let teacher = Teacher::from_config(loaded)?;
+    let selector = ShardSelector::new(
+        options.shard_index,
+        options.shard_index_end,
+        options.shard_count,
+    )?;
+    let tasks = trajectory_tasks(loaded, selector);
+    ensure!(
+        tasks.len() <= 4096,
+        "trajectory-audit selected {} games, above the hard limit of 4096; use shard selectors or reduce data.train_games/data.validation_games",
+        tasks.len()
+    );
+    ensure!(!tasks.is_empty(), "trajectory-audit selected no games");
+    let jobs = resolve_jobs(options.jobs.unwrap_or(loaded.config.data.jobs))?
+        .min(tasks.len())
+        .max(1);
+    let trajectories = collect_trajectory_games(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        &tasks,
+        jobs,
+        false,
+    )?;
+    let engine_revision = detect_git_revision(loaded)?;
+    build_trajectory_audit_report(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        engine_revision,
+        trajectories,
+        jobs,
+        options,
+    )
+}
+
+fn trajectory_tasks(loaded: &LoadedConfig, selector: ShardSelector) -> Vec<TrajectoryTask> {
+    let mut tasks = Vec::new();
+    for (dataset_name, game_count) in [
+        ("train", loaded.config.data.train_games),
+        ("validation", loaded.config.data.validation_games),
+    ] {
+        for plan in shard_plans(game_count, loaded.config.data.shard_games, selector) {
+            for game_index in plan.game_start..plan.game_start + plan.game_count {
+                tasks.push(TrajectoryTask {
+                    dataset_name,
+                    game_index,
+                });
+            }
+        }
+    }
+    tasks
+}
+
+fn collect_trajectory_games(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    tasks: &[TrajectoryTask],
+    jobs: usize,
+    calibration_root_schedule: bool,
+) -> Result<Vec<TrajectoryGame>> {
+    let queue = Arc::new(Mutex::new(VecDeque::from(tasks.to_vec())));
+    let results = Arc::new(Mutex::new(Vec::<(
+        TrajectoryTask,
+        std::result::Result<TrajectoryGame, String>,
+    )>::new()));
+    thread::scope(|scope| {
+        for _ in 0..jobs.min(tasks.len()).max(1) {
+            let queue = Arc::clone(&queue);
+            let results = Arc::clone(&results);
+            scope.spawn(move || {
+                let mut workspace = SearchWorkspace::default();
+                loop {
+                    let Some(task) = queue.lock().expect("trajectory queue poisoned").pop_front()
+                    else {
+                        break;
+                    };
+                    let result = play_label_free_trajectory(
+                        loaded,
+                        teacher,
+                        opening_source,
+                        opening_split,
+                        task,
+                        None,
+                        calibration_root_schedule,
+                        &mut workspace,
+                    )
+                    .map_err(|err| format!("{err:#}"));
+                    let failed = result.is_err();
+                    results
+                        .lock()
+                        .expect("trajectory results poisoned")
+                        .push((task, result));
+                    if failed {
+                        // One failure is enough to make the audit invalid, and
+                        // stopping this worker avoids producing a misleading
+                        // partial report while other workers drain normally.
+                        break;
+                    }
+                }
+            });
+        }
+    });
+
+    let mut results = Arc::try_unwrap(results)
+        .map_err(|_| anyhow!("trajectory workers still hold their result queue"))?
+        .into_inner()
+        .map_err(|_| anyhow!("trajectory result queue was poisoned"))?;
+    results.sort_by_key(|(task, _)| (dataset_sort_key(task.dataset_name), task.game_index));
+    let mut trajectories = Vec::with_capacity(results.len());
+    for (task, result) in results {
+        trajectories.push(result.map_err(|err| anyhow!(err)).with_context(|| {
+            format!(
+                "failed to audit {} trajectory game {}",
+                task.dataset_name, task.game_index
+            )
+        })?);
+    }
+    ensure!(
+        trajectories.len() == tasks.len(),
+        "trajectory workers returned {}/{} games",
+        trajectories.len(),
+        tasks.len()
+    );
+    Ok(trajectories)
+}
+
+fn dataset_sort_key(dataset_name: &str) -> u8 {
+    match dataset_name {
+        "train" => 0,
+        "validation" => 1,
+        _ => 2,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn play_label_free_trajectory(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    task: TrajectoryTask,
+    forced_opening_id: Option<&str>,
+    calibration_root_schedule: bool,
+    search_workspace: &mut SearchWorkspace,
+) -> Result<TrajectoryGame> {
+    let seed = game_seed(loaded.config.data.seed, task.dataset_name, task.game_index);
+    let pair_seed = game_seed(
+        loaded.config.data.seed,
+        task.dataset_name,
+        task.game_index / 2,
+    );
+    let selected_opening = match forced_opening_id {
+        Some(opening_id) => {
+            opening_source.select_for_id(task.dataset_name, opening_id, task.game_index)?
+        }
+        None => {
+            opening_source.select(task.dataset_name, opening_split, pair_seed, task.game_index)?
+        }
+    };
+    let mut board = Board::from_sfen(&selected_opening.sfen)
+        .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
+    let sample_origin = if calibration_root_schedule {
+        loaded.config.data.sample_start_ply
+    } else {
+        sampling_origin(
+            seed,
+            loaded.config.data.sampling_policy,
+            loaded.config.data.sample_start_ply,
+            loaded.config.data.opening_random_plies,
+            loaded.config.data.sample_every_ply,
+        )
+    };
+    let mut boards = Vec::new();
+    let mut moves = Vec::new();
+    let mut score_gaps = Vec::new();
+    let mut calibration_roots = Vec::new();
+    let mut attempted_candidate_roots = 0u16;
+    let mut played_plies = 0u16;
+    let mut stats = SearchUseStats::default();
+
+    while played_plies < loaded.config.data.max_plies {
+        if !has_both_kings(&board) {
+            break;
+        }
+        let legal_moves = collect_legal_moves(&board);
+        if legal_moves.is_empty() {
+            break;
+        }
+        let should_collect_root = played_plies >= sample_origin
+            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
+            && match loaded.config.data.max_candidate_roots_per_game {
+                Some(limit) => attempted_candidate_roots < limit,
+                None => attempted_candidate_roots < loaded.config.data.max_positions_per_game,
+            };
+        if should_collect_root {
+            attempted_candidate_roots += 1;
+            if calibration_root_schedule {
+                calibration_roots.push(CalibrationRoot {
+                    board: board.clone(),
+                    root_ply: played_plies,
+                    side_to_move: board.side_to_move(),
+                    outcome: GameOutcome::Draw,
+                });
+            }
+        }
+        boards.push(pack_board_for_training(&board)?);
+        let decision = choose_searched_stochastic_rollout_move(
+            &board,
+            &legal_moves,
+            teacher,
+            loaded.config.data.rollout_search_depth,
+            loaded.config.data.rollout_candidate_limit,
+            loaded.config.data.rollout_score_margin,
+            loaded.config.data.rollout_temperature,
+            loaded.config.data.seed,
+            task.dataset_name,
+            task.game_index / 2,
+            played_plies,
+            &loaded.config.data.rollout_rng_version,
+            search_workspace,
+            &mut stats,
+        )?;
+        score_gaps.push(decision.best_score.saturating_sub(decision.selected_score));
+        moves.push(decision.move_);
+        board.play_unchecked(decision.move_);
+        played_plies += 1;
+    }
+
+    let outcome = determine_game_outcome(&board, played_plies, loaded.config.data.max_plies);
+    for root in &mut calibration_roots {
+        root.outcome = outcome;
+    }
+    let trajectory_sha256 = trajectory_hash(task, &selected_opening.metadata, &moves);
+    Ok(TrajectoryGame {
+        task,
+        opening: selected_opening.metadata,
+        boards,
+        moves,
+        score_gaps,
+        stats,
+        outcome,
+        trajectory_sha256,
+        calibration_roots,
+    })
+}
+
+fn determine_game_outcome(board: &Board, played_plies: u16, max_plies: u16) -> GameOutcome {
+    if played_plies >= max_plies {
+        GameOutcome::Draw
+    } else if !board.has(Color::Black, Piece::King) {
+        GameOutcome::Winner(Color::White)
+    } else if !board.has(Color::White, Piece::King) {
+        GameOutcome::Winner(Color::Black)
+    } else {
+        match board.status() {
+            haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
+            haitaka::GameStatus::Drawn | haitaka::GameStatus::Ongoing => GameOutcome::Draw,
+        }
+    }
+}
+
+fn trajectory_hash(task: TrajectoryTask, opening: &GameOpeningMetadata, moves: &[Move]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"haitaka-trajectory-v1\0");
+    hasher.update(task.dataset_name.as_bytes());
+    hasher.update([0]);
+    hasher.update(task.game_index.to_le_bytes());
+    for value in [&opening.opening_id, &opening.sfen] {
+        hasher.update((value.len() as u32).to_le_bytes());
+        hasher.update(value.as_bytes());
+    }
+    hasher.update((moves.len() as u32).to_le_bytes());
+    for move_ in moves {
+        let text = move_.to_string();
+        hasher.update((text.len() as u32).to_le_bytes());
+        hasher.update(text.as_bytes());
+    }
+    format!("{:x}", hasher.finalize())
+}
+
+fn trajectory_source_identity(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    engine_revision: Option<String>,
+) -> Result<TrajectorySourceIdentity> {
+    Ok(TrajectorySourceIdentity {
+        config_path: loaded.path.display().to_string(),
+        config_sha256: loaded.hash_hex.clone(),
+        ruleset: loaded.config.rules.ruleset.as_str().to_string(),
+        rule_id: loaded.effective_rule_id()?,
+        teacher_build_mode: teacher_build_mode(loaded, teacher),
+        teacher_sha256: teacher.bootstrap_sha256().map(str::to_string),
+        engine_revision,
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        train_opening_ids: opening_split.train_ids.clone(),
+        ood_v2_opening_ids: opening_split.validation_ids.clone(),
+    })
+}
+
+fn trajectory_policy_identity(loaded: &LoadedConfig) -> TrajectoryPolicyIdentity {
+    TrajectoryPolicyIdentity {
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
+        stream_key: "dataset+pair-index+ply+rollout-rng-version".to_string(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_trajectory_audit_report(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    engine_revision: Option<String>,
+    trajectories: Vec<TrajectoryGame>,
+    jobs: usize,
+    options: TrajectoryAuditOptions,
+) -> Result<TrajectoryAuditReport> {
+    let source = trajectory_source_identity(
+        loaded,
+        teacher,
+        opening_source,
+        opening_split,
+        engine_revision,
+    )?;
+    let policy = trajectory_policy_identity(loaded);
+    let mut all_boards = BTreeSet::<[u8; PACKED_SFEN_BYTES]>::new();
+    let mut total_stats = SearchUseStats::default();
+    let mut summaries = Vec::with_capacity(trajectories.len());
+    let mut tranches = Vec::new();
+    let mut game_plies = 0u64;
+    let mut packed_board_occurrences = 0u64;
+    let mut score_gap_sum = 0i64;
+    let mut score_gap_max = 0i32;
+    let mut black_wins = 0u64;
+    let mut white_wins = 0u64;
+    let mut draws = 0u64;
+
+    for (tranche_index, chunk) in trajectories.chunks(TRAJECTORY_TRANCHE_GAMES).enumerate() {
+        let ordinal_start = (tranche_index * TRAJECTORY_TRANCHE_GAMES) as u64;
+        let ordinal_end_exclusive = ordinal_start + chunk.len() as u64;
+        let mut dataset_counts = BTreeMap::new();
+        let mut tranche_occurrences = 0u64;
+        let mut tranche_new_boards = 0u64;
+        for game in chunk {
+            let mut game_boards = BTreeSet::new();
+            let mut new_boards = 0u64;
+            for board in &game.boards {
+                game_boards.insert(*board);
+                if all_boards.insert(*board) {
+                    new_boards += 1;
+                }
+            }
+            *dataset_counts
+                .entry(trajectory_dataset_label(game.task.dataset_name).to_string())
+                .or_default() += 1;
+            tranche_occurrences += game.boards.len() as u64;
+            tranche_new_boards += new_boards;
+            game_plies += game.moves.len() as u64;
+            packed_board_occurrences += game.boards.len() as u64;
+            score_gap_sum += game
+                .score_gaps
+                .iter()
+                .map(|gap| i64::from(*gap))
+                .sum::<i64>();
+            score_gap_max =
+                score_gap_max.max(game.score_gaps.iter().copied().max().unwrap_or_default());
+            match game.outcome {
+                GameOutcome::Winner(Color::Black) => black_wins += 1,
+                GameOutcome::Winner(Color::White) => white_wins += 1,
+                GameOutcome::Draw => draws += 1,
+            }
+            total_stats.add(game.stats);
+            let game_gap_sum = game
+                .score_gaps
+                .iter()
+                .map(|gap| i64::from(*gap))
+                .sum::<i64>();
+            summaries.push(TrajectorySummary {
+                dataset: trajectory_dataset_label(game.task.dataset_name).to_string(),
+                game_index: game.task.game_index,
+                pair_index: game.task.game_index / 2,
+                opening_id: game.opening.opening_id.clone(),
+                color: game.opening.color.clone(),
+                game_length: game.moves.len() as u16,
+                outcome: outcome_label(game.outcome).to_string(),
+                packed_board_occurrences: game.boards.len() as u64,
+                distinct_packed_boards_in_game: game_boards.len() as u64,
+                new_packed_boards: new_boards,
+                selected_score_gap_mean: if game.score_gaps.is_empty() {
+                    0.0
+                } else {
+                    game_gap_sum as f64 / game.score_gaps.len() as f64
+                },
+                selected_score_gap_max: game.score_gaps.iter().copied().max().unwrap_or_default(),
+                rollout_decisions: game.stats.rollout_decisions,
+                rollout_cpu_seconds: game.stats.rollout_search_elapsed_seconds,
+                trajectory_sha256: game.trajectory_sha256.clone(),
+            });
+        }
+        tranches.push(TrajectoryTranche {
+            ordinal_start,
+            ordinal_end_exclusive,
+            dataset_counts,
+            games: chunk.len() as u64,
+            packed_board_occurrences: tranche_occurrences,
+            new_packed_boards: tranche_new_boards,
+            new_packed_boards_per_game: if chunk.is_empty() {
+                0.0
+            } else {
+                tranche_new_boards as f64 / chunk.len() as f64
+            },
+            cumulative_distinct_packed_boards: all_boards.len() as u64,
+        });
+    }
+
+    let paired_symmetry = audit_paired_symmetry(&trajectories);
+    let packed_board_unique_ratio = ratio_f64(all_boards.len() as u64, packed_board_occurrences);
+    let final_tranche_new_boards_per_game = tranches
+        .last()
+        .map(|tranche| tranche.new_packed_boards_per_game)
+        .unwrap_or_default();
+    let mut failures = Vec::new();
+    if packed_board_unique_ratio < TRAJECTORY_MIN_UNIQUE_RATIO {
+        failures.push(format!(
+            "packed-board uniqueness ratio {:.4} is below {:.2}",
+            packed_board_unique_ratio, TRAJECTORY_MIN_UNIQUE_RATIO
+        ));
+    }
+    if final_tranche_new_boards_per_game < TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME {
+        failures.push(format!(
+            "final-tranche new-board yield {:.2}/game is below {:.2}/game",
+            final_tranche_new_boards_per_game, TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME
+        ));
+    }
+    if paired_symmetry.mismatched_pairs > 0 {
+        failures.push(format!(
+            "{} color-swapped pairs did not reproduce the transformed move sequence",
+            paired_symmetry.mismatched_pairs
+        ));
+    }
+    if paired_symmetry.unpaired_games > 0 {
+        failures.push(format!(
+            "{} audited games had no color-swapped partner",
+            paired_symmetry.unpaired_games
+        ));
+    }
+    if trajectories.is_empty() {
+        failures.push("no trajectories were audited".to_string());
+    }
+
+    let games = trajectories.len() as u64;
+    let game_length_min = trajectories
+        .iter()
+        .map(|game| game.moves.len() as u16)
+        .min()
+        .unwrap_or_default();
+    let game_length_max = trajectories
+        .iter()
+        .map(|game| game.moves.len() as u16)
+        .max()
+        .unwrap_or_default();
+    let totals = TrajectoryTotals {
+        games,
+        game_plies,
+        game_length_min,
+        game_length_max,
+        game_length_mean: if games == 0 {
+            0.0
+        } else {
+            game_plies as f64 / games as f64
+        },
+        packed_board_occurrences,
+        distinct_packed_boards: all_boards.len() as u64,
+        packed_board_unique_ratio,
+        black_wins,
+        white_wins,
+        draws,
+        rollout_decisions: total_stats.rollout_decisions,
+        rollout_candidates_scored: total_stats.rollout_candidates_scored,
+        rollout_near_best_candidates: total_stats.rollout_near_best_candidates,
+        selected_score_gap_mean: if total_stats.rollout_decisions == 0 {
+            0.0
+        } else {
+            score_gap_sum as f64 / total_stats.rollout_decisions as f64
+        },
+        selected_score_gap_max: score_gap_max,
+        rollout_searches: total_stats.rollout_searches,
+        rollout_search_states: total_stats.rollout_search_states,
+        rollout_search_qnodes: total_stats.rollout_search_qnodes,
+        rollout_cpu_seconds: total_stats.rollout_search_elapsed_seconds,
+    };
+    Ok(TrajectoryAuditReport {
+        schema: TRAJECTORY_AUDIT_SCHEMA,
+        source,
+        policy,
+        limits: TrajectoryAuditLimits {
+            games_requested: loaded.config.data.train_games + loaded.config.data.validation_games,
+            games_audited: games,
+            max_games: 4096,
+            tranche_games: TRAJECTORY_TRANCHE_GAMES,
+            minimum_packed_board_unique_ratio: TRAJECTORY_MIN_UNIQUE_RATIO,
+            minimum_final_new_boards_per_game: TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME,
+            jobs,
+            shard_index: options.shard_index,
+            shard_index_end: options.shard_index_end,
+            shard_count: options.shard_count,
+        },
+        totals,
+        tranches,
+        trajectories: summaries,
+        paired_symmetry,
+        decision: TrajectoryAuditDecision {
+            passed: failures.is_empty(),
+            packed_board_unique_ratio,
+            final_tranche_new_packed_boards_per_game: final_tranche_new_boards_per_game,
+            failures,
+        },
+    })
+}
+
+fn trajectory_dataset_label(dataset_name: &str) -> &str {
+    match dataset_name {
+        "validation" => "ood-v2",
+        _ => dataset_name,
+    }
+}
+
+fn outcome_label(outcome: GameOutcome) -> &'static str {
+    match outcome {
+        GameOutcome::Draw => "draw",
+        GameOutcome::Winner(Color::Black) => "black-win",
+        GameOutcome::Winner(Color::White) => "white-win",
+    }
+}
+
+fn ratio_f64(numerator: u64, denominator: u64) -> f64 {
+    if denominator == 0 {
+        0.0
+    } else {
+        numerator as f64 / denominator as f64
+    }
+}
+
+fn audit_paired_symmetry(trajectories: &[TrajectoryGame]) -> PairedSymmetry {
+    let mut by_pair = BTreeMap::<(u8, u32), Vec<&TrajectoryGame>>::new();
+    for game in trajectories {
+        by_pair
+            .entry((
+                dataset_sort_key(game.task.dataset_name),
+                game.task.game_index / 2,
+            ))
+            .or_default()
+            .push(game);
+    }
+    let mut exact = 0u64;
+    let mut compared = 0u64;
+    let mut unpaired_games = 0u64;
+    let mut mismatch_examples = Vec::new();
+    for games in by_pair.values() {
+        let base = games.iter().find(|game| game.task.game_index % 2 == 0);
+        let swapped = games.iter().find(|game| game.task.game_index % 2 == 1);
+        match (base, swapped) {
+            (Some(base), Some(swapped)) => {
+                compared += 1;
+                let transformed = base
+                    .moves
+                    .iter()
+                    .copied()
+                    .map(transform_move)
+                    .collect::<Vec<_>>();
+                if transformed == swapped.moves
+                    && base.opening.opening_id == swapped.opening.opening_id
+                {
+                    exact += 1;
+                } else if mismatch_examples.len() < 16 {
+                    mismatch_examples.push(format!(
+                        "{} pair {} ({})",
+                        trajectory_dataset_label(base.task.dataset_name),
+                        base.task.game_index / 2,
+                        base.opening.opening_id
+                    ));
+                }
+            }
+            (Some(_), None) | (None, Some(_)) => unpaired_games += 1,
+            (None, None) => {}
+        }
+    }
+    let pairs_expected = by_pair.len() as u64;
+    PairedSymmetry {
+        pairs_expected,
+        pairs_compared: compared,
+        exact_transformed_move_sequence_pairs: exact,
+        mismatched_pairs: compared.saturating_sub(exact),
+        unpaired_games,
+        mismatch_examples,
+    }
+}
+
+pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport> {
+    loaded.ruleset_requires_matching_engine()?;
+    ensure!(
+        loaded
+            .config
+            .data
+            .self_play_move_policy
+            .is_searched_stochastic(),
+        "calibrate-labels requires data.self_play_move_policy=searched-stochastic-rollout-v1"
+    );
+    ensure!(
+        loaded.config.data.opening_random_plies == 0,
+        "calibrate-labels requires data.opening_random_plies=0"
+    );
+    let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
+    let mut suite_ids = opening_source.opening_ids();
+    suite_ids.sort();
+    ensure!(
+        suite_ids.len() == 64,
+        "calibrate-labels requires exactly 64 opening IDs (found {})",
+        suite_ids.len()
+    );
+    let train_ids = opening_split
+        .train_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let ood_ids = opening_split
+        .validation_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        train_ids.len() + ood_ids.len() == suite_ids.len()
+            && train_ids.is_disjoint(&ood_ids)
+            && suite_ids
+                .iter()
+                .all(|id| train_ids.contains(id) || ood_ids.contains(id)),
+        "calibrate-labels requires the 64 suite IDs to partition into train and OOD-v2 groups"
+    );
+    ensure!(
+        train_ids.len() == 52 && ood_ids.len() == 12,
+        "calibrate-labels requires exactly 52 train IDs and 12 OOD-v2 IDs (found {} and {})",
+        train_ids.len(),
+        ood_ids.len()
+    );
+    let calibration_tasks = suite_ids
+        .iter()
+        .enumerate()
+        .flat_map(|(ordinal, opening_id)| {
+            let dataset_name = if train_ids.contains(opening_id) {
+                "train"
+            } else {
+                "validation"
+            };
+            let base_index = (ordinal as u32) * 2;
+            [
+                (
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index: base_index,
+                    },
+                    opening_id.clone(),
+                ),
+                (
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index: base_index + 1,
+                    },
+                    opening_id.clone(),
+                ),
+            ]
+        })
+        .collect::<Vec<_>>();
+    let teacher = Teacher::from_config(loaded)?;
+    let jobs = resolve_jobs(loaded.config.data.jobs)?
+        .min(calibration_tasks.len())
+        .max(1);
+    let trajectories = collect_calibration_trajectory_games(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        &calibration_tasks,
+        jobs,
+    )?;
+    let mut trajectories_by_id = BTreeMap::<String, (&TrajectoryGame, &TrajectoryGame)>::new();
+    let mut root_hasher = Sha256::new();
+    let mut trajectory_hasher = Sha256::new();
+    let mut calibration_summaries = Vec::with_capacity(suite_ids.len());
+    let mut candidate_root_count = 0u64;
+    let mut paired_root_mismatches = 0u64;
+    for opening_id in &suite_ids {
+        let base = trajectories
+            .iter()
+            .find(|game| game.opening.opening_id == *opening_id && game.task.game_index % 2 == 0)
+            .ok_or_else(|| anyhow!("missing base calibration trajectory for `{opening_id}`"))?;
+        let swapped = trajectories
+            .iter()
+            .find(|game| game.opening.opening_id == *opening_id && game.task.game_index % 2 == 1)
+            .ok_or_else(|| anyhow!("missing swapped calibration trajectory for `{opening_id}`"))?;
+        trajectories_by_id.insert(opening_id.clone(), (base, swapped));
+        let roots_match = calibration_roots_match(base, swapped)?;
+        if !roots_match {
+            paired_root_mismatches += 1;
+        }
+        candidate_root_count +=
+            (base.calibration_roots.len() + swapped.calibration_roots.len()) as u64;
+        root_hasher.update(base.task.dataset_name.as_bytes());
+        root_hasher.update([0]);
+        root_hasher.update(opening_id.as_bytes());
+        root_hasher.update((base.calibration_roots.len() as u32).to_le_bytes());
+        for root in &base.calibration_roots {
+            root_hasher.update(root.root_ply.to_le_bytes());
+            let sfen = root.board.to_string();
+            root_hasher.update((sfen.len() as u32).to_le_bytes());
+            root_hasher.update(sfen.as_bytes());
+        }
+        for game in [base, swapped] {
+            trajectory_hasher.update(game.task.dataset_name.as_bytes());
+            trajectory_hasher.update([0]);
+            trajectory_hasher.update(opening_id.as_bytes());
+            trajectory_hasher.update(game.trajectory_sha256.as_bytes());
+        }
+        calibration_summaries.push(CalibrationTrajectorySummary {
+            dataset: trajectory_dataset_label(base.task.dataset_name).to_string(),
+            opening_id: opening_id.clone(),
+            pair_index: base.task.game_index / 2,
+            base_trajectory_sha256: base.trajectory_sha256.clone(),
+            swapped_trajectory_sha256: swapped.trajectory_sha256.clone(),
+            candidate_roots: (base.calibration_roots.len() + swapped.calibration_roots.len())
+                as u64,
+        });
+    }
+    let candidate_roots_sha256 = format!("{:x}", root_hasher.finalize());
+    let trajectory_hashes_sha256 = format!("{:x}", trajectory_hasher.finalize());
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let max_depth = label_budget.max_depth();
+    let mut budget_reports = Vec::with_capacity(CALIBRATION_BUDGETS.len());
+    for nodes in CALIBRATION_BUDGETS {
+        let mut train_roots = Vec::new();
+        let mut ood_roots = Vec::new();
+        for opening_id in &suite_ids {
+            let (base, swapped) = trajectories_by_id
+                .get(opening_id)
+                .expect("calibration trajectory map contains every suite ID");
+            let target = if train_ids.contains(opening_id) {
+                &mut train_roots
+            } else {
+                &mut ood_roots
+            };
+            target.extend(base.calibration_roots.iter());
+            target.extend(swapped.calibration_roots.iter());
+        }
+        let train = calibrate_label_split(
+            &teacher,
+            loaded.config.data.position_policy,
+            max_depth,
+            nodes,
+            &train_roots,
+        )?;
+        let ood_v2 = calibrate_label_split(
+            &teacher,
+            loaded.config.data.position_policy,
+            max_depth,
+            nodes,
+            &ood_roots,
+        )?;
+        budget_reports.push(CalibrationBudgetReport {
+            nodes,
+            passed: train.passed && ood_v2.passed,
+            train,
+            ood_v2,
+        });
+    }
+    let selected_budget_nodes = budget_reports
+        .iter()
+        .find(|report| report.passed)
+        .map(|report| report.nodes);
+    let mut failures = Vec::new();
+    if paired_root_mismatches > 0 {
+        failures.push(format!(
+            "{paired_root_mismatches} color-swapped calibration pairs did not have identical transformed candidate roots"
+        ));
+    }
+    if selected_budget_nodes.is_none() {
+        failures.push(
+            "none of the predeclared 50k/100k/200k node budgets passed both train and OOD-v2 calibration gates; define an adaptive-retry contract before proceeding"
+                .to_string(),
+        );
+    }
+    let status = if failures.is_empty() {
+        format!("passed; selected smallest budget {selected_budget_nodes:?}")
+    } else {
+        "blocked; no production label budget was selected".to_string()
+    };
+    let engine_revision = detect_git_revision(loaded)?;
+    Ok(LabelCalibrationReport {
+        schema: LABEL_CALIBRATION_SCHEMA,
+        source: trajectory_source_identity(
+            loaded,
+            &teacher,
+            &opening_source,
+            &opening_split,
+            engine_revision,
+        )?,
+        policy: trajectory_policy_identity(loaded),
+        calibration: LabelCalibrationIdentity {
+            games: trajectories.len() as u64,
+            suite_ids,
+            train_suite_ids: train_ids.into_iter().collect(),
+            ood_v2_suite_ids: ood_ids.into_iter().collect(),
+            candidate_root_schedule: "fixed-phase-calibration-v1".to_string(),
+            candidate_root_count,
+            candidate_roots_sha256,
+            paired_root_mismatches,
+            trajectory_hashes_sha256,
+            label_position_policy: loaded
+                .config
+                .data
+                .position_policy
+                .manifest_name()
+                .to_string(),
+            max_depth,
+            max_rejection_rate_delta: CALIBRATION_MAX_BIAS_DELTA,
+        },
+        trajectories: calibration_summaries,
+        budgets: budget_reports,
+        decision: LabelCalibrationDecision {
+            passed: failures.is_empty(),
+            selected_budget_nodes,
+            status,
+            failures,
+        },
+    })
+}
+
+fn collect_calibration_trajectory_games(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    tasks: &[(TrajectoryTask, String)],
+    jobs: usize,
+) -> Result<Vec<TrajectoryGame>> {
+    let queue = Arc::new(Mutex::new(VecDeque::from(tasks.to_vec())));
+    let results = Arc::new(Mutex::new(Vec::<(
+        TrajectoryTask,
+        std::result::Result<TrajectoryGame, String>,
+    )>::new()));
+    thread::scope(|scope| {
+        for _ in 0..jobs.min(tasks.len()).max(1) {
+            let queue = Arc::clone(&queue);
+            let results = Arc::clone(&results);
+            scope.spawn(move || {
+                let mut workspace = SearchWorkspace::default();
+                loop {
+                    let Some((task, opening_id)) = queue
+                        .lock()
+                        .expect("calibration queue poisoned")
+                        .pop_front()
+                    else {
+                        break;
+                    };
+                    let result = play_label_free_trajectory(
+                        loaded,
+                        teacher,
+                        opening_source,
+                        opening_split,
+                        task,
+                        Some(&opening_id),
+                        true,
+                        &mut workspace,
+                    )
+                    .map_err(|err| format!("{err:#}"));
+                    let failed = result.is_err();
+                    results
+                        .lock()
+                        .expect("calibration results poisoned")
+                        .push((task, result));
+                    if failed {
+                        break;
+                    }
+                }
+            });
+        }
+    });
+    let mut results = Arc::try_unwrap(results)
+        .map_err(|_| anyhow!("calibration workers still hold their result queue"))?
+        .into_inner()
+        .map_err(|_| anyhow!("calibration result queue was poisoned"))?;
+    results.sort_by_key(|(task, _)| (dataset_sort_key(task.dataset_name), task.game_index));
+    let mut trajectories = Vec::with_capacity(results.len());
+    for (task, result) in results {
+        trajectories.push(result.map_err(|err| anyhow!(err)).with_context(|| {
+            format!(
+                "failed to generate {} calibration trajectory game {}",
+                task.dataset_name, task.game_index
+            )
+        })?);
+    }
+    ensure!(
+        trajectories.len() == tasks.len(),
+        "calibration workers returned {}/{} games",
+        trajectories.len(),
+        tasks.len()
+    );
+    Ok(trajectories)
+}
+
+fn calibration_roots_match(base: &TrajectoryGame, swapped: &TrajectoryGame) -> Result<bool> {
+    if base.calibration_roots.len() != swapped.calibration_roots.len() {
+        return Ok(false);
+    }
+    for (base_root, swapped_root) in base
+        .calibration_roots
+        .iter()
+        .zip(&swapped.calibration_roots)
+    {
+        if base_root.root_ply != swapped_root.root_ply
+            || color_swap_anhoku_sfen(&base_root.board.to_string())?
+                != swapped_root.board.to_string()
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn calibrate_label_split(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    roots: &[&CalibrationRoot],
+) -> Result<CalibrationSplitReport> {
+    let mut workspace = SearchWorkspace::default();
+    let mut incomplete_labels = 0u64;
+    let mut terminal_labels = 0u64;
+    let mut mate_labels = 0u64;
+    let mut alpha_beta_nodes = 0u64;
+    let mut qsearch_nodes = 0u64;
+    let mut accounted_nodes = 0u64;
+    let mut node_accounting_errors = 0u64;
+    let mut incomplete_by_side = BinaryCalibrationCounts::default();
+    let mut rejected_by_side = BinaryCalibrationCounts::default();
+    let mut incomplete_by_outcome = OutcomeCalibrationCounts::default();
+    let mut rejected_by_outcome = OutcomeCalibrationCounts::default();
+    let mut candidate_by_side = BinaryCalibrationCounts::default();
+    let mut candidate_by_outcome = OutcomeCalibrationCounts::default();
+    for root in roots {
+        increment_binary(&mut candidate_by_side, root.side_to_move);
+        increment_outcome(
+            &mut candidate_by_outcome,
+            root.outcome.relative_to(root.side_to_move),
+        );
+        let summary = teacher.search_label(
+            &root.board,
+            LabelSearchBudget::Nodes { nodes, max_depth },
+            position_policy,
+            &mut workspace,
+        )?;
+        alpha_beta_nodes = alpha_beta_nodes.saturating_add(summary.states);
+        qsearch_nodes = qsearch_nodes.saturating_add(summary.qnodes);
+        accounted_nodes = accounted_nodes.saturating_add(summary.total_nodes);
+        let counter_sum = summary.states.checked_add(summary.qnodes);
+        if summary.node_limit != Some(nodes)
+            || counter_sum != Some(summary.total_nodes)
+            || summary.total_nodes > nodes
+        {
+            node_accounting_errors += 1;
+        }
+        let terminal = summary
+            .training_trace
+            .as_ref()
+            .is_some_and(|trace| trace.terminal || !has_both_kings(&trace.leaf_board));
+        let mate = summary
+            .best_score
+            .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32);
+        terminal_labels += u64::from(terminal);
+        mate_labels += u64::from(mate);
+        let incomplete = !node_budget_summary_is_complete(&summary);
+        incomplete_labels += u64::from(incomplete);
+        if incomplete {
+            increment_binary(&mut incomplete_by_side, root.side_to_move);
+            increment_outcome(
+                &mut incomplete_by_outcome,
+                root.outcome.relative_to(root.side_to_move),
+            );
+        }
+        let rejected = incomplete || terminal || mate;
+        if rejected {
+            increment_binary(&mut rejected_by_side, root.side_to_move);
+            increment_outcome(
+                &mut rejected_by_outcome,
+                root.outcome.relative_to(root.side_to_move),
+            );
+        }
+    }
+    let rejected_labels = rejected_by_side
+        .black
+        .saturating_add(rejected_by_side.white);
+    let candidate_count = roots.len() as u64;
+    let requested_node_budget = nodes.saturating_mul(candidate_count);
+    let side_rejection_rate_delta = binary_rate_delta(&rejected_by_side, &candidate_by_side);
+    let outcome_rejection_rate_delta =
+        outcome_rate_delta(&rejected_by_outcome, &candidate_by_outcome);
+    let passed = candidate_count > 0
+        && incomplete_labels.saturating_mul(100)
+            <= candidate_count.saturating_mul(CALIBRATION_MAX_INCOMPLETE_PERCENT)
+        && terminal_labels == 0
+        && mate_labels == 0
+        && node_accounting_errors == 0
+        && side_rejection_rate_delta <= CALIBRATION_MAX_BIAS_DELTA
+        && outcome_rejection_rate_delta <= CALIBRATION_MAX_BIAS_DELTA;
+    Ok(CalibrationSplitReport {
+        candidate_roots: candidate_count,
+        incomplete_labels,
+        incomplete_rate: ratio_f64(incomplete_labels, candidate_count),
+        terminal_labels,
+        mate_labels,
+        rejected_labels,
+        alpha_beta_nodes,
+        qsearch_nodes,
+        accounted_nodes,
+        requested_node_budget,
+        node_accounting_exact: node_accounting_errors == 0,
+        node_accounting_errors,
+        incomplete_by_side,
+        rejected_by_side,
+        incomplete_by_outcome,
+        rejected_by_outcome,
+        side_rejection_rate_delta,
+        outcome_rejection_rate_delta,
+        passed,
+    })
+}
+
+fn increment_binary(counts: &mut BinaryCalibrationCounts, side: Color) {
+    match side {
+        Color::Black => counts.black += 1,
+        Color::White => counts.white += 1,
+    }
+}
+
+fn increment_outcome(counts: &mut OutcomeCalibrationCounts, result: i8) {
+    match result {
+        1 => counts.win += 1,
+        -1 => counts.loss += 1,
+        0 => counts.draw += 1,
+        _ => {}
+    }
+}
+
+fn rejection_rate(rejected: u64, candidates: u64) -> f64 {
+    ratio_f64(rejected, candidates)
+}
+
+fn binary_rate_delta(
+    rejected: &BinaryCalibrationCounts,
+    candidates: &BinaryCalibrationCounts,
+) -> f64 {
+    (rejection_rate(rejected.black, candidates.black)
+        - rejection_rate(rejected.white, candidates.white))
+    .abs()
+}
+
+fn outcome_rate_delta(
+    rejected: &OutcomeCalibrationCounts,
+    candidates: &OutcomeCalibrationCounts,
+) -> f64 {
+    let rates = [
+        (rejected.win, candidates.win),
+        (rejected.loss, candidates.loss),
+        (rejected.draw, candidates.draw),
+    ]
+    .into_iter()
+    .filter(|(_, candidates)| *candidates > 0)
+    .map(|(rejected, candidates)| rejection_rate(rejected, candidates))
+    .collect::<Vec<_>>();
+    match (
+        rates.iter().copied().min_by(f64::total_cmp),
+        rates.iter().copied().max_by(f64::total_cmp),
+    ) {
+        (Some(min), Some(max)) => max - min,
+        _ => 0.0,
+    }
+}
+
+pub fn write_trajectory_audit_report(
+    loaded: &LoadedConfig,
+    report: &TrajectoryAuditReport,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    write_json_report(loaded, report, output, "trajectory-audit.json")
+}
+
+pub fn write_label_calibration_report(
+    loaded: &LoadedConfig,
+    report: &LabelCalibrationReport,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    write_json_report(loaded, report, output, "label-calibration.json")
+}
+
+fn write_json_report<T: Serialize>(
+    loaded: &LoadedConfig,
+    report: &T,
+    output: Option<PathBuf>,
+    default_name: &str,
+) -> Result<PathBuf> {
+    let artifacts = loaded.artifact_paths();
+    let path = output
+        .map(|path| loaded.resolve_path(&path))
+        .unwrap_or_else(|| artifacts.artifacts_dir.join(default_name));
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let mut bytes = serde_json::to_vec_pretty(report)?;
+    bytes.push(b'\n');
+    fs::write(&path, bytes).with_context(|| format!("failed to write {}", path.display()))?;
+    Ok(path)
+}
+
 fn node_budget_summary_is_complete(summary: &TeacherSearchSummary) -> bool {
     summary.best_move.is_some() && summary.best_score.is_some()
 }
@@ -1049,7 +2769,13 @@ pub fn generate_data_with_options(
         allow_identity_mismatch,
     )?;
     if shard_selector.is_full_run() {
-        ensure_minimum_train_positions(loaded, train_positions)?;
+        let artifacts = loaded.artifact_paths();
+        ensure_minimum_train_boards(
+            loaded,
+            &artifacts.train_bin,
+            &artifacts.train_manifest,
+            train_positions,
+        )?;
     }
     if graceful_stop_requested() {
         bail!(
@@ -1331,6 +3057,19 @@ fn generate_split(
     } else {
         label_search_total_nodes as f64 / search_stats.label_searches as f64
     };
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
+    let schedule_identity_sha256 =
+        schedule_identity_sha256(loaded, dataset_name, game_count, None)?;
 
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
@@ -1392,6 +3131,11 @@ fn generate_split(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256,
+        generation_semantic_identity_version: GENERATION_SEMANTIC_IDENTITY_VERSION.to_string(),
+        generation_semantic_identity_sha256,
+        schedule_identity_version: SCHEDULE_IDENTITY_VERSION.to_string(),
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
         minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
@@ -1410,6 +3154,10 @@ fn generate_split(
             .self_play_move_policy
             .manifest_name()
             .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
@@ -1418,6 +3166,11 @@ fn generate_split(
         label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
         label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
         rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         generation_cpu_seconds: search_stats.label_search_elapsed_seconds
@@ -1438,7 +3191,7 @@ fn generate_split(
         teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
         opening_random_plies: loaded.config.data.opening_random_plies,
         generated_at_unix_ms,
-        build_mode: teacher_build_mode(loaded, teacher),
+        build_mode,
         entry_bytes: ENTRY_BYTES,
         shard_count: shard_results.len(),
         jobs,
@@ -1485,6 +3238,8 @@ pub fn merge_data(
     artifacts.ensure_dirs()?;
     let opening_sfen = loaded.opening_sfen()?;
     let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let teacher = Teacher::from_config(loaded)?;
+    let engine_revision = detect_git_revision(loaded)?;
     let opening_split = opening_source.split_openings(
         loaded.config.data.split_policy,
         loaded.config.data.split_seed,
@@ -1509,10 +3264,17 @@ pub fn merge_data(
         &opening_sfen,
         &opening_source,
         &opening_split,
+        &teacher,
+        &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
-    ensure_minimum_train_positions(loaded, train_positions)?;
+    ensure_minimum_train_boards(
+        loaded,
+        &artifacts.train_bin,
+        &artifacts.train_manifest,
+        train_positions,
+    )?;
     let validation_positions = merge_split(
         "validation",
         loaded,
@@ -1523,6 +3285,8 @@ pub fn merge_data(
         &opening_sfen,
         &opening_source,
         &opening_split,
+        &teacher,
+        &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -1579,13 +3343,27 @@ impl ShardSelector {
     }
 }
 
-fn ensure_minimum_train_positions(loaded: &LoadedConfig, train_positions: u64) -> Result<()> {
-    if let Some(minimum) = loaded.config.data.minimum_train_positions {
-        ensure!(
-            train_positions >= minimum,
-            "training dataset contains {train_positions} accepted records, below the configured minimum of {minimum}; do not start training"
-        );
-    }
+fn ensure_minimum_train_boards(
+    loaded: &LoadedConfig,
+    train_bin: &Path,
+    train_manifest: &Path,
+    train_positions: u64,
+) -> Result<()> {
+    let Some(minimum) = loaded.config.data.minimum_train_boards()? else {
+        return Ok(());
+    };
+    let audit = crate::dataset_audit::audit_dataset(train_bin, train_manifest, None).with_context(
+        || {
+            format!(
+                "failed to audit the training dataset before applying the {minimum}-board minimum"
+            )
+        },
+    )?;
+    let distinct_boards = audit.distinct_packed_boards();
+    ensure!(
+        distinct_boards >= minimum,
+        "training dataset contains {distinct_boards} distinct packed boards ({train_positions} accepted records), below the configured minimum of {minimum}; do not start training"
+    );
     Ok(())
 }
 
@@ -1611,6 +3389,74 @@ struct MergeTeacherIdentity {
     build_mode: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MergeGenerationIdentity {
+    version: String,
+    sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GenerationSemanticIdentityMaterial {
+    schema: &'static str,
+    dataset: String,
+    ruleset: Ruleset,
+    rule_id: u16,
+    opening_sfen: String,
+    opening_policy: String,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    split_policy: String,
+    split_seed: u64,
+    train_opening_ids: Vec<String>,
+    validation_opening_ids: Vec<String>,
+    validation_opening_schedule: String,
+    validation_opening_pairs_per_id: Option<u32>,
+    seed: u64,
+    max_plies: u16,
+    opening_random_plies: u16,
+    sample_start_ply: u16,
+    sample_every_ply: u16,
+    sampling_phase: String,
+    sample_after_opening: bool,
+    label_search_budget: String,
+    label_search_nodes: Option<u64>,
+    label_search_max_depth: u8,
+    node_counting_version: &'static str,
+    position_policy: String,
+    training_trace_version: &'static str,
+    incomplete_label_policy: String,
+    max_positions_per_game: u16,
+    max_candidate_roots_per_game: Option<u16>,
+    candidate_identity_version: &'static str,
+    minimum_train_boards: Option<u64>,
+    self_play_move_policy: String,
+    rollout_search_depth: u8,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
+    feature_family: String,
+    teacher_build_mode: String,
+    teacher_sha256: Option<String>,
+    engine_revision: Option<String>,
+    teacher_move_encoding: &'static str,
+    entry_bytes: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct ScheduleIdentityMaterial {
+    schema: &'static str,
+    dataset: String,
+    train_games: u32,
+    validation_games: u32,
+    shard_games: u32,
+    requested_game_count: u32,
+    shard_index: Option<u32>,
+    game_start: Option<u32>,
+    game_count: Option<u32>,
+}
+
 impl MergeTeacherIdentity {
     fn from_manifest(manifest: &ShardManifest) -> Self {
         Self {
@@ -1620,6 +3466,111 @@ impl MergeTeacherIdentity {
             build_mode: manifest.build_mode.clone(),
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generation_semantic_identity_sha256(
+    loaded: &LoadedConfig,
+    dataset_name: &str,
+    opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    teacher_build_mode: &str,
+    teacher_sha256: Option<&str>,
+    engine_revision: Option<&str>,
+) -> Result<String> {
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let material = GenerationSemanticIdentityMaterial {
+        schema: GENERATION_SEMANTIC_IDENTITY_VERSION,
+        dataset: dataset_name.to_string(),
+        ruleset: loaded.config.rules.ruleset,
+        rule_id: loaded.effective_rule_id()?,
+        opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
+        seed: loaded.config.data.seed,
+        max_plies: loaded.config.data.max_plies,
+        opening_random_plies: loaded.config.data.opening_random_plies,
+        sample_start_ply: loaded.config.data.sample_start_ply,
+        sample_every_ply: loaded.config.data.sample_every_ply,
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION,
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION,
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
+        max_positions_per_game: loaded.config.data.max_positions_per_game,
+        max_candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
+        feature_family: loaded.training_features().to_string(),
+        teacher_build_mode: teacher_build_mode.to_string(),
+        teacher_sha256: teacher_sha256.map(str::to_string),
+        engine_revision: engine_revision.map(str::to_string),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING,
+        entry_bytes: ENTRY_BYTES,
+    };
+    Ok(hash_bytes_hex(&serde_json::to_vec(&material)?))
+}
+
+fn schedule_identity_sha256(
+    loaded: &LoadedConfig,
+    dataset_name: &str,
+    requested_game_count: u32,
+    plan: Option<ShardPlan>,
+) -> Result<String> {
+    let material = ScheduleIdentityMaterial {
+        schema: SCHEDULE_IDENTITY_VERSION,
+        dataset: dataset_name.to_string(),
+        train_games: loaded.config.data.train_games,
+        validation_games: loaded.config.data.validation_games,
+        shard_games: loaded.config.data.shard_games,
+        requested_game_count,
+        shard_index: plan.map(|plan| plan.shard_index),
+        game_start: plan.map(|plan| plan.game_start),
+        game_count: plan.map(|plan| plan.game_count),
+    };
+    Ok(hash_bytes_hex(&serde_json::to_vec(&material)?))
 }
 
 struct Progress {
@@ -1812,6 +3763,24 @@ fn generate_or_reuse_shard(
     writer.flush()?;
 
     let label_budget = loaded.config.data.label_search_budget()?;
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
+    let requested_game_count = match dataset_name {
+        "train" => loaded.config.data.train_games,
+        "validation" => loaded.config.data.validation_games,
+        _ => unreachable!("generate_or_reuse_shard validates the dataset name"),
+    };
+    let schedule_identity_sha256 =
+        schedule_identity_sha256(loaded, dataset_name, requested_game_count, Some(plan))?;
 
     let manifest = ShardManifest {
         dataset: dataset_name.to_string(),
@@ -1873,6 +3842,11 @@ fn generate_or_reuse_shard(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
+        generation_semantic_identity_version: GENERATION_SEMANTIC_IDENTITY_VERSION.to_string(),
+        generation_semantic_identity_sha256,
+        schedule_identity_version: SCHEDULE_IDENTITY_VERSION.to_string(),
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
         minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
@@ -1891,12 +3865,21 @@ fn generate_or_reuse_shard(
             .self_play_move_policy
             .manifest_name()
             .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
         label_search_qnodes: search_stats.label_search_qnodes,
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
         label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
         rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
@@ -1911,8 +3894,9 @@ fn generate_or_reuse_shard(
             .to_string(),
         sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
         teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        feature_family: loaded.training_features().to_string(),
         generated_at_unix_ms,
-        build_mode: teacher_build_mode(loaded, teacher),
+        build_mode,
         entry_bytes: ENTRY_BYTES,
         shard_index: plan.shard_index,
     };
@@ -1951,6 +3935,17 @@ fn reusable_shard(
             .with_context(|| format!("failed to read {}", manifest_path.display()))?,
     )
     .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let expected_semantic_identity = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
     if !shard_manifest_matches(
         loaded,
         dataset_name,
@@ -1959,6 +3954,7 @@ fn reusable_shard(
         opening_split,
         plan,
         &manifest,
+        &expected_semantic_identity,
         allow_identity_mismatch,
     )? {
         return Ok(None);
@@ -2001,9 +3997,31 @@ fn shard_manifest_matches(
     opening_split: &OpeningSplit,
     plan: ShardPlan,
     manifest: &ShardManifest,
+    expected_semantic_identity: &str,
     ignore_identity: bool,
 ) -> Result<bool> {
     let label_budget = loaded.config.data.label_search_budget()?;
+    let requested_game_count = match dataset_name {
+        "train" => loaded.config.data.train_games,
+        "validation" => loaded.config.data.validation_games,
+        _ => bail!("unknown dataset split `{dataset_name}`"),
+    };
+    let expected_schedule_identity =
+        schedule_identity_sha256(loaded, dataset_name, requested_game_count, Some(plan))?;
+    let semantic_identity_matches = manifest.generation_semantic_identity_version
+        == GENERATION_SEMANTIC_IDENTITY_VERSION
+        && manifest.generation_semantic_identity_sha256 == expected_semantic_identity;
+    let legacy_config_identity_matches = manifest.generation_semantic_identity_version.is_empty()
+        && manifest.config_hash == loaded.hash_hex;
+    let schedule_extension_config_mismatch = manifest.generation_semantic_identity_version
+        == GENERATION_SEMANTIC_IDENTITY_VERSION
+        && manifest.schedule_identity_version == SCHEDULE_IDENTITY_VERSION
+        && manifest.schedule_identity_sha256 != expected_schedule_identity;
+    let config_identity_matches = if semantic_identity_matches {
+        manifest.config_hash == loaded.hash_hex || schedule_extension_config_mismatch
+    } else {
+        legacy_config_identity_matches
+    };
     Ok(manifest.dataset == dataset_name
         && manifest.ruleset == loaded.config.rules.ruleset
         && manifest.rule_id == loaded.effective_rule_id()?
@@ -2037,10 +4055,19 @@ fn shard_manifest_matches(
         && manifest.incomplete_label_policy()
             == loaded.config.data.incomplete_label_policy.manifest_name()
         && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
+        && manifest.minimum_train_boards == loaded.config.data.minimum_train_boards()?
+        && manifest.minimum_train_positions == loaded.config.data.minimum_train_positions
         && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
         && (manifest.candidate_identity_version.is_empty()
             || manifest.candidate_identity_version == CANDIDATE_IDENTITY_VERSION)
-        && manifest.minimum_train_positions == loaded.config.data.minimum_train_positions
+        && (manifest.generation_semantic_identity_version != GENERATION_SEMANTIC_IDENTITY_VERSION
+            || (manifest.rollout_candidate_limit == loaded.config.data.rollout_candidate_limit
+                && manifest.rollout_score_margin == loaded.config.data.rollout_score_margin
+                && manifest.rollout_temperature == loaded.config.data.rollout_temperature
+                && manifest.rollout_rng_version == loaded.config.data.rollout_rng_version
+                && manifest.feature_family == loaded.training_features()))
+        && (manifest.feature_family.is_empty()
+            || manifest.feature_family == loaded.training_features())
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -2050,7 +4077,7 @@ fn shard_manifest_matches(
                 && manifest.sample_after_opening
                     == loaded.config.data.sampling_policy.samples_after_opening()
                 && manifest.teacher_move_encoding == TEACHER_MOVE_ENCODING))
-        && (ignore_identity || manifest.config_hash == loaded.hash_hex)
+        && (ignore_identity || config_identity_matches)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
 }
@@ -2144,6 +4171,17 @@ fn detect_identity_mismatch(
     ] {
         let shards_dir = artifacts.datasets_dir.join("shards").join(dataset_name);
         let plans = shard_plans(game_count, loaded.config.data.shard_games, shard_selector);
+        let build_mode = teacher_build_mode(loaded, teacher);
+        let expected_semantic_identity = generation_semantic_identity_sha256(
+            loaded,
+            dataset_name,
+            opening_sfen,
+            opening_source,
+            opening_split,
+            &build_mode,
+            teacher.bootstrap_sha256(),
+            engine_revision.as_deref(),
+        )?;
         for plan in plans {
             total_games += plan.game_count;
             let manifest_path = shards_dir.join(format!("shard-{:06}.json", plan.shard_index));
@@ -2172,6 +4210,7 @@ fn detect_identity_mismatch(
                     opening_split,
                     plan,
                     &manifest,
+                    &expected_semantic_identity,
                     false,
                 )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
             let relaxed =
@@ -2183,6 +4222,7 @@ fn detect_identity_mismatch(
                     opening_split,
                     plan,
                     &manifest,
+                    &expected_semantic_identity,
                     true,
                 )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
             if relaxed && !strict {
@@ -2274,8 +4314,7 @@ fn generate_game_entries(
                 None => samples.len() < usize::from(loaded.config.data.max_positions_per_game),
             };
         let needs_rollout_search = played_plies >= loaded.config.data.opening_random_plies
-            && (loaded.config.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1
-                || !should_sample);
+            && (loaded.config.data.self_play_move_policy.is_rollout_policy() || !should_sample);
         let label_summary = if should_sample {
             attempted_candidate_roots += 1;
             update_candidate_identity(
@@ -2301,7 +4340,13 @@ fn generate_game_entries(
         } else {
             None
         };
-        let rollout_summary = if needs_rollout_search {
+        let rollout_summary = if needs_rollout_search
+            && !loaded
+                .config
+                .data
+                .self_play_move_policy
+                .is_searched_stochastic()
+        {
             let summary = teacher.search_depth(
                 &board,
                 loaded.config.data.rollout_search_depth,
@@ -2309,6 +4354,32 @@ fn generate_game_entries(
             )?;
             stats.record_rollout(&summary);
             Some(summary)
+        } else {
+            None
+        };
+        let rollout_decision = if needs_rollout_search
+            && loaded
+                .config
+                .data
+                .self_play_move_policy
+                .is_searched_stochastic()
+        {
+            Some(choose_searched_stochastic_rollout_move(
+                &board,
+                &legal_moves,
+                teacher,
+                loaded.config.data.rollout_search_depth,
+                loaded.config.data.rollout_candidate_limit,
+                loaded.config.data.rollout_score_margin,
+                loaded.config.data.rollout_temperature,
+                loaded.config.data.seed,
+                dataset_name,
+                game_index / 2,
+                played_plies,
+                &loaded.config.data.rollout_rng_version,
+                search_workspace,
+                &mut stats,
+            )?)
         } else {
             None
         };
@@ -2326,6 +4397,8 @@ fn generate_game_entries(
 
         let mv = if played_plies < loaded.config.data.opening_random_plies {
             legal_moves[rng.random_range(0..legal_moves.len())]
+        } else if let Some(decision) = rollout_decision {
+            decision.move_
         } else {
             let summary = select_self_play_search(
                 loaded.config.data.self_play_move_policy,
@@ -2459,6 +4532,7 @@ fn select_self_play_search<'a, T>(
     rollout: Option<&'a T>,
 ) -> Option<&'a T> {
     match policy {
+        SelfPlayMovePolicy::SearchedStochasticRolloutV1 => rollout,
         SelfPlayMovePolicy::UniformRolloutV1 => rollout,
         SelfPlayMovePolicy::LabelOnSampleLegacy => label.or(rollout),
     }
@@ -2648,12 +4722,26 @@ fn merge_split(
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
+    teacher: &Teacher,
+    engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     ignore_identity_mismatch: bool,
 ) -> Result<u64> {
     let started = Instant::now();
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let expected_generation_identity = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
     let mut by_start = BTreeMap::new();
     let mut teacher_identity = None;
+    let mut generation_identity = None;
     for input_dir in input_dirs {
         let shard_dir = input_dir.join("datasets").join("shards").join(dataset_name);
         if !shard_dir.exists() {
@@ -2677,6 +4765,8 @@ fn merge_split(
                 opening_source,
                 opening_split,
                 &mut teacher_identity,
+                &mut generation_identity,
+                &expected_generation_identity,
                 &manifest,
                 ignore_identity_mismatch,
             )
@@ -2757,6 +4847,24 @@ fn merge_split(
     } else {
         label_search_total_nodes as f64 / search_stats.label_searches as f64
     };
+    let first_manifest = shard_results
+        .first()
+        .map(|result| &result.manifest)
+        .ok_or_else(|| anyhow!("cannot assemble an empty {dataset_name} split"))?;
+    let has_generation_identity =
+        first_manifest.generation_semantic_identity_version == GENERATION_SEMANTIC_IDENTITY_VERSION;
+    let generation_semantic_identity_version =
+        first_manifest.generation_semantic_identity_version.clone();
+    let generation_semantic_identity_sha256 =
+        first_manifest.generation_semantic_identity_sha256.clone();
+    let (schedule_identity_version, schedule_identity_sha256) = if has_generation_identity {
+        (
+            SCHEDULE_IDENTITY_VERSION.to_string(),
+            schedule_identity_sha256(loaded, dataset_name, game_count, None)?,
+        )
+    } else {
+        (String::new(), String::new())
+    };
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
@@ -2817,6 +4925,11 @@ fn merge_split(
         candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
         candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
         candidate_identity_sha256,
+        generation_semantic_identity_version,
+        generation_semantic_identity_sha256,
+        schedule_identity_version,
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
         minimum_train_positions: loaded.config.data.minimum_train_positions,
         rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
         rejected_terminal_positions: search_stats.rejected_terminal_positions,
@@ -2835,6 +4948,10 @@ fn merge_split(
             .self_play_move_policy
             .manifest_name()
             .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
@@ -2843,6 +4960,11 @@ fn merge_split(
         label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
         rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
         label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
         rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         generation_cpu_seconds: search_stats.label_search_elapsed_seconds
@@ -2897,6 +5019,8 @@ fn validate_merge_shard(
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
     teacher_identity: &mut Option<MergeTeacherIdentity>,
+    generation_identity: &mut Option<MergeGenerationIdentity>,
+    expected_generation_identity: &str,
     manifest: &ShardManifest,
     ignore_identity_mismatch: bool,
 ) -> Result<()> {
@@ -2917,6 +5041,7 @@ fn validate_merge_shard(
         manifest.opening_sfen == opening_sfen,
         "opening_sfen does not match",
     )?;
+    validate_merge_teacher_identity(teacher_identity, manifest, ignore_identity_mismatch)?;
     if !ignore_identity_mismatch {
         ensure_merge(
             manifest.opening_policy == opening_source.policy(),
@@ -2969,6 +5094,11 @@ fn validate_merge_shard(
             "shuffle_chunk_records does not match",
         )?;
     }
+    validate_merge_generation_identity(
+        generation_identity,
+        expected_generation_identity,
+        manifest,
+    )?;
     ensure_merge(
         manifest.search_depth == label_budget.legacy_search_depth(),
         "search_depth does not match",
@@ -3011,6 +5141,10 @@ fn validate_merge_shard(
         "position_selection_audit_version does not match",
     )?;
     ensure_merge(
+        manifest.minimum_train_boards == loaded.config.data.minimum_train_boards()?,
+        "minimum_train_boards does not match",
+    )?;
+    ensure_merge(
         manifest.minimum_train_positions == loaded.config.data.minimum_train_positions,
         "minimum_train_positions does not match",
     )?;
@@ -3041,16 +5175,72 @@ fn validate_merge_shard(
         )?;
     }
     if !ignore_identity_mismatch {
+        let requested_game_count = match dataset_name {
+            "train" => loaded.config.data.train_games,
+            "validation" => loaded.config.data.validation_games,
+            _ => unreachable!("dataset name was checked above"),
+        };
+        let expected_schedule_identity = schedule_identity_sha256(
+            loaded,
+            dataset_name,
+            requested_game_count,
+            Some(ShardPlan {
+                shard_index: manifest.shard_index,
+                game_start: manifest.game_start,
+                game_count: manifest.game_count,
+            }),
+        )?;
+        let schedule_extension = manifest.generation_semantic_identity_version
+            == GENERATION_SEMANTIC_IDENTITY_VERSION
+            && manifest.schedule_identity_version == SCHEDULE_IDENTITY_VERSION
+            && manifest.schedule_identity_sha256 != expected_schedule_identity;
         ensure_merge(
-            manifest.config_hash == loaded.hash_hex,
+            manifest.config_hash == loaded.hash_hex || schedule_extension,
             "config_hash does not match. If you're sure to continue merging using mismatching identity, rerun with --ignore-identity-mismatch flag",
         )?;
     }
-    validate_merge_teacher_identity(teacher_identity, manifest, ignore_identity_mismatch)?;
     ensure_merge(
         manifest.entry_bytes == ENTRY_BYTES,
         "entry_bytes does not match",
     )?;
+    Ok(())
+}
+
+fn validate_merge_generation_identity(
+    expected: &mut Option<MergeGenerationIdentity>,
+    expected_sha256: &str,
+    manifest: &ShardManifest,
+) -> Result<()> {
+    let version = manifest.generation_semantic_identity_version.as_str();
+    let sha256 = manifest.generation_semantic_identity_sha256.as_str();
+    if version.is_empty() {
+        ensure_merge(
+            sha256.is_empty(),
+            "generation semantic identity hash is present without a version",
+        )?;
+    } else {
+        ensure_merge(
+            version == GENERATION_SEMANTIC_IDENTITY_VERSION,
+            "unsupported generation semantic identity version",
+        )?;
+        ensure_merge(
+            sha256 == expected_sha256,
+            "generation semantic identity does not match the configured teacher, opening, seed, rollout, sampling, label budget, feature, or ABI contract",
+        )?;
+    }
+
+    let current = MergeGenerationIdentity {
+        version: version.to_string(),
+        sha256: sha256.to_string(),
+    };
+    if let Some(expected) = expected.as_ref() {
+        ensure_merge(
+            current == *expected,
+            "generation semantic identity does not match across shards",
+        )?;
+    } else {
+        *expected = Some(current);
+    }
     Ok(())
 }
 
@@ -5260,6 +7450,8 @@ seed = 9
             best_score: Some(best_score),
             states: 1,
             qnodes: 1,
+            total_nodes: 2,
+            node_limit: None,
             elapsed_seconds: 0.0,
             training_trace: Some(SearchTrainingTrace {
                 leaf_board: leaf.clone(),
@@ -5347,6 +7539,8 @@ seed = 9
             best_score: None,
             states: 1_000,
             qnodes: 4_000,
+            total_nodes: 5_000,
+            node_limit: Some(5_000),
             elapsed_seconds: 0.25,
             training_trace: None,
         };
@@ -5950,5 +8144,25 @@ run_search_smoke = false
             };
             Some(TrainerPiece { color, piece_type })
         }
+    }
+
+    #[test]
+    fn searched_rollout_streams_are_pair_and_ply_specific() {
+        let pair_zero = rollout_stream_seed(75, "train", 0, 12, "splitmix64-v1");
+        let pair_one = rollout_stream_seed(75, "train", 1, 12, "splitmix64-v1");
+        let next_ply = rollout_stream_seed(75, "train", 0, 13, "splitmix64-v1");
+        assert_ne!(pair_zero, pair_one);
+        assert_ne!(pair_zero, next_ply);
+
+        let move_ = collect_legal_moves(&Board::startpos())[0];
+        assert_eq!(transform_move(transform_move(move_)), move_);
+        let candidates = [
+            ScoredRolloutMove { move_, score: 100 },
+            ScoredRolloutMove { move_, score: 50 },
+        ];
+        assert_eq!(
+            weighted_choice_index(&candidates, 40.0, pair_zero),
+            weighted_choice_index(&candidates, 40.0, pair_zero)
+        );
     }
 }

@@ -101,6 +101,12 @@ pub enum SamplingPolicy {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SelfPlayMovePolicy {
+    /// Versioned bounded near-best stochastic rollout used by Phase 8D and
+    /// later production datasets.
+    SearchedStochasticRolloutV1,
+    /// Historical depth-1 deterministic best-move rollout.  It remains
+    /// readable so old manifests/configs can be audited, but new trajectory
+    /// pilots must use `searched-stochastic-rollout-v1`.
     UniformRolloutV1,
     #[default]
     LabelOnSampleLegacy,
@@ -190,9 +196,21 @@ impl SamplingPolicy {
 impl SelfPlayMovePolicy {
     pub const fn manifest_name(self) -> &'static str {
         match self {
+            Self::SearchedStochasticRolloutV1 => "searched-stochastic-rollout-v1",
             Self::UniformRolloutV1 => "uniform-rollout-v1",
             Self::LabelOnSampleLegacy => "label-on-sample-legacy",
         }
+    }
+
+    pub const fn is_searched_stochastic(self) -> bool {
+        matches!(self, Self::SearchedStochasticRolloutV1)
+    }
+
+    pub const fn is_rollout_policy(self) -> bool {
+        matches!(
+            self,
+            Self::SearchedStochasticRolloutV1 | Self::UniformRolloutV1
+        )
     }
 }
 
@@ -582,13 +600,35 @@ impl LearnConfig {
             self.data.validation_games > 0,
             "data.validation_games must be > 0"
         );
-        if let Some(minimum) = self.data.minimum_train_positions {
+        if let Some(minimum) = self.data.minimum_train_boards()? {
             ensure!(
                 minimum > 0,
-                "data.minimum_train_positions must be > 0 when configured"
+                "data.minimum_train_boards must be > 0 when configured"
             );
         }
         ensure!(self.data.max_plies > 0, "data.max_plies must be > 0");
+        ensure!(
+            self.data.rollout_candidate_limit > 0,
+            "data.rollout_candidate_limit must be at least 1"
+        );
+        ensure!(
+            self.data.rollout_score_margin >= 0,
+            "data.rollout_score_margin must be >= 0"
+        );
+        ensure!(
+            self.data.rollout_temperature.is_finite() && self.data.rollout_temperature > 0.0,
+            "data.rollout_temperature must be finite and > 0"
+        );
+        ensure!(
+            !self.data.rollout_rng_version.trim().is_empty(),
+            "data.rollout_rng_version must not be empty"
+        );
+        if self.data.self_play_move_policy.is_searched_stochastic() {
+            ensure!(
+                self.data.opening_random_plies == 0,
+                "searched-stochastic rollout requires data.opening_random_plies=0; use a versioned opening suite for starting diversity"
+            );
+        }
         let label_search_budget = self.data.label_search_budget()?;
         if self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition {
             ensure!(
@@ -596,8 +636,8 @@ impl LearnConfig {
                 "data.incomplete_label_policy=reject-position requires a fixed-node label budget"
             );
             ensure!(
-                self.data.self_play_move_policy == SelfPlayMovePolicy::UniformRolloutV1,
-                "data.incomplete_label_policy=reject-position requires data.self_play_move_policy=uniform-rollout-v1"
+                self.data.self_play_move_policy.is_rollout_policy(),
+                "data.incomplete_label_policy=reject-position requires data.self_play_move_policy=uniform-rollout-v1 or searched-stochastic-rollout-v1"
             );
         }
         ensure!(
@@ -958,6 +998,19 @@ pub struct DataConfig {
     pub rollout_search_depth: u8,
     #[serde(default)]
     pub self_play_move_policy: SelfPlayMovePolicy,
+    /// Maximum number of canonically ordered legal moves scored by the
+    /// searched-stochastic rollout.
+    #[serde(default = "default_rollout_candidate_limit")]
+    pub rollout_candidate_limit: u16,
+    /// Score window below the best candidate retained for stochastic choice.
+    #[serde(default = "default_rollout_score_margin")]
+    pub rollout_score_margin: i32,
+    /// Temperature in the same score units as the cheap rollout search.
+    #[serde(default = "default_rollout_temperature")]
+    pub rollout_temperature: f64,
+    /// Named RNG algorithm/version, included in generation identity.
+    #[serde(default = "default_rollout_rng_version")]
+    pub rollout_rng_version: String,
     #[serde(default = "default_opening_random_plies")]
     pub opening_random_plies: u16,
     #[serde(default)]
@@ -996,9 +1049,14 @@ pub struct DataConfig {
     /// None preserves the legacy accepted-position cap.
     #[serde(default)]
     pub max_candidate_roots_per_game: Option<u16>,
-    /// Minimum number of accepted training records required for a complete
-    /// (non-sharded) generation or merge. Partial machine lanes cannot prove
-    /// this global target and are checked when merged.
+    /// Minimum number of distinct packed training boards required for a
+    /// complete (non-sharded) generation or merge. Partial machine lanes
+    /// cannot prove this global target and are checked when merged.
+    #[serde(default)]
+    pub minimum_train_boards: Option<u64>,
+    /// Deprecated compatibility spelling. Historical configs used this name
+    /// for an accepted-record floor; it is now interpreted as a packed-board
+    /// floor and must not be combined with `minimum_train_boards`.
     #[serde(default)]
     pub minimum_train_positions: Option<u64>,
     #[serde(default = "default_seed")]
@@ -1026,6 +1084,10 @@ impl Default for DataConfig {
             incomplete_label_policy: IncompleteLabelPolicy::default(),
             rollout_search_depth: default_rollout_search_depth(),
             self_play_move_policy: SelfPlayMovePolicy::default(),
+            rollout_candidate_limit: default_rollout_candidate_limit(),
+            rollout_score_margin: default_rollout_score_margin(),
+            rollout_temperature: default_rollout_temperature(),
+            rollout_rng_version: default_rollout_rng_version(),
             opening_random_plies: default_opening_random_plies(),
             opening_policy: OpeningPolicy::default(),
             opening_suite: None,
@@ -1043,6 +1105,7 @@ impl Default for DataConfig {
             sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
             max_candidate_roots_per_game: None,
+            minimum_train_boards: None,
             minimum_train_positions: None,
             seed: default_seed(),
             jobs: default_jobs(),
@@ -1054,6 +1117,15 @@ impl Default for DataConfig {
 }
 
 impl DataConfig {
+    pub fn minimum_train_boards(&self) -> Result<Option<u64>> {
+        if self.minimum_train_boards.is_some() && self.minimum_train_positions.is_some() {
+            bail!(
+                "data.minimum_train_boards and deprecated data.minimum_train_positions cannot both be configured"
+            );
+        }
+        Ok(self.minimum_train_boards.or(self.minimum_train_positions))
+    }
+
     pub fn label_search_budget(&self) -> Result<LabelSearchBudget> {
         match (
             self.search_depth,
@@ -1293,6 +1365,22 @@ fn default_search_depth() -> u8 {
 
 fn default_rollout_search_depth() -> u8 {
     1
+}
+
+fn default_rollout_candidate_limit() -> u16 {
+    16
+}
+
+fn default_rollout_score_margin() -> i32 {
+    80
+}
+
+fn default_rollout_temperature() -> f64 {
+    40.0
+}
+
+fn default_rollout_rng_version() -> String {
+    "splitmix64-v1".to_string()
 }
 
 fn default_opening_random_plies() -> u16 {
@@ -1602,6 +1690,46 @@ label_search_max_depth = 64
                 max_depth: 64
             }
         );
+    }
+
+    #[test]
+    fn parses_searched_stochastic_rollout_contract() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_candidate_limit = 12
+rollout_score_margin = 75
+rollout_temperature = 35.0
+rollout_rng_version = "splitmix64-v1"
+opening_random_plies = 0
+minimum_train_boards = 123
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        config.validate().unwrap();
+        assert!(config.data.self_play_move_policy.is_searched_stochastic());
+        assert_eq!(config.data.rollout_candidate_limit, 12);
+        assert_eq!(config.data.rollout_score_margin, 75);
+        assert_eq!(config.data.rollout_temperature, 35.0);
+        assert_eq!(config.data.minimum_train_boards().unwrap(), Some(123));
+    }
+
+    #[test]
+    fn searched_stochastic_rollout_rejects_random_opening_plies() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 1
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("opening_random_plies=0"));
     }
 
     #[test]

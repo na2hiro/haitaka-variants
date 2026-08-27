@@ -37,6 +37,26 @@ enum Command {
         #[arg(long)]
         output: Option<PathBuf>,
     },
+    TrajectoryAudit {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        jobs: Option<u32>,
+        #[arg(long)]
+        shard_index: Option<u32>,
+        #[arg(long)]
+        shard_index_end: Option<u32>,
+        #[arg(long)]
+        shard_count: Option<u32>,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    CalibrateLabels {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     GenerateData {
         #[arg(long)]
         config: PathBuf,
@@ -159,6 +179,33 @@ fn main() -> Result<()> {
             if let Some(path) = dataset_audit::write_report(&report, output.as_deref())? {
                 println!("dataset audit written to {}", path.display());
             }
+        }
+        Command::TrajectoryAudit {
+            config,
+            jobs,
+            shard_index,
+            shard_index_end,
+            shard_count,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = dataset::audit_trajectories(
+                &loaded,
+                dataset::TrajectoryAuditOptions {
+                    jobs,
+                    shard_index,
+                    shard_index_end,
+                    shard_count,
+                },
+            )?;
+            let path = dataset::write_trajectory_audit_report(&loaded, &report, output)?;
+            println!("trajectory audit written to {}", path.display());
+        }
+        Command::CalibrateLabels { config, output } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = dataset::calibrate_labels(&loaded)?;
+            let path = dataset::write_label_calibration_report(&loaded, &report, output)?;
+            println!("label calibration written to {}", path.display());
         }
         Command::GenerateData {
             config,
