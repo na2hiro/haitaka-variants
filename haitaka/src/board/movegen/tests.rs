@@ -1102,6 +1102,38 @@ fn anhoku_effective_slider_check_is_detected() {
 
 #[test]
 #[cfg(feature = "anhoku")]
+fn anhoku_capture_of_enemy_donor_must_not_expose_own_king() {
+    let board: Board =
+        "2sg1k3/4g2b1/l2Kp1s1+P/pP2PPpp1/2+r6/P6P1/+n3+bgP2/2+p5+l/3+s3+n1 b Prgs2n2l5p 129"
+            .parse()
+            .unwrap();
+    let capture_donor = Move::BoardMove {
+        from: Square::D5,
+        to: Square::C5,
+        promotion: false,
+    };
+
+    let mut after = board.clone();
+    after.play_unchecked(capture_donor);
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::Black);
+    assert!(
+        !checkers.is_empty(),
+        "removing the Pawn donor restores the White Gold's native check"
+    );
+
+    assert!(!board.is_legal_board_move(capture_donor));
+    assert!(!board.is_legal(capture_donor));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(capture_donor);
+        generated
+    });
+    assert!(!generated);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
 fn anhoku_last_rank_drops_stay_illegal_but_second_rank_knight_drop_is_legal() {
     let board: Board = "k8/9/9/9/9/9/9/9/8K b NLP 1".parse().unwrap();
     let forbidden = [

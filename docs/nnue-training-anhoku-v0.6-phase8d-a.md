@@ -1,8 +1,9 @@
 # Anhoku v0.6 Phase 8D-A: searched-stochastic trajectory repair
 
-Status: implementation complete; the checked-in short smoke is not a
+Status: implementation and Phase 8D-A.1 legality recovery complete; the
+checked-in short smoke and the one-game recovery diagnostic are not a
 production freeze. Phase 8D-B remains unauthorized until the full launch-gate
-telemetry is run and reviewed.
+telemetry is rerun successfully and reviewed.
 
 ## Implemented contract
 
@@ -50,7 +51,9 @@ Run the label-free gate first:
 
 ```bash
 cargo run --release -p haitaka_learn --features anhoku -- trajectory-audit \
-  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml \
+  --jobs 1 \
+  --output out/anhoku-v0.6-phase8d-a/trajectory-audit-jobs1.json
 ```
 
 Then, only after the rollout values are frozen from legality/symmetry/cost,
@@ -66,6 +69,39 @@ OOD-v2 satisfy the 1% incomplete-label, exact-accounting, zero-terminal/mate,
 and side/outcome rejection-rate delta <= 0.05 gates. If none passes, its
 decision is `blocked` and requires an explicitly written adaptive-retry
 contract.
+
+## Phase 8D-A.1 legality recovery
+
+The first production-shaped `jobs=1` audit stopped before report publication at
+train game 62. The failure was not a color-swap parser defect: the source board
+was already invalid at pair 31, ply 117. The preceding legal position and the
+accepted move were:
+
+```text
+2sg1k3/4g2b1/l2Kp1s1+P/pP2PPpp1/2+r6/P6P1/+n3+bgP2/2+p5+l/3+s3+n1 b Prgs2n2l5p 129
+5d5c
+```
+
+`5d5c` captured the White Pawn donor on 5c. That restored the White Gold on 5b
+to native Gold movement and created an attack on the Black King on 6c, but the
+not-in-check same-side-donor fast path had accepted the move without replaying
+post-move king safety.
+
+The recovery keeps the batched fast path. Only moves that capture an active
+opposing donor are split out and replayed before `is_legal` or move generation
+accepts them. The same correctness rule is shared by Anhoku, Annan, and
+Antouzai; non-captures and captures of non-donors do not pay the replay cost.
+The exact game-62 position is a core move-generation regression and a dynamic
+SFEN color-swap round-trip regression. Color-swap errors now retain source and
+transformed SFEN context.
+
+The repaired game 62 completed all 180 plies with per-ply source-SFEN
+validation enabled and wrote a diagnostic JSON. That one-game report is
+expected to fail full coverage gates and is not launch evidence. Resume the
+phase by rerunning the full 256-game `jobs=1` command above; require a published
+JSON report, then reproduce its trajectory hashes across the declared parallel
+or remote shard layout. Any run from before this legality fix is invalid and
+must not be compared or merged.
 
 ## Smoke evidence
 

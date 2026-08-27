@@ -1110,7 +1110,11 @@ fn choose_searched_stochastic_rollout_move(
     );
 
     let current_sfen = board.to_string();
-    let swapped_sfen = color_swap_anhoku_sfen(&current_sfen)?;
+    let swapped_sfen = color_swap_anhoku_sfen(&current_sfen).with_context(|| {
+        format!(
+            "failed to canonicalize rollout position for dataset `{dataset_name}`, pair {pair_index}, ply {ply}"
+        )
+    })?;
     let use_swapped_orientation = swapped_sfen < current_sfen;
     let canonical_board = Board::from_sfen(if use_swapped_orientation {
         &swapped_sfen

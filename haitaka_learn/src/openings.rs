@@ -486,8 +486,11 @@ pub fn color_swap_anhoku_sfen(sfen: &str) -> Result<String> {
             .collect()
     };
     let transformed = format!("{board} {side} {hand} {}", fields[3]);
-    let board = Board::from_sfen(&transformed)
-        .map_err(|err| anyhow!("color-swapped SFEN is invalid: {err}"))?;
+    let board = Board::from_sfen(&transformed).map_err(|err| {
+        anyhow!(
+            "color-swapped SFEN is invalid: {err}; source SFEN: `{sfen}`; transformed SFEN: `{transformed}`"
+        )
+    })?;
     Ok(board.to_string())
 }
 
@@ -580,6 +583,14 @@ mod tests {
         let sfen = "ln2kg1n1/1r1sg1sbl/pppp1ppp1/4p4/9/4P1P1p/PPPP1P1P1/1BGSGS1R1/LN1K3NL b p 17";
         let swapped = color_swap_anhoku_sfen(sfen).unwrap();
         assert!(swapped.contains(" w P 17"));
+        assert_eq!(color_swap_anhoku_sfen(&swapped).unwrap(), sfen);
+    }
+
+    #[test]
+    fn anhoku_color_swap_round_trips_game_62_dynamic_position() {
+        let sfen =
+            "2sg1k3/4g2b1/l2Kp1s1+P/pP2PPpp1/2+r6/P6P1/+n3+bgP2/2+p5+l/3+s3+n1 b Prgs2n2l5p 129";
+        let swapped = color_swap_anhoku_sfen(sfen).unwrap();
         assert_eq!(color_swap_anhoku_sfen(&swapped).unwrap(), sfen);
     }
 

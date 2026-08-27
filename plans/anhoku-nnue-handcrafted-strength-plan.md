@@ -982,8 +982,14 @@ audit uses two cycles of color-swapped pairs over every train/OOD opening and
 gates new-board yield only after the first complete 64-ID cycle; calibration
 rejects empty matched root sets. Searched-stochastic generation is regression
 tested across job counts and shard lanes, and only `splitmix64-v1` is accepted.
-The production freeze and Phase 8D-B remain gated on running the full
-configured telemetry and recording its pass/block decision.
+Phase 8D-A.1 fixed the game-62 same-side-donor capture legality bug: captures
+of active opposing donors now receive a post-move king-safety replay while
+other moves retain the batched fast path. The exact position and dynamic
+color-swap are regression tested, and the repaired game completed 180 plies
+under per-ply validation. The failed pre-fix local/remote runs are invalid. The
+production freeze and Phase 8D-B remain gated on rerunning the full configured
+telemetry, publishing its JSON report, reproducing trajectory hashes across
+execution layouts, and recording the pass/block decision.
 
 - Implement a small phase-independent dataset audit that counts both distinct
   full 72-byte records and distinct packed boards from bytes `0..64`. Define
