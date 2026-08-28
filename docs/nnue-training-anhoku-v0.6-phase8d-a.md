@@ -3,7 +3,9 @@
 Status: complete. The original Phase 8D-A calibration blocked as expected;
 Phase 8D-A.2 then passed its v3 full-trajectory, sampled cross-host, and
 adaptive-label calibration gates at commit `6da4ce7`. Phase 8D-B data
-generation is authorized but has not started.
+generation completed, but its initial unique-board readiness gate blocked.
+Phase 8D-B.1 completed its schedule-only recovery and passed the final dataset
+gate. Seed-80 training is the next action.
 
 ## Implemented contract
 
@@ -211,7 +213,7 @@ Evidence:
 - `out/anhoku-v0.6-phase8d-a2/trajectory-audit-cross-host-comparison-6da4ce7.json`
 - `out/anhoku-v0.6-phase8d-a2/artifacts/label-calibration.json`
 
-## Phase 8D-B handoff
+## Phase 8D-B result and Phase 8D-B.1 handoff
 
 The frozen next config is
 `haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml`. It retains the selected
@@ -221,11 +223,22 @@ OOD games, permits 64 accepted roots and 72 attempts/game, and enforces at
 least 262,144 distinct packed train boards. The label-free yield projection and
 record ceilings are recorded inline in the config and in the main plan.
 
-The next command below is intentionally documented but has not been run:
+The initial distributed run covered all 6,200 train and 96 validation games at
+the frozen identity. Strict merge produced 210,882 accepted train records and
+209,282 distinct packed boards (99.24% unique), then correctly stopped below
+the 262,144 minimum before publishing the final validation manifest. The
+detailed audit is
+`out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b-initial-train-audit.json`.
+
+Phase 8D-B.1 extends only the schedule to 8,200 train games under
+`haitaka_learn.anhoku-v0.6-phase8d-b1-root-262k-extension.toml`. Generate the
+exact 2,000-game tail as lanes 31--40 of 41 while keeping engine revision
+`5c23b02`:
 
 ```bash
-cargo run --release -p haitaka_learn --features anhoku -- generate-data \
-  --config haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml
+cargo generate-data \
+  haitaka_learn.anhoku-v0.6-phase8d-b1-root-262k-extension.toml \
+  --jobs 0 --shard 32-41/41
 ```
 
 For distributed generation, freeze one source/config/suite/teacher identity on
@@ -234,6 +247,22 @@ all machines and add `--shard-index <LANE> --shard-index-end <LANE>
 complete, contiguous, non-overlapping lanes. Before training, require the
 packed-board floor, at least 95% uniqueness, exact label accounting, zero bad
 stored labels, and review retry/exhaustion and balance telemetry.
+
+The distributed extension completed at engine revision `5c23b02`. Strict merge
+accepted all 820 train shards and 10 validation shards, publishing 279,627
+train and 3,218 validation records. The final train audit found 276,949
+distinct packed boards (99.04% unique), 14,805 above the 262,144 floor. It also
+confirmed exact candidate accounting, zero stored mate/clamped labels, balanced
+sides, and zero train/validation opening overlap. The implementation has no
+separate `READY.json`; successful publication of both merged manifests plus
+the passing audits is the readiness contract, and the trainer independently
+rechecks the distinct-board floor. Final evidence:
+
+- `out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b1-final-train-audit.json`
+- `out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b1-final-validation-audit.json`
+
+Run the authorized seed-80 training with `haitaka-variant-nnue-pytorch`
+revision `61666d9e3653e4df9881b14c23f8fdcc4bf7779b`, matching Phase 8B.
 
 ## Smoke evidence
 

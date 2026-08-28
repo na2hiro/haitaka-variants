@@ -1,8 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-A.2 passed; Phase 8D-B unique-262k data generation is the next action and has not started
+- Status: Phase 8D-B.1 dataset gate passed; seed-80 training is next
 - Created: 2026-08-17
-- Last checked: 2026-08-28
+- Last checked: 2026-08-29
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -1118,7 +1118,7 @@ and 1.0625 attempts per accepted root overall.
 
 ### Phase 8D-B: unique-262k strength test
 
-**Status: authorized, data generation not started.** The frozen launch config
+**Status: initial readiness gate blocked; no training started.** The frozen launch config
 is `haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml`. It uses 6,200 train
 games, 96 equal-schedule OOD games, 64 accepted slots and at most 72 label
 attempts per game, and requires 262,144 distinct packed train boards. The v3
@@ -1129,6 +1129,62 @@ accepted-record ceiling is 396,800 and the hard label-attempt ceiling is
 446,400. Do not revise these counts after inspecting generated yield; stop and
 review if the frozen readiness gate fails.
 
+The strict distributed merge completed coverage and identity validation at
+commit `5c23b02`: train shards 0--619 contain all 6,200 games, and validation
+shards 0--9 contain all 96 OOD games. The train merge produced 210,882
+accepted records and 209,282 distinct packed boards (99.24% unique), below the
+262,144-board floor, so the merge failed before publishing the final validation
+manifest and training did not start. Label accounting is exact: 335,946
+candidates equal 210,882 accepted, 119,228 rejected mate scores, and 5,836
+rejected incomplete labels; terminal
+and node-accounting rejections are zero. Stored roots are balanced at 104,027
+Black and 106,855 White. Production retry cost was materially worse than the
+one-root calibration: 1.593 attempts/accepted and 2,811/6,200 exhausted games.
+This is a calibration-representativeness miss, not a diversity or identity
+failure, and remains a generation-cost warning for the later retention gate.
+
+### Phase 8D-B.1: schedule-only unique-262k recovery
+
+**Status: complete; dataset gate passed and seed-80 training is authorized.** Use
+`haitaka_learn.anhoku-v0.6-phase8d-b1-root-262k-extension.toml` at engine
+revision `5c23b02`. It changes only schedule cardinality from 6,200 to 8,200
+train games; every generation-semantic field remains frozen, so shards 0--619
+remain valid. Generate only tail shards 620--819. Across ten equal 620-game
+tranches, accepted yield was stable at 33.361--34.690/game. Applying the worst
+observed yield and the existing 95% uniqueness floor to the additional 2,000
+games projects at least 63,386 new distinct boards and at least 272,668 total.
+
+- Address the exact tail with zero overlap as zero-indexed lanes 31--40 of 41,
+  or the one-indexed shorthand `--shard 32-41/41`. Subdivide only into
+  contiguous, non-overlapping ranges with the same denominator.
+- Keep `HEAD`/engine revision at `5c23b02` for extension generation and the
+  strict merge. Do not use `--ignore-identity-mismatch`, alter the 72-attempt
+  cap, or mix newly generated validation identities.
+- After the extension, rerun strict merge and `audit-data`. Require all 820
+  train shards, all 10 validation shards, at least 262,144 distinct packed
+  train boards, at least 95% uniqueness, exact candidate accounting, zero
+  stored mate/incomplete/terminal labels, and preserved side/OOD balance.
+- A successful strict merge that publishes both merged manifests, followed by
+  passing train and validation audits, authorizes seed-80 training. The current
+  implementation does not create a separate `READY.json`; the trainer also
+  rechecks the distinct-board floor. Preserve the initial blocked audit at
+  `out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b-initial-train-audit.json`.
+
+The distributed tail completed at the frozen identity across local shards
+660--699, nubu 620--659 and 700--719, mba 720--759, and mbp 760--819. The
+strict merge accepted all 8,200 train games and 96 validation games, producing
+279,627 train records and 3,218 validation records. The final train audit found
+276,949 distinct packed boards (99.04% unique), 14,805 above the floor. Label
+accounting remains exact: 444,707 candidates equal 279,627 accepted, 157,257
+rejected mate scores, and 7,823 rejected incomplete labels, with zero terminal
+or node-accounting rejections. Stored sides are balanced at 138,608 Black and
+141,019 White; train/validation opening overlap is zero. Production retry cost
+remains a retention warning at 1.590 attempts/accepted and 3,729/8,200
+exhausted games. Final evidence:
+
+- `out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b1-final-train-audit.json`
+- `out/anhoku-v0.6-phase8d-b-root-262k/artifacts/phase8d-b1-final-validation-audit.json`
+
 - Use the Phase 8D-A frozen root-label budget and keep C/16 bootstrap, features,
   lambda, LR, sampling, train opening groups, and OOD-v2 groups unchanged.
   Regenerate both train and OOD-v2 under the frozen stochastic policy; none of
@@ -1137,9 +1193,10 @@ review if the frozen readiness gate fails.
   the final dataset remains at least 95% unique. Predeclare a record ceiling
   from the label-free yield before generation. Report full-record and board
   counts and all incomplete-label/balance telemetry before training.
-- Train seed 80 from immutable C/16 and preserve every checkpoint and unique
-  export. Loss and the repaired OOD-v2 set may veto but may not select among
-  checkpoints; use the fixed C/16 screen for selection.
+- Train seed 80 from immutable C/16 with `haitaka-variant-nnue-pytorch` revision
+  `61666d9e3653e4df9881b14c23f8fdcc4bf7779b`, matching Phase 8B, and preserve
+  every checkpoint and unique export. Loss and the repaired OOD-v2 set may veto
+  but may not select among checkpoints; use the fixed C/16 screen for selection.
 - Compare the selected candidate directly with the Phase 8B repeated-trajectory
   root export in paired 100 ms games, starting at 1,024 and extending to at most
   4,096 under a written sequential boundary. This comparison measures the
