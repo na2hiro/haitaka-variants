@@ -12,7 +12,10 @@ use std::sync::{Arc, OnceLock, RwLock};
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
-pub use nnue::{NnueModel, NnuePositionState};
+pub use nnue::{
+    DonorReceiverPairV2Stats, NnueModel, NnuePositionState, donor_receiver_pair_v2_stats,
+    migrate_donor_single_to_receiver_pair_v2,
+};
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
 

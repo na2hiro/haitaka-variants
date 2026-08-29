@@ -1,0 +1,20 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-v0.7-phase11a"
+trainer_checkout = "/home/na2hiro/proj/engine/variant-nnue-pytorch"
+bootstrap_nnue = "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue"
+python = "/home/na2hiro/proj/engine/variant-nnue-pytorch/.venv/bin/python"
+
+[data]
+train_games = 1
+validation_games = 1
+
+[training]
+features = "HalfKAv2^+DonorReceiverPairV2"
+build_data_loader = true
+
+[export]
+output_name = "haitaka-anhoku-v0.7-phase11a.nnue"
+description = "Haitaka Anhoku Phase 11-A DonorReceiverPairV2 implementation gate"

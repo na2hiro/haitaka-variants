@@ -21,6 +21,7 @@ Ruleset-to-feature-set mapping:
 
 - standard / handicap: `HalfKAv2^`
 - Annan / Anhoku / Taimen / Haimen: `HalfKAv2^+DonorSingleEff`
+- experimental Anhoku Feature V2: `HalfKAv2^+DonorReceiverPairV2`
 - Antouzai: `HalfKAv2^+DonorPairSlots`
 
 ## What Is Already Prepared

@@ -2,13 +2,15 @@ mod config;
 mod dataset;
 mod dataset_audit;
 mod openings;
+mod phase11a;
 mod selection;
 mod trainer;
 mod verify;
 
+use std::fs;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand};
 use config::LoadedConfig;
 
@@ -22,6 +24,34 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Expand an Anhoku DonorSingleEff network into the functionally identical
+    /// DonorReceiverPairV2 initialization without training.
+    MigrateDonorReceiverPairV2 {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Run the complete Phase 11-A migration, equivalence, tactical, size, and
+    /// fixed-position inference gate without training or strength games.
+    Phase11aGate {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output_nnue: PathBuf,
+        #[arg(long)]
+        tactical_suite: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+    },
+    /// Compile the trainer overlay and verify Python/C++/runtime V2 cardinality,
+    /// hash, and index anchors without starting training.
+    VerifyDonorReceiverPairV2Trainer {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
     ValidateOpenings {
         #[arg(long)]
         config: PathBuf,
@@ -161,6 +191,54 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::MigrateDonorReceiverPairV2 { input, output } => {
+            let source =
+                fs::read(&input).with_context(|| format!("failed to read {}", input.display()))?;
+            let migrated = haitaka_wasm::migrate_donor_single_to_receiver_pair_v2(&source)
+                .map_err(|err| anyhow!("failed to migrate {}: {err}", input.display()))?;
+            if let Some(parent) = output.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("failed to create {}", parent.display()))?;
+            }
+            fs::write(&output, &migrated)
+                .with_context(|| format!("failed to write {}", output.display()))?;
+            let stats = haitaka_wasm::donor_receiver_pair_v2_stats();
+            println!(
+                "migrated {} -> {} ({} -> {} bytes; {} -> {} real features)",
+                input.display(),
+                output.display(),
+                source.len(),
+                migrated.len(),
+                stats.v1_real_features,
+                stats.v2_real_features,
+            );
+        }
+        Command::Phase11aGate {
+            input,
+            output_nnue,
+            tactical_suite,
+            report,
+        } => {
+            let result = phase11a::run(&input, &output_nnue, &tactical_suite, &report)?;
+            let go = result.phase11b_go();
+            println!(
+                "Phase 11-A gate written to {}: {}",
+                report.display(),
+                if go { "GO" } else { "NO-GO" }
+            );
+            ensure!(go, "Phase 11-A gate failed; do not start Phase 11-B");
+        }
+        Command::VerifyDonorReceiverPairV2Trainer { config, output } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            loaded.ruleset_requires_matching_engine()?;
+            let report = trainer::verify_receiver_pair_v2_trainer_parity(&loaded, &output)?;
+            println!(
+                "DonorReceiverPairV2 trainer parity written to {}: {}",
+                output.display(),
+                if report.passed { "PASS" } else { "FAIL" }
+            );
+            ensure!(report.passed, "DonorReceiverPairV2 trainer parity failed");
+        }
         Command::ValidateOpenings { config } => {
             let loaded = LoadedConfig::from_path(&config)?;
             loaded.ruleset_requires_matching_engine()?;

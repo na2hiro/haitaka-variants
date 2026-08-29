@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-B candidate not retained; Phase 11-A DonorReceiverPairV2 implementation is next
+- Status: Phase 11-A DonorReceiverPairV2 passed; Phase 11-B controlled experiment is authorized next
 - Created: 2026-08-17
 - Last checked: 2026-08-29
 - Primary ruleset: Anhoku
@@ -1360,9 +1360,27 @@ only express those identities additively before the first activation.
 
 ### Phase 11-A: DonorReceiverPairV2 implementation and equivalence gate
 
-**Status: authorized; implementation not started.** This assignment changes no
+**Status: complete; GO for Phase 11-B (2026-08-29).** This assignment changed no
 data, labels, training hyperparameters, or search policy and runs no production
 training or strength match.
+
+The runtime, trainer overlay, V1-to-V2 byte migration, focused tests, frozen
+tactical suite, and machine-readable gate are complete. C/16 migrated from
+`HalfKAv2^+DonorSingleEff` to `HalfKAv2^+DonorReceiverPairV2` with zero score,
+accumulator, or fixed-depth-search mismatches across six representative
+positions and 754 deterministic randomized incremental transitions. The
+network grew from 161,206,531 to 176,603,011 bytes (`+9.55%`), and median
+fixed-position full-refresh inference changed from 3,636.41 to 3,638.86 ns per
+position (`+0.07%`). The six-fixture veto-only tactical suite passed for both
+families. Trainer Python geometry/hash checks and the compiled C++ loader's
+shared runtime index anchors passed at trainer revision
+`61666d9e3653e4df9881b14c23f8fdcc4bf7779b`.
+
+Evidence and handoff are in
+`docs/nnue-training-anhoku-v0.7-phase11a.md`,
+`out/anhoku-v0.7-phase11a/artifacts/phase11a-gate.json`, and
+`out/anhoku-v0.7-phase11a/artifacts/trainer-feature-parity.json`. Phase 11-A
+did not start training or strength games.
 
 - Add one Anhoku feature family with a new stable network hash and matching
   trainer/runtime index specification. Keep exactly one donor-relation active

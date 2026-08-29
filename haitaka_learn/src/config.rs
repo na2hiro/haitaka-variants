@@ -11,6 +11,7 @@ const ANNAN_STARTPOS_SFEN: &str =
     "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 pub const FEATURE_SET_HALFKAV2: &str = "HalfKAv2^";
 pub const FEATURE_SET_DONOR_SINGLE: &str = "HalfKAv2^+DonorSingleEff";
+pub const FEATURE_SET_DONOR_RECEIVER_PAIR_V2: &str = "HalfKAv2^+DonorReceiverPairV2";
 pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
 #[allow(dead_code)]
 pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
@@ -559,6 +560,7 @@ pub struct ArtifactPaths {
     pub train_manifest: PathBuf,
     pub validation_manifest: PathBuf,
     pub bootstrap_model_pt: PathBuf,
+    pub bootstrap_migrated_nnue: PathBuf,
     pub export_metadata: PathBuf,
     pub verify_report: PathBuf,
     pub exported_nnue: PathBuf,
@@ -576,6 +578,7 @@ impl ArtifactPaths {
             train_manifest: datasets_dir.join("train.json"),
             validation_manifest: datasets_dir.join("validation.json"),
             bootstrap_model_pt: artifacts_dir.join("bootstrap.pt"),
+            bootstrap_migrated_nnue: artifacts_dir.join("bootstrap-donor-receiver-pair-v2.nnue"),
             export_metadata: artifacts_dir.join("export.json"),
             verify_report: artifacts_dir.join("verify.json"),
             exported_nnue: artifacts_dir.join(&loaded.config.export.output_name),
@@ -1658,7 +1661,6 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
         Ruleset::Annan
-        | Ruleset::Anhoku
         | Ruleset::Taimen
         | Ruleset::Haimen
         | Ruleset::Neko
@@ -1667,6 +1669,7 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
         | Ruleset::Yokonekoneko
         | Ruleset::Tenkyo
         | Ruleset::Tenjiku => FEATURE_SET_DONOR_SINGLE,
+        Ruleset::Anhoku => FEATURE_SET_DONOR_SINGLE,
         Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
         Ruleset::Anki => FEATURE_SET_DONOR_KNIGHT8,
     }
@@ -1676,7 +1679,6 @@ fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => vec![FEATURE_SET_HALFKAV2],
         Ruleset::Annan
-        | Ruleset::Anhoku
         | Ruleset::Taimen
         | Ruleset::Haimen
         | Ruleset::Neko
@@ -1685,6 +1687,7 @@ fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
         | Ruleset::Yokonekoneko
         | Ruleset::Tenkyo
         | Ruleset::Tenjiku => vec![FEATURE_SET_DONOR_SINGLE],
+        Ruleset::Anhoku => vec![FEATURE_SET_DONOR_SINGLE, FEATURE_SET_DONOR_RECEIVER_PAIR_V2],
         Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
         Ruleset::Anki => vec![FEATURE_SET_DONOR_KNIGHT8],
     }
@@ -2146,6 +2149,36 @@ validation_games = 1
         let err = config.validate().unwrap_err().to_string();
         assert!(err.contains("training.features=`HalfKAv2^`"));
         assert!(err.contains(FEATURE_SET_DONOR_SINGLE));
+    }
+
+    #[test]
+    fn anhoku_accepts_receiver_pair_v2_without_changing_the_default() {
+        assert_eq!(
+            recommended_feature_set(Ruleset::Anhoku),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert!(
+            allowed_feature_sets(Ruleset::Anhoku).contains(&FEATURE_SET_DONOR_RECEIVER_PAIR_V2)
+        );
+        assert!(
+            !allowed_feature_sets(Ruleset::Annan).contains(&FEATURE_SET_DONOR_RECEIVER_PAIR_V2)
+        );
+
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "anhoku"
+
+[training]
+features = "HalfKAv2^+DonorReceiverPairV2"
+
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        config.validate().unwrap();
     }
 
     #[test]

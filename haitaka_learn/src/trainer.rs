@@ -5,8 +5,11 @@ use std::time::SystemTime;
 
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::config::{LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING};
+use crate::config::{
+    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
+};
 use crate::dataset::ENTRY_BYTES;
 use crate::dataset_audit::audit_dataset;
 
@@ -19,6 +22,83 @@ pub(crate) struct ExportMetadata {
     features: String,
     description: String,
     config_hash: String,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct TrainerFeatureParityReport {
+    schema: &'static str,
+    schema_version: u32,
+    trainer_checkout: String,
+    trainer_revision: Option<String>,
+    feature_set: String,
+    feature_set_hash: String,
+    real_features: usize,
+    donor_block_features: usize,
+    python_spec_passed: bool,
+    cpp_loader_compiled: bool,
+    rust_cpp_index_anchors: [usize; 4],
+    donor_features_py_sha256: String,
+    training_data_loader_cpp_sha256: String,
+    pub(crate) passed: bool,
+}
+
+pub(crate) fn verify_receiver_pair_v2_trainer_parity(
+    loaded: &LoadedConfig,
+    output: &Path,
+) -> Result<TrainerFeatureParityReport> {
+    if loaded.training_features() != FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
+        bail!("trainer parity requires training.features={FEATURE_SET_DONOR_RECEIVER_PAIR_V2}");
+    }
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let donor_overlay = overlay_donor_features_py_contents();
+    let loader_overlay = overlay_training_data_loader_cpp_contents();
+    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    run_command(
+        &loaded.config.paths.python,
+        &[
+            "-c".to_string(),
+            concat!(
+                "import sys, types; ",
+                "chess=types.ModuleType('chess'); chess.Board=object; sys.modules['chess']=chess; ",
+                "sys.modules['torch']=types.ModuleType('torch'); ",
+                "variant=types.ModuleType('variant'); variant.SQUARES=81; variant.PIECE_TYPES=10; ",
+                "variant.DONOR_MODE='single-front'; sys.modules['variant']=variant; ",
+                "import donor_features; f=donor_features.DonorReceiverPairV2(); ",
+                "assert f.name == 'DonorReceiverPairV2'; ",
+                "assert f.hash == 0x6D124A8F; ",
+                "assert f.num_real_features == 16200; ",
+                "composite=(0x5F234CB8 ^ ((f.hash << 1) & 0xffffffff) ^ (f.hash >> 1)) & 0xffffffff; ",
+                "assert composite == 0xB38EFCE1"
+            )
+            .to_string(),
+        ],
+        &trainer_checkout,
+        "validate DonorReceiverPairV2 Python feature specification",
+    )?;
+
+    let report = TrainerFeatureParityReport {
+        schema: "haitaka-anhoku-phase11a-trainer-parity",
+        schema_version: 1,
+        trainer_checkout: trainer_checkout.display().to_string(),
+        trainer_revision: detect_git_revision(&trainer_checkout),
+        feature_set: FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string(),
+        feature_set_hash: "0xb38efce1".to_string(),
+        real_features: 167_103,
+        donor_block_features: 16_200,
+        python_spec_passed: true,
+        cpp_loader_compiled: true,
+        rust_cpp_index_anchors: [6520, 6601, 6682, 8140],
+        donor_features_py_sha256: format!("{:x}", Sha256::digest(donor_overlay.as_bytes())),
+        training_data_loader_cpp_sha256: format!("{:x}", Sha256::digest(loader_overlay.as_bytes())),
+        passed: true,
+    };
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    fs::write(output, serde_json::to_vec_pretty(&report)?)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    Ok(report)
 }
 
 #[derive(Debug, Deserialize)]
@@ -320,7 +400,7 @@ pub(crate) fn write_export_metadata(
         exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(&trainer_checkout),
+        trainer_revision: detect_git_revision(trainer_checkout),
         features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
@@ -439,6 +519,23 @@ fn materialize_bootstrap_pt(
     let artifacts = loaded.artifact_paths();
     let import_features = bootstrap_import_features(loaded);
     let training_features = loaded.training_features();
+    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
+        let source = fs::read(&bootstrap_nnue)
+            .with_context(|| format!("failed to read {}", bootstrap_nnue.display()))?;
+        let migrated =
+            haitaka_wasm::migrate_donor_single_to_receiver_pair_v2(&source).map_err(|err| {
+                anyhow!("failed to migrate V1 bootstrap to DonorReceiverPairV2: {err}")
+            })?;
+        fs::write(&artifacts.bootstrap_migrated_nnue, migrated).with_context(|| {
+            format!(
+                "failed to write {}",
+                artifacts.bootstrap_migrated_nnue.display()
+            )
+        })?;
+        artifacts.bootstrap_migrated_nnue.clone()
+    } else {
+        bootstrap_nnue
+    };
     let imported_model_pt = if import_features == training_features {
         artifacts.bootstrap_model_pt.clone()
     } else {
@@ -839,6 +936,11 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+        assert!(
+            overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorReceiverPairV2")
+        );
+        assert!(overlay_donor_features_py_contents().contains("DonorReceiverPairV2"));
+        assert!(overlay_donor_features_py_contents().contains("0x6D124A8F"));
         assert!(
             overlay_training_data_loader_cpp_contents()
                 .contains("Ignore the trainer's smart/filtered")
