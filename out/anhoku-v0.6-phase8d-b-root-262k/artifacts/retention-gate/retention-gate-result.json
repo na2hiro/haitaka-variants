@@ -1,0 +1,99 @@
+{
+  "schema": "anhoku-phase8d-b-retention-gate-result",
+  "schemaVersion": 1,
+  "date": "2026-08-29",
+  "decision": "not-retained",
+  "route": "Phase 11 feature-hypothesis review",
+  "nextPhaseStarted": false,
+  "prohibitionsHonored": {
+    "retrained": false,
+    "regeneratedData": false,
+    "reranHandcraftedBenchmark": false,
+    "reselectedCheckpoint": false,
+    "promotedModel": false
+  },
+  "immutableModels": {
+    "candidate": {
+      "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/haitaka-anhoku-v0.6-phase8d-b1-root-262k.nnue",
+      "sha256": "7437671b62b61397397ac12f28f011f5909e8922a43bbeedbdb34da36864f2da",
+      "hashVerified": true
+    },
+    "c16": {
+      "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+      "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0",
+      "hashVerified": true
+    },
+    "phase8bRoot": {
+      "path": "out/anhoku-v0.6-phase8b-root-262k/artifacts/haitaka-anhoku-v0.6-phase8b-root-262k.nnue",
+      "sha256": "12865f59f28f6e26feffcfae2e76c576f8eb31891148a8a9c167b8b50aac972c",
+      "hashVerified": true
+    }
+  },
+  "engine": {
+    "sourceCommit": "5c23b02f6ea8d5d63f81b316509ec214ac707035",
+    "executableSha256": "2a731963ce1a82436e4c59de6a77bbf9543f278d4498b65475e7f62d13d498ae",
+    "gitDirty": true,
+    "sameBinaryForBothSides": true
+  },
+  "fixedC16Comparison": {
+    "report": "c16-vs-candidate-20260829/self-play-report.json",
+    "games": 1024,
+    "seed": 7104,
+    "candidateAs": "A",
+    "c16As": "B",
+    "wld": [514, 503, 7],
+    "pairScoreBins": [22, 0, 461, 3, 26],
+    "pairedElo": 3.732361773062467,
+    "pairedElo95Ci": [-5.558565026288921, 13.023288572413854],
+    "candidateNps": 19527.188003686053,
+    "c16Nps": 19493.070857813087,
+    "warnings": []
+  },
+  "phase8bRootComparison": {
+    "initialReport": "phase8b-root-vs-candidate-20260829/batch-1024/self-play-report.json",
+    "extensionReport": "phase8b-root-vs-candidate-20260829/batch-3072/self-play-report.json",
+    "cumulativeReport": "cumulative-phase8b-root-vs-candidate-20260829.json",
+    "initialGames": 1024,
+    "extensionGames": 3072,
+    "cumulativeGames": 4096,
+    "seeds": [8204, 9228],
+    "wld": [2058, 2021, 17],
+    "pairScoreBins": [131, 5, 1757, 6, 149],
+    "pairedElo": 3.138541585769112,
+    "pairedElo95Ci": [-2.45278473688142, 8.729867908419644],
+    "candidateNps": 19012.162178374063,
+    "phase8bRootNps": 18972.162657274144,
+    "warnings": []
+  },
+  "retentionConditions": {
+    "candidatePointEstimateVsC16Positive": true,
+    "phase8bRootLower95BoundAboveZero": false,
+    "verificationPassing": true,
+    "tacticalStatus": "no tactical-suite report available; not passed",
+    "oodV2Status": "candidate validation loss decreased at every recorded export; no independent tactical/OOD selector was used",
+    "generationCostWarning": "1.590 attempts/accepted and 3,729/8,200 exhausted games"
+  },
+  "oodV2Loss": {
+    "source": "remote TensorBoard scalar id_val_loss on the OOD-v2 validation file",
+    "step4": 0.07544051110744476,
+    "step8": 0.07489673048257828,
+    "step12": 0.07473993301391602,
+    "step16": 0.07439529895782471
+  },
+  "verification": {
+    "candidateReport": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/verify.json",
+    "candidateStatus": "pass",
+    "candidatePositions": 14,
+    "c16PriorReport": "out/anhoku-v0.6-phase8c-launch-gate/verifier/c16/artifacts/verify.json",
+    "phase8bRootPriorReport": "out/anhoku-v0.6-phase8c-launch-gate/verifier/phase8b-root/artifacts/verify.json",
+    "tacticalSuiteReport": null
+  },
+  "handcraftedContextOnly": {
+    "report": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/handcrafted-benchmark/7437671b62b61397/self-play-report.json",
+    "wld": [346, 671, 7],
+    "pairedElo": -114.21390957048911,
+    "pairedElo95Ci": [-135.57435570921538, -92.85346343176285],
+    "usedForCheckpointSelection": false,
+    "rerunInRetentionGate": false
+  }
+}

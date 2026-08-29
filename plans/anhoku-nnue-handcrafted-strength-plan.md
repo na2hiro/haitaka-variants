@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-B retention gate complete; candidate not retained; Phase 11 feature-hypothesis review is next
+- Status: Phase 8D-B candidate not retained; Phase 11-A DonorReceiverPairV2 implementation is next
 - Created: 2026-08-17
 - Last checked: 2026-08-29
 - Primary ruleset: Anhoku
@@ -1336,13 +1336,72 @@ This is a repeatable phase template, but each assignment selects exactly one
 feature hypothesis and produces one implementation PR plus its controlled
 experiment. Do not combine candidates.
 
-Eligible hypotheses:
+### Phase 11 review decision (2026-08-29)
 
-- receiver square x effective piece type;
-- donor-to-receiver relative geometry;
-- king-zone donor pressure;
-- extra capacity for tactical donor relations, with compatible base weights
-  initialized from the best v0.6 model where possible.
+Phase 8D-B improved only `+3.14 Elo [-2.45, +8.73]` over the repeated-trajectory
+Phase 8B root at the 4,096-game cap. C/16 remained essentially level and the
+candidate still lost `-114.2 Elo` to handcrafted. Together with the preserved
+equal-node `-36.78 Elo [-51.30, -22.26]` diagnosis, this routes the next
+experiment to representation rather than more rollout tuning or data scale.
+
+The code audit removes two previously listed candidates. `DonorSingleEff`
+already activates one feature indexed by oriented receiver square, donor color
+relative to perspective, and effective donor piece type, so “receiver square x
+effective piece type” is the current representation rather than a V2. For
+Anhoku, donor-to-receiver direction is fixed by the rule and therefore adds no
+position information. King-zone pressure remains a later hypothesis, but is
+less direct and currently lacks a preserved tactical-suite baseline.
+
+Freeze exactly one hypothesis: **DonorReceiverPairV2**. For each influenced
+piece, index one sparse feature by oriented receiver square, relative color,
+receiver native piece type, and effective donor piece type. This adds the
+missing native/effective conjunction; the current base and donor blocks can
+only express those identities additively before the first activation.
+
+### Phase 11-A: DonorReceiverPairV2 implementation and equivalence gate
+
+**Status: authorized; implementation not started.** This assignment changes no
+data, labels, training hyperparameters, or search policy and runs no production
+training or strength match.
+
+- Add one Anhoku feature family with a new stable network hash and matching
+  trainer/runtime index specification. Keep exactly one donor-relation active
+  feature per influenced piece and reuse the existing affected-square
+  incremental-update set.
+- Replace, rather than stack with, `DonorSingleEff`. Import a V1 network by
+  copying each old effective-type weight into every receiver-native slice. A
+  migrated network must be bit-exact to the V1 evaluation on representative,
+  randomized, and incremental-update corpora before any learning occurs.
+- Record feature cardinality and projected/exported model size. The model-size
+  increase must be at most 10%, and representative fixed-position inference
+  must not regress by more than 5%; otherwise stop before Phase 11-B.
+- Add trainer/runtime feature-index parity tests, serialize/load round trips,
+  full-refresh versus incremental equivalence, deterministic fixed-depth move
+  checks, and malformed/wrong-family rejection tests.
+- Define and preserve a small Anhoku tactical suite before training. It is a
+  veto-only suite and may not select checkpoints or tune the feature geometry.
+- End with an implementation commit and a written go/no-go report for Phase
+  11-B. Do not start GPU training in the implementation assignment.
+
+### Phase 11-B: controlled V1-versus-V2 experiment
+
+Authorize only after Phase 11-A passes. Use the audited Phase 8D-B.1 unique-262k
+train/OOD data without regeneration. Train matched V1 and V2 lanes from
+functionally identical C/16 initialization, with the same trainer revision,
+seed 80, examples, steps, batch order, lambda, LR, and fixed step-16 export.
+This is a feature ablation; do not spend games ranking checkpoints against
+their own step-4 anchors.
+
+- Compare V2 directly with the matched V1 control in paired 100 ms games,
+  starting at 1,024 and extending once to a cumulative 4,096 when inconclusive.
+  Require the V2 lower paired 95% bound above `0 Elo`, no tactical/verifier/OOD
+  veto, and no more than 5% NNUE-side NPS regression.
+- If seed 80 passes, repeat both lanes with seed 81. Require positive V2-minus-V1
+  point estimates in both seeds and a combined lower 95% bound above `0 Elo`.
+  If seed 80 fails or remains inconclusive at 4,096, stop without another seed.
+- Only a replicated feature gain authorizes a fresh handcrafted diagnostic and
+  consideration of the feature for later scaling. Default-model promotion
+  still requires the global handcrafted and independent-seed gates.
 
 Compare against the best prior pipeline using identical data, teacher, seeds,
 training budget, kernels, and openings. Report model size, latency, NPS,

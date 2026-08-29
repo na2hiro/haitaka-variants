@@ -333,8 +333,10 @@ The prior `+0.85 Elo` result was against the step-4 checkpoint, not C/16, and
 does not satisfy this fixed-control gate. The existing `-114.2 Elo` result
 against handcrafted remains context only and was not rerun or used for
 selection. Since the direct Phase 8B-root interval overlaps zero at the cap,
-route to **Phase 11 feature-hypothesis review**. Do not start that phase in
-this assignment.
+the subsequent Phase 11 review selected **DonorReceiverPairV2**: an explicit
+receiver-native-piece x effective-donor-piece conjunction. Phase 11-A is the
+next implementation-only assignment; no feature implementation or training has
+started.
 
 ## Smoke evidence
 
