@@ -1403,6 +1403,12 @@ did not start training or strength games.
 
 ### Phase 11-B: controlled V1-versus-V2 experiment
 
+**Status: launch-ready; training has not started (2026-08-29).** The matched
+seed-80 V1/V2 configs, audited-data transfer bundle, bootstrap-only remote
+preflight, fixed-step training launcher, verification, and checkpoint-retention
+path are frozen in `docs/nnue-training-anhoku-v0.7-phase11b-launch.md`. The
+launcher deliberately bypasses `cargo train` checkpoint ranking.
+
 Authorize only after Phase 11-A passes. Use the audited Phase 8D-B.1 unique-262k
 train/OOD data without regeneration. Train matched V1 and V2 lanes from
 functionally identical C/16 initialization, with the same trainer revision,

@@ -117,6 +117,12 @@ enum Command {
         #[arg(long)]
         no_resume: bool,
     },
+    /// Convert and validate the configured NNUE bootstrap without starting
+    /// training. This is useful as a final remote GPU-host preflight.
+    PrepareBootstrap {
+        #[arg(long)]
+        config: PathBuf,
+    },
     TrainSelect {
         #[arg(long)]
         config: PathBuf,
@@ -331,6 +337,11 @@ fn main() -> Result<()> {
             let loaded = LoadedConfig::from_path(&config)?;
             let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
+        }
+        Command::PrepareBootstrap { config } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let bootstrap = trainer::prepare_bootstrap(&loaded)?;
+            println!("prepared bootstrap checkpoint: {}", bootstrap.display());
         }
         Command::TrainSelect {
             config,

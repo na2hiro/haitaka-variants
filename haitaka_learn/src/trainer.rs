@@ -141,6 +141,19 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
     })
 }
 
+/// Materialize the configured warm-start as a trainer checkpoint while doing
+/// no optimization. In particular, this exercises the V1-to-V2 migration and
+/// the real PyTorch deserializer before an hourly GPU run is authorized.
+pub fn prepare_bootstrap(loaded: &LoadedConfig) -> Result<PathBuf> {
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let artifacts = loaded.artifact_paths();
+    artifacts.ensure_dirs()?;
+    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    materialize_bootstrap_pt(loaded, &trainer_checkout)?.ok_or_else(|| {
+        anyhow!("paths.bootstrap_nnue is required to prepare a bootstrap checkpoint")
+    })
+}
+
 pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
