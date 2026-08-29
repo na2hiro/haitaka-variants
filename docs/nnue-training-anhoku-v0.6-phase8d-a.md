@@ -5,7 +5,8 @@ Phase 8D-A.2 then passed its v3 full-trajectory, sampled cross-host, and
 adaptive-label calibration gates at commit `6da4ce7`. Phase 8D-B data
 generation completed, but its initial unique-board readiness gate blocked.
 Phase 8D-B.1 completed its schedule-only recovery and passed the final dataset
-gate. Seed-80 training is the next action.
+gate. Seed-80 training and the retention gate are complete; Phase 8D-B was not
+retained and the next route is Phase 11 feature-hypothesis review.
 
 ## Implemented contract
 
@@ -263,6 +264,77 @@ rechecks the distinct-board floor. Final evidence:
 
 Run the authorized seed-80 training with `haitaka-variant-nnue-pytorch`
 revision `61666d9e3653e4df9881b14c23f8fdcc4bf7779b`, matching Phase 8B.
+
+## Phase 8D-B retention gate result (2026-08-29)
+
+**Final status: NOT RETAINED.** The retention gate used the immutable
+searched-stochastic Phase 8D-B.1 candidate as A and did not retrain,
+regenerate data, rerun the handcrafted benchmark, reselect a checkpoint, or
+promote a model. The candidate, C/16, and Phase 8B repeated-trajectory root
+hashes were verified before matching:
+
+| Model | SHA-256 |
+| --- | --- |
+| Phase 8D-B.1 candidate | `7437671b62b61397397ac12f28f011f5909e8922a43bbeedbdb34da36864f2da` |
+| C/16 control | `049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0` |
+| Phase 8B root | `12865f59f28f6e26feffcfae2e76c576f8eb31891148a8a9c167b8b50aac972c` |
+
+Both matches used the same Anhoku engine executable, source commit
+`5c23b02f6ea8d5d63f81b316509ec214ac707035`, executable SHA-256
+`2a731963ce1a82436e4c59de6a77bbf9543f278d4498b65475e7f62d13d498ae`, 100 ms
+per move, four random opening plies, paired colors, and a 200-ply cap. The
+remote checkout was marked dirty only by the untracked training bundle and
+config; the self-play reports contain no runtime warnings.
+
+### Fixed C/16 comparison
+
+With seed `7104`, candidate A versus C/16 B completed 1,024 games:
+
+| W-L-D | Pair bins | Paired Elo (95% CI) | A NPS | B NPS |
+| ---: | --- | ---: | ---: | ---: |
+| 514-503-7 | `[22, 0, 461, 3, 26]` | `+3.732361773062467 [-5.558565026288921, +13.023288572413854]` | 19527.188 | 19493.071 |
+
+The point estimate is positive, satisfying the C/16 condition. The complete
+report and per-game records are in
+`out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/c16-vs-candidate-20260829/`.
+
+### Direct Phase 8B-root comparison
+
+Fresh seed `8204` was predeclared and recorded before the first match. The
+first 1,024 games were inconclusive: `502-517-5`, pair bins
+`[43, 0, 432, 3, 34]`, paired Elo `-5.089752528106757`, 95% CI
+`[-16.82308249944729, +6.643577443233772]`. The cumulative extension used
+non-overlapping seed `9228` for exactly 3,072 additional games and was not
+double-counted.
+
+The cumulative 4,096-game result was:
+
+| W-L-D | Pair bins | Paired Elo (95% CI) | A NPS | B NPS |
+| ---: | --- | ---: | ---: | ---: |
+| 2058-2021-17 | `[131, 5, 1757, 6, 149]` | `+3.138541585769112 [-2.45278473688142, +8.729867908419644]` | 19012.162 | 18972.163 |
+
+The lower bound is not above zero at the 4,096-game cap, so the direct gate
+fails and the model is not retained. The raw batch reports, cumulative
+machine-readable summary, and protocol are under
+`out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/`.
+
+### Non-strength evidence and routing
+
+The trainer's OOD-v2 validation scalar (`id_val_loss`) decreased at every
+recorded export: step 4 `0.07544051110744476`, step 8 `0.07489673048257828`,
+step 12 `0.07473993301391602`, and step 16 `0.07439529895782471`. The current
+candidate verifier passed all 14 positions and its search smoke; the preserved
+C/16 and Phase 8B-root verifier reports also pass. No tactical-suite report is
+available, so tactical status is unassessed rather than passed. The known
+generation-cost warning remains `1.590 attempts/accepted and 3,729/8,200
+exhausted games`.
+
+The prior `+0.85 Elo` result was against the step-4 checkpoint, not C/16, and
+does not satisfy this fixed-control gate. The existing `-114.2 Elo` result
+against handcrafted remains context only and was not rerun or used for
+selection. Since the direct Phase 8B-root interval overlaps zero at the cap,
+route to **Phase 11 feature-hypothesis review**. Do not start that phase in
+this assignment.
 
 ## Smoke evidence
 

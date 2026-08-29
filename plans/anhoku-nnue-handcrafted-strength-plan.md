@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 8D-B.1 dataset gate passed; seed-80 training is next
+- Status: Phase 8D-B retention gate complete; candidate not retained; Phase 11 feature-hypothesis review is next
 - Created: 2026-08-17
 - Last checked: 2026-08-29
 - Primary ruleset: Anhoku
@@ -967,7 +967,7 @@ promotion of a default model.
 
 ## Phase 8D: Immediate Searched-Stochastic Trajectory Repair
 
-**Status: in progress.** GR2 proved deterministic trajectory collapse:
+**Status: complete; Phase 8D-B was not retained.** GR2 proved deterministic trajectory collapse:
 1,115,026 accepted records contained only 6,832 packed boards. Phase 8D is no
 longer conditional on a Phase 8C strength result; it must repair data diversity
 before any further production labeling or training. This is one rollout-policy
@@ -1145,7 +1145,8 @@ failure, and remains a generation-cost warning for the later retention gate.
 
 ### Phase 8D-B.1: schedule-only unique-262k recovery
 
-**Status: complete; dataset gate passed and seed-80 training is authorized.** Use
+**Status: complete; dataset gate passed, seed-80 training completed, and the
+retention gate failed.** Use
 `haitaka_learn.anhoku-v0.6-phase8d-b1-root-262k-extension.toml` at engine
 revision `5c23b02`. It changes only schedule cardinality from 6,200 to 8,200
 train games; every generation-semantic field remains frozen, so shards 0--619
@@ -1211,6 +1212,59 @@ exhausted games. Final evidence:
   authorizing one Phase 11 feature hypothesis. An inconclusive match may be
   extended only under its written boundary; do not try several temperatures
   against strength outcomes.
+
+### Phase 8D-B retention gate (2026-08-29)
+
+**Final status: NOT RETAINED.** The three immutable model hashes were verified
+before matching:
+
+- candidate: `7437671b62b61397397ac12f28f011f5909e8922a43bbeedbdb34da36864f2da`;
+- C/16: `049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0`;
+- Phase 8B repeated-trajectory root:
+  `12865f59f28f6e26feffcfae2e76c576f8eb31891148a8a9c167b8b50aac972c`.
+
+Both comparisons used the same Anhoku engine executable at source commit
+`5c23b02f6ea8d5d63f81b316509ec214ac707035`, executable SHA-256
+`2a731963ce1a82436e4c59de6a77bbf9543f278d4498b65475e7f62d13d498ae`, 100 ms
+per move, four random opening plies, a 200-ply cap, paired colors, and no
+engine warnings. The remote checkout was dirty only because the training
+bundle and run config were untracked; the executable provenance is recorded
+in every report.
+
+The fixed C/16 comparison used seed `7104` and 1,024 games, with the candidate
+as A and C/16 as B. It scored `514-503-7`, pair bins `[22, 0, 461, 3, 26]`,
+paired Elo `+3.732361773062467`, and paired 95% CI
+`[-5.558565026288921, +13.023288572413854]`. Candidate and C/16 main-search
+NPS were `19527.188003686053` and `19493.070857813087`.
+
+The direct Phase 8B-root comparison predeclared fresh seed `8204`; its
+non-overlapping extension used seed `9228`. The first 1,024 games were
+inconclusive at `502-517-5`, paired Elo `-5.089752528106757`, CI
+`[-16.82308249944729, +6.643577443233772]`, so exactly 3,072 additional games
+were run. The cumulative 4,096-game result was `2058-2021-17`, pair bins
+`[131, 5, 1757, 6, 149]`, paired Elo `+3.138541585769112`, and paired 95% CI
+`[-2.45278473688142, +8.729867908419644]`. Candidate and Phase 8B-root
+main-search NPS were `19012.162178374063` and `18972.162657274144`. Because
+the lower bound remained below zero at the cap, this is a retention failure;
+it is not an authorization for Phase 8C.
+
+The selected candidate's OOD-v2 validation scalar (`id_val_loss`) decreased at
+each export: step 4 `0.07544051110744476`, step 8 `0.07489673048257828`, step
+12 `0.07473993301391602`, and step 16 `0.07439529895782471`. The candidate
+verifier passed all 14 positions and its search smoke; the preserved C/16 and
+Phase 8B-root verifier reports also pass. No tactical-suite report is
+available, so tactical status is unassessed rather than passed. The known
+generation-cost warning remains `1.590 attempts/accepted and 3,729/8,200
+exhausted games`.
+
+The existing `-114.2 Elo` handcrafted result is retained as context only and
+was not rerun or used in selection. The previous `+0.85 Elo` result was versus
+the step-4 checkpoint, not C/16, and does not satisfy this gate. Machine-readable
+evidence is under
+`out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/`, including the
+protocol, raw batch reports, cumulative report, and route decision. Phase 8D-B
+is not retained; route to **Phase 11 feature-hypothesis review** and do not
+start that phase in this assignment.
 
 This phase has higher expected value than more label nodes or runtime work:
 the current pipeline effectively trained on fewer than 10k boards, so position
