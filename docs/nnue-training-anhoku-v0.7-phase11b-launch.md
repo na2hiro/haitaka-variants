@@ -1,11 +1,10 @@
 # Anhoku v0.7 Phase 11-B Vast launch
 
-## Decision
+## Outcome
 
-Phase 11-B seed 80 is ready to launch. No production training or strength game
-has started. The experiment is a strict V1-versus-V2 feature ablation using the
-same audited Phase 8D-B.1 positions and functionally identical C/16 starting
-evaluation.
+Phase 11-B ran on 2026-08-31 and did not retain DonorReceiverPairV2. This file
+preserves the launch contract; the result and stop decision are in
+`docs/nnue-training-anhoku-v0.7-phase11b.md`.
 
 The launch must use `scripts/vast/phase11b-seed80.sh`. Do not use `cargo train`:
 that wrapper runs checkpoint ranking, while Phase 11-B requires fixed step-16
@@ -76,6 +75,12 @@ revision, then install the trainer environment as described in
 `docs/vast-ai-nnue-training.md`. Upload and unpack the paired bundle in the
 Haitaka checkout.
 
+The requirements installer pins `setuptools<81` because the frozen PyTorch
+Lightning 1.9 trainer imports `pkg_resources`. The launcher verifies and
+applies the reviewed `trainer-patches/variant-nnue-pytorch-phase7.1.patch`
+overlay before preflight; the frozen trainer commit alone does not expose the
+step/LR/validation flags required by this contract.
+
 Before training:
 
 ```bash
@@ -110,6 +115,11 @@ anhoku-v0.7-phase11b-seed80-results.tgz.sha256
 Download and verify both files before destroying the instance. The result
 archive retains both step-16 `.ckpt`/`.nnue` pairs, configs, manifests, logs,
 GPU/preflight metadata, verifier output, and checkpoint-to-NNUE identities.
+
+Checkpoint and output paths passed to the trainer serializer must be absolute,
+because serialization changes its working directory to the trainer checkout.
+The launcher canonicalizes both paths to keep a completed lane from entering a
+failed resume loop.
 
 ## What happens after training
 

@@ -11,6 +11,10 @@ fi
 
 source env/bin/activate
 pip install --upgrade pip
+# PyTorch Lightning 1.9 imports pkg_resources at startup. Setuptools 81 removes
+# that compatibility module, so keep the isolated trainer environment on the
+# newest compatible setuptools release.
+pip install --default-timeout=1000 --retries=10 --no-cache-dir 'setuptools<81'
 
 requirements="${HAITAKA_TRAINER_REQUIREMENTS:-}"
 if [ -z "$requirements" ]; then

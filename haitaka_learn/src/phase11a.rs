@@ -63,6 +63,29 @@ impl Phase11aReport {
 }
 
 #[derive(Debug, Serialize)]
+pub struct Phase11bTrainedGateReport {
+    schema: &'static str,
+    schema_version: u32,
+    v1: ArtifactIdentity,
+    v2: ArtifactIdentity,
+    tactical_suite: TacticalReport,
+    inference: InferenceReport,
+    gates: Phase11bTrainedGates,
+}
+
+impl Phase11bTrainedGateReport {
+    pub fn passed(&self) -> bool {
+        self.gates.tactical_suite_passed && self.gates.inference_regression_at_most_5_percent
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct Phase11bTrainedGates {
+    tactical_suite_passed: bool,
+    inference_regression_at_most_5_percent: bool,
+}
+
+#[derive(Debug, Serialize)]
 struct ArtifactIdentity {
     path: String,
     sha256: String,
@@ -330,6 +353,126 @@ pub fn run(
             equivalence_passed,
             tactical_suite_passed: tactical_passed,
             phase11b_go,
+        },
+    };
+    if let Some(parent) = report_path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    fs::write(report_path, serde_json::to_vec_pretty(&report)?)
+        .with_context(|| format!("failed to write {}", report_path.display()))?;
+    Ok(report)
+}
+
+pub fn run_trained_gate(
+    v1_path: &Path,
+    v2_path: &Path,
+    suite_path: &Path,
+    report_path: &Path,
+) -> Result<Phase11bTrainedGateReport> {
+    let v1_bytes =
+        fs::read(v1_path).with_context(|| format!("failed to read {}", v1_path.display()))?;
+    let v2_bytes =
+        fs::read(v2_path).with_context(|| format!("failed to read {}", v2_path.display()))?;
+    let v1_model = Arc::new(
+        NnueModel::from_bytes(&v1_bytes)
+            .map_err(|err| anyhow!("failed to load trained V1 network: {err}"))?,
+    );
+    let v2_model = Arc::new(
+        NnueModel::from_bytes(&v2_bytes)
+            .map_err(|err| anyhow!("failed to load trained V2 network: {err}"))?,
+    );
+    ensure!(
+        v1_model.feature_family_name() == "HalfKAv2^+DonorSingleEff",
+        "V1 network has unexpected family {}",
+        v1_model.feature_family_name()
+    );
+    ensure!(
+        v2_model.feature_family_name() == "HalfKAv2^+DonorReceiverPairV2",
+        "V2 network has unexpected family {}",
+        v2_model.feature_family_name()
+    );
+
+    let suite_bytes =
+        fs::read(suite_path).with_context(|| format!("failed to read {}", suite_path.display()))?;
+    let suite: TacticalSuite = serde_json::from_slice(&suite_bytes)
+        .with_context(|| format!("failed to parse {}", suite_path.display()))?;
+    ensure!(
+        suite.ruleset == "anhoku",
+        "tactical suite must target anhoku"
+    );
+    ensure!(
+        !suite.fixtures.is_empty(),
+        "tactical suite must not be empty"
+    );
+
+    let representative: Vec<Board> = suite
+        .fixtures
+        .iter()
+        .map(|fixture| {
+            Board::from_sfen(&fixture.sfen)
+                .map_err(|err| anyhow!("invalid tactical SFEN {}: {err}", fixture.id))
+        })
+        .collect::<Result<_>>()?;
+    let mut tactical_rows = Vec::with_capacity(suite.fixtures.len());
+    for fixture in &suite.fixtures {
+        let v1 = search_impl_with_eval_mode(
+            &fixture.sfen,
+            fixture.depth,
+            v1_model.clone(),
+            SearchEvalMode::Incremental,
+        )
+        .map_err(|err| anyhow!("V1 search failed for {}: {err}", fixture.id))?;
+        let v2 = search_impl_with_eval_mode(
+            &fixture.sfen,
+            fixture.depth,
+            v2_model.clone(),
+            SearchEvalMode::Incremental,
+        )
+        .map_err(|err| anyhow!("V2 search failed for {}: {err}", fixture.id))?;
+        let passed = v1.best_move.as_deref() == Some(fixture.expected_bestmove.as_str())
+            && v2.best_move.as_deref() == Some(fixture.expected_bestmove.as_str());
+        tactical_rows.push(TacticalResult {
+            id: fixture.id.clone(),
+            purpose: fixture.purpose.clone(),
+            depth: fixture.depth,
+            expected_bestmove: fixture.expected_bestmove.clone(),
+            v1_bestmove: v1.best_move,
+            v2_bestmove: v2.best_move,
+            v1_best_score: v1.best_score,
+            v2_best_score: v2.best_score,
+            passed,
+        });
+    }
+
+    let tactical_passed = tactical_rows.iter().all(|row| row.passed);
+    let (v1_ns, v2_ns) = benchmark_full_refresh(&v1_model, &v2_model, &representative);
+    let inference_regression = (v2_ns / v1_ns - 1.0) * 100.0;
+    let inference_passed = inference_regression <= 5.0;
+    let report = Phase11bTrainedGateReport {
+        schema: "haitaka-anhoku-phase11b-trained-gate",
+        schema_version: 1,
+        v1: artifact_identity(v1_path, &v1_bytes, &v1_model),
+        v2: artifact_identity(v2_path, &v2_bytes, &v2_model),
+        tactical_suite: TacticalReport {
+            suite_path: suite_path.display().to_string(),
+            suite_sha256: sha256_hex(&suite_bytes),
+            schema: suite.schema,
+            schema_version: suite.schema_version,
+            fixtures: tactical_rows,
+            passed: tactical_passed,
+        },
+        inference: InferenceReport {
+            corpus_positions: representative.len(),
+            rounds: BENCH_ROUNDS,
+            repetitions_per_round: BENCH_REPETITIONS,
+            v1_median_ns_per_position: v1_ns,
+            v2_median_ns_per_position: v2_ns,
+            regression_percent: inference_regression,
+        },
+        gates: Phase11bTrainedGates {
+            tactical_suite_passed: tactical_passed,
+            inference_regression_at_most_5_percent: inference_passed,
         },
     };
     if let Some(parent) = report_path.parent() {

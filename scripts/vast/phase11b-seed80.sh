@@ -7,7 +7,7 @@ if [[ "${mode}" != "preflight" && "${mode}" != "train" ]]; then
     exit 2
 fi
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+repo_root=${HAITAKA_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 cd "${repo_root}"
 
 v1_config=haitaka_learn.anhoku-v0.7-phase11b-seed80-v1.toml
@@ -17,6 +17,11 @@ v2_root=out/anhoku-v0.7-phase11b-seed80-v2
 trainer_root=../haitaka-variant-nnue-pytorch
 python=${trainer_root}/env/bin/python
 expected_trainer=61666d9e3653e4df9881b14c23f8fdcc4bf7779b
+trainer_patch=trainer-patches/variant-nnue-pytorch-phase7.1.patch
+trainer_evaluate=trainer-patches/evaluate.py
+expected_patch_sha256=79603cc66250e335ba242477137366f0aa8a2e530ffa36f3abfb582fafaf802f
+expected_evaluate_sha256=9a93fbff1549d1884300ef5623370173a1b9e06bbd9fe400c2ea5f9940da9748
+expected_applied_diff_sha256=87f5a9a446bb929854dbf01b38db16980e4faee73a2f86044ae725f98ee0bc4b
 
 git merge-base --is-ancestor c26e4fd HEAD
 expected_haitaka=$(<phase11b-input-audit/bundle-source-commit.txt)
@@ -28,6 +33,22 @@ git diff --quiet -- . \
 git diff --cached --quiet -- . \
     ":(exclude)${v1_config}" ":(exclude)${v2_config}"
 [[ $(git -C "${trainer_root}" rev-parse HEAD) == "${expected_trainer}" ]]
+
+printf '%s  %s\n' "${expected_patch_sha256}" "${trainer_patch}" | sha256sum --check
+printf '%s  %s\n' "${expected_evaluate_sha256}" "${trainer_evaluate}" | sha256sum --check
+trainer_diff_sha256=$(
+    git -C "${trainer_root}" diff --binary -- model.py train.py | sha256sum | awk '{print $1}'
+)
+if [[ "${trainer_diff_sha256}" != "${expected_applied_diff_sha256}" ]]; then
+    git -C "${trainer_root}" diff --quiet
+    patch --batch --forward --fuzz=3 -d "${trainer_root}" -p1 <"${trainer_patch}"
+fi
+cp "${trainer_evaluate}" "${trainer_root}/evaluate.py"
+trainer_diff_sha256=$(
+    git -C "${trainer_root}" diff --binary -- model.py train.py | sha256sum | awk '{print $1}'
+)
+[[ "${trainer_diff_sha256}" == "${expected_applied_diff_sha256}" ]]
+cmp "${trainer_evaluate}" "${trainer_root}/evaluate.py"
 
 normalize_config() {
     sed -E \
@@ -75,6 +96,21 @@ PY
 
 mkdir -p "${v1_root}/artifacts" "${v1_root}/logs" \
     "${v2_root}/artifacts" "${v2_root}/logs"
+git -C "${trainer_root}" diff --binary -- model.py train.py \
+    >"${v1_root}/artifacts/applied-trainer-phase7.1.patch"
+cp "${v1_root}/artifacts/applied-trainer-phase7.1.patch" \
+    "${v2_root}/artifacts/applied-trainer-phase7.1.patch"
+{
+    sha256sum "${trainer_patch}" "${trainer_evaluate}"
+    printf '%s  applied trainer diff\n' "${trainer_diff_sha256}"
+} | tee "${v1_root}/artifacts/trainer-patch-sha256.txt" \
+    "${v2_root}/artifacts/trainer-patch-sha256.txt" >/dev/null
+sha256sum "${trainer_root}"/requirements*.txt \
+    | tee "${v1_root}/artifacts/trainer-requirements-sha256.txt" \
+        "${v2_root}/artifacts/trainer-requirements-sha256.txt" >/dev/null
+"${python}" -m pip freeze \
+    | tee "${v1_root}/artifacts/trainer-environment.txt" \
+        "${v2_root}/artifacts/trainer-environment.txt" >/dev/null
 nvidia-smi >"${v1_root}/artifacts/vast-nvidia-smi-preflight.txt"
 cp "${v1_root}/artifacts/vast-nvidia-smi-preflight.txt" \
     "${v2_root}/artifacts/vast-nvidia-smi-preflight.txt"
@@ -129,8 +165,13 @@ run_lane() {
         printf '%s produced no step-16 checkpoint\n' "${label}" >&2
         exit 1
     fi
-    local checkpoint=${step16_checkpoints[0]#* }
-    local output=${lane_root}/artifacts/${output_name}
+    # The trainer's serializer runs with the trainer checkout as its working
+    # directory, so both paths must be absolute. Relative paths silently point
+    # at the wrong checkout and make a completed lane look resumable forever.
+    local checkpoint
+    checkpoint=$(realpath "${step16_checkpoints[0]#* }")
+    local output
+    output=$(realpath -m "${lane_root}/artifacts/${output_name}")
     cargo run -p haitaka_learn --release --features anhoku -- \
         export-checkpoint --config "${config}" \
         --checkpoint "${checkpoint}" --output "${output}"

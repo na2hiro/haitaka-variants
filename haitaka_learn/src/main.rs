@@ -44,6 +44,18 @@ enum Command {
         #[arg(long)]
         report: PathBuf,
     },
+    /// Run the frozen Phase 11 tactical and fixed-position latency vetoes on
+    /// trained V1 and V2 networks without modifying either artifact.
+    Phase11bTacticalGate {
+        #[arg(long)]
+        v1: PathBuf,
+        #[arg(long)]
+        v2: PathBuf,
+        #[arg(long)]
+        tactical_suite: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+    },
     /// Compile the trainer overlay and verify Python/C++/runtime V2 cardinality,
     /// hash, and index anchors without starting training.
     VerifyDonorReceiverPairV2Trainer {
@@ -233,6 +245,21 @@ fn main() -> Result<()> {
                 if go { "GO" } else { "NO-GO" }
             );
             ensure!(go, "Phase 11-A gate failed; do not start Phase 11-B");
+        }
+        Command::Phase11bTacticalGate {
+            v1,
+            v2,
+            tactical_suite,
+            report,
+        } => {
+            let result = phase11a::run_trained_gate(&v1, &v2, &tactical_suite, &report)?;
+            let passed = result.passed();
+            println!(
+                "Phase 11-B tactical/latency gate written to {}: {}",
+                report.display(),
+                if passed { "PASS" } else { "FAIL" }
+            );
+            ensure!(passed, "Phase 11-B tactical/latency gate failed");
         }
         Command::VerifyDonorReceiverPairV2Trainer { config, output } => {
             let loaded = LoadedConfig::from_path(&config)?;

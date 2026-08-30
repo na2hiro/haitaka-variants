@@ -1,8 +1,8 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 11-A DonorReceiverPairV2 passed; Phase 11-B controlled experiment is authorized next
+- Status: Phase 11-B completed at the seed-80 cap; DonorReceiverPairV2 was not retained
 - Created: 2026-08-17
-- Last checked: 2026-08-29
+- Last checked: 2026-08-31
 - Primary ruleset: Anhoku
 - Baseline: [Anhoku v0.5 / v0.5.1 corrected NNUE selection](../docs/nnue-training-anhoku-v0.5-corrected.md)
 
@@ -1403,11 +1403,15 @@ did not start training or strength games.
 
 ### Phase 11-B: controlled V1-versus-V2 experiment
 
-**Status: launch-ready; training has not started (2026-08-29).** The matched
-seed-80 V1/V2 configs, audited-data transfer bundle, bootstrap-only remote
-preflight, fixed-step training launcher, verification, and checkpoint-retention
-path are frozen in `docs/nnue-training-anhoku-v0.7-phase11b-launch.md`. The
-launcher deliberately bypasses `cargo train` checkpoint ranking.
+**Status: complete; NOT RETAINED (2026-08-31).** Both matched seed-80 lanes
+trained to the fixed step-16 boundary and passed verifier, tactical, latency,
+and NPS gates. The initial 1,024 games were inconclusive, so the predeclared
+3,072-game extension ran. At the cumulative 4,096-game cap V2 scored
+`2012-2076-8`, pair bins `[198, 1, 1681, 3, 165]`, and paired Elo
+`-5.43 [-11.77, +0.91]`. The lower bound is not above zero, so seed 80 failed
+the strength gate. Seed 81, a fresh handcrafted diagnostic, and feature
+retention are not authorized. Full results are in
+`docs/nnue-training-anhoku-v0.7-phase11b.md`.
 
 Authorize only after Phase 11-A passes. Use the audited Phase 8D-B.1 unique-262k
 train/OOD data without regeneration. Train matched V1 and V2 lanes from
