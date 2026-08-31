@@ -278,6 +278,25 @@ pub struct DonorReceiverPairV2Stats {
     pub feature_increase_percent_x100: usize,
 }
 
+/// Stable audit description of one Anhoku DonorReceiverPairV2 activation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DonorReceiverPairV2Row {
+    pub index: usize,
+    pub oriented_square: usize,
+    pub relative_color: usize,
+    pub receiver_type: usize,
+    pub effective_type: usize,
+}
+
+/// Quantized production parameters for the 16,200-row V2 relation block.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonorReceiverPairV2QuantizedRows {
+    pub transformer_dimensions: usize,
+    pub psqt_dimensions: usize,
+    pub transformer: Vec<i16>,
+    pub psqt: Vec<i32>,
+}
+
 pub const fn donor_receiver_pair_v2_stats() -> DonorReceiverPairV2Stats {
     let v1 = HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES;
     let v2 = HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES;
@@ -286,6 +305,54 @@ pub const fn donor_receiver_pair_v2_stats() -> DonorReceiverPairV2Stats {
         v2_real_features: v2,
         feature_increase_percent_x100: (v2 - v1) * 10_000 / v1,
     }
+}
+
+/// Returns all active relation rows for one accumulator perspective.
+///
+/// This calls the same donor geometry and row-index implementation used by
+/// full-refresh and incremental NNUE evaluation.
+#[cfg(feature = "anhoku")]
+pub fn donor_receiver_pair_v2_active_rows(
+    board: &Board,
+    perspective: Color,
+) -> Vec<DonorReceiverPairV2Row> {
+    let mut rows = Vec::new();
+    for &square in &Square::ALL {
+        let Some(receiver) = board.colored_piece_on(square) else {
+            continue;
+        };
+        let Some(donor_square) = single_donor_candidate_square(receiver.color, square) else {
+            continue;
+        };
+        let Some(donor_piece) = single_donor_piece_on(board, receiver.color, donor_square) else {
+            continue;
+        };
+        let oriented_square = orient_square(square, perspective);
+        let relative_color = relative_color_index(perspective, receiver.color);
+        let receiver_type = piece_slot(receiver.piece);
+        let effective_type = piece_slot(donor_piece);
+        rows.push(DonorReceiverPairV2Row {
+            index: donor_receiver_pair_v2_index_components(
+                oriented_square,
+                relative_color,
+                receiver_type,
+                effective_type,
+            ),
+            oriented_square,
+            relative_color,
+            receiver_type,
+            effective_type,
+        });
+    }
+    rows
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn donor_receiver_pair_v2_active_rows(
+    _board: &Board,
+    _perspective: Color,
+) -> Vec<DonorReceiverPairV2Row> {
+    Vec::new()
 }
 
 impl NnuePositionState {
@@ -559,6 +626,169 @@ pub fn migrate_donor_single_to_receiver_pair_v2(_bytes: &[u8]) -> Result<Vec<u8>
     Err(NnueError::new(
         "DonorReceiverPairV2 migration requires a haitaka_wasm build with feature `anhoku`",
     ))
+}
+
+/// Reads the production-quantized V2 relation rows without changing them.
+#[cfg(feature = "anhoku")]
+pub fn donor_receiver_pair_v2_quantized_rows(
+    bytes: &[u8],
+) -> Result<DonorReceiverPairV2QuantizedRows, NnueError> {
+    let layout = donor_receiver_pair_v2_layout(bytes)?;
+    let mut transformer =
+        Vec::with_capacity(DONOR_RECEIVER_PAIR_V2_REAL_FEATURES * TRANSFORMED_FEATURE_DIMENSIONS);
+    for chunk in bytes[layout.relation_weight_start..layout.relation_weight_end].chunks_exact(2) {
+        transformer.push(i16::from_le_bytes([chunk[0], chunk[1]]));
+    }
+    let mut psqt = Vec::with_capacity(DONOR_RECEIVER_PAIR_V2_REAL_FEATURES * PSQT_BUCKETS);
+    for chunk in bytes[layout.relation_psqt_start..layout.relation_psqt_end].chunks_exact(4) {
+        psqt.push(i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    Ok(DonorReceiverPairV2QuantizedRows {
+        transformer_dimensions: TRANSFORMED_FEATURE_DIMENSIONS,
+        psqt_dimensions: PSQT_BUCKETS,
+        transformer,
+        psqt,
+    })
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn donor_receiver_pair_v2_quantized_rows(
+    _bytes: &[u8],
+) -> Result<DonorReceiverPairV2QuantizedRows, NnueError> {
+    Err(NnueError::new(
+        "DonorReceiverPairV2 row access requires a haitaka_wasm build with feature `anhoku`",
+    ))
+}
+
+/// Builds the audit-only collapsed V2 network. The supplied rows are indexed
+/// by fixed (oriented square, relative color, effective type) group and copied
+/// into all ten receiver-native slices. Every other byte is preserved.
+#[cfg(feature = "anhoku")]
+pub fn collapse_donor_receiver_pair_v2(
+    bytes: &[u8],
+    collapsed_transformer: &[i16],
+    collapsed_psqt: &[i32],
+) -> Result<Vec<u8>, NnueError> {
+    const GROUPS: usize = SQUARES * Color::NUM * PIECE_TYPE_COUNT;
+    if collapsed_transformer.len() != GROUPS * TRANSFORMED_FEATURE_DIMENSIONS {
+        return Err(NnueError::new(format!(
+            "collapsed transformer has {} values, expected {}",
+            collapsed_transformer.len(),
+            GROUPS * TRANSFORMED_FEATURE_DIMENSIONS
+        )));
+    }
+    if collapsed_psqt.len() != GROUPS * PSQT_BUCKETS {
+        return Err(NnueError::new(format!(
+            "collapsed PSQT has {} values, expected {}",
+            collapsed_psqt.len(),
+            GROUPS * PSQT_BUCKETS
+        )));
+    }
+    let layout = donor_receiver_pair_v2_layout(bytes)?;
+    let mut collapsed = bytes.to_vec();
+    for effective_type in 0..PIECE_TYPE_COUNT {
+        for relative_color in 0..Color::NUM {
+            for oriented_square in 0..SQUARES {
+                let group = oriented_square
+                    + relative_color * SQUARES
+                    + effective_type * Color::NUM * SQUARES;
+                for receiver_type in 0..PIECE_TYPE_COUNT {
+                    let row = donor_receiver_pair_v2_index_components(
+                        oriented_square,
+                        relative_color,
+                        receiver_type,
+                        effective_type,
+                    );
+                    let weight_offset =
+                        layout.relation_weight_start + row * TRANSFORMED_FEATURE_DIMENSIONS * 2;
+                    for dimension in 0..TRANSFORMED_FEATURE_DIMENSIONS {
+                        let value = collapsed_transformer
+                            [group * TRANSFORMED_FEATURE_DIMENSIONS + dimension]
+                            .to_le_bytes();
+                        let offset = weight_offset + dimension * 2;
+                        collapsed[offset..offset + 2].copy_from_slice(&value);
+                    }
+                    let psqt_offset = layout.relation_psqt_start + row * PSQT_BUCKETS * 4;
+                    for dimension in 0..PSQT_BUCKETS {
+                        let value = collapsed_psqt[group * PSQT_BUCKETS + dimension].to_le_bytes();
+                        let offset = psqt_offset + dimension * 4;
+                        collapsed[offset..offset + 4].copy_from_slice(&value);
+                    }
+                }
+            }
+        }
+    }
+    let model = NnueModel::from_bytes(&collapsed)?;
+    if model.family != FeatureFamily::HalfKAv2DonorReceiverPairV2 {
+        return Err(NnueError::new("collapsed network did not reload as V2"));
+    }
+    Ok(collapsed)
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn collapse_donor_receiver_pair_v2(
+    _bytes: &[u8],
+    _collapsed_transformer: &[i16],
+    _collapsed_psqt: &[i32],
+) -> Result<Vec<u8>, NnueError> {
+    Err(NnueError::new(
+        "DonorReceiverPairV2 collapse requires a haitaka_wasm build with feature `anhoku`",
+    ))
+}
+
+#[cfg(feature = "anhoku")]
+struct DonorReceiverPairV2Layout {
+    relation_weight_start: usize,
+    relation_weight_end: usize,
+    relation_psqt_start: usize,
+    relation_psqt_end: usize,
+}
+
+#[cfg(feature = "anhoku")]
+fn donor_receiver_pair_v2_layout(bytes: &[u8]) -> Result<DonorReceiverPairV2Layout, NnueError> {
+    let mut reader = ByteReader::new(bytes);
+    let version = reader.read_u32()?;
+    if version != VERSION {
+        return Err(NnueError::new(format!(
+            "unsupported NNUE version: expected 0x{VERSION:08x}, got 0x{version:08x}"
+        )));
+    }
+    let hash = reader.read_u32()?;
+    if hash != HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH {
+        return Err(NnueError::new(format!(
+            "V2 row access requires {DONOR_RECEIVER_PAIR_V2_FEATURE_NAME}; got network hash 0x{hash:08x}"
+        )));
+    }
+    let description_len = reader.read_u32()? as usize;
+    reader.read_bytes(description_len)?;
+    reader.read_section_header(feature_transformer_hash(
+        HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH,
+    ))?;
+    reader.read_bytes(TRANSFORMED_FEATURE_DIMENSIONS * 2)?;
+    let all_weight_start = reader.offset;
+    let relation_weight_start =
+        all_weight_start + HALFKAV2_REAL_FEATURES * TRANSFORMED_FEATURE_DIMENSIONS * 2;
+    let relation_weight_end = relation_weight_start
+        + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES * TRANSFORMED_FEATURE_DIMENSIONS * 2;
+    reader.read_bytes(
+        (HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES)
+            * TRANSFORMED_FEATURE_DIMENSIONS
+            * 2,
+    )?;
+    let all_psqt_start = reader.offset;
+    let relation_psqt_start = all_psqt_start + HALFKAV2_REAL_FEATURES * PSQT_BUCKETS * 4;
+    let relation_psqt_end =
+        relation_psqt_start + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES * PSQT_BUCKETS * 4;
+    reader.read_bytes(
+        (HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES) * PSQT_BUCKETS * 4,
+    )?;
+    NnueModel::from_bytes(bytes)?;
+    Ok(DonorReceiverPairV2Layout {
+        relation_weight_start,
+        relation_weight_end,
+        relation_psqt_start,
+        relation_psqt_end,
+    })
 }
 
 #[cfg(feature = "anhoku")]

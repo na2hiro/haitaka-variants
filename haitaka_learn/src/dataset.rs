@@ -36,7 +36,7 @@ use crate::config::{
 };
 use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit, color_swap_anhoku_sfen};
 
-const PACKED_SFEN_BYTES: usize = 64;
+pub(crate) const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
 const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
 const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-ply-v2";
@@ -6250,7 +6250,7 @@ fn write_training_entry(
     Ok(())
 }
 
-fn pack_board_for_training(board: &Board) -> Result<[u8; PACKED_SFEN_BYTES]> {
+pub(crate) fn pack_board_for_training(board: &Board) -> Result<[u8; PACKED_SFEN_BYTES]> {
     let mut writer = BitWriter::default();
     let trainer_side_to_move = invert_color(board.side_to_move());
     writer.write_one_bit(matches!(trainer_side_to_move, TrainerColor::Black));
@@ -6305,6 +6305,232 @@ fn pack_board_for_training(board: &Board) -> Result<[u8; PACKED_SFEN_BYTES]> {
     writer.write_one_bit(false);
 
     Ok(writer.finish())
+}
+
+/// Decodes the exact 64-byte trainer ABI back into a runtime board.
+///
+/// The ABI intentionally coalesces promoted gold-like pieces to Gold, matching
+/// both the C++ loader and the runtime NNUE `piece_slot` geometry.
+pub(crate) fn unpack_board_from_training(packed: &[u8; PACKED_SFEN_BYTES]) -> Result<Board> {
+    let mut reader = TrainingBitReader::new(packed);
+    let trainer_side = if reader.read_one_bit()? {
+        TrainerColor::Black
+    } else {
+        TrainerColor::White
+    };
+    let white_king = reader.read_n_bits(7)? as usize;
+    let black_king = reader.read_n_bits(7)? as usize;
+    ensure!(
+        white_king < 81 && black_king < 81 && white_king != black_king,
+        "invalid packed king squares"
+    );
+
+    let mut trainer_board = [None; 81];
+    trainer_board[white_king] = Some(TrainerPiece {
+        color: TrainerColor::White,
+        piece_type: 9,
+    });
+    trainer_board[black_king] = Some(TrainerPiece {
+        color: TrainerColor::Black,
+        piece_type: 9,
+    });
+    for rank in (0..9).rev() {
+        for file in 0..9 {
+            let square = rank * 9 + file;
+            if square == white_king || square == black_king {
+                continue;
+            }
+            trainer_board[square] = reader.read_board_piece()?;
+        }
+    }
+
+    let mut hands = [[0u8; 10]; 2];
+    for color in &mut hands {
+        for count in color {
+            *count = reader.read_n_bits(5)? as u8;
+        }
+    }
+    for _ in 0..4 {
+        ensure!(!reader.read_one_bit()?, "packed castling bit must be zero");
+    }
+    ensure!(
+        !reader.read_one_bit()?,
+        "packed en-passant bit must be zero"
+    );
+    ensure!(
+        reader.read_n_bits(6)? == 0,
+        "packed rule50 low bits must be zero"
+    );
+    let fullmove_low = reader.read_n_bits(8)?;
+    let fullmove_high = reader.read_n_bits(8)?;
+    ensure!(
+        !reader.read_one_bit()?,
+        "packed rule50 high bit must be zero"
+    );
+    let fullmove = (fullmove_high << 8) | fullmove_low;
+    ensure!(fullmove > 0, "packed move number must be positive");
+
+    let mut runtime_board = [None; 81];
+    for (trainer_square, piece) in trainer_board.into_iter().enumerate() {
+        let Some(piece) = piece else { continue };
+        let trainer_file = trainer_square % 9;
+        let trainer_rank = trainer_square / 9;
+        let runtime_file = 8 - trainer_file;
+        let runtime_rank = 8 - trainer_rank;
+        runtime_board[runtime_rank * 9 + runtime_file] = Some(piece);
+    }
+    let mut board_text = String::new();
+    for rank in 0..9 {
+        let mut empty = 0;
+        for file in (0..9).rev() {
+            match runtime_board[rank * 9 + file] {
+                None => empty += 1,
+                Some(piece) => {
+                    if empty != 0 {
+                        board_text.push_str(&empty.to_string());
+                        empty = 0;
+                    }
+                    board_text.push_str(&trainer_piece_sfen(piece)?);
+                }
+            }
+        }
+        if empty != 0 {
+            board_text.push_str(&empty.to_string());
+        }
+        if rank != 8 {
+            board_text.push('/');
+        }
+    }
+    let side = match trainer_side {
+        TrainerColor::White => "b",
+        TrainerColor::Black => "w",
+    };
+    let hand_text = trainer_hands_sfen(&hands)?;
+    let sfen = format!("{board_text} {side} {hand_text} {fullmove}");
+    Board::from_training_sfen(&sfen)
+        .map_err(|err| anyhow!("decoded packed board is invalid ({sfen}): {err}"))
+}
+
+fn trainer_piece_sfen(piece: TrainerPiece) -> Result<String> {
+    let runtime_piece = match piece.piece_type {
+        0 => Piece::Bishop,
+        1 => Piece::Rook,
+        2 => Piece::Silver,
+        3 => Piece::PRook,
+        4 => Piece::Pawn,
+        5 => Piece::Lance,
+        6 => Piece::Knight,
+        7 => Piece::Gold,
+        8 => Piece::PBishop,
+        9 => Piece::King,
+        other => bail!("invalid packed piece type {other}"),
+    };
+    let runtime_color = match piece.color {
+        TrainerColor::White => Color::Black,
+        TrainerColor::Black => Color::White,
+    };
+    Ok(runtime_piece.to_str(runtime_color))
+}
+
+fn trainer_hands_sfen(hands: &[[u8; 10]; 2]) -> Result<String> {
+    let order = [1usize, 0, 7, 2, 6, 5, 4];
+    let mut text = String::new();
+    for (trainer_color, runtime_color) in [
+        (TrainerColor::White, Color::Black),
+        (TrainerColor::Black, Color::White),
+    ] {
+        for piece_type in order {
+            let count = hands[trainer_color as usize][piece_type];
+            if count == 0 {
+                continue;
+            }
+            let piece = trainer_piece_sfen(TrainerPiece {
+                color: trainer_color,
+                piece_type,
+            })?;
+            if count > 1 {
+                text.push_str(&count.to_string());
+            }
+            let expected_color = if piece.chars().last().is_some_and(char::is_uppercase) {
+                Color::Black
+            } else {
+                Color::White
+            };
+            ensure!(
+                expected_color == runtime_color,
+                "internal hand color mismatch"
+            );
+            text.push_str(&piece);
+        }
+    }
+    for invalid_type in [3usize, 8, 9] {
+        ensure!(
+            hands[0][invalid_type] == 0 && hands[1][invalid_type] == 0,
+            "invalid promoted/king hand count"
+        );
+    }
+    Ok(if text.is_empty() {
+        "-".to_string()
+    } else {
+        text
+    })
+}
+
+struct TrainingBitReader<'a> {
+    bytes: &'a [u8; PACKED_SFEN_BYTES],
+    bit_cursor: usize,
+}
+
+impl<'a> TrainingBitReader<'a> {
+    fn new(bytes: &'a [u8; PACKED_SFEN_BYTES]) -> Self {
+        Self {
+            bytes,
+            bit_cursor: 0,
+        }
+    }
+
+    fn read_one_bit(&mut self) -> Result<bool> {
+        ensure!(
+            self.bit_cursor < self.bytes.len() * 8,
+            "packed board bitstream is overlong"
+        );
+        let bit = ((self.bytes[self.bit_cursor / 8] >> (self.bit_cursor % 8)) & 1) != 0;
+        self.bit_cursor += 1;
+        Ok(bit)
+    }
+
+    fn read_n_bits(&mut self, bits: usize) -> Result<u32> {
+        let mut value = 0u32;
+        for shift in 0..bits {
+            if self.read_one_bit()? {
+                value |= 1 << shift;
+            }
+        }
+        Ok(value)
+    }
+
+    fn read_board_piece(&mut self) -> Result<Option<TrainerPiece>> {
+        if !self.read_one_bit()? {
+            return Ok(None);
+        }
+        let mut code = 1u32;
+        for shift in 1..5 {
+            if self.read_one_bit()? {
+                code |= 1 << shift;
+            }
+        }
+        ensure!(
+            code % 2 == 1 && code <= 19,
+            "invalid packed piece code {code}"
+        );
+        let piece_type = ((code - 1) / 2) as usize;
+        let color = if self.read_one_bit()? {
+            TrainerColor::Black
+        } else {
+            TrainerColor::White
+        };
+        Ok(Some(TrainerPiece { color, piece_type }))
+    }
 }
 
 fn trainer_hand_counts(board: &Board) -> [[u8; 10]; 2] {
@@ -6517,6 +6743,22 @@ mod tests {
         let decoded = decode_signature(&packed);
 
         assert_eq!(decoded, signature_for_board(&board));
+    }
+
+    #[test]
+    fn training_board_decoder_round_trips_canonical_bytes() {
+        let boards = [
+            Board::startpos(),
+            Board::from_sfen(
+                "lnsgkgsnl/1r5b1/pppp1pppp/4p4/4+P4/9/PPPP1PPPP/1B5R1/LNSGKGSNL b - 3",
+            )
+            .unwrap(),
+        ];
+        for board in boards {
+            let packed = pack_board_for_training(&board).unwrap();
+            let decoded = unpack_board_from_training(&packed).unwrap();
+            assert_eq!(pack_board_for_training(&decoded).unwrap(), packed);
+        }
     }
 
     #[test]

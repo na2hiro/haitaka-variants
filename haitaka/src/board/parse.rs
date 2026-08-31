@@ -32,6 +32,31 @@ impl Board {
         Ok(board)
     }
 
+    /// Parse a board reconstructed from the NNUE trainer's packed-SFEN ABI.
+    ///
+    /// That ABI coalesces Tokin/PLance/PKnight/PSilver into the Gold movement
+    /// slot, so original material identities cannot be recovered and the usual
+    /// per-native-piece inventory check is intentionally skipped. All other
+    /// structural, king-safety, checker, pin, and move-number checks remain.
+    #[doc(hidden)]
+    pub fn from_training_sfen(sfen: &str) -> Result<Self, SFENParseError> {
+        use SFENParseError::*;
+        let mut board = Self::parse(sfen)?;
+        if !board.move_number_is_valid() {
+            return Err(InvalidMoveNumber);
+        }
+        if !board.is_valid(false) {
+            return Err(InvalidBoard);
+        }
+        let (checkers, pinned) = board.calculate_checkers_and_pins(board.side_to_move());
+        board.checkers = checkers;
+        board.pinned = pinned;
+        if !board.checkers_and_pins_are_valid() {
+            return Err(InvalidBoard);
+        }
+        Ok(board)
+    }
+
     fn validate_after_parse(&mut self, tsume: bool) -> Result<(), SFENParseError> {
         use SFENParseError::*;
         if !self.move_number_is_valid() {

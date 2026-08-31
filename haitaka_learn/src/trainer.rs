@@ -433,6 +433,27 @@ pub(crate) struct PreparedTrainer {
 
 impl PreparedTrainer {
     pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
+        Self::new_inner(
+            loaded,
+            trainer_checkout,
+            loaded.config.training.build_data_loader,
+        )
+    }
+
+    /// Install the exact Python/variant overlays while deliberately skipping
+    /// the C++ loader build. Phase 11-C only deserializes a frozen checkpoint.
+    pub(crate) fn new_without_build(
+        loaded: &LoadedConfig,
+        trainer_checkout: &Path,
+    ) -> Result<Self> {
+        Self::new_inner(loaded, trainer_checkout, false)
+    }
+
+    fn new_inner(
+        loaded: &LoadedConfig,
+        trainer_checkout: &Path,
+        build_data_loader: bool,
+    ) -> Result<Self> {
         if !trainer_checkout.exists() {
             bail!(
                 "trainer checkout does not exist: {}",
@@ -459,7 +480,7 @@ impl PreparedTrainer {
             overlay_training_data_loader_cpp_contents(),
         )?;
 
-        if loaded.config.training.build_data_loader {
+        if build_data_loader {
             run_command(
                 &loaded.config.paths.cmake,
                 &["-S".into(), ".".into(), "-B".into(), "build".into()],

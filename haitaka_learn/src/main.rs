@@ -3,6 +3,7 @@ mod dataset;
 mod dataset_audit;
 mod openings;
 mod phase11a;
+mod phase11c;
 mod selection;
 mod trainer;
 mod verify;
@@ -23,6 +24,7 @@ struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
+#[allow(clippy::large_enum_variant)] // Phase11cAudit intentionally exposes every frozen input.
 enum Command {
     /// Expand an Anhoku DonorSingleEff network into the functionally identical
     /// DonorReceiverPairV2 initialization without training.
@@ -55,6 +57,50 @@ enum Command {
         tactical_suite: PathBuf,
         #[arg(long)]
         report: PathBuf,
+    },
+    /// Run the frozen CPU-only Phase 11-C learnability, quantization, replay,
+    /// and collapsed-network audit. This command never trains or plays games.
+    Phase11cAudit {
+        #[arg(long)]
+        trainer_config: PathBuf,
+        #[arg(long)]
+        trainer_checkout: PathBuf,
+        #[arg(long)]
+        python: PathBuf,
+        #[arg(long)]
+        helper: PathBuf,
+        #[arg(long)]
+        reviewed_patch: PathBuf,
+        #[arg(long)]
+        applied_diff: PathBuf,
+        #[arg(long)]
+        v1_checkpoint: PathBuf,
+        #[arg(long)]
+        v2_checkpoint: PathBuf,
+        #[arg(long)]
+        v1_nnue: PathBuf,
+        #[arg(long)]
+        v2_nnue: PathBuf,
+        #[arg(long)]
+        train: PathBuf,
+        #[arg(long)]
+        ood: PathBuf,
+        #[arg(long)]
+        tactical_suite: PathBuf,
+        #[arg(long)]
+        batch_1024_games: PathBuf,
+        #[arg(long)]
+        batch_1024_report: PathBuf,
+        #[arg(long)]
+        batch_3072_games: PathBuf,
+        #[arg(long)]
+        batch_3072_report: PathBuf,
+        #[arg(long)]
+        results_archive: PathBuf,
+        #[arg(long)]
+        closeout_archive: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
     },
     /// Compile the trainer overlay and verify Python/C++/runtime V2 cardinality,
     /// hash, and index anchors without starting training.
@@ -260,6 +306,56 @@ fn main() -> Result<()> {
                 if passed { "PASS" } else { "FAIL" }
             );
             ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::Phase11cAudit {
+            trainer_config,
+            trainer_checkout,
+            python,
+            helper,
+            reviewed_patch,
+            applied_diff,
+            v1_checkpoint,
+            v2_checkpoint,
+            v1_nnue,
+            v2_nnue,
+            train,
+            ood,
+            tactical_suite,
+            batch_1024_games,
+            batch_1024_report,
+            batch_3072_games,
+            batch_3072_report,
+            results_archive,
+            closeout_archive,
+            output_dir,
+        } => {
+            let result = phase11c::run(phase11c::Phase11cArgs {
+                trainer_config,
+                trainer_checkout,
+                python,
+                helper,
+                reviewed_patch,
+                applied_diff,
+                v1_checkpoint,
+                v2_checkpoint,
+                v1_nnue,
+                v2_nnue,
+                train,
+                ood,
+                tactical_suite,
+                batch_1024_games,
+                batch_1024_report,
+                batch_3072_games,
+                batch_3072_report,
+                results_archive,
+                closeout_archive,
+                output_dir,
+            })?;
+            println!(
+                "Phase 11-C audit written to {}: {}",
+                result.report_path.display(),
+                result.classification
+            );
         }
         Command::VerifyDonorReceiverPairV2Trainer { config, output } => {
             let loaded = LoadedConfig::from_path(&config)?;

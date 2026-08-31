@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 11-B completed without retention; Phase 11-C offline learnability audit is the only authorized next assignment
+- Status: Phase 11-C completed as `EXPRESSED_NOT_RETAINED`; Phase 12-A evaluation-error attribution is the only authorized next assignment
 - Created: 2026-08-17
 - Last checked: 2026-08-31
 - Primary ruleset: Anhoku
@@ -1445,8 +1445,22 @@ delete that compatibility support merely to satisfy the word "revert."
 
 ### Phase 11-C: DonorReceiverPairV2 learnability and quantization audit
 
-**Status: authorized next; no new training or strength games.** Phase 11-B
-showed that V2 was safe to run but did not establish a strength gain. Its
+**Status: complete; `EXPRESSED_NOT_RETAINED` (2026-08-31).** The CPU-only audit
+verified every frozen input, scanned all train/OOD records, reconstructed all
+4,096 Phase 11-B games, and built the audit-only collapsed network. V2 learned
+28,444,268 nonzero full-precision pairwise slice differences. Quantization
+erased almost all of them, but 626 survived in 60 PSQT dimensions across 50
+groups. Original and collapsed V2 scores differed on 14,481/276,949 train,
+128/3,215 OOD-v2, and 10,605/108,973 replay positions; the fixed 1,024-position
+depth-2 corpus produced 3 best-move and 84 best-score divergences. All six
+tactical fixtures passed. The interaction therefore reached runtime behavior
+but failed the already-completed strength gate. DonorReceiverPairV2 remains
+retired, and **Phase 12-A only** is now authorized. No Phase 12 work was run.
+Full evidence is in `docs/nnue-training-anhoku-v0.7-phase11c.md` and
+`out/anhoku-v0.7-phase11c/artifacts/phase11c-audit.json`.
+
+For context, Phase 11-B showed that V2 was safe to run but did not establish a
+strength gain. Its
 non-strength gates passed, while its cumulative 4,096-game result was
 `-5.43 Elo [-11.77, +0.91]`. That result rejects retention under the frozen
 pipeline, but it does not distinguish a learned yet unhelpful interaction from
@@ -1583,7 +1597,8 @@ one explicit next route. Do not execute that route in the same assignment.
 
 ### Phase 12: evidence-selected next representation
 
-**Status: not yet authorized.** Phase 12 exists to prevent choosing another
+**Status: Phase 12-A authorized by Phase 11-C; Phase 12-B and later remain
+unauthorized.** Phase 12 exists to prevent choosing another
 feature from intuition after a failed ablation. Phase 11-C may authorize only
 Phase 12-A, and only with `EXPRESSED_NOT_RETAINED`. Other Phase 11-C outcomes
 require a new written boundary.

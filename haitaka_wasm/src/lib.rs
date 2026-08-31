@@ -13,7 +13,9 @@ use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatu
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
-    DonorReceiverPairV2Stats, NnueModel, NnuePositionState, donor_receiver_pair_v2_stats,
+    DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats, NnueModel,
+    NnuePositionState, collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
+    donor_receiver_pair_v2_quantized_rows, donor_receiver_pair_v2_stats,
     migrate_donor_single_to_receiver_pair_v2,
 };
 use tt::{Bound, SearchTtStats, TranspositionTable};
