@@ -1,6 +1,6 @@
 # Anhoku NNUE Handcrafted-Strength Execution Plan
 
-- Status: Phase 11-B completed at the seed-80 cap; DonorReceiverPairV2 was not retained
+- Status: Phase 11-B completed without retention; Phase 11-C offline learnability audit is the only authorized next assignment
 - Created: 2026-08-17
 - Last checked: 2026-08-31
 - Primary ruleset: Anhoku
@@ -1436,6 +1436,196 @@ training budget, kernels, and openings. Report model size, latency, NPS,
 validation metrics, and fixed-time Elo. A feature is retained only if its
 fixed-time gain survives the same promotion protocol; otherwise revert that
 feature implementation while preserving its result document.
+
+For this and later feature experiments, "not retained" means that the feature
+is excluded from the recommended/default model and from scaling. Runtime and
+trainer support needed to reload, verify, and reproduce preserved experimental
+artifacts may remain behind the explicit non-default feature family. Do not
+delete that compatibility support merely to satisfy the word "revert."
+
+### Phase 11-C: DonorReceiverPairV2 learnability and quantization audit
+
+**Status: authorized next; no new training or strength games.** Phase 11-B
+showed that V2 was safe to run but did not establish a strength gain. Its
+non-strength gates passed, while its cumulative 4,096-game result was
+`-5.43 Elo [-11.77, +0.91]`. That result rejects retention under the frozen
+pipeline, but it does not distinguish a learned yet unhelpful interaction from
+one that was poorly covered or erased by quantization. Resolve that question
+before choosing another representation or reconsidering the training budget.
+
+This phase is one CPU-only diagnostic implementation and result assignment.
+It may add audit code, tests, machine-readable output, and a Markdown report.
+It may not rent a GPU, take an optimizer step, generate or relabel positions,
+run self-play, run a new handcrafted match, change a network, or authorize a
+new feature. It must use the preserved artifacts exactly as recorded below.
+
+#### Frozen inputs and roles
+
+| Input | Frozen identity and role |
+|---|---|
+| Haitaka implementation | `8898e0297f5bbc0f57c32623a8d365f69d193d7b` or a descendant containing it; audit implementation changes must be reported separately |
+| Trainer | revision `61666d9e3653e4df9881b14c23f8fdcc4bf7779b`, reviewed patch SHA-256 `79603cc66250e335ba242477137366f0aa8a2e530ffa36f3abfb582fafaf802f`, applied trainer diff SHA-256 `87f5a9a446bb929854dbf01b38db16980e4faee73a2f86044ae725f98ee0bc4b` |
+| V1 step-16 checkpoint | SHA-256 `442e2030620b21a6f3fdf2add33eae6039f1fd865d466f20a8c3ffe0e0360a39`; matched ablation control only, not a promoted model |
+| V2 step-16 checkpoint | SHA-256 `9d7997027791298b2d4de0a3e61acc571c48ec4c1895c222f0dc2fe292fc373b`; audit subject |
+| V1 step-16 NNUE | SHA-256 `f7111caf885db66e528c56f23ffe9446609daf1f9a1b3a13cc1c2043b1a66632`; `HalfKAv2^+DonorSingleEff` control |
+| V2 step-16 NNUE | SHA-256 `7e94100c24c495265fed01c06c4f9359f44aa52182c8481b46bf936f63c63a31`; `HalfKAv2^+DonorReceiverPairV2` audit subject |
+| Train corpus | 279,627 records / 276,949 distinct packed boards, 72 bytes/record, SHA-256 `aa2fc9decbb767d170c10a523ccefb9bb01ef3a39dc7d2e36606a34fb5e85599` |
+| OOD-v2 corpus | 3,218 records / 3,215 distinct packed boards, 72 bytes/record, SHA-256 `36e1360e75c81af311efca4497bc611e99fd6bb01fbad8cb2be8bac605bdb2e6` |
+| Tactical suite | `scripts/phase11a-tactical-suite-v1.json`, SHA-256 `d0343f3583d16d996b5d3ef83eb5113a3cafebdfde0cff01d71d6ed09f41ab9d`; regression evidence, not a selector |
+| Phase 11-B games | both complete JSONL batches, seeds 1180 and 12180, 4,096 games total; reconstruct positions from each batch independently because game/pair indices restart in the second batch |
+| Training archive | `target/pretrain-bundles/anhoku-v0.7-phase11b-seed80-results.tgz`, SHA-256 `7a9c87571dc465f03e9146717b54a190d24dd3a2d0bbf5106418e49e4f43f3ba` |
+| Closeout archive | `target/pretrain-bundles/anhoku-v0.7-phase11b-seed80-closeout.tgz`, SHA-256 `547754e0ae0bce54fa1ea0296db4bc09c1a250d7de5ab5ff22106c6270298281` |
+
+The historical controls retain distinct meanings and must not be relabeled:
+C/16 is the immutable initialization and old learning control; Phase 8B root
+is the repeated-trajectory historical comparator; Phase 8D-B is the failed
+unique-262k pipeline result; Phase 11-B V1 is only the matched feature-ablation
+control; `DonorSingleEff` remains the recommended feature family; handcrafted
+remains the final promotion opponent. No Phase 11-B model has been promoted.
+
+#### Required audit implementation
+
+Add one deterministic `phase11c-audit` entry point under `haitaka_learn` (the
+exact CLI spelling may follow the existing clap convention). It must fail on
+any input hash mismatch and produce byte-identical JSON for identical inputs,
+apart from an optional separately stored timing report. Use Rust/runtime code
+to decode boards and calculate feature activations and evaluations. A
+checked-in Python helper may read the full-precision PyTorch checkpoints, but
+it must verify the trainer revision/patch identity, run in the isolated trainer
+environment, use `torch.load(..., weights_only=False)` explicitly, and emit a
+stable intermediate format consumed or embedded by the Rust report.
+
+Scan every train and OOD-v2 record; do not draw a favorable sample. Count V2
+relation-feature activations for both accumulator perspectives, both by record
+and by distinct packed board. Report at minimum:
+
+- total and distinct relation-row coverage out of the 16,200-row block;
+- occurrence-weighted coverage and count histograms with fixed bins
+  `0`, `1`, `2-7`, `8-31`, `32-127`, and `128+`;
+- coverage grouped by oriented receiver square, relative donor color,
+  receiver native type, and effective donor type;
+- train-versus-OOD coverage, rows unique to either split, and impossible or
+  structurally unreachable combinations separately from merely unseen rows;
+- the percentage of all observed relation activations landing in rows with
+  fewer than 8 and fewer than 32 train occurrences. These are coverage
+  diagnostics, not post-hoc promotion thresholds.
+
+The migrated V2 initialization copied each effective-type row into all ten
+receiver-native slices. Therefore any within-group slice separation in the V2
+step-16 checkpoint was learned. For every fixed
+`(receiver square, relative donor color, effective donor type)` group, report:
+
+- full-precision per-dimension dispersion of its ten native-type slices,
+  including zero/nonzero counts, L1, L2/RMS, maximum, and percentiles;
+- the same measurements after export quantization in native NNUE integer units;
+- occurrence-weighted and unweighted summaries, retaining zero-coverage rows;
+- how many full-precision slice differences survive as nonzero quantized
+  differences. Do not compare raw floating and integer L2 magnitudes as though
+  they shared a unit; report survival counts/ratios and each domain separately.
+
+Construct one audit-only **collapsed V2** network by replacing the ten
+receiver-native slices in each group with their arithmetic per-dimension mean,
+rounded once using the production serializer's quantization rule. Preserve all
+other trained V2 parameters byte-for-byte. Record its hash and verify that it
+loads as V2, but never treat it as a candidate or play games with it. This
+counterfactual removes only the learned native/effective interaction while
+preserving common V2 training changes.
+
+Evaluate original V2 versus collapsed V2, and separately V1 versus V2, on all
+distinct train and OOD-v2 boards. Report signed and absolute score-delta
+histograms, zero-delta rate, mean/RMS, percentiles, maximum, and the same values
+grouped by split. Replay both Phase 11-B JSONL batches and report the equivalent
+statistics over every distinct legal replay position. Reject malformed moves,
+illegal reconstructions, duplicate batch identities, or a final game count
+other than 4,096.
+
+For a search-sensitivity diagnostic, select exactly the 1,024 distinct replay
+positions with the smallest SHA-256 of canonical packed-board bytes after
+deduplication across both batches. Record the selection hash and run the same
+deterministic depth-2 search with original and collapsed V2. Report best-move
+and best-score divergence; do not use the result as Elo or as a checkpoint
+selector. Run the frozen six-fixture tactical suite as a regression check on
+the original and collapsed V2, but do not change its expected moves.
+
+#### Classification and handoff
+
+The report must end in exactly one of these classifications:
+
+- `QUANTIZATION_ERASED`: all quantized slices within every collapsible group
+  are equal and original/collapsed V2 scores are identical on train, OOD-v2,
+  replay, and the 1,024-position search corpus. Route to a new written
+  learnability/quantization review; do not implement king-zone pressure or
+  rerun V2 automatically.
+- `EXPRESSED_NOT_RETAINED`: any quantized slice difference survives or any
+  original/collapsed V2 score or search result differs. The interaction reached
+  runtime behavior but failed the already-completed strength protocol. Retire
+  DonorReceiverPairV2 as a strength hypothesis and authorize Phase 12-A only.
+- `AUDIT_INCONCLUSIVE`: an input cannot be reconstructed, checkpoint/runtime
+  indexing cannot be proven identical, the collapsed counterfactual cannot be
+  serialized with the production rule, or required evidence conflicts. Stop
+  for review; no later phase is authorized.
+
+Coverage scarcity and low survival ratios must be prominent warnings, but may
+not change `EXPRESSED_NOT_RETAINED` into a new training authorization. A new
+budget or data-scale experiment needs its own hypothesis and written gate.
+
+Required outputs:
+
+- `out/anhoku-v0.7-phase11c/artifacts/phase11c-audit.json`;
+- `out/anhoku-v0.7-phase11c/artifacts/collapsed-v2-audit-only.nnue`;
+- `out/anhoku-v0.7-phase11c/artifacts/replay-selection-1024.json`;
+- `docs/nnue-training-anhoku-v0.7-phase11c.md`;
+- focused unit tests for V2 row decoding, slice grouping, collapse rounding,
+  hash-stable selection, illegal replay rejection, and all three route states.
+
+End the assignment by updating this plan with the measured classification and
+one explicit next route. Do not execute that route in the same assignment.
+
+### Phase 12: evidence-selected next representation
+
+**Status: not yet authorized.** Phase 12 exists to prevent choosing another
+feature from intuition after a failed ablation. Phase 11-C may authorize only
+Phase 12-A, and only with `EXPRESSED_NOT_RETAINED`. Other Phase 11-C outcomes
+require a new written boundary.
+
+#### Phase 12-A: evaluation-error attribution launch gate
+
+This is a CPU-only evidence and design assignment, not feature implementation.
+Use preserved fixed-time and equal-node game records plus the audited unique
+train/OOD data to build a deterministic corpus of positions where
+`DonorSingleEff`, handcrafted evaluation, and the fixed teacher disagree.
+Predeclare selection and teacher budgets before computing category outcomes.
+Measure errors by king-zone pressure, checks/evasions, donor activation and
+capture, donor chains, promotion, material-versus-king-danger, and quiet mate
+threat. Report category sizes, effect estimates, uncertainty, overlap, and
+whether the proposed information is already expressible by current features.
+
+Select at most one next feature geometry, and select it only when one category
+has adequate coverage and a reproducible evaluation deficit that the feature
+can directly represent. `KingZoneDonorPressure` is a candidate, not the
+default answer. If no category passes a predeclared evidence gate, stop rather
+than implementing a feature. Freeze a hypothesis-specific tactical suite,
+projected model-size/latency limits, migration or initialization rule, and the
+complete matched-training protocol before authorizing Phase 12-B.
+
+Before any later training, replace the ambiguous phrase "no OOD veto" with a
+numeric stratified contract. Preserve opening identity through evaluation and
+report overall loss, unweighted 12-opening macro loss, every per-opening loss,
+and a position- or opening-block bootstrap interval for candidate-minus-control
+loss. Freeze the allowable overall and macro relative regressions from control
+variance before inspecting a candidate; a suggested starting ceiling is 1%,
+but Phase 12-A must justify and commit the final number. No post-training OOD
+threshold is valid.
+
+#### Phase 12-B and later
+
+Implementation, equivalence/resource checks, training, and strength testing
+must be separate assignments following the Phase 11-A/11-B pattern: one
+feature, functionally controlled initialization where possible, matched V1/V2
+seeds and examples, fixed checkpoints, veto-only diagnostics, and a direct
+paired 100 ms gate. No 1M/10M scaling or handcrafted promotion match is
+authorized until a new feature first replicates a positive fixed-control gain
+under the written multi-seed protocol.
 
 ## Required Artifacts
 
