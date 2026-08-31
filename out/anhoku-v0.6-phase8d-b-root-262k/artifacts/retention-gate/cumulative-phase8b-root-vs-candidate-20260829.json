@@ -1,0 +1,88 @@
+{
+  "schema": "anhoku-retention-gate-cumulative-self-play",
+  "schemaVersion": 1,
+  "comparison": "candidate-vs-phase8b-repeated-trajectory-root",
+  "ruleset": "anhoku",
+  "protocol": {
+    "movetimeMs": 100,
+    "openingRandomPlies": 4,
+    "maxPlies": 200,
+    "pairedColors": true,
+    "sameEngineBinaryForBothSides": true,
+    "initialGames": 1024,
+    "initialSeed": 8204,
+    "extensionGames": 3072,
+    "extensionSeed": 9228,
+    "cumulativeGames": 4096
+  },
+  "provenance": {
+    "engineSourceCommit": "5c23b02f6ea8d5d63f81b316509ec214ac707035",
+    "engineExecutableSha256": "2a731963ce1a82436e4c59de6a77bbf9543f278d4498b65475e7f62d13d498ae",
+    "gitDirty": true,
+    "selfPlayWarnings": []
+  },
+  "models": {
+    "aCandidateSha256": "7437671b62b61397397ac12f28f011f5909e8922a43bbeedbdb34da36864f2da",
+    "bPhase8bRootSha256": "12865f59f28f6e26feffcfae2e76c576f8eb31891148a8a9c167b8b50aac972c"
+  },
+  "sourceReports": [
+    {
+      "path": "batch-1024/self-play-report.json",
+      "games": 1024,
+      "seed": 8204
+    },
+    {
+      "path": "batch-3072/self-play-report.json",
+      "games": 3072,
+      "seed": 9228
+    }
+  ],
+  "summary": {
+    "games": 4096,
+    "aWins": 2058,
+    "bWins": 2021,
+    "draws": 17,
+    "decidedGames": 4079,
+    "aScore": 2066.5,
+    "scoreRate": 0.5045166015625,
+    "approxElo": 3.138541585769112,
+    "approxElo95Ci": [
+      -7.502490377986621,
+      13.785466615219867
+    ],
+    "pairCount": 2048,
+    "pairScoreBins": [
+      131,
+      5,
+      1757,
+      6,
+      149
+    ],
+    "pairedElo": 3.138541585769112,
+    "pairedElo95Ci": [
+      -2.45278473688142,
+      8.729867908419644
+    ],
+    "avgPlies": 43.421142578125,
+    "totalNodes": 341168661,
+    "totalElapsedMs": 17963656.027098015,
+    "aggregateNps": 18992.16175623437,
+    "qnodes": 818705577,
+    "aggregateQnps": 45575.66543052204,
+    "a": {
+      "totalNodes": 170758322,
+      "totalElapsedMs": 8981530.895745989,
+      "aggregateNps": 19012.162178374063,
+      "qnodes": 409983872,
+      "aggregateQnps": 45647.437698420064
+    },
+    "b": {
+      "totalNodes": 170410339,
+      "totalElapsedMs": 8982125.131351998,
+      "aggregateNps": 18972.162657274144,
+      "qnodes": 408721705,
+      "aggregateQnps": 45503.89791090327
+    },
+    "warnings": []
+  }
+}

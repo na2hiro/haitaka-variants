@@ -70,7 +70,23 @@ impl Board {
             soft_assert!(self.pieces(Piece::King).len() <= 2);
         }
 
-        // make sure that the Kings are not touching each other
+        // In standard Shogi, touching Kings are always illegal. In influence
+        // variants a King can receive non-King movement, so adjacency itself is
+        // legal unless the variant-aware check below finds an effective attack.
+        #[cfg(not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )))]
         if !for_tsume || self.has(Color::Black, Piece::King) {
             let white_king_square = self.king(Color::White);
             let black_king_square = self.king(Color::Black);

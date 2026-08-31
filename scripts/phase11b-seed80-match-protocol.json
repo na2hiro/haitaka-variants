@@ -1,0 +1,38 @@
+{
+  "schema": "anhoku-phase11b-match-protocol",
+  "schemaVersion": 1,
+  "frozenAt": "2026-08-31",
+  "ruleset": "anhoku",
+  "comparison": "seed80-v2-donor-receiver-pair-vs-v1-donor-single",
+  "models": {
+    "aV2Sha256": "7e94100c24c495265fed01c06c4f9359f44aa52182c8481b46bf936f63c63a31",
+    "bV1Sha256": "f7111caf885db66e528c56f23ffe9446609daf1f9a1b3a13cc1c2043b1a66632"
+  },
+  "matchContract": {
+    "movetimeMs": 100,
+    "openingRandomPlies": 4,
+    "maxPlies": 200,
+    "pairedColors": true,
+    "sameEngineBinaryForBothSides": true,
+    "threads": 20,
+    "initialGames": 1024,
+    "initialSeed": 1180,
+    "extensionGames": 3072,
+    "extensionSeed": 12180,
+    "maximumGames": 4096
+  },
+  "decision": {
+    "passAfterInitialIfPairedLower95AboveElo": 0,
+    "failAfterInitialIfPairedUpper95BelowElo": 0,
+    "extendOnceIfInitialIntervalContainsElo": 0,
+    "passAtMaximumOnlyIfPairedLower95AboveElo": 0,
+    "overlapAtMaximumIsFailure": true,
+    "maximumV2NpsRegressionPercent": 5
+  },
+  "prohibitions": [
+    "no checkpoint ranking",
+    "no seed change after seeing results",
+    "no opening-policy change between batches",
+    "no seed81 unless seed80 passes every gate"
+  ]
+}

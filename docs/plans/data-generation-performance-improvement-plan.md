@@ -1,18 +1,42 @@
 # Data Generation Performance Improvement Plan
 
-## Goal
+Status: historical plan, superseded on 2026-08-17 by
+[Anhoku NNUE Handcrafted-Strength Execution Plan](../../plans/anhoku-nnue-handcrafted-strength-plan.md).
 
-Reduce NNUE data-generation wall-clock time substantially without degrading label quality more than necessary for the current Haitaka training pipeline.
+## Completion Update (2026-08-17)
 
-Current problem:
+The main structural performance change proposed here is complete:
 
-- Depth-4 generation can take multiple days.
-- The generator currently spends teacher search not only on sampled positions, but also on most non-opening self-play plies.
-- The fixed-depth teacher search is a simple alpha-beta/negamax path without the usual engine-side acceleration features like a transposition table.
+- `data.rollout_search_depth` now keeps non-labeling self-play search cheap;
+- `data.search_depth` independently controls sampled-position labels;
+- both budgets are recorded in manifests and checked by resume/merge;
+- release/all-core generation, search telemetry, TT, move ordering, and qsearch
+  support have also moved beyond the baseline described below.
 
-## Current Behavior
+The remaining text is retained as historical rationale. In particular, the
+“current behavior,” bottleneck list, execution order, and recommendation below
+must not be treated as the current repository state. Increasing uniformly
+random opening plies is no longer recommended for production data; the active
+plan instead removes opening-phase samples and introduces stronger opening
+sources, grouped validation, deterministic shuffling, fixed-node labels, and
+qsearch-leaf examples.
 
-The current pipeline does the following:
+## Historical Goal
+
+Reduce NNUE data-generation wall-clock time substantially without degrading
+label quality more than necessary for the pipeline at the time.
+
+Original problem:
+
+- Depth-4 generation could take multiple days.
+- The generator spent label-depth teacher search on sampled positions and most
+  non-opening self-play plies.
+- The fixed-depth teacher path lacked engine-side acceleration such as a
+  transposition table.
+
+## Original Behavior
+
+The pipeline originally did the following:
 
 - Parallelizes across shard workers and shard lanes.
 - Generates self-play games.
@@ -21,13 +45,15 @@ The current pipeline does the following:
   - produce scalar labels (`best_score`)
   - choose the next self-play move after the random opening phase
 
-This is the main structural issue. At higher depth, the pipeline is paying for expensive teacher search on many positions that are never sampled into the final dataset.
+This was the main structural issue: the pipeline paid for label-depth search on
+many positions that were never stored.
 
 ## Main Bottlenecks
 
-### 1. Teacher search is used for rollout policy
+### 1. Teacher Search Was Used For The Rollout Policy
 
-After `opening_random_plies`, self-play no longer uses a cheap move policy. It uses full teacher search to pick each move. This means generation cost grows roughly with:
+After `opening_random_plies`, self-play used the full label-depth teacher to
+pick each move. Generation cost therefore grew with:
 
 - number of games
 - average plies after the random opening
@@ -37,11 +63,12 @@ not just with the number of stored training samples.
 
 ### 2. Every sampled position is searched from scratch
 
-The current teacher path performs a fresh fixed-depth search for each queried board. There is no cross-position cache or transposition reuse across searches.
+The teacher path performed a fresh fixed-depth search for each queried board,
+without cross-position cache or transposition reuse across searches.
 
 ### 3. Search implementation is intentionally simple
 
-The current fixed-depth search is workable but missing several standard engine optimizations:
+The fixed-depth search at the time lacked several standard optimizations:
 
 - no transposition table
 - limited move ordering
@@ -104,7 +131,7 @@ Risk:
 
 This is the highest-value engineering change.
 
-### 1.1 Decouple rollout from labeling
+### [done] 1.1 Decouple rollout from labeling
 
 Change generation so that self-play move selection does not require full teacher search on nearly every non-opening ply.
 
@@ -189,9 +216,15 @@ Recommendation:
 
 - benchmark dataset quality against position count rather than assuming denser is better
 
-### 2.2 Increase `opening_random_plies`
+### [superseded] 2.2 Increase `opening_random_plies`
 
-If the current rollout remains teacher-driven after the opening, pushing more plies into the cheap/random phase reduces search calls.
+This was a historical throughput workaround. Do not use it for new production
+datasets: uniformly random opening moves and samples from that phase are now
+considered a data-quality risk. Follow the active strength plan's opening and
+sampling policy instead.
+
+Historical rationale: while rollout and labeling shared one expensive budget,
+pushing more plies into the random phase reduced teacher calls.
 
 Expected impact:
 
@@ -225,15 +258,16 @@ Tradeoff:
 
 Assessment:
 
-For current training scale, more labeled positions at moderate depth may outperform fewer labels at uniform depth 4.
+The hypothesis was that more labels at moderate depth might outperform fewer
+uniform depth-4 labels.
 
-## Phase 3: Improve search engine performance
+## Phase 3: Improve Search Engine Performance (Historical Baseline)
 
 Once structural waste is reduced, optimize the fixed-depth teacher itself.
 
 ### 3.1 Add a transposition table
 
-The current fixed-depth search should gain the most from a TT.
+The fixed-depth search was expected to gain most from a TT.
 
 Expected impact:
 
@@ -252,7 +286,7 @@ Recommended scope:
 
 ### 3.2 Improve move ordering
 
-Current move ordering is basic. Add:
+The original move ordering was basic. Proposed additions were:
 
 - TT move ordering
 - killer moves
@@ -269,7 +303,8 @@ Risk:
 
 ### 3.3 Reduce board-copy overhead
 
-The search currently clones the board for child exploration. Replace this with a make/unmake path if the engine architecture can support it cleanly.
+The search cloned the board for child exploration. The proposal was to consider
+make/unmake if the architecture could support it safely.
 
 Expected impact:
 
@@ -281,7 +316,7 @@ Risk:
 
 ### 3.4 Reduce per-node allocation
 
-The search currently builds a fresh `Vec<Move>` and sorts it at each node.
+The search built a fresh `Vec<Move>` and sorted it at each node.
 
 Possible improvements:
 
@@ -318,7 +353,7 @@ Assessment:
 
 This is a targeted optimization, not the main solution to multi-day generation time.
 
-## Recommended Execution Order
+## Historical Recommended Execution Order (Superseded)
 
 1. Confirm all large runs use `--release`, the default all-core worker setting, and multi-machine shard splits where available. Phase 0.1 and 0.2 are complete; 0.3 remains open.
 2. Measure the current fraction of runtime spent on:
@@ -358,7 +393,7 @@ Track:
 
 - update runbooks to require `--release` for serious generation jobs [done]
 - add profiling counters for teacher-call counts and search states
-- add a config split between rollout depth and label depth
+- add a config split between rollout depth and label depth [done]
 
 ### Medium term
 
@@ -372,7 +407,7 @@ Track:
 - consider selective DFPN tactical labeling
 - consider dataset curriculum or mixed-depth labeling by position class
 
-## Recommendation
+## Historical Recommendation (Completed/Superseded)
 
 The first engineering target should be:
 
@@ -383,3 +418,6 @@ The second target should be:
 - add a transposition table to the fixed-depth search
 
 Those two changes are the most likely to convert a multi-day depth-4 run into something operationally manageable without distorting the ML pipeline too much.
+
+Rollout/label decoupling and TT support are now implemented. Use the active
+Anhoku strength plan for the current implementation order.

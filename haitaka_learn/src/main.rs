@@ -1,12 +1,16 @@
 mod config;
 mod dataset;
+mod dataset_audit;
+mod openings;
+mod phase11a;
 mod selection;
 mod trainer;
 mod verify;
 
+use std::fs;
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand};
 use config::LoadedConfig;
 
@@ -20,6 +24,81 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Expand an Anhoku DonorSingleEff network into the functionally identical
+    /// DonorReceiverPairV2 initialization without training.
+    MigrateDonorReceiverPairV2 {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Run the complete Phase 11-A migration, equivalence, tactical, size, and
+    /// fixed-position inference gate without training or strength games.
+    Phase11aGate {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output_nnue: PathBuf,
+        #[arg(long)]
+        tactical_suite: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+    },
+    /// Run the frozen Phase 11 tactical and fixed-position latency vetoes on
+    /// trained V1 and V2 networks without modifying either artifact.
+    Phase11bTacticalGate {
+        #[arg(long)]
+        v1: PathBuf,
+        #[arg(long)]
+        v2: PathBuf,
+        #[arg(long)]
+        tactical_suite: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+    },
+    /// Compile the trainer overlay and verify Python/C++/runtime V2 cardinality,
+    /// hash, and index anchors without starting training.
+    VerifyDonorReceiverPairV2Trainer {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    ValidateOpenings {
+        #[arg(long)]
+        config: PathBuf,
+    },
+    AuditData {
+        #[arg(long)]
+        bin: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Optional for legacy manifests that did not embed seed and feature identity.
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    TrajectoryAudit {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        jobs: Option<u32>,
+        #[arg(long)]
+        shard_index: Option<u32>,
+        #[arg(long)]
+        shard_index_end: Option<u32>,
+        #[arg(long)]
+        shard_count: Option<u32>,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    CalibrateLabels {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     GenerateData {
         #[arg(long)]
         config: PathBuf,
@@ -50,6 +129,12 @@ enum Command {
         #[arg(long)]
         no_resume: bool,
     },
+    /// Convert and validate the configured NNUE bootstrap without starting
+    /// training. This is useful as a final remote GPU-host preflight.
+    PrepareBootstrap {
+        #[arg(long)]
+        config: PathBuf,
+    },
     TrainSelect {
         #[arg(long)]
         config: PathBuf,
@@ -60,11 +145,39 @@ enum Command {
         #[arg(long)]
         selection_max_games: Option<u32>,
         #[arg(long)]
+        ranking_budget: Option<u32>,
+        #[arg(long)]
         storage_saver: bool,
+    },
+    RankExisting {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        self_play_bin: PathBuf,
+        #[arg(long)]
+        ranking_budget: Option<u32>,
+        #[arg(long)]
+        output: PathBuf,
     },
     Export {
         #[arg(long)]
         config: PathBuf,
+    },
+    ExportCheckpoint {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        checkpoint: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    EvaluateCheckpoint {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        checkpoint: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
     },
     Verify {
         #[arg(long)]
@@ -96,6 +209,115 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::MigrateDonorReceiverPairV2 { input, output } => {
+            let source =
+                fs::read(&input).with_context(|| format!("failed to read {}", input.display()))?;
+            let migrated = haitaka_wasm::migrate_donor_single_to_receiver_pair_v2(&source)
+                .map_err(|err| anyhow!("failed to migrate {}: {err}", input.display()))?;
+            if let Some(parent) = output.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("failed to create {}", parent.display()))?;
+            }
+            fs::write(&output, &migrated)
+                .with_context(|| format!("failed to write {}", output.display()))?;
+            let stats = haitaka_wasm::donor_receiver_pair_v2_stats();
+            println!(
+                "migrated {} -> {} ({} -> {} bytes; {} -> {} real features)",
+                input.display(),
+                output.display(),
+                source.len(),
+                migrated.len(),
+                stats.v1_real_features,
+                stats.v2_real_features,
+            );
+        }
+        Command::Phase11aGate {
+            input,
+            output_nnue,
+            tactical_suite,
+            report,
+        } => {
+            let result = phase11a::run(&input, &output_nnue, &tactical_suite, &report)?;
+            let go = result.phase11b_go();
+            println!(
+                "Phase 11-A gate written to {}: {}",
+                report.display(),
+                if go { "GO" } else { "NO-GO" }
+            );
+            ensure!(go, "Phase 11-A gate failed; do not start Phase 11-B");
+        }
+        Command::Phase11bTacticalGate {
+            v1,
+            v2,
+            tactical_suite,
+            report,
+        } => {
+            let result = phase11a::run_trained_gate(&v1, &v2, &tactical_suite, &report)?;
+            let passed = result.passed();
+            println!(
+                "Phase 11-B tactical/latency gate written to {}: {}",
+                report.display(),
+                if passed { "PASS" } else { "FAIL" }
+            );
+            ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::VerifyDonorReceiverPairV2Trainer { config, output } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            loaded.ruleset_requires_matching_engine()?;
+            let report = trainer::verify_receiver_pair_v2_trainer_parity(&loaded, &output)?;
+            println!(
+                "DonorReceiverPairV2 trainer parity written to {}: {}",
+                output.display(),
+                if report.passed { "PASS" } else { "FAIL" }
+            );
+            ensure!(report.passed, "DonorReceiverPairV2 trainer parity failed");
+        }
+        Command::ValidateOpenings { config } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            loaded.ruleset_requires_matching_engine()?;
+            let (suite_id, positions, sha256) = openings::validate_configured_suite(&loaded)?;
+            println!(
+                "validated opening suite {suite_id}: {positions} position(s), sha256={sha256}"
+            );
+        }
+        Command::AuditData {
+            bin,
+            manifest,
+            config,
+            output,
+        } => {
+            let report = dataset_audit::audit_dataset(&bin, &manifest, config.as_deref())?;
+            if let Some(path) = dataset_audit::write_report(&report, output.as_deref())? {
+                println!("dataset audit written to {}", path.display());
+            }
+        }
+        Command::TrajectoryAudit {
+            config,
+            jobs,
+            shard_index,
+            shard_index_end,
+            shard_count,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = dataset::audit_trajectories(
+                &loaded,
+                dataset::TrajectoryAuditOptions {
+                    jobs,
+                    shard_index,
+                    shard_index_end,
+                    shard_count,
+                },
+            )?;
+            let path = dataset::write_trajectory_audit_report(&loaded, &report, output)?;
+            println!("trajectory audit written to {}", path.display());
+        }
+        Command::CalibrateLabels { config, output } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = dataset::calibrate_labels(&loaded)?;
+            let path = dataset::write_label_calibration_report(&loaded, &report, output)?;
+            println!("label calibration written to {}", path.display());
+        }
         Command::GenerateData {
             config,
             jobs,
@@ -143,11 +365,17 @@ fn main() -> Result<()> {
             let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
+        Command::PrepareBootstrap { config } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let bootstrap = trainer::prepare_bootstrap(&loaded)?;
+            println!("prepared bootstrap checkpoint: {}", bootstrap.display());
+        }
         Command::TrainSelect {
             config,
             self_play_bin,
             no_resume,
             selection_max_games,
+            ranking_budget,
             storage_saver,
         } => {
             let loaded = LoadedConfig::from_path(&config)?;
@@ -157,15 +385,53 @@ fn main() -> Result<()> {
                     self_play_bin,
                     resume_override: resume_override(no_resume),
                     selection_max_games,
+                    ranking_budget,
                     storage_saver: storage_saver.then_some(true),
                 },
             )?;
             println!("training selection finished: {}", selected.display());
         }
+        Command::RankExisting {
+            config,
+            self_play_bin,
+            ranking_budget,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let selected = selection::rank_existing(
+                &loaded,
+                selection::RankExistingOptions {
+                    self_play_bin,
+                    ranking_budget,
+                    output,
+                },
+            )?;
+            println!("existing candidates ranked: {}", selected.display());
+        }
         Command::Export { config } => {
             let loaded = LoadedConfig::from_path(&config)?;
             let exported = trainer::export(&loaded, None)?;
             println!("exported NNUE: {}", exported.display());
+        }
+        Command::ExportCheckpoint {
+            config,
+            checkpoint,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let trainer_checkout = loaded.trainer_checkout()?;
+            let _guard = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
+            trainer::export_checkpoint_to(&loaded, &trainer_checkout, &checkpoint, &output)?;
+            println!("exported NNUE: {}", output.display());
+        }
+        Command::EvaluateCheckpoint {
+            config,
+            checkpoint,
+            output,
+        } => {
+            let loaded = LoadedConfig::from_path(&config)?;
+            let report = trainer::evaluate_checkpoint(&loaded, checkpoint, output)?;
+            println!("offline ID/OOD evaluation written to {}", report.display());
         }
         Command::Verify { config } => {
             let loaded = LoadedConfig::from_path(&config)?;

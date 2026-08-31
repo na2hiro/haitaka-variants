@@ -1,0 +1,21 @@
+{
+  "schema": "haitaka-anhoku-phase11a-trainer-parity",
+  "schema_version": 1,
+  "trainer_checkout": "/home/na2hiro/proj/engine/variant-nnue-pytorch",
+  "trainer_revision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+  "feature_set": "HalfKAv2^+DonorReceiverPairV2",
+  "feature_set_hash": "0xb38efce1",
+  "real_features": 167103,
+  "donor_block_features": 16200,
+  "python_spec_passed": true,
+  "cpp_loader_compiled": true,
+  "rust_cpp_index_anchors": [
+    6520,
+    6601,
+    6682,
+    8140
+  ],
+  "donor_features_py_sha256": "ce2cf87dc1a7a42d77837dbc1e3459fd85fca5dabb54fcb8c4d7e6eb79bbce9a",
+  "training_data_loader_cpp_sha256": "e5b8b08b61085d1a118fde083411530fd17993e1e879f5bb2ce5182dbaae137c",
+  "passed": true
+}

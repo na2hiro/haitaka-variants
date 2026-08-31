@@ -1,15 +1,20 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use haitaka::{Board, Move};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, search_impl_handcrafted, search_impl_with_eval_mode,
-    search_iterative_deepening_impl, search_iterative_deepening_impl_with_dfpn_mode,
+    NnueModel, SearchEvalMode, nnue_kernels::AffineKernel, search_impl_handcrafted,
+    search_impl_with_eval_mode, search_iterative_deepening_impl,
+    search_iterative_deepening_impl_with_dfpn_mode,
 };
 
 fn load_test_nnue() -> Option<Arc<NnueModel>> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
+    let path = std::env::var_os("HAITAKA_NNUE_BENCH_MODEL")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue")
+        });
     let bytes = std::fs::read(path).ok()?;
     let model = NnueModel::from_bytes(&bytes).ok()?;
     Some(Arc::new(model))
@@ -37,9 +42,50 @@ fn eval_positions(model: &NnueModel) -> Vec<(Board, haitaka_wasm::NnuePositionSt
 }
 
 fn criterion_benchmark(criterion: &mut Criterion) {
+    let optimized_kernel = AffineKernel::detected();
+    let mut affine_group = criterion.benchmark_group("nnue_affine");
+    for &(name, input_dimensions, padded_input_dimensions, output_dimensions) in &[
+        ("hidden1", 1_024, 1_024, 16),
+        ("hidden2", 16, 32, 32),
+        ("output", 32, 32, 1),
+    ] {
+        let input: Vec<u8> = (0..input_dimensions)
+            .map(|index| ((index * 37 + 11) % 128) as u8)
+            .collect();
+        let weights: Vec<i8> = (0..padded_input_dimensions * output_dimensions)
+            .map(|index| ((index * 29 + 7) % 255) as i16 as i8)
+            .collect();
+        let biases: Vec<i32> = (0..output_dimensions)
+            .map(|index| index as i32 * 101 - 700)
+            .collect();
+        let mut output = vec![0; output_dimensions];
+
+        for kernel in [AffineKernel::scalar(), optimized_kernel] {
+            affine_group.bench_with_input(
+                BenchmarkId::new(name, kernel.name()),
+                &kernel,
+                |b, &kernel| {
+                    b.iter(|| {
+                        kernel.forward_into(
+                            black_box(&input),
+                            black_box(&weights),
+                            black_box(&biases),
+                            padded_input_dimensions,
+                            black_box(&mut output),
+                        );
+                    });
+                },
+            );
+        }
+    }
+    affine_group.finish();
+
     let Some(model) = load_test_nnue() else {
         return;
     };
+    let mut scalar_model = (*model).clone();
+    scalar_model.force_affine_kernel(AffineKernel::scalar());
+    let scalar_model = Arc::new(scalar_model);
 
     let eval_positions = eval_positions(&model);
 
@@ -51,10 +97,24 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     }
 
     let mut eval_group = criterion.benchmark_group("nnue_eval");
+    eval_group.bench_function("full_refresh_scalar", |b| {
+        b.iter(|| {
+            for (board, _) in &eval_positions {
+                black_box(scalar_model.evaluate_full_refresh(black_box(board)));
+            }
+        });
+    });
     eval_group.bench_function("full_refresh", |b| {
         b.iter(|| {
             for (board, _) in &eval_positions {
                 black_box(model.evaluate_full_refresh(black_box(board)));
+            }
+        });
+    });
+    eval_group.bench_function("incremental_state_scalar", |b| {
+        b.iter(|| {
+            for (board, state) in &eval_positions {
+                black_box(scalar_model.evaluate_from_state(black_box(board), black_box(state)));
             }
         });
     });

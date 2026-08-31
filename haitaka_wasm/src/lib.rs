@@ -1,14 +1,21 @@
 mod movepick;
 mod nnue;
+#[doc(hidden)]
+pub mod nnue_kernels;
 mod tt;
 
+use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
-pub use nnue::{NnueModel, NnuePositionState};
+pub use nnue::{
+    DonorReceiverPairV2Stats, NnueModel, NnuePositionState, donor_receiver_pair_v2_stats,
+    migrate_donor_single_to_receiver_pair_v2,
+};
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
 
@@ -30,6 +37,10 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
 static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
+pub const SEARCH_NODE_COUNTING_VERSION: &str = "alpha-beta-plus-qsearch-v1";
+pub const SEARCH_NODE_BUDGET_MAX_DEPTH: u8 = 64;
+pub const SEARCH_TRAINING_TRACE_VERSION: &str = "qsearch-pv-v1";
+pub const SEARCH_MATE_SCORE_THRESHOLD: i32 = 29_000;
 const DEFAULT_QSEARCH_LIMITS: QsearchLimits = QsearchLimits {
     max_ply: 8,
     check_budget: 1,
@@ -81,6 +92,31 @@ pub struct SearchSummary {
     pub tt_stats: SearchTtStats,
     pub ordering_stats: SearchOrderingStats,
     pub qsearch_stats: SearchQsearchStats,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeBudgetSearchSummary {
+    pub best_move: Option<String>,
+    pub best_score: Option<i32>,
+    pub completed_depth: u8,
+    pub exhausted: bool,
+    pub elapsed_ms: f64,
+    pub node_limit: u64,
+    pub alpha_beta_nodes: u64,
+    pub qsearch_nodes: u64,
+    pub total_nodes: u64,
+    pub cap_hits: u64,
+    pub incomplete_iterations: u8,
+}
+
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct SearchTrainingTrace {
+    pub leaf_board: Board,
+    pub static_eval: i32,
+    pub root_ply_distance: u16,
+    pub terminal: bool,
 }
 
 #[doc(hidden)]
@@ -209,10 +245,161 @@ struct SearchContext<'a> {
     ordering_stats: SearchOrderingStats,
     qsearch_stats: SearchQsearchStats,
     qsearch_limits: QsearchLimits,
+    node_budget: Option<Arc<SharedNodeBudget>>,
+    training_trace: Option<TrainingTraceCollector>,
+}
+
+#[derive(Debug, Default)]
+struct TrainingTraceCollector {
+    slots: Vec<Option<SearchTrainingTrace>>,
+    tt_traces: HashMap<(u64, u8), SearchTrainingTrace>,
+}
+
+impl TrainingTraceCollector {
+    fn ensure_slot(&mut self, ply: usize) {
+        if self.slots.len() <= ply {
+            self.slots.resize_with(ply + 1, || None);
+        }
+    }
+
+    fn clear(&mut self, ply: usize) {
+        self.ensure_slot(ply);
+        self.slots[ply] = None;
+    }
+
+    fn set(&mut self, ply: usize, trace: SearchTrainingTrace) {
+        self.ensure_slot(ply);
+        self.slots[ply] = Some(trace);
+    }
+
+    fn promote_child(&mut self, ply: usize) {
+        self.ensure_slot(ply + 1);
+        self.slots[ply] = self.slots[ply + 1].clone();
+    }
+
+    fn restore_tt(&mut self, key: u64, depth: u8, ply: usize) -> bool {
+        let Some(trace) = self.tt_traces.get(&(key, depth)).cloned() else {
+            return false;
+        };
+        self.set(ply, trace);
+        true
+    }
+
+    fn store_tt(&mut self, key: u64, depth: u8, ply: usize) {
+        if let Some(trace) = self.slots.get(ply).and_then(Clone::clone) {
+            self.tt_traces.insert((key, depth), trace);
+        }
+    }
+
+    fn root(&self) -> Option<SearchTrainingTrace> {
+        self.slots.first().and_then(Clone::clone)
+    }
+}
+
+#[derive(Debug)]
+struct SharedNodeBudget {
+    limit: u64,
+    total: AtomicU64,
+    alpha_beta: AtomicU64,
+    qsearch: AtomicU64,
+    cap_hits: AtomicU64,
+}
+
+impl SharedNodeBudget {
+    fn new(limit: u64) -> Self {
+        Self {
+            limit,
+            total: AtomicU64::new(0),
+            alpha_beta: AtomicU64::new(0),
+            qsearch: AtomicU64::new(0),
+            cap_hits: AtomicU64::new(0),
+        }
+    }
+
+    fn record(&self, counter: &AtomicU64) -> Result<(), SearchInterrupted> {
+        let result =
+            self.total
+                .fetch_update(AtomicOrdering::Relaxed, AtomicOrdering::Relaxed, |nodes| {
+                    (nodes < self.limit).then_some(nodes + 1)
+                });
+        if result.is_err() {
+            self.cap_hits.fetch_add(1, AtomicOrdering::Relaxed);
+            return Err(SearchInterrupted);
+        }
+        counter.fetch_add(1, AtomicOrdering::Relaxed);
+        Ok(())
+    }
+
+    fn record_alpha_beta(&self) -> Result<(), SearchInterrupted> {
+        self.record(&self.alpha_beta)
+    }
+
+    fn record_qsearch(&self) -> Result<(), SearchInterrupted> {
+        self.record(&self.qsearch)
+    }
+
+    fn counts(&self) -> (u64, u64, u64, u64) {
+        (
+            self.alpha_beta.load(AtomicOrdering::Relaxed),
+            self.qsearch.load(AtomicOrdering::Relaxed),
+            self.total.load(AtomicOrdering::Relaxed),
+            self.cap_hits.load(AtomicOrdering::Relaxed),
+        )
+    }
 }
 
 impl SearchContext<'_> {
+    fn clear_training_trace(&mut self, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.clear(usize::try_from(ply).expect("search ply must be non-negative"));
+        }
+    }
+
+    fn set_training_leaf(&mut self, board: &Board, ply: i32, static_eval: i32, terminal: bool) {
+        if let Some(trace) = &mut self.training_trace {
+            let ply = usize::try_from(ply).expect("search ply must be non-negative");
+            trace.set(
+                ply,
+                SearchTrainingTrace {
+                    leaf_board: board.clone(),
+                    static_eval,
+                    root_ply_distance: u16::try_from(ply).unwrap_or(u16::MAX),
+                    terminal,
+                },
+            );
+        }
+    }
+
+    fn promote_child_training_trace(&mut self, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.promote_child(usize::try_from(ply).expect("search ply must be non-negative"));
+        }
+    }
+
+    fn restore_tt_training_trace(&mut self, key: u64, depth: u8, ply: i32) -> bool {
+        self.training_trace.as_mut().is_none_or(|trace| {
+            trace.restore_tt(
+                key,
+                depth,
+                usize::try_from(ply).expect("search ply must be non-negative"),
+            )
+        })
+    }
+
+    fn store_tt_training_trace(&mut self, key: u64, depth: u8, ply: i32) {
+        if let Some(trace) = &mut self.training_trace {
+            trace.store_tt(
+                key,
+                depth,
+                usize::try_from(ply).expect("search ply must be non-negative"),
+            );
+        }
+    }
+
     fn record_state(&mut self) -> Result<(), SearchInterrupted> {
+        if let Some(budget) = &self.node_budget {
+            budget.record_alpha_beta()?;
+        }
         self.states += 1;
         if self.deadline.is_some() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
             self.check_deadline()?;
@@ -231,6 +418,9 @@ impl SearchContext<'_> {
     }
 
     fn record_qnode(&mut self, qply: u8) -> Result<bool, SearchInterrupted> {
+        if let Some(budget) = &self.node_budget {
+            budget.record_qsearch()?;
+        }
         self.qsearch_stats.qnodes += 1;
         self.qsearch_stats.qsearch_max_ply = self.qsearch_stats.qsearch_max_ply.max(qply);
         if self.deadline.is_some() && self.qsearch_stats.qnodes % DEADLINE_CHECK_INTERVAL == 0 {
@@ -886,6 +1076,38 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
     ordering: &mut SearchOrdering,
     qsearch_limits: QsearchLimits,
 ) -> Result<SearchSummary, SearchInterrupted> {
+    search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+        board,
+        depth,
+        evaluation,
+        deadline,
+        tt,
+        ordering,
+        qsearch_limits,
+        None,
+        false,
+    )
+    .map(|execution| execution.summary)
+}
+
+struct SearchExecutionSummary {
+    summary: SearchSummary,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    training_trace: Option<SearchTrainingTrace>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+    qsearch_limits: QsearchLimits,
+    node_budget: Option<Arc<SharedNodeBudget>>,
+    collect_training_trace: bool,
+) -> Result<SearchExecutionSummary, SearchInterrupted> {
     let started_at = Instant::now();
     tt.new_search();
     let root_state = match &evaluation {
@@ -905,6 +1127,8 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits,
+        node_budget,
+        training_trace: collect_training_trace.then(TrainingTraceCollector::default),
     };
     let (best_move, best_score) = search_best_move(board, depth, &mut ctx, root_state)?
         .map(|(mv, score)| (Some(mv.to_string()), Some(score)))
@@ -918,22 +1142,116 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
 
     ctx.tt_stats.tt_hashfull = ctx.tt.hashfull(0);
 
-    Ok(SearchSummary {
-        best_move,
-        best_score,
-        elapsed_ms,
-        states: ctx.states,
-        nps,
-        tt_stats: ctx.tt_stats,
-        ordering_stats: ctx.ordering_stats,
-        qsearch_stats: ctx.qsearch_stats,
+    let training_trace = ctx
+        .training_trace
+        .as_ref()
+        .and_then(TrainingTraceCollector::root);
+    Ok(SearchExecutionSummary {
+        summary: SearchSummary {
+            best_move,
+            best_score,
+            elapsed_ms,
+            states: ctx.states,
+            nps,
+            tt_stats: ctx.tt_stats,
+            ordering_stats: ctx.ordering_stats,
+            qsearch_stats: ctx.qsearch_stats,
+        },
+        training_trace,
     })
+}
+
+fn search_board_with_node_budget_in_tt(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+    collect_training_trace: bool,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    if max_nodes == 0 {
+        return Err("node budget must be at least 1".to_string());
+    }
+    if max_depth == 0 {
+        return Err("node-budget depth cap must be at least 1".to_string());
+    }
+
+    tt.clear();
+    *ordering = SearchOrdering::default();
+    let started_at = Instant::now();
+    let budget = Arc::new(SharedNodeBudget::new(max_nodes));
+    let mut best_move = None;
+    let mut best_score = None;
+    let mut completed_depth = 0;
+    let mut training_trace = None;
+
+    for depth in 1..=max_depth {
+        match search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+            board,
+            depth,
+            evaluation.clone(),
+            None,
+            tt,
+            ordering,
+            qsearch_limits(),
+            Some(Arc::clone(&budget)),
+            collect_training_trace,
+        ) {
+            Ok(execution) => {
+                best_move = execution.summary.best_move;
+                best_score = execution.summary.best_score;
+                completed_depth = depth;
+                training_trace = execution.training_trace;
+            }
+            Err(SearchInterrupted) => break,
+        }
+    }
+
+    let (alpha_beta_nodes, qsearch_nodes, total_nodes, cap_hits) = budget.counts();
+    Ok((
+        NodeBudgetSearchSummary {
+            best_move,
+            best_score,
+            completed_depth,
+            exhausted: total_nodes == max_nodes,
+            elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+            node_limit: max_nodes,
+            alpha_beta_nodes,
+            qsearch_nodes,
+            total_nodes,
+            cap_hits,
+            incomplete_iterations: u8::from(cap_hits > 0),
+        },
+        training_trace,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+    collect_training_trace: bool,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_tt(
+        board,
+        max_nodes,
+        max_depth,
+        evaluation,
+        &mut workspace.tt,
+        &mut workspace.ordering,
+        collect_training_trace,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum UsiSearchBudget {
     Depth(u8),
     Movetime { max_depth: u8, millis: u32 },
+    Nodes(u64),
 }
 
 pub struct UsiSession {
@@ -1144,6 +1462,7 @@ impl UsiSession {
                     ]
                 })
             }
+            UsiSearchBudget::Nodes(nodes) => Ok(self.search_outputs_for_nodes(nodes)),
         }
         .unwrap_or_else(|err| {
             let _ = err;
@@ -1152,12 +1471,79 @@ impl UsiSession {
     }
 
     fn fallback_bestmove(&self) -> String {
-        let ordering = SearchOrdering::default();
-        let mut picker = MovePicker::new(&self.board, None, &ordering, 0);
-        picker
-            .next()
-            .map(|picked| picked.mv.to_string())
+        let mut moves = Vec::new();
+        self.board.generate_moves(|piece_moves| {
+            moves.extend(piece_moves);
+            false
+        });
+        moves.sort_unstable_by_key(ToString::to_string);
+        moves
+            .first()
+            .map(ToString::to_string)
             .unwrap_or_else(|| "resign".to_string())
+    }
+
+    fn search_outputs_for_nodes(&mut self, nodes: u64) -> Vec<String> {
+        let evaluation = self.evaluation_strategy();
+        let mut ordering = SearchOrdering::default();
+        let result = search_board_with_node_budget_in_tt(
+            &self.board,
+            nodes,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            evaluation,
+            &mut self.tt,
+            &mut ordering,
+            false,
+        );
+        let Ok((summary, _)) = result else {
+            return vec![
+                "info string node-budget search failed".to_string(),
+                format!("bestmove {}", self.fallback_bestmove()),
+            ];
+        };
+
+        let fallback_used = summary.best_move.is_none();
+        let best_move = summary
+            .best_move
+            .unwrap_or_else(|| self.fallback_bestmove());
+        let elapsed_ms = summary.elapsed_ms.max(0.0);
+        let elapsed_seconds = elapsed_ms / 1_000.0;
+        let nps = if elapsed_seconds > 0.0 {
+            summary.alpha_beta_nodes as f64 / elapsed_seconds
+        } else {
+            0.0
+        };
+        let qnps = if elapsed_seconds > 0.0 {
+            summary.qsearch_nodes as f64 / elapsed_seconds
+        } else {
+            0.0
+        };
+        vec![
+            format!(
+                "info depth {} time {:.0} nodes {} nps {:.0} qnodes {} qnps {:.0} \
+                 requestedBudgetNodes {} consumedBudgetNodes {} alphaBetaNodes {} \
+                 completedDepth {} incompleteIterations {} nodeBudgetCapHits {} \
+                 fallback {} nodeCountingVersion {}",
+                summary.completed_depth,
+                elapsed_ms,
+                summary.alpha_beta_nodes,
+                nps,
+                summary.qsearch_nodes,
+                qnps,
+                summary.node_limit,
+                summary.total_nodes,
+                summary.alpha_beta_nodes,
+                summary.completed_depth,
+                summary.incomplete_iterations,
+                summary.cap_hits,
+                u8::from(fallback_used),
+                SEARCH_NODE_COUNTING_VERSION,
+            )
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+            format!("bestmove {best_move}"),
+        ]
     }
 
     fn evaluation_strategy(&self) -> EvaluationStrategy {
@@ -1226,6 +1612,7 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
     let mut index = 0;
     let mut depth = None;
     let mut movetime = None;
+    let mut nodes = None;
 
     while index < tokens.len() {
         match tokens[index] {
@@ -1251,9 +1638,29 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
                         .map_err(|_| format!("invalid movetime {value}"))?,
                 );
             }
+            "nodes" => {
+                index += 1;
+                let value = tokens
+                    .get(index)
+                    .ok_or_else(|| "missing nodes value".to_string())?;
+                let parsed = value
+                    .parse::<u64>()
+                    .map_err(|_| format!("invalid nodes {value}"))?;
+                if parsed == 0 {
+                    return Err("nodes value must be greater than 0".to_string());
+                }
+                nodes = Some(parsed);
+            }
             _ => {}
         }
         index += 1;
+    }
+
+    if nodes.is_some() && (depth.is_some() || movetime.is_some()) {
+        return Err("go nodes N is mutually exclusive with depth and movetime".to_string());
+    }
+    if let Some(nodes) = nodes {
+        return Ok(UsiSearchBudget::Nodes(nodes));
     }
 
     if let Some(millis) = movetime {
@@ -1265,7 +1672,10 @@ fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget
     if let Some(depth) = depth {
         return Ok(UsiSearchBudget::Depth(depth.max(1)));
     }
-    Err("only go depth N, go movetime N, and go movetime N depth D are supported".to_string())
+    Err(
+        "only go depth N, go movetime N, go movetime N depth D, and go nodes N are supported"
+            .to_string(),
+    )
 }
 
 fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
@@ -1331,11 +1741,28 @@ fn search_iterative_deepening_with_strategy_and_deadline(
     config: IterativeSearchConfig,
     deadline: Option<Instant>,
 ) -> Result<IterativeSearchSummary, String> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // Native callers such as `haitaka_cli self-play` search concurrently.
+        // A shared write-locked TT serializes those searches after their
+        // deadlines have already started, causing queued searches to time out
+        // before completing even depth one. Give each native search its own TT;
+        // the wasm build remains single-threaded and keeps reusing its slot.
+        let mut tt = TranspositionTable::default();
+        return search_iterative_deepening_with_strategy_and_deadline_and_tt(
+            sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+        );
+    }
+
+    #[cfg(target_arch = "wasm32")]
     let mut tt = search_tt_slot().write().unwrap();
-    tt.clear();
-    search_iterative_deepening_with_strategy_and_deadline_and_tt(
-        sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
-    )
+    #[cfg(target_arch = "wasm32")]
+    {
+        tt.clear();
+        search_iterative_deepening_with_strategy_and_deadline_and_tt(
+            sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+        )
+    }
 }
 
 fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
@@ -1408,6 +1835,20 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         dfpn = Some(dfpn_summary);
     }
 
+    search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+        &board, max_depth, evaluation, deadline, tt, started_at, dfpn,
+    )
+}
+
+fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+    board: &Board,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    started_at: Instant,
+    dfpn: Option<DfpnSummary>,
+) -> Result<IterativeSearchSummary, String> {
     let mut iterations = Vec::with_capacity(max_depth as usize);
     let mut completed_depth = 0;
     let mut total_states = 0;
@@ -1425,7 +1866,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         }
 
         match search_board_with_strategy_tt_and_ordering(
-            &board,
+            board,
             depth,
             evaluation.clone(),
             deadline,
@@ -1479,6 +1920,28 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     })
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_iterative_deepening_with_strategy(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+) -> Result<IterativeSearchSummary, String> {
+    let started_at = Instant::now();
+    let deadline = (timeout_ms != 0)
+        .then(|| started_at + std::time::Duration::from_millis(u64::from(timeout_ms)));
+    let mut tt = TranspositionTable::default();
+    search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
+        board,
+        max_depth.max(1),
+        evaluation,
+        deadline,
+        &mut tt,
+        started_at,
+        None,
+    )
+}
+
 #[doc(hidden)]
 pub fn search_iterative_deepening_impl(
     sfen: &str,
@@ -1511,7 +1974,22 @@ pub fn search_iterative_deepening_impl_with_dfpn_mode(
     )
 }
 
-#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Handcrafted,
+    )
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
 fn search_iterative_deepening_impl_with_deadline(
     sfen: &str,
     max_depth: u8,
@@ -1548,12 +2026,44 @@ pub fn search_iterative_deepening_impl_with_eval_mode(
     model: Arc<NnueModel>,
     mode: SearchEvalMode,
 ) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+        sfen, max_depth, timeout_ms, model, mode, true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    run_dfpn: bool,
+) -> Result<IterativeSearchSummary, String> {
     search_iterative_deepening_with_strategy(
         sfen,
         max_depth,
         timeout_ms,
         EvaluationStrategy::Nnue { model, mode },
-        IterativeSearchConfig::default(),
+        IterativeSearchConfig { run_dfpn },
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl_with_eval_mode(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Nnue { model, mode },
     )
 }
 
@@ -1594,6 +2104,84 @@ pub fn search_board_impl_with_eval_mode_in_workspace(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+        false,
+    )
+    .map(|(summary, _)| summary)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+        false,
+    )
+    .map(|(summary, _)| summary)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+        true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace(
+    board: &Board,
+    max_nodes: u64,
+    max_depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_node_budget_in_workspace(
+        board,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+        true,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     search_impl_with_strategy(sfen, depth, EvaluationStrategy::Handcrafted)
 }
@@ -1619,6 +2207,62 @@ pub fn search_board_impl_handcrafted_in_workspace(
         workspace,
     )
     .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_board_with_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+        board,
+        depth.max(1),
+        evaluation,
+        None,
+        &mut workspace.tt,
+        &mut workspace.ordering,
+        qsearch_limits(),
+        None,
+        true,
+    )
+    .map(|execution| (execution.summary, execution.training_trace))
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_training_trace_in_workspace(
+        board,
+        depth,
+        EvaluationStrategy::Handcrafted,
+        workspace,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_training_trace_in_workspace(
+    board: &Board,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<(SearchSummary, Option<SearchTrainingTrace>), String> {
+    search_board_with_training_trace_in_workspace(
+        board,
+        depth,
+        EvaluationStrategy::Nnue { model, mode },
+        workspace,
+    )
 }
 
 fn perft_impl(sfen: &str, depth: u8) -> Result<PerftResult, String> {
@@ -1811,9 +2455,11 @@ fn search_best_move(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<Option<(Move, i32)>, SearchInterrupted> {
+    ctx.clear_training_trace(0);
     ctx.record_state()?;
     ctx.check_deadline()?;
-    if terminal_score_for_side_to_move(board, 0).is_some() {
+    if let Some(terminal) = terminal_score_for_side_to_move(board, 0) {
+        ctx.set_training_leaf(board, 0, terminal, true);
         return Ok(None);
     }
     let key = board.hash();
@@ -1842,6 +2488,7 @@ fn search_best_move(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, 1) {
+            ctx.set_training_leaf(&child, 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -1858,6 +2505,7 @@ fn search_best_move(
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
+            ctx.promote_child_training_trace(0);
         }
         alpha = alpha.max(score);
     }
@@ -1888,9 +2536,11 @@ fn negamax(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<i32, SearchInterrupted> {
+    ctx.clear_training_trace(ply);
     ctx.record_state()?;
     ctx.check_deadline()?;
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
     if depth == 0 {
@@ -1916,8 +2566,10 @@ fn negamax(
         let tt_score = score_from_tt(data.score, ply);
         tt_move = data.best_move;
         if data.depth >= depth && tt_bound_can_cutoff(data.bound, tt_score, alpha, beta) {
-            ctx.tt_stats.tt_cutoffs += 1;
-            return Ok(tt_score);
+            if ctx.restore_tt_training_trace(key, data.depth, ply) {
+                ctx.tt_stats.tt_cutoffs += 1;
+                return Ok(tt_score);
+            }
         }
     }
 
@@ -1938,6 +2590,7 @@ fn negamax(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            ctx.set_training_leaf(&child, ply + 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -1946,6 +2599,7 @@ fn negamax(
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
+            ctx.promote_child_training_trace(ply);
         }
         if score > alpha {
             alpha = score;
@@ -1992,19 +2646,24 @@ fn quiescence(
     ctx: &mut SearchContext<'_>,
     nnue_state: Option<NnuePositionState>,
 ) -> Result<i32, SearchInterrupted> {
+    ctx.clear_training_trace(ply);
     ctx.check_deadline()?;
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+        ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
     if !ctx.record_qnode(qply)? || qply >= ctx.qsearch_limits.max_ply {
         ctx.qsearch_stats.qsearch_cap_hits += u64::from(qply >= ctx.qsearch_limits.max_ply);
-        return Ok(evaluate_or_mate(board, ply, ctx, nnue_state.as_ref()));
+        let score = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        ctx.set_training_leaf(board, ply, score, false);
+        return Ok(score);
     }
 
     let in_check = !board.checkers().is_empty();
     let mut stand_pat_for_delta = None;
     if !in_check {
         let stand_pat = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        ctx.set_training_leaf(board, ply, stand_pat, false);
         if stand_pat >= beta {
             return Ok(stand_pat);
         }
@@ -2018,6 +2677,7 @@ fn quiescence(
     } else {
         QsearchMovePicker::new_tactical(board)
     };
+    let mut in_check_best_score = None;
 
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
@@ -2037,6 +2697,7 @@ fn quiescence(
         let mut child = board.clone();
         child.play_unchecked(mv);
         let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            ctx.set_training_leaf(&child, ply + 1, terminal, true);
             -terminal
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2053,14 +2714,26 @@ fn quiescence(
         };
 
         if score >= beta {
+            ctx.promote_child_training_trace(ply);
             return Ok(score);
         }
-        alpha = alpha.max(score);
+        if in_check_best_score.is_none_or(|best| score > best) {
+            in_check_best_score = Some(score);
+            if in_check {
+                ctx.promote_child_training_trace(ply);
+            }
+        }
+        if score > alpha {
+            alpha = score;
+            ctx.promote_child_training_trace(ply);
+        }
     }
 
     if in_check {
         if !searched_move {
-            return Ok(-MATE_SCORE + ply);
+            let score = -MATE_SCORE + ply;
+            ctx.set_training_leaf(board, ply, score, true);
+            return Ok(score);
         }
         return Ok(alpha);
     }
@@ -2074,6 +2747,7 @@ fn quiescence(
             let mut child = board.clone();
             child.play_unchecked(mv);
             let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+                ctx.set_training_leaf(&child, ply + 1, terminal, true);
                 -terminal
             } else {
                 let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
@@ -2090,9 +2764,13 @@ fn quiescence(
             };
 
             if score >= beta {
+                ctx.promote_child_training_trace(ply);
                 return Ok(score);
             }
-            alpha = alpha.max(score);
+            if score > alpha {
+                alpha = score;
+                ctx.promote_child_training_trace(ply);
+            }
         }
     }
 
@@ -2136,6 +2814,7 @@ fn store_tt_search_result(
     );
     if stored {
         ctx.tt_stats.tt_stores += 1;
+        ctx.store_tt_training_trace(key, depth, ply);
     }
     if collision {
         ctx.tt_stats.tt_collisions += 1;
@@ -2357,7 +3036,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
     SEARCH_TT.get_or_init(|| RwLock::new(TranspositionTable::default()))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     #[cfg(not(any(
@@ -2439,6 +3118,8 @@ mod tests {
             ordering_stats: SearchOrderingStats::default(),
             qsearch_stats: SearchQsearchStats::default(),
             qsearch_limits,
+            node_budget: None,
+            training_trace: None,
         }
     }
 
@@ -2488,6 +3169,30 @@ mod tests {
         );
         let score = quiescence(board, alpha, beta, 0, qply, check_budget, &mut ctx, None).unwrap();
         (score, ctx.qsearch_stats)
+    }
+
+    fn qsearch_handcrafted_trace(board: &Board) -> (i32, SearchTrainingTrace) {
+        let mut tt = TranspositionTable::default();
+        let mut ordering = SearchOrdering::default();
+        let mut ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_limits());
+        ctx.training_trace = Some(TrainingTraceCollector::default());
+        let score = quiescence(
+            board,
+            -INF_SCORE,
+            INF_SCORE,
+            0,
+            0,
+            qsearch_limits().check_budget,
+            &mut ctx,
+            None,
+        )
+        .unwrap();
+        let trace = ctx
+            .training_trace
+            .as_ref()
+            .and_then(TrainingTraceCollector::root)
+            .expect("qsearch should produce a training trace");
+        (score, trace)
     }
 
     #[cfg(not(any(
@@ -2629,6 +3334,41 @@ mod tests {
     }
 
     #[test]
+    fn usi_go_nodes_parses_and_rejects_mixed_budgets() {
+        assert_eq!(
+            parse_usi_go("go nodes 50000", 64).expect("go nodes should parse"),
+            UsiSearchBudget::Nodes(50_000)
+        );
+        let error = parse_usi_go("go nodes 50000 depth 3", 64)
+            .expect_err("nodes and depth should be mutually exclusive");
+        assert!(error.contains("mutually exclusive"));
+        let error = parse_usi_go("go nodes 0", 64).expect_err("zero nodes should fail");
+        assert!(error.contains("greater than 0"));
+    }
+
+    #[test]
+    fn usi_session_node_budget_returns_legal_deterministic_fallback() {
+        let mut first = UsiSession::default();
+        let first_output = first.handle_line("go nodes 1");
+        assert_eq!(first_output.len(), 2);
+        assert!(first_output[0].contains("requestedBudgetNodes 1"));
+        assert!(first_output[0].contains("consumedBudgetNodes 1"));
+        assert!(first_output[0].contains("alphaBetaNodes 1"));
+        assert!(first_output[0].contains("incompleteIterations 1"));
+        assert!(first_output[0].contains("fallback 1"));
+        let first_move = first_output[1]
+            .strip_prefix("bestmove ")
+            .expect("expected bestmove")
+            .to_string();
+
+        let mut second = UsiSession::default();
+        let second_output = second.handle_line("go nodes 1");
+        assert_eq!(second_output[1], format!("bestmove {first_move}"));
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
+        assert!(board.is_legal(Move::from_str(&first_move).expect("fallback should be a move")));
+    }
+
+    #[test]
     fn usi_session_accepts_hash_option() {
         let mut session = UsiSession::default();
         let output = session.handle_line("setoption name Hash value 16");
@@ -2742,6 +3482,180 @@ mod tests {
         assert!(summary.tt_stats.tt_hashfull <= 1000);
         assert!(summary.ordering_stats.history_move_tries > 0);
         assert!(summary.qsearch_stats.qnodes > 0);
+    }
+
+    #[test]
+    fn fixed_node_search_is_exact_and_deterministic() {
+        let board = Board::startpos();
+        let mut first_workspace = SearchWorkspace::default();
+        let first = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut first_workspace,
+        )
+        .unwrap();
+        let mut second_workspace = SearchWorkspace::default();
+        let second = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut second_workspace,
+        )
+        .unwrap();
+
+        assert!(first.exhausted);
+        assert_eq!(first.total_nodes, 5_000);
+        assert_eq!(
+            first.total_nodes,
+            first.alpha_beta_nodes + first.qsearch_nodes
+        );
+        assert!(first.best_move.is_some());
+        assert_eq!(first.best_move, second.best_move);
+        assert_eq!(first.best_score, second.best_score);
+        assert_eq!(first.completed_depth, second.completed_depth);
+        assert_eq!(first.alpha_beta_nodes, second.alpha_beta_nodes);
+        assert_eq!(first.qsearch_nodes, second.qsearch_nodes);
+        assert_eq!(first.total_nodes, second.total_nodes);
+        assert_eq!(first.total_nodes, first.node_limit);
+        assert!(first.cap_hits > 0);
+        assert_eq!(first.incomplete_iterations, 1);
+    }
+
+    #[test]
+    fn fixed_node_search_reports_a_legal_fallback_when_depth_one_cannot_finish() {
+        let board = Board::startpos();
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            1,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.completed_depth, 0);
+        assert_eq!(summary.incomplete_iterations, 1);
+        assert!(summary.cap_hits > 0);
+        assert_eq!(summary.total_nodes, 1);
+        assert!(summary.best_move.is_none());
+    }
+
+    #[test]
+    fn training_trace_does_not_change_fixed_node_search() {
+        let board = Board::startpos();
+        let mut normal_workspace = SearchWorkspace::default();
+        let normal = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            5_000,
+            64,
+            &mut normal_workspace,
+        )
+        .unwrap();
+        let mut traced_workspace = SearchWorkspace::default();
+        let (traced, trace) =
+            search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                &board,
+                5_000,
+                64,
+                &mut traced_workspace,
+            )
+            .unwrap();
+
+        assert_eq!(normal.best_move, traced.best_move);
+        assert_eq!(normal.best_score, traced.best_score);
+        assert_eq!(normal.completed_depth, traced.completed_depth);
+        assert_eq!(normal.alpha_beta_nodes, traced.alpha_beta_nodes);
+        assert_eq!(normal.qsearch_nodes, traced.qsearch_nodes);
+        assert_eq!(normal.total_nodes, traced.total_nodes);
+        assert!(trace.is_some());
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn missing_trace_is_confined_to_rejectable_anhoku_mate_position() {
+        let board = Board::from_sfen(
+            "n2+Rgks1l/l1G3g2/ppp1+Sp2p/6pR1/1P7/4P4/P1PPnPP1P/5GK2/L+p1s2SNL b N3P2b 53",
+        )
+        .unwrap();
+        let mut workspace = SearchWorkspace::default();
+        let (summary, trace) =
+            search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                &board,
+                50_000,
+                64,
+                &mut workspace,
+            )
+            .unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert!(
+            summary
+                .best_score
+                .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD)
+        );
+        assert!(trace.as_ref().is_none_or(|trace| trace.terminal));
+    }
+
+    #[test]
+    fn fixed_node_search_respects_depth_cap_without_spending_the_budget() {
+        let board = Board::startpos();
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            1_000_000,
+            1,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.completed_depth, 1);
+        assert!(!summary.exhausted);
+        assert!(summary.total_nodes < summary.node_limit);
+        assert_eq!(
+            summary.total_nodes,
+            summary.alpha_beta_nodes + summary.qsearch_nodes
+        );
+    }
+
+    #[test]
+    fn qsearch_training_trace_is_deterministic() {
+        let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1").unwrap();
+        let first = qsearch_handcrafted_trace(&board);
+        let second = qsearch_handcrafted_trace(&board);
+
+        assert_eq!(first, second);
+        assert!(!first.1.terminal);
+        assert!(first.1.root_ply_distance > 0);
+        assert!(first.1.leaf_board.checkers().is_empty());
+        assert_eq!(
+            first.1.static_eval,
+            static_handcrafted_eval(&first.1.leaf_board)
+        );
+        assert!(!first.1.leaf_board.has(Color::White, Piece::Rook));
+    }
+
+    #[test]
+    fn qsearch_training_trace_follows_promotions_and_check_evasions() {
+        let promotion = Board::from_sfen("4k4/9/4S4/9/9/9/9/9/4K4 b - 1").unwrap();
+        let (_, promotion_trace) = qsearch_handcrafted_trace(&promotion);
+        assert!(promotion_trace.root_ply_distance > 0);
+        assert!(promotion_trace.leaf_board.has(Color::Black, Piece::PSilver));
+        assert_eq!(
+            promotion_trace.static_eval,
+            static_handcrafted_eval(&promotion_trace.leaf_board)
+        );
+
+        let in_check = Board::from_sfen("9/9/9/9/9/9/9/8k/3rK4 b - 1").unwrap();
+        assert!(!in_check.checkers().is_empty());
+        let (_, evasion_trace) = qsearch_handcrafted_trace(&in_check);
+        assert!(evasion_trace.root_ply_distance > 0);
+        assert!(!evasion_trace.terminal);
+        assert!(evasion_trace.leaf_board.checkers().is_empty());
+        assert_eq!(
+            evasion_trace.static_eval,
+            static_handcrafted_eval(&evasion_trace.leaf_board)
+        );
     }
 
     #[test]

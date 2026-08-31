@@ -37,8 +37,11 @@ Use this for mate-search changes.
 cargo bench -p haitaka_wasm --bench nnue -- --noplot
 ```
 
-Use this for inference and accumulator changes. Annan NNUE loading is currently
-not enabled.
+Use this for inference and accumulator changes. Dense affine-layer benchmarks
+run without a model. Set `HAITAKA_NNUE_BENCH_MODEL=/path/to/model.nnue` and the
+matching ruleset feature to also benchmark full-refresh and incremental
+evaluation. Each model benchmark reports both the detected SIMD backend and a
+forced scalar reference.
 
 ## Reporting Results
 

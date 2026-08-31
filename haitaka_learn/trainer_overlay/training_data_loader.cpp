@@ -479,6 +479,71 @@ struct DonorSingleEff {
     }
 };
 
+struct DonorReceiverPairV2 {
+    static constexpr int INPUTS = FILES * RANKS * 2 * PIECE_TYPES * PIECE_TYPES;
+    static constexpr int MAX_ACTIVE_FEATURES = MAX_PIECES;
+
+    static int feature_index(
+        Color perspective, Square sq, Piece receiver_piece, Piece donor_piece
+    ) {
+        const int relative_color = color_of(donor_piece) != perspective;
+        const int receiver_type = static_cast<int>(type_of(receiver_piece));
+        const int effective_type = static_cast<int>(type_of(donor_piece));
+        return feature_index_components(
+            static_cast<int>(orient_flip(perspective, sq)),
+            relative_color,
+            receiver_type,
+            effective_type
+        );
+    }
+
+    static constexpr int feature_index_components(
+        int oriented_square, int relative_color, int receiver_type, int effective_type
+    ) {
+        return oriented_square + relative_color * FILES * RANKS
+            + receiver_type * 2 * FILES * RANKS
+            + effective_type * PIECE_TYPES * 2 * FILES * RANKS;
+    }
+
+    static std::pair<int, int> fill_features_sparse(
+        const TrainingDataEntry& e, int* features, float* values, Color perspective
+    ) {
+        auto& pos = e.pos;
+        int j = 0;
+#if HAITAKA_DONOR_MODE == 2
+        for (Square sq = Square::MIN; sq <= Square::MAX; ++sq) {
+            const auto receiver_piece = pos.pieceAt(sq);
+            if (receiver_piece == Piece::None) {
+                continue;
+            }
+            const auto donor_piece = friendly_piece_at(
+                pos,
+                color_of(receiver_piece),
+                single_donor_square(color_of(receiver_piece), sq)
+            );
+            if (donor_piece == Piece::None) {
+                continue;
+            }
+            values[j] = 1.0f;
+            features[j] = feature_index(perspective, sq, receiver_piece, donor_piece);
+            ++j;
+        }
+#else
+        (void)e;
+        (void)features;
+        (void)values;
+        (void)perspective;
+#endif
+        return {j, INPUTS};
+    }
+};
+
+// Cross-language parity anchors. The Rust runtime asserts the same indices.
+static_assert(DonorReceiverPairV2::feature_index_components(40, 0, 0, 4) == 6520);
+static_assert(DonorReceiverPairV2::feature_index_components(40, 1, 0, 4) == 6601);
+static_assert(DonorReceiverPairV2::feature_index_components(40, 0, 1, 4) == 6682);
+static_assert(DonorReceiverPairV2::feature_index_components(40, 0, 0, 5) == 8140);
+
 struct DonorPairSlots {
     static constexpr int INPUTS = FILES * RANKS * PIECE_TYPES * 2 * DONOR_PAIR_SLOTS;
     static constexpr int MAX_ACTIVE_FEATURES = MAX_PIECES * DONOR_PAIR_SLOTS;
@@ -777,7 +842,11 @@ private:
 };
 
 std::function<bool(const TrainingDataEntry&)> make_skip_predicate(bool filtered, int random_fen_skipping) {
-    if (!filtered && !random_fen_skipping) {
+    // The current 72-byte record cannot represent every shogi teacher move. In particular,
+    // `move == 0` means unavailable, not a real move. Ignore the trainer's smart/filtered
+    // mode until a versioned wider encoding exists; random skipping is score/result-only.
+    (void)filtered;
+    if (!random_fen_skipping) {
         return nullptr;
     }
 
@@ -839,6 +908,11 @@ EXPORT Stream<SparseBatch>* CDECL create_sparse_batch_stream(
     }
     if (feature_set == "HalfKAv2^+DonorSingleEff") {
         return new FeaturedBatchStream<FeatureSet<HalfKAv2Factorized, DonorSingleEff>, SparseBatch>(
+            concurrency, filename, batch_size, cyclic, skipPredicate
+        );
+    }
+    if (feature_set == "HalfKAv2^+DonorReceiverPairV2") {
+        return new FeaturedBatchStream<FeatureSet<HalfKAv2Factorized, DonorReceiverPairV2>, SparseBatch>(
             concurrency, filename, batch_size, cyclic, skipPredicate
         );
     }

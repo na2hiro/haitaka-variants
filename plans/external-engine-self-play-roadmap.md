@@ -186,10 +186,10 @@ Deferred statistical and product work is documented in
 
 ### Decision Rule
 
-If only one item can be scheduled next, implement Phase 1. A minimal `usi` mode
-is the foundation for every later step and gives immediate feedback on whether
-Haitaka can be driven reliably as an external engine.
+All four phases in this roadmap are complete. `usi`, external `self-play`,
+archive support, movetime matches, JSONL/JSON reports, and confidence intervals
+are available. Do not schedule Phase 1 or Phase 2 from this historical plan.
 
-After Phase 1, prefer Phase 2 over archive polish. The archive format should be
-shaped by the needs of a working external `self-play` driver, not guessed in
-advance.
+Deferred statistical and product extensions remain in
+`plans/strength-measurement-future-work.md`. Current NNUE promotion work is in
+`plans/anhoku-nnue-handcrafted-strength-plan.md`.

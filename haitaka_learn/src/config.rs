@@ -11,9 +11,230 @@ const ANNAN_STARTPOS_SFEN: &str =
     "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1";
 pub const FEATURE_SET_HALFKAV2: &str = "HalfKAv2^";
 pub const FEATURE_SET_DONOR_SINGLE: &str = "HalfKAv2^+DonorSingleEff";
+pub const FEATURE_SET_DONOR_RECEIVER_PAIR_V2: &str = "HalfKAv2^+DonorReceiverPairV2";
 pub const FEATURE_SET_DONOR_PAIR: &str = "HalfKAv2^+DonorPairSlots";
 #[allow(dead_code)]
 pub const FEATURE_SET_DONOR_KNIGHT8: &str = "HalfKAv2^+DonorKnight8Slots";
+pub const TEACHER_MOVE_ENCODING: &str = "unavailable";
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PositionPolicy {
+    #[default]
+    RootPosition,
+    QsearchPvLeaf,
+}
+
+impl PositionPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::RootPosition => "root-position",
+            Self::QsearchPvLeaf => "qsearch-pv-leaf",
+        }
+    }
+
+    pub const fn uses_training_trace(self) -> bool {
+        matches!(self, Self::QsearchPvLeaf)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IncompleteLabelPolicy {
+    #[default]
+    Error,
+    RejectPosition,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LabelRetryPolicy {
+    #[default]
+    None,
+    RootPositionAdaptiveRetryV1,
+}
+
+impl LabelRetryPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::RootPositionAdaptiveRetryV1 => "root-position-adaptive-retry-v1",
+        }
+    }
+
+    pub const fn is_adaptive(self) -> bool {
+        matches!(self, Self::RootPositionAdaptiveRetryV1)
+    }
+}
+
+impl IncompleteLabelPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::RejectPosition => "reject-position",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LabelSearchBudget {
+    Depth { depth: u8 },
+    Nodes { nodes: u64, max_depth: u8 },
+}
+
+impl LabelSearchBudget {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Depth { .. } => "depth",
+            Self::Nodes { .. } => "nodes",
+        }
+    }
+
+    pub const fn max_depth(self) -> u8 {
+        match self {
+            Self::Depth { depth } => depth,
+            Self::Nodes { max_depth, .. } => max_depth,
+        }
+    }
+
+    pub const fn nodes(self) -> Option<u64> {
+        match self {
+            Self::Depth { .. } => None,
+            Self::Nodes { nodes, .. } => Some(nodes),
+        }
+    }
+
+    pub const fn legacy_search_depth(self) -> u8 {
+        match self {
+            Self::Depth { depth } => depth,
+            Self::Nodes { .. } => 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SamplingPolicy {
+    #[default]
+    PerGameRandomV1,
+    FixedPhaseLegacy,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SelfPlayMovePolicy {
+    /// Versioned bounded near-best stochastic rollout used by Phase 8D and
+    /// later production datasets.
+    SearchedStochasticRolloutV1,
+    /// Historical depth-1 deterministic best-move rollout.  It remains
+    /// readable so old manifests/configs can be audited, but new trajectory
+    /// pilots must use `searched-stochastic-rollout-v1`.
+    UniformRolloutV1,
+    #[default]
+    LabelOnSampleLegacy,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OpeningPolicy {
+    Suite,
+    #[default]
+    UniformRandom,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SplitPolicy {
+    OpeningGroupHashV1,
+    #[default]
+    IndependentLegacy,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ValidationOpeningSchedule {
+    #[default]
+    HashV1,
+    EqualColorSwappedPairsV1,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ShufflePolicy {
+    ChunkV1,
+    #[default]
+    GameOrderLegacy,
+}
+
+impl OpeningPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::Suite => "suite",
+            Self::UniformRandom => "uniform-random",
+        }
+    }
+}
+
+impl SplitPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::OpeningGroupHashV1 => "opening-group-hash-v1",
+            Self::IndependentLegacy => "independent-legacy",
+        }
+    }
+}
+
+impl ValidationOpeningSchedule {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::HashV1 => "hash-v1",
+            Self::EqualColorSwappedPairsV1 => "equal-color-swapped-pairs-v1",
+        }
+    }
+}
+
+impl ShufflePolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::ChunkV1 => "bounded-chunk-v1",
+            Self::GameOrderLegacy => "game-order-legacy",
+        }
+    }
+}
+
+impl SamplingPolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::PerGameRandomV1 => "per-game-random-v1",
+            Self::FixedPhaseLegacy => "fixed-phase-legacy",
+        }
+    }
+
+    pub const fn samples_after_opening(self) -> bool {
+        matches!(self, Self::PerGameRandomV1)
+    }
+}
+
+impl SelfPlayMovePolicy {
+    pub const fn manifest_name(self) -> &'static str {
+        match self {
+            Self::SearchedStochasticRolloutV1 => "searched-stochastic-rollout-v1",
+            Self::UniformRolloutV1 => "uniform-rollout-v1",
+            Self::LabelOnSampleLegacy => "label-on-sample-legacy",
+        }
+    }
+
+    pub const fn is_searched_stochastic(self) -> bool {
+        matches!(self, Self::SearchedStochasticRolloutV1)
+    }
+
+    pub const fn is_rollout_policy(self) -> bool {
+        matches!(
+            self,
+            Self::SearchedStochasticRolloutV1 | Self::UniformRolloutV1
+        )
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RulesetSpec {
@@ -310,6 +531,22 @@ impl LoadedConfig {
             .as_ref()
             .map(|path| self.resolve_path(path))
     }
+
+    pub fn legacy_ood_validation_bin(&self) -> Option<PathBuf> {
+        self.config
+            .paths
+            .legacy_ood_validation_bin
+            .as_ref()
+            .map(|path| self.resolve_path(path))
+    }
+
+    pub fn opening_suite(&self) -> Option<PathBuf> {
+        self.config
+            .data
+            .opening_suite
+            .as_ref()
+            .map(|path| self.resolve_path(path))
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -323,6 +560,7 @@ pub struct ArtifactPaths {
     pub train_manifest: PathBuf,
     pub validation_manifest: PathBuf,
     pub bootstrap_model_pt: PathBuf,
+    pub bootstrap_migrated_nnue: PathBuf,
     pub export_metadata: PathBuf,
     pub verify_report: PathBuf,
     pub exported_nnue: PathBuf,
@@ -340,6 +578,7 @@ impl ArtifactPaths {
             train_manifest: datasets_dir.join("train.json"),
             validation_manifest: datasets_dir.join("validation.json"),
             bootstrap_model_pt: artifacts_dir.join("bootstrap.pt"),
+            bootstrap_migrated_nnue: artifacts_dir.join("bootstrap-donor-receiver-pair-v2.nnue"),
             export_metadata: artifacts_dir.join("export.json"),
             verify_report: artifacts_dir.join("verify.json"),
             exported_nnue: artifacts_dir.join(&loaded.config.export.output_name),
@@ -385,11 +624,82 @@ impl LearnConfig {
             self.data.validation_games > 0,
             "data.validation_games must be > 0"
         );
+        if let Some(minimum) = self.data.minimum_train_boards()? {
+            ensure!(
+                minimum > 0,
+                "data.minimum_train_boards must be > 0 when configured"
+            );
+        }
         ensure!(self.data.max_plies > 0, "data.max_plies must be > 0");
         ensure!(
-            self.data.search_depth > 0,
-            "data.search_depth must be at least 1"
+            self.data.rollout_candidate_limit > 0,
+            "data.rollout_candidate_limit must be at least 1"
         );
+        ensure!(
+            self.data.rollout_score_margin >= 0,
+            "data.rollout_score_margin must be >= 0"
+        );
+        ensure!(
+            self.data.rollout_temperature.is_finite() && self.data.rollout_temperature > 0.0,
+            "data.rollout_temperature must be finite and > 0"
+        );
+        ensure!(
+            self.data.rollout_rng_version == "splitmix64-v1",
+            "unsupported data.rollout_rng_version `{}`; supported value: splitmix64-v1",
+            self.data.rollout_rng_version
+        );
+        if self.data.self_play_move_policy.is_searched_stochastic() {
+            ensure!(
+                self.data.opening_random_plies == 0,
+                "searched-stochastic rollout requires data.opening_random_plies=0; use a versioned opening suite for starting diversity"
+            );
+        }
+        let label_search_budget = self.data.label_search_budget()?;
+        if self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition {
+            ensure!(
+                matches!(label_search_budget, LabelSearchBudget::Nodes { .. }),
+                "data.incomplete_label_policy=reject-position requires a fixed-node label budget"
+            );
+            ensure!(
+                self.data.self_play_move_policy.is_rollout_policy(),
+                "data.incomplete_label_policy=reject-position requires data.self_play_move_policy=uniform-rollout-v1 or searched-stochastic-rollout-v1"
+            );
+        }
+        if self.data.label_retry_policy.is_adaptive() {
+            ensure!(
+                self.data.position_policy == PositionPolicy::RootPosition,
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.position_policy=root-position"
+            );
+            ensure!(
+                self.data.incomplete_label_policy == IncompleteLabelPolicy::RejectPosition,
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.incomplete_label_policy=reject-position"
+            );
+            ensure!(
+                self.data.self_play_move_policy.is_searched_stochastic(),
+                "data.label_retry_policy=root-position-adaptive-retry-v1 requires data.self_play_move_policy=searched-stochastic-rollout-v1"
+            );
+            ensure!(
+                self.data.max_candidate_roots_per_game.is_none(),
+                "data.max_candidate_roots_per_game must be omitted when adaptive label retry is enabled; use data.max_label_attempts_per_game"
+            );
+            ensure!(
+                self.data
+                    .max_label_attempts_per_game
+                    .is_some_and(|attempts| attempts > 0),
+                "data.max_label_attempts_per_game must be > 0 when adaptive label retry is enabled"
+            );
+            ensure!(
+                self.data
+                    .max_label_attempts_per_game
+                    .is_some_and(|attempts| attempts >= self.data.max_positions_per_game),
+                "data.max_label_attempts_per_game must be >= data.max_positions_per_game when adaptive label retry is enabled"
+            );
+        } else {
+            ensure!(
+                self.data.max_label_attempts_per_game.is_none(),
+                "data.max_label_attempts_per_game requires data.label_retry_policy=root-position-adaptive-retry-v1"
+            );
+        }
         ensure!(
             self.data.rollout_search_depth > 0,
             "data.rollout_search_depth must be at least 1"
@@ -398,11 +708,160 @@ impl LearnConfig {
             self.data.sample_every_ply > 0,
             "data.sample_every_ply must be at least 1"
         );
+        match self.data.opening_policy {
+            OpeningPolicy::Suite => {
+                ensure!(
+                    self.rules.ruleset == Ruleset::Anhoku,
+                    "data.opening_policy=suite currently supports ruleset=anhoku only"
+                );
+                ensure!(
+                    self.data.opening_suite.is_some(),
+                    "data.opening_suite is required when data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data
+                        .opening_suite_id
+                        .as_deref()
+                        .is_some_and(|id| !id.trim().is_empty()),
+                    "data.opening_suite_id is required when data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data.opening_random_plies == 0,
+                    "data.opening_random_plies must be 0 when data.opening_policy=suite; suite positions already end the opening phase"
+                );
+            }
+            OpeningPolicy::UniformRandom => {
+                ensure!(
+                    self.data.opening_suite.is_none() && self.data.opening_suite_id.is_none(),
+                    "data.opening_suite and data.opening_suite_id require data.opening_policy=suite"
+                );
+            }
+        }
+        if self.data.split_policy == SplitPolicy::OpeningGroupHashV1 {
+            ensure!(
+                self.data.opening_policy == OpeningPolicy::Suite,
+                "data.split_policy=opening-group-hash-v1 requires data.opening_policy=suite"
+            );
+            ensure!(
+                self.data.train_games % 2 == 0 && self.data.validation_games % 2 == 0,
+                "data.split_policy=opening-group-hash-v1 requires even train_games and validation_games so color-swapped pairs stay together"
+            );
+        }
+        match self.data.validation_opening_schedule {
+            ValidationOpeningSchedule::HashV1 => {
+                ensure!(
+                    self.data.validation_opening_pairs_per_id.is_none(),
+                    "data.validation_opening_pairs_per_id requires data.validation_opening_schedule=equal-color-swapped-pairs-v1"
+                );
+            }
+            ValidationOpeningSchedule::EqualColorSwappedPairsV1 => {
+                ensure!(
+                    self.data.opening_policy == OpeningPolicy::Suite,
+                    "equal-color-swapped-pairs-v1 requires data.opening_policy=suite"
+                );
+                ensure!(
+                    self.data.split_policy == SplitPolicy::OpeningGroupHashV1,
+                    "equal-color-swapped-pairs-v1 requires data.split_policy=opening-group-hash-v1"
+                );
+                let validation_ids =
+                    self.data.validation_opening_ids.as_ref().ok_or_else(|| {
+                        anyhow!("equal-color-swapped-pairs-v1 requires data.validation_opening_ids")
+                    })?;
+                ensure!(
+                    !validation_ids.is_empty(),
+                    "equal-color-swapped-pairs-v1 requires at least one validation opening ID"
+                );
+                let pairs_per_id = self.data.validation_opening_pairs_per_id.ok_or_else(|| {
+                    anyhow!(
+                        "equal-color-swapped-pairs-v1 requires data.validation_opening_pairs_per_id"
+                    )
+                })?;
+                ensure!(
+                    pairs_per_id > 0,
+                    "data.validation_opening_pairs_per_id must be > 0"
+                );
+                let expected_games = u64::from(pairs_per_id)
+                    .saturating_mul(validation_ids.len() as u64)
+                    .saturating_mul(2);
+                ensure!(
+                    u64::from(self.data.validation_games) == expected_games,
+                    "data.validation_games must equal 2 * validation_opening_ids.len() * data.validation_opening_pairs_per_id ({expected_games}) for equal-color-swapped-pairs-v1"
+                );
+            }
+        }
+        ensure!(
+            self.data.shuffle_chunk_records > 0,
+            "data.shuffle_chunk_records must be at least 1"
+        );
+        ensure!(
+            self.data.shuffle_chunk_records <= 1_000_000,
+            "data.shuffle_chunk_records must not exceed 1000000 (about 68.7 MiB of record payload)"
+        );
+        ensure!(
+            !self.training.teacher_move_consumers,
+            "training.teacher_move_consumers cannot be enabled: the 72-byte record format has teacher_move_encoding=unavailable"
+        );
+        ensure!(
+            !self.training.extra_args.iter().any(|arg| {
+                matches!(
+                    arg.as_str(),
+                    "--smart-fen-skipping" | "--smart-capture-skipping" | "--teacher-move-filter"
+                )
+            }),
+            "training.extra_args enables a teacher-move consumer, but the 72-byte record format has teacher_move_encoding=unavailable"
+        );
         ensure!(
             self.data.max_positions_per_game > 0,
             "data.max_positions_per_game must be > 0"
         );
+        if let Some(max_candidates) = self.data.max_candidate_roots_per_game {
+            ensure!(
+                max_candidates > 0,
+                "data.max_candidate_roots_per_game must be > 0 when configured"
+            );
+            ensure!(
+                max_candidates <= self.data.max_positions_per_game,
+                "data.max_candidate_roots_per_game must be <= data.max_positions_per_game"
+            );
+        }
+        if let Some(validation_ids) = &self.data.validation_opening_ids {
+            ensure!(
+                self.data.split_policy == SplitPolicy::OpeningGroupHashV1,
+                "data.validation_opening_ids requires data.split_policy=opening-group-hash-v1"
+            );
+            ensure!(
+                !validation_ids.is_empty(),
+                "data.validation_opening_ids must not be empty when configured"
+            );
+            let unique = validation_ids
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>();
+            ensure!(
+                unique.len() == validation_ids.len(),
+                "data.validation_opening_ids must not contain duplicates"
+            );
+        }
         ensure!(self.data.shard_games > 0, "data.shard_games must be > 0");
+        ensure!(
+            self.training.initial_learning_rate.is_finite()
+                && self.training.initial_learning_rate > 0.0,
+            "training.initial_learning_rate must be finite and > 0"
+        );
+        for (name, value) in [
+            (
+                "training.checkpoint_interval_steps",
+                self.training.checkpoint_interval_steps,
+            ),
+            (
+                "training.validation_interval_steps",
+                self.training.validation_interval_steps,
+            ),
+            ("training.max_steps", self.training.max_steps),
+        ] {
+            if let Some(value) = value {
+                ensure!(value > 0, "{name} must be > 0 when configured");
+            }
+        }
         ensure!(
             (1..=100).contains(&self.data.progress_every_percent),
             "data.progress_every_percent must be between 1 and 100"
@@ -420,14 +879,42 @@ impl LearnConfig {
             self.selection.poll_interval_secs > 0,
             "selection.poll_interval_secs must be > 0"
         );
-        ensure!(
-            self.selection.batch_games > 0,
-            "selection.batch_games must be > 0"
-        );
-        ensure!(
-            self.selection.max_games >= self.selection.batch_games,
-            "selection.max_games must be >= selection.batch_games"
-        );
+        match self.selection.strategy {
+            SelectionStrategy::AnchoredRanking => {
+                ensure!(
+                    self.selection.screen_games > 0 && self.selection.screen_games % 2 == 0,
+                    "selection.screen_games must be a positive even number"
+                );
+                ensure!(
+                    self.selection.round_games > 0 && self.selection.round_games % 2 == 0,
+                    "selection.round_games must be a positive even number"
+                );
+                ensure!(self.selection.top_k > 0, "selection.top_k must be > 0");
+                ensure!(
+                    self.selection.max_total_games >= self.selection.screen_games,
+                    "selection.max_total_games must be >= selection.screen_games"
+                );
+                ensure!(
+                    self.selection.max_games_per_candidate >= self.selection.screen_games,
+                    "selection.max_games_per_candidate must be >= selection.screen_games"
+                );
+                ensure!(
+                    self.selection.explore_factor.is_finite()
+                        && self.selection.explore_factor >= 0.0,
+                    "selection.explore_factor must be finite and >= 0"
+                );
+            }
+            SelectionStrategy::Sprt => {
+                ensure!(
+                    self.selection.batch_games > 0,
+                    "selection.batch_games must be > 0"
+                );
+                ensure!(
+                    self.selection.max_games >= self.selection.batch_games,
+                    "selection.max_games must be >= selection.batch_games"
+                );
+            }
+        }
         ensure!(
             self.selection.movetime_ms > 0,
             "selection.movetime_ms must be > 0"
@@ -527,6 +1014,9 @@ pub struct PathsConfig {
     pub trainer_checkout: Option<PathBuf>,
     #[serde(default)]
     pub bootstrap_nnue: Option<PathBuf>,
+    /// Optional legacy two-opening OOD validation binary used by diagnostic runs.
+    #[serde(default)]
+    pub legacy_ood_validation_bin: Option<PathBuf>,
     #[serde(default = "default_python")]
     pub python: String,
     #[serde(default = "default_cmake")]
@@ -539,6 +1029,7 @@ impl Default for PathsConfig {
             output_dir: default_output_dir(),
             trainer_checkout: None,
             bootstrap_nnue: None,
+            legacy_ood_validation_bin: None,
             python: default_python(),
             cmake: default_cmake(),
         }
@@ -553,18 +1044,87 @@ pub struct DataConfig {
     pub validation_games: u32,
     #[serde(default = "default_max_plies")]
     pub max_plies: u16,
-    #[serde(default = "default_search_depth")]
-    pub search_depth: u8,
+    #[serde(default)]
+    pub search_depth: Option<u8>,
+    #[serde(default)]
+    pub label_search_nodes: Option<u64>,
+    #[serde(default)]
+    pub label_search_max_depth: Option<u8>,
+    #[serde(default)]
+    pub position_policy: PositionPolicy,
+    #[serde(default)]
+    pub incomplete_label_policy: IncompleteLabelPolicy,
+    #[serde(default)]
+    pub label_retry_policy: LabelRetryPolicy,
     #[serde(default = "default_rollout_search_depth")]
     pub rollout_search_depth: u8,
+    #[serde(default)]
+    pub self_play_move_policy: SelfPlayMovePolicy,
+    /// Maximum number of canonically ordered legal moves scored by the
+    /// searched-stochastic rollout.
+    #[serde(default = "default_rollout_candidate_limit")]
+    pub rollout_candidate_limit: u16,
+    /// Score window below the best candidate retained for stochastic choice.
+    #[serde(default = "default_rollout_score_margin")]
+    pub rollout_score_margin: i32,
+    /// Temperature in the same score units as the cheap rollout search.
+    #[serde(default = "default_rollout_temperature")]
+    pub rollout_temperature: f64,
+    /// Named RNG algorithm/version, included in generation identity.
+    #[serde(default = "default_rollout_rng_version")]
+    pub rollout_rng_version: String,
     #[serde(default = "default_opening_random_plies")]
     pub opening_random_plies: u16,
+    #[serde(default)]
+    pub opening_policy: OpeningPolicy,
+    #[serde(default)]
+    pub opening_suite: Option<PathBuf>,
+    #[serde(default)]
+    pub opening_suite_id: Option<String>,
+    /// Optional explicit validation opening groups. When set, these IDs are
+    /// frozen instead of being selected from split_seed and game counts.
+    #[serde(default)]
+    pub validation_opening_ids: Option<Vec<String>>,
+    #[serde(default)]
+    pub validation_opening_schedule: ValidationOpeningSchedule,
+    #[serde(default)]
+    pub validation_opening_pairs_per_id: Option<u32>,
+    #[serde(default)]
+    pub split_policy: SplitPolicy,
+    #[serde(default = "default_split_seed")]
+    pub split_seed: u64,
+    #[serde(default)]
+    pub shuffle_policy: ShufflePolicy,
+    #[serde(default = "default_shuffle_seed")]
+    pub shuffle_seed: u64,
+    #[serde(default = "default_shuffle_chunk_records")]
+    pub shuffle_chunk_records: usize,
     #[serde(default)]
     pub sample_start_ply: u16,
     #[serde(default = "default_sample_every_ply")]
     pub sample_every_ply: u16,
+    #[serde(default)]
+    pub sampling_policy: SamplingPolicy,
     #[serde(default = "default_max_positions_per_game")]
     pub max_positions_per_game: u16,
+    /// Cap sampled root candidates independently of later position rejection.
+    /// None preserves the legacy accepted-position cap.
+    #[serde(default)]
+    pub max_candidate_roots_per_game: Option<u16>,
+    /// Maximum number of label roots searched while filling the accepted
+    /// position quota under an adaptive retry policy.
+    #[serde(default)]
+    pub max_label_attempts_per_game: Option<u16>,
+    /// Minimum number of distinct packed training boards required for a
+    /// complete (non-sharded) generation or merge. Partial machine lanes
+    /// cannot prove this global target and are checked when merged.
+    #[serde(default)]
+    pub minimum_train_boards: Option<u64>,
+    /// Deprecated compatibility spelling. Historical configs used this name
+    /// for an accepted-record floor; it is now interpreted as a packed-board
+    /// floor and must not be combined with `minimum_train_boards`.
+    #[serde(default)]
+    pub minimum_train_positions: Option<u64>,
     #[serde(default = "default_seed")]
     pub seed: u64,
     #[serde(default = "default_jobs")]
@@ -583,17 +1143,90 @@ impl Default for DataConfig {
             train_games: default_train_games(),
             validation_games: default_validation_games(),
             max_plies: default_max_plies(),
-            search_depth: default_search_depth(),
+            search_depth: None,
+            label_search_nodes: None,
+            label_search_max_depth: None,
+            position_policy: PositionPolicy::default(),
+            incomplete_label_policy: IncompleteLabelPolicy::default(),
+            label_retry_policy: LabelRetryPolicy::default(),
             rollout_search_depth: default_rollout_search_depth(),
+            self_play_move_policy: SelfPlayMovePolicy::default(),
+            rollout_candidate_limit: default_rollout_candidate_limit(),
+            rollout_score_margin: default_rollout_score_margin(),
+            rollout_temperature: default_rollout_temperature(),
+            rollout_rng_version: default_rollout_rng_version(),
             opening_random_plies: default_opening_random_plies(),
+            opening_policy: OpeningPolicy::default(),
+            opening_suite: None,
+            opening_suite_id: None,
+            validation_opening_ids: None,
+            validation_opening_schedule: ValidationOpeningSchedule::default(),
+            validation_opening_pairs_per_id: None,
+            split_policy: SplitPolicy::default(),
+            split_seed: default_split_seed(),
+            shuffle_policy: ShufflePolicy::default(),
+            shuffle_seed: default_shuffle_seed(),
+            shuffle_chunk_records: default_shuffle_chunk_records(),
             sample_start_ply: 0,
             sample_every_ply: default_sample_every_ply(),
+            sampling_policy: SamplingPolicy::default(),
             max_positions_per_game: default_max_positions_per_game(),
+            max_candidate_roots_per_game: None,
+            max_label_attempts_per_game: None,
+            minimum_train_boards: None,
+            minimum_train_positions: None,
             seed: default_seed(),
             jobs: default_jobs(),
             shard_games: default_shard_games(),
             progress_every_percent: default_progress_every_percent(),
             resume: default_resume(),
+        }
+    }
+}
+
+impl DataConfig {
+    pub fn minimum_train_boards(&self) -> Result<Option<u64>> {
+        if self.minimum_train_boards.is_some() && self.minimum_train_positions.is_some() {
+            bail!(
+                "data.minimum_train_boards and deprecated data.minimum_train_positions cannot both be configured"
+            );
+        }
+        Ok(self.minimum_train_boards.or(self.minimum_train_positions))
+    }
+
+    pub fn label_search_budget(&self) -> Result<LabelSearchBudget> {
+        match (
+            self.search_depth,
+            self.label_search_nodes,
+            self.label_search_max_depth,
+        ) {
+            (Some(_), Some(_), _) => bail!(
+                "data.search_depth and data.label_search_nodes are mutually exclusive; choose one label budget"
+            ),
+            (Some(depth), None, None) => {
+                ensure!(depth > 0, "data.search_depth must be at least 1");
+                Ok(LabelSearchBudget::Depth { depth })
+            }
+            (Some(_), None, Some(_)) => bail!(
+                "data.label_search_max_depth requires data.label_search_nodes and cannot be combined with data.search_depth"
+            ),
+            (None, Some(nodes), Some(max_depth)) => {
+                ensure!(nodes > 0, "data.label_search_nodes must be at least 1");
+                ensure!(
+                    max_depth > 0,
+                    "data.label_search_max_depth must be at least 1"
+                );
+                Ok(LabelSearchBudget::Nodes { nodes, max_depth })
+            }
+            (None, Some(_), None) => {
+                bail!("data.label_search_max_depth is required with data.label_search_nodes")
+            }
+            (None, None, Some(_)) => {
+                bail!("data.label_search_max_depth requires data.label_search_nodes")
+            }
+            (None, None, None) => Ok(LabelSearchBudget::Depth {
+                depth: default_search_depth(),
+            }),
         }
     }
 }
@@ -616,10 +1249,20 @@ pub struct TrainingConfig {
     pub epoch_size: u32,
     #[serde(default = "default_validation_size")]
     pub validation_size: u32,
+    #[serde(default = "default_initial_learning_rate")]
+    pub initial_learning_rate: f32,
+    #[serde(default)]
+    pub checkpoint_interval_steps: Option<u64>,
+    #[serde(default)]
+    pub validation_interval_steps: Option<u64>,
+    #[serde(default)]
+    pub max_steps: Option<u64>,
     #[serde(default = "default_max_epochs")]
     pub max_epochs: u32,
     #[serde(default = "default_build_data_loader")]
     pub build_data_loader: bool,
+    #[serde(default)]
+    pub teacher_move_consumers: bool,
     #[serde(default)]
     pub extra_args: Vec<String>,
 }
@@ -635,8 +1278,13 @@ impl Default for TrainingConfig {
             random_fen_skipping: default_random_fen_skipping(),
             epoch_size: default_epoch_size(),
             validation_size: default_validation_size(),
+            initial_learning_rate: default_initial_learning_rate(),
+            checkpoint_interval_steps: None,
+            validation_interval_steps: None,
+            max_steps: None,
             max_epochs: default_max_epochs(),
             build_data_loader: default_build_data_loader(),
+            teacher_move_consumers: false,
             extra_args: Vec::new(),
         }
     }
@@ -678,6 +1326,8 @@ impl Default for VerifyConfig {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SelectionConfig {
+    #[serde(default)]
+    pub strategy: SelectionStrategy,
     #[serde(default = "default_selection_poll_interval_secs")]
     pub poll_interval_secs: u64,
     #[serde(default = "default_selection_stable_checkpoint_secs")]
@@ -704,11 +1354,32 @@ pub struct SelectionConfig {
     pub sprt_beta: f64,
     #[serde(default)]
     pub storage_saver: bool,
+    #[serde(default = "default_selection_screen_games")]
+    pub screen_games: u32,
+    #[serde(default = "default_selection_round_games")]
+    pub round_games: u32,
+    #[serde(default = "default_selection_max_total_games")]
+    pub max_total_games: u32,
+    #[serde(default = "default_selection_max_games_per_candidate")]
+    pub max_games_per_candidate: u32,
+    #[serde(default = "default_selection_explore_factor")]
+    pub explore_factor: f64,
+    #[serde(default = "default_selection_top_k")]
+    pub top_k: usize,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SelectionStrategy {
+    #[default]
+    AnchoredRanking,
+    Sprt,
 }
 
 impl Default for SelectionConfig {
     fn default() -> Self {
         Self {
+            strategy: SelectionStrategy::default(),
             poll_interval_secs: default_selection_poll_interval_secs(),
             stable_checkpoint_secs: default_selection_stable_checkpoint_secs(),
             batch_games: default_selection_batch_games(),
@@ -722,6 +1393,12 @@ impl Default for SelectionConfig {
             sprt_alpha: default_selection_sprt_alpha(),
             sprt_beta: default_selection_sprt_beta(),
             storage_saver: false,
+            screen_games: default_selection_screen_games(),
+            round_games: default_selection_round_games(),
+            max_total_games: default_selection_max_total_games(),
+            max_games_per_candidate: default_selection_max_games_per_candidate(),
+            explore_factor: default_selection_explore_factor(),
+            top_k: default_selection_top_k(),
         }
     }
 }
@@ -758,6 +1435,22 @@ fn default_rollout_search_depth() -> u8 {
     1
 }
 
+fn default_rollout_candidate_limit() -> u16 {
+    16
+}
+
+fn default_rollout_score_margin() -> i32 {
+    80
+}
+
+fn default_rollout_temperature() -> f64 {
+    40.0
+}
+
+fn default_rollout_rng_version() -> String {
+    "splitmix64-v1".to_string()
+}
+
 fn default_opening_random_plies() -> u16 {
     8
 }
@@ -772,6 +1465,18 @@ fn default_max_positions_per_game() -> u16 {
 
 fn default_seed() -> u64 {
     42
+}
+
+fn default_split_seed() -> u64 {
+    0x7370_6c69_742d_7631
+}
+
+fn default_shuffle_seed() -> u64 {
+    0x7368_7566_666c_6531
+}
+
+fn default_shuffle_chunk_records() -> usize {
+    65_536
 }
 
 fn default_jobs() -> u32 {
@@ -820,6 +1525,10 @@ fn default_epoch_size() -> u32 {
 
 fn default_validation_size() -> u32 {
     20_000
+}
+
+fn default_initial_learning_rate() -> f32 {
+    0.0015
 }
 
 fn default_max_epochs() -> u32 {
@@ -894,6 +1603,30 @@ fn default_selection_sprt_beta() -> f64 {
     0.05
 }
 
+fn default_selection_screen_games() -> u32 {
+    256
+}
+
+fn default_selection_round_games() -> u32 {
+    128
+}
+
+fn default_selection_max_total_games() -> u32 {
+    32_768
+}
+
+fn default_selection_max_games_per_candidate() -> u32 {
+    4_096
+}
+
+fn default_selection_explore_factor() -> f64 {
+    1.5
+}
+
+fn default_selection_top_k() -> usize {
+    3
+}
+
 fn active_variant_feature() -> Option<&'static str> {
     if cfg!(feature = "annan") {
         Some("annan")
@@ -928,7 +1661,6 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
         Ruleset::Annan
-        | Ruleset::Anhoku
         | Ruleset::Taimen
         | Ruleset::Haimen
         | Ruleset::Neko
@@ -937,6 +1669,7 @@ pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
         | Ruleset::Yokonekoneko
         | Ruleset::Tenkyo
         | Ruleset::Tenjiku => FEATURE_SET_DONOR_SINGLE,
+        Ruleset::Anhoku => FEATURE_SET_DONOR_SINGLE,
         Ruleset::Antouzai => FEATURE_SET_DONOR_PAIR,
         Ruleset::Anki => FEATURE_SET_DONOR_KNIGHT8,
     }
@@ -946,7 +1679,6 @@ fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => vec![FEATURE_SET_HALFKAV2],
         Ruleset::Annan
-        | Ruleset::Anhoku
         | Ruleset::Taimen
         | Ruleset::Haimen
         | Ruleset::Neko
@@ -955,6 +1687,7 @@ fn allowed_feature_sets(ruleset: Ruleset) -> Vec<&'static str> {
         | Ruleset::Yokonekoneko
         | Ruleset::Tenkyo
         | Ruleset::Tenjiku => vec![FEATURE_SET_DONOR_SINGLE],
+        Ruleset::Anhoku => vec![FEATURE_SET_DONOR_SINGLE, FEATURE_SET_DONOR_RECEIVER_PAIR_V2],
         Ruleset::Antouzai => vec![FEATURE_SET_DONOR_PAIR],
         Ruleset::Anki => vec![FEATURE_SET_DONOR_KNIGHT8],
     }
@@ -988,6 +1721,339 @@ validation_games = 1
         assert_eq!(config.data.shard_games, 100);
         assert_eq!(config.data.progress_every_percent, 1);
         assert!(config.data.resume);
+        assert_eq!(config.data.opening_policy, OpeningPolicy::UniformRandom);
+        assert_eq!(config.data.sampling_policy, SamplingPolicy::PerGameRandomV1);
+        assert_eq!(
+            config.data.self_play_move_policy,
+            SelfPlayMovePolicy::LabelOnSampleLegacy
+        );
+        assert_eq!(
+            config.data.incomplete_label_policy,
+            IncompleteLabelPolicy::Error
+        );
+        assert!(!config.training.teacher_move_consumers);
+        assert_eq!(
+            config.data.label_search_budget().unwrap(),
+            LabelSearchBudget::Depth { depth: 2 }
+        );
+    }
+
+    #[test]
+    fn parses_fixed_node_label_budget() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 5000
+label_search_max_depth = 64
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        config.validate().unwrap();
+        assert_eq!(
+            config.data.label_search_budget().unwrap(),
+            LabelSearchBudget::Nodes {
+                nodes: 5_000,
+                max_depth: 64
+            }
+        );
+    }
+
+    #[test]
+    fn parses_searched_stochastic_rollout_contract() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_candidate_limit = 12
+rollout_score_margin = 75
+rollout_temperature = 35.0
+rollout_rng_version = "splitmix64-v1"
+opening_random_plies = 0
+minimum_train_boards = 123
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        config.validate().unwrap();
+        assert!(config.data.self_play_move_policy.is_searched_stochastic());
+        assert_eq!(config.data.rollout_candidate_limit, 12);
+        assert_eq!(config.data.rollout_score_margin, 75);
+        assert_eq!(config.data.rollout_temperature, 35.0);
+        assert_eq!(config.data.minimum_train_boards().unwrap(), Some(123));
+    }
+
+    #[test]
+    fn searched_stochastic_rollout_rejects_random_opening_plies() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 1
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("opening_random_plies=0"));
+    }
+
+    #[test]
+    fn rejects_unknown_rollout_rng_version() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_rng_version = "splitmix64-vl"
+opening_random_plies = 0
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        let error = format!("{:#}", config.validate().unwrap_err());
+        assert!(error.contains("unsupported data.rollout_rng_version `splitmix64-vl`"));
+        assert!(error.contains("splitmix64-v1"));
+    }
+
+    #[test]
+    fn candidate_root_cap_is_independent_but_bounded_by_output_cap() {
+        let valid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+max_positions_per_game = 8
+max_candidate_roots_per_game = 8
+"#,
+        )
+        .unwrap();
+        valid.validate().unwrap();
+
+        let invalid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+max_positions_per_game = 8
+max_candidate_roots_per_game = 9
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", invalid.validate().unwrap_err())
+                .contains("<= data.max_positions_per_game")
+        );
+    }
+
+    #[test]
+    fn adaptive_root_label_retry_has_an_explicit_bounded_contract() {
+        let valid: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 1
+max_label_attempts_per_game = 8
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        valid.validate().unwrap();
+        assert!(valid.data.label_retry_policy.is_adaptive());
+
+        let conflicting: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 1
+max_label_attempts_per_game = 8
+max_candidate_roots_per_game = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", conflicting.validate().unwrap_err())
+                .contains("max_candidate_roots_per_game must be omitted")
+        );
+
+        let insufficient_attempts: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+label_search_nodes = 50000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_positions_per_game = 9
+max_label_attempts_per_game = 8
+self_play_move_policy = "searched-stochastic-rollout-v1"
+opening_random_plies = 0
+"#,
+        )
+        .unwrap();
+        assert!(
+            format!("{:#}", insufficient_attempts.validate().unwrap_err())
+                .contains(">= data.max_positions_per_game")
+        );
+    }
+
+    #[test]
+    fn qsearch_pv_leaf_position_policy_is_opt_in() {
+        let root: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        assert_eq!(root.data.position_policy, PositionPolicy::RootPosition);
+
+        let leaf: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+position_policy = "qsearch-pv-leaf"
+"#,
+        )
+        .unwrap();
+        assert_eq!(leaf.data.position_policy, PositionPolicy::QsearchPvLeaf);
+    }
+
+    #[test]
+    fn rejects_conflicting_or_incomplete_label_budgets() {
+        let conflicting = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+search_depth = 3
+label_search_nodes = 5000
+label_search_max_depth = 64
+"#;
+        let config: LearnConfig = toml::from_str(conflicting).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("mutually exclusive"));
+
+        let missing_cap = conflicting
+            .replace("search_depth = 3\n", "")
+            .replace("label_search_max_depth = 64\n", "");
+        let config: LearnConfig = toml::from_str(&missing_cap).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("label_search_max_depth is required")
+        );
+    }
+
+    #[test]
+    fn reject_incomplete_labels_requires_fixed_nodes_and_uniform_rollout() {
+        let depth = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+search_depth = 3
+self_play_move_policy = "uniform-rollout-v1"
+incomplete_label_policy = "reject-position"
+"#;
+        let config: LearnConfig = toml::from_str(depth).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("requires a fixed-node label budget")
+        );
+
+        let coupled = depth
+            .replace(
+                "search_depth = 3",
+                "label_search_nodes = 5000\nlabel_search_max_depth = 64",
+            )
+            .replace("self_play_move_policy = \"uniform-rollout-v1\"\n", "");
+        let config: LearnConfig = toml::from_str(&coupled).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("requires data.self_play_move_policy=uniform-rollout-v1")
+        );
+
+        let valid = coupled.replace(
+            "incomplete_label_policy = \"reject-position\"",
+            "self_play_move_policy = \"uniform-rollout-v1\"\nincomplete_label_policy = \"reject-position\"",
+        );
+        let config: LearnConfig = toml::from_str(&valid).unwrap();
+        config.validate().unwrap();
+    }
+
+    #[test]
+    fn rejects_teacher_move_consumers_for_current_record_format() {
+        let raw = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+[training]
+teacher_move_consumers = true
+"#;
+        let config: LearnConfig = toml::from_str(raw).unwrap();
+        let error = config.validate().unwrap_err();
+        assert!(format!("{error:#}").contains("teacher_move_encoding=unavailable"));
+    }
+
+    #[test]
+    fn suite_policy_requires_anhoku_identity_and_zero_random_plies() {
+        let non_anhoku = r#"
+[rules]
+ruleset = "standard"
+[data]
+train_games = 1
+validation_games = 1
+opening_policy = "suite"
+opening_suite = "suite.tsv"
+opening_suite_id = "v1"
+opening_random_plies = 0
+"#;
+        let config: LearnConfig = toml::from_str(non_anhoku).unwrap();
+        assert!(format!("{:#}", config.validate().unwrap_err()).contains("ruleset=anhoku"));
+
+        let random_after_suite = non_anhoku
+            .replace("standard", "anhoku")
+            .replace("opening_random_plies = 0", "opening_random_plies = 2");
+        let config: LearnConfig = toml::from_str(&random_after_suite).unwrap();
+        assert!(
+            format!("{:#}", config.validate().unwrap_err())
+                .contains("opening_random_plies must be 0")
+        );
     }
 
     #[test]
@@ -1083,6 +2149,36 @@ validation_games = 1
         let err = config.validate().unwrap_err().to_string();
         assert!(err.contains("training.features=`HalfKAv2^`"));
         assert!(err.contains(FEATURE_SET_DONOR_SINGLE));
+    }
+
+    #[test]
+    fn anhoku_accepts_receiver_pair_v2_without_changing_the_default() {
+        assert_eq!(
+            recommended_feature_set(Ruleset::Anhoku),
+            FEATURE_SET_DONOR_SINGLE
+        );
+        assert!(
+            allowed_feature_sets(Ruleset::Anhoku).contains(&FEATURE_SET_DONOR_RECEIVER_PAIR_V2)
+        );
+        assert!(
+            !allowed_feature_sets(Ruleset::Annan).contains(&FEATURE_SET_DONOR_RECEIVER_PAIR_V2)
+        );
+
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "anhoku"
+
+[training]
+features = "HalfKAv2^+DonorReceiverPairV2"
+
+[data]
+train_games = 1
+validation_games = 1
+"#,
+        )
+        .unwrap();
+        config.validate().unwrap();
     }
 
     #[test]

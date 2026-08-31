@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::nnue_kernels::AffineKernel;
 use haitaka::{BitBoard, Board, Color, Move, Piece, Square};
 #[cfg(any(
     feature = "neko",
@@ -12,6 +13,9 @@ use haitaka::{File, Rank};
 const VERSION: u32 = 0x7AF32F20;
 const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
 const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
+// Anhoku-only V2 relation block. Keep this value stable: it is serialized into
+// every HalfKAv2^+DonorReceiverPairV2 network header.
+const DONOR_RECEIVER_PAIR_V2_BLOCK_HASH: u32 = 0x6d12_4a8f;
 #[cfg(feature = "annan")]
 const DONOR_SINGLE_ANNAN_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH ^ 0x9e37_79b1;
 #[cfg(all(not(feature = "annan"), feature = "anhoku"))]
@@ -59,6 +63,8 @@ const NON_DROP_PIECE_INDICES: usize = (2 * PIECE_TYPE_COUNT - 1) * SQUARES;
 const PIECE_INDICES: usize = NON_DROP_PIECE_INDICES + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS;
 const HALFKAV2_REAL_FEATURES: usize = SQUARES * PIECE_INDICES;
 const DONOR_SINGLE_REAL_FEATURES: usize = SQUARES * PIECE_TYPE_COUNT * Color::NUM;
+const DONOR_RECEIVER_PAIR_V2_REAL_FEATURES: usize =
+    SQUARES * Color::NUM * PIECE_TYPE_COUNT * PIECE_TYPE_COUNT;
 const DONOR_PAIR_SLOT_COUNT: usize = 2;
 const DONOR_PAIR_REAL_FEATURES: usize =
     SQUARES * PIECE_TYPE_COUNT * Color::NUM * DONOR_PAIR_SLOT_COUNT;
@@ -151,6 +157,8 @@ const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TENJIKU_BLOCK_HASH;
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
+const HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_RECEIVER_PAIR_V2_BLOCK_HASH);
 const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_PAIR_BLOCK_HASH);
 #[cfg(feature = "anki")]
@@ -161,6 +169,8 @@ const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
+const HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH: u32 =
+    network_hash(HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH);
@@ -170,6 +180,7 @@ const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
 enum FeatureFamily {
     HalfKAv2,
     HalfKAv2DonorSingle,
+    HalfKAv2DonorReceiverPairV2,
     HalfKAv2DonorPair,
     HalfKAv2DonorKnight8,
 }
@@ -191,6 +202,8 @@ impl FeatureFamily {
                 feature = "tenjiku"
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
+            #[cfg(feature = "anhoku")]
+            HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH => Some(Self::HalfKAv2DonorReceiverPairV2),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
             #[cfg(feature = "anki")]
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
@@ -202,6 +215,7 @@ impl FeatureFamily {
         match self {
             Self::HalfKAv2 => HALFKAV2_FEATURE_SET_HASH,
             Self::HalfKAv2DonorSingle => HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH,
+            Self::HalfKAv2DonorReceiverPairV2 => HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH,
             Self::HalfKAv2DonorPair => HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH,
         }
@@ -215,6 +229,9 @@ impl FeatureFamily {
         match self {
             Self::HalfKAv2 => HALFKAV2_REAL_FEATURES,
             Self::HalfKAv2DonorSingle => HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES,
+            Self::HalfKAv2DonorReceiverPairV2 => {
+                HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES
+            }
             Self::HalfKAv2DonorPair => HALFKAV2_REAL_FEATURES + DONOR_PAIR_REAL_FEATURES,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_REAL_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
         }
@@ -224,6 +241,7 @@ impl FeatureFamily {
         match self {
             Self::HalfKAv2 => 128,
             Self::HalfKAv2DonorSingle => 192,
+            Self::HalfKAv2DonorReceiverPairV2 => 192,
             Self::HalfKAv2DonorPair => 256,
             Self::HalfKAv2DonorKnight8 => 512,
         }
@@ -250,6 +268,26 @@ pub struct NnuePositionState {
     perspectives: [PerspectiveAccumulator; Color::NUM],
 }
 
+pub const DONOR_SINGLE_FEATURE_NAME: &str = "HalfKAv2^+DonorSingleEff";
+pub const DONOR_RECEIVER_PAIR_V2_FEATURE_NAME: &str = "HalfKAv2^+DonorReceiverPairV2";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DonorReceiverPairV2Stats {
+    pub v1_real_features: usize,
+    pub v2_real_features: usize,
+    pub feature_increase_percent_x100: usize,
+}
+
+pub const fn donor_receiver_pair_v2_stats() -> DonorReceiverPairV2Stats {
+    let v1 = HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES;
+    let v2 = HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES;
+    DonorReceiverPairV2Stats {
+        v1_real_features: v1,
+        v2_real_features: v2,
+        feature_increase_percent_x100: (v2 - v1) * 10_000 / v1,
+    }
+}
+
 impl NnuePositionState {
     fn perspective(&self, color: Color) -> &PerspectiveAccumulator {
         &self.perspectives[perspective_index(color)]
@@ -274,7 +312,9 @@ impl NnueModel {
         let family = FeatureFamily::from_network_hash(hash).ok_or_else(|| {
             NnueError::new(format!(
                 "unexpected NNUE hash: expected one of 0x{HALFKAV2_NETWORK_HASH:08x}, \
-0x{HALFKAV2_DONOR_SINGLE_NETWORK_HASH:08x}, 0x{HALFKAV2_DONOR_PAIR_NETWORK_HASH:08x}, \
+0x{HALFKAV2_DONOR_SINGLE_NETWORK_HASH:08x}, \
+0x{HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH:08x}, \
+0x{HALFKAV2_DONOR_PAIR_NETWORK_HASH:08x}, \
 0x{HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH:08x}, got 0x{hash:08x}"
             ))
         })?;
@@ -309,6 +349,16 @@ impl NnueModel {
 
     pub fn description(&self) -> &str {
         &self.description
+    }
+
+    pub fn feature_family_name(&self) -> &'static str {
+        match self.family {
+            FeatureFamily::HalfKAv2 => "HalfKAv2^",
+            FeatureFamily::HalfKAv2DonorSingle => DONOR_SINGLE_FEATURE_NAME,
+            FeatureFamily::HalfKAv2DonorReceiverPairV2 => DONOR_RECEIVER_PAIR_V2_FEATURE_NAME,
+            FeatureFamily::HalfKAv2DonorPair => "HalfKAv2^+DonorPairSlots",
+            FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
+        }
     }
 
     pub fn evaluate(&self, board: &Board) -> i32 {
@@ -365,6 +415,15 @@ impl NnueModel {
         self.evaluate_from_state(board, &state)
     }
 
+    #[doc(hidden)]
+    pub fn force_affine_kernel(&mut self, kernel: AffineKernel) {
+        for bucket in &mut self.buckets {
+            bucket.hidden1.kernel = kernel;
+            bucket.hidden2.kernel = kernel;
+            bucket.output.kernel = kernel;
+        }
+    }
+
     pub fn apply_move(
         &self,
         parent_board: &Board,
@@ -418,6 +477,107 @@ impl NnueModel {
         }
 
         child_state
+    }
+}
+
+/// Expands a quantized Anhoku DonorSingleEff network into the functionally
+/// identical DonorReceiverPairV2 family. Each V1 donor row is copied into all
+/// ten receiver-native slices; the base transformer, biases, PSQT values, and
+/// bucket networks remain byte-for-byte unchanged.
+#[cfg(feature = "anhoku")]
+pub fn migrate_donor_single_to_receiver_pair_v2(bytes: &[u8]) -> Result<Vec<u8>, NnueError> {
+    let mut reader = ByteReader::new(bytes);
+    let version = reader.read_u32()?;
+    if version != VERSION {
+        return Err(NnueError::new(format!(
+            "unsupported NNUE version for DonorReceiverPairV2 migration: expected 0x{VERSION:08x}, got 0x{version:08x}"
+        )));
+    }
+    let network_hash = reader.read_u32()?;
+    if network_hash != HALFKAV2_DONOR_SINGLE_NETWORK_HASH {
+        return Err(NnueError::new(format!(
+            "DonorReceiverPairV2 migration requires {DONOR_SINGLE_FEATURE_NAME} (hash 0x{HALFKAV2_DONOR_SINGLE_NETWORK_HASH:08x}); got hash 0x{network_hash:08x}"
+        )));
+    }
+    let description_len = reader.read_u32()? as usize;
+    reader.read_bytes(description_len)?;
+    reader.read_section_header(feature_transformer_hash(
+        HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH,
+    ))?;
+
+    let transformer_payload_start = reader.offset;
+    let bias_bytes = TRANSFORMED_FEATURE_DIMENSIONS * 2;
+    let v1_weight_bytes =
+        (HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES) * TRANSFORMED_FEATURE_DIMENSIONS * 2;
+    let v1_psqt_bytes = (HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES) * PSQT_BUCKETS * 4;
+    reader.read_bytes(bias_bytes)?;
+    reader.read_bytes(v1_weight_bytes)?;
+    reader.read_bytes(v1_psqt_bytes)?;
+    let tail_start = reader.offset;
+
+    // Parse the complete source as a final structural and trailing-byte check.
+    // This also guarantees that malformed bucket sections never produce a
+    // seemingly valid migrated artifact.
+    NnueModel::from_bytes(bytes)?;
+
+    let v2_transformer_bytes = bias_bytes
+        + (HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES)
+            * TRANSFORMED_FEATURE_DIMENSIONS
+            * 2
+        + (HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES) * PSQT_BUCKETS * 4;
+    let mut migrated = Vec::with_capacity(
+        transformer_payload_start + v2_transformer_bytes + bytes.len() - tail_start,
+    );
+    migrated.extend_from_slice(&VERSION.to_le_bytes());
+    migrated.extend_from_slice(&HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH.to_le_bytes());
+    migrated.extend_from_slice(&(description_len as u32).to_le_bytes());
+    migrated.extend_from_slice(&bytes[12..12 + description_len]);
+    migrated.extend_from_slice(
+        &feature_transformer_hash(HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH).to_le_bytes(),
+    );
+
+    let bias_start = transformer_payload_start;
+    let weight_start = bias_start + bias_bytes;
+    let psqt_start = weight_start + v1_weight_bytes;
+    migrated.extend_from_slice(&bytes[bias_start..weight_start]);
+    append_v2_transformer_rows(
+        &mut migrated,
+        &bytes[weight_start..psqt_start],
+        TRANSFORMED_FEATURE_DIMENSIONS * 2,
+    );
+    append_v2_transformer_rows(
+        &mut migrated,
+        &bytes[psqt_start..tail_start],
+        PSQT_BUCKETS * 4,
+    );
+    migrated.extend_from_slice(&bytes[tail_start..]);
+    Ok(migrated)
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn migrate_donor_single_to_receiver_pair_v2(_bytes: &[u8]) -> Result<Vec<u8>, NnueError> {
+    Err(NnueError::new(
+        "DonorReceiverPairV2 migration requires a haitaka_wasm build with feature `anhoku`",
+    ))
+}
+
+#[cfg(feature = "anhoku")]
+fn append_v2_transformer_rows(output: &mut Vec<u8>, v1_rows: &[u8], row_bytes: usize) {
+    let base_bytes = HALFKAV2_REAL_FEATURES * row_bytes;
+    output.extend_from_slice(&v1_rows[..base_bytes]);
+    let donor_rows = &v1_rows[base_bytes..];
+    for effective_type in 0..PIECE_TYPE_COUNT {
+        for _receiver_type in 0..PIECE_TYPE_COUNT {
+            for relative_color in 0..Color::NUM {
+                for square in 0..SQUARES {
+                    let v1_index = square
+                        + effective_type * SQUARES
+                        + relative_color * PIECE_TYPE_COUNT * SQUARES;
+                    let start = v1_index * row_bytes;
+                    output.extend_from_slice(&donor_rows[start..start + row_bytes]);
+                }
+            }
+        }
     }
 }
 
@@ -607,6 +767,7 @@ struct AffineLayer {
     padded_input_dimensions: usize,
     biases: Vec<i32>,
     weights: Vec<i8>,
+    kernel: AffineKernel,
 }
 
 impl AffineLayer {
@@ -620,31 +781,25 @@ impl AffineLayer {
             padded_input_dimensions,
             biases: reader.read_i32_vec(output_dimensions)?,
             weights: reader.read_i8_vec(output_dimensions * padded_input_dimensions)?,
+            kernel: AffineKernel::detected(),
         })
     }
 
     fn forward_into(&self, input: &[u8], output: &mut [i32]) {
         debug_assert_eq!(output.len(), self.output_dimensions);
-        for (row, out) in output.iter_mut().enumerate() {
-            let offset = row * self.padded_input_dimensions;
-            let mut sum = self.biases[row];
-            for (value, &weight) in input
-                .iter()
-                .zip(&self.weights[offset..offset + input.len()])
-            {
-                sum += i32::from(weight) * i32::from(*value);
-            }
-            *out = sum;
-        }
+        self.kernel.forward_into(
+            input,
+            &self.weights,
+            &self.biases,
+            self.padded_input_dimensions,
+            output,
+        );
     }
 
     fn forward_single(&self, input: &[u8]) -> i32 {
         debug_assert_eq!(self.output_dimensions, 1);
-        let mut sum = self.biases[0];
-        for (value, &weight) in input.iter().zip(&self.weights[..input.len()]) {
-            sum += i32::from(weight) * i32::from(*value);
-        }
-        sum
+        self.kernel
+            .forward_single(input, &self.weights, self.biases[0])
     }
 }
 
@@ -1055,6 +1210,34 @@ fn for_each_donor_feature(
                     + donor_single_feature_index(perspective, donor_color, donor_piece, square),
             );
         }
+        FeatureFamily::HalfKAv2DonorReceiverPairV2 => {
+            // DonorReceiverPairV2 is intentionally Anhoku-only: the receiver's
+            // native type is conjoined with the movement-donating piece type,
+            // while the donor color plane and receiver-square orientation remain
+            // identical to DonorSingleEff.
+            #[cfg(feature = "anhoku")]
+            let donor = single_donor_candidate_square(piece_color, square)
+                .and_then(|donor_square| single_donor_piece_on(board, piece_color, donor_square))
+                .map(|donor_piece| (piece_color, donor_piece));
+            #[cfg(not(feature = "anhoku"))]
+            let donor: Option<(Color, Piece)> = None;
+            let Some((donor_color, donor_piece)) = donor else {
+                return;
+            };
+            let Some(receiver_piece) = board.piece_on(square) else {
+                return;
+            };
+            emit(
+                HALFKAV2_REAL_FEATURES
+                    + donor_receiver_pair_v2_feature_index(
+                        perspective,
+                        donor_color,
+                        receiver_piece,
+                        donor_piece,
+                        square,
+                    ),
+            );
+        }
         FeatureFamily::HalfKAv2DonorPair => {
             for (slot, donor_square) in pair_donor_candidate_squares(square).into_iter().enumerate()
             {
@@ -1262,7 +1445,7 @@ fn donor_influence_neighborhood(
     let mut neighbors = [None; DONOR_KNIGHT8_SLOT_COUNT];
     match family {
         FeatureFamily::HalfKAv2 => {}
-        FeatureFamily::HalfKAv2DonorSingle => {
+        FeatureFamily::HalfKAv2DonorSingle | FeatureFamily::HalfKAv2DonorReceiverPairV2 => {
             neighbors[0] = square.try_offset(0, 1);
             neighbors[1] = square.try_offset(0, -1);
         }
@@ -1313,6 +1496,33 @@ fn donor_single_feature_index(
     orient_square(square, perspective)
         + piece_slot(donor_piece) * SQUARES
         + relative_color_index(perspective, color) * PIECE_TYPE_COUNT * SQUARES
+}
+
+fn donor_receiver_pair_v2_feature_index(
+    perspective: Color,
+    donor_color: Color,
+    receiver_piece: Piece,
+    donor_piece: Piece,
+    square: Square,
+) -> usize {
+    donor_receiver_pair_v2_index_components(
+        orient_square(square, perspective),
+        relative_color_index(perspective, donor_color),
+        piece_slot(receiver_piece),
+        piece_slot(donor_piece),
+    )
+}
+
+const fn donor_receiver_pair_v2_index_components(
+    oriented_square: usize,
+    relative_color: usize,
+    receiver_type: usize,
+    effective_type: usize,
+) -> usize {
+    oriented_square
+        + relative_color * SQUARES
+        + receiver_type * Color::NUM * SQUARES
+        + effective_type * PIECE_TYPE_COUNT * Color::NUM * SQUARES
 }
 
 fn donor_pair_feature_index(
@@ -1600,22 +1810,156 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
             feature = "tenkyo",
             feature = "tenjiku"
         )),
+        FeatureFamily::HalfKAv2DonorReceiverPairV2 => cfg!(feature = "anhoku"),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => cfg!(feature = "anki"),
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
     use rand::prelude::IndexedRandom;
-    use rand::rng;
+    use rand::{Rng, SeedableRng, rng, rngs::StdRng};
     use std::path::PathBuf;
 
     fn load_test_nnue() -> Option<NnueModel> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
         let bytes = std::fs::read(path).ok()?;
         NnueModel::from_bytes(&bytes).ok()
+    }
+
+    fn load_phase6_test_nnue() -> Option<NnueModel> {
+        let path = std::env::var_os("HAITAKA_NNUE_TEST_MODEL")?;
+        let bytes = std::fs::read(path).ok()?;
+        NnueModel::from_bytes(&bytes).ok()
+    }
+
+    fn assert_affine_layer_matches_scalar(
+        layer: &AffineLayer,
+        input_dimensions: usize,
+        rng: &mut StdRng,
+    ) {
+        let input: Vec<u8> = (0..input_dimensions)
+            .map(|_| rng.random_range(0..=127))
+            .collect();
+        let mut scalar = vec![0; layer.output_dimensions];
+        let mut optimized = vec![0; layer.output_dimensions];
+        AffineKernel::scalar().forward_into(
+            &input,
+            &layer.weights,
+            &layer.biases,
+            layer.padded_input_dimensions,
+            &mut scalar,
+        );
+        layer.kernel.forward_into(
+            &input,
+            &layer.weights,
+            &layer.biases,
+            layer.padded_input_dimensions,
+            &mut optimized,
+        );
+        assert_eq!(optimized, scalar, "{} kernel", layer.kernel.name());
+    }
+
+    #[test]
+    fn real_donor_model_affine_layers_and_evaluation_match_scalar() {
+        let Some(model) = load_phase6_test_nnue() else {
+            return;
+        };
+        assert_eq!(model.family, FeatureFamily::HalfKAv2DonorSingle);
+        assert_ne!(AffineKernel::detected(), AffineKernel::scalar());
+
+        let mut rng = StdRng::seed_from_u64(0x600d_affe);
+        for bucket in &model.buckets {
+            assert_affine_layer_matches_scalar(
+                &bucket.hidden1,
+                FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS,
+                &mut rng,
+            );
+            assert_affine_layer_matches_scalar(
+                &bucket.hidden2,
+                HIDDEN_LAYER_1_DIMENSIONS,
+                &mut rng,
+            );
+            assert_affine_layer_matches_scalar(&bucket.output, HIDDEN_LAYER_2_DIMENSIONS, &mut rng);
+        }
+
+        let mut scalar_model = model.clone();
+        scalar_model.force_affine_kernel(AffineKernel::scalar());
+        for sfen in [haitaka::SFEN_STARTPOS, haitaka::SFEN_6PIECE_HANDICAP] {
+            let board = Board::from_sfen(sfen).unwrap();
+            let state = model.build_position_state_full(&board);
+            assert_eq!(
+                model.evaluate_from_state(&board, &state),
+                scalar_model.evaluate_from_state(&board, &state),
+            );
+        }
+
+        let optimized_search = crate::search_impl_with_eval_mode(
+            haitaka::SFEN_STARTPOS,
+            3,
+            std::sync::Arc::new(model),
+            crate::SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        let scalar_search = crate::search_impl_with_eval_mode(
+            haitaka::SFEN_STARTPOS,
+            3,
+            std::sync::Arc::new(scalar_model),
+            crate::SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        assert_eq!(optimized_search.best_move, scalar_search.best_move);
+        assert_eq!(optimized_search.best_score, scalar_search.best_score);
+    }
+
+    #[test]
+    fn phase6_100ms_nps_diagnostic() {
+        let Some(model) = load_phase6_test_nnue() else {
+            return;
+        };
+        let mut scalar_model = model.clone();
+        scalar_model.force_affine_kernel(AffineKernel::scalar());
+        let model = std::sync::Arc::new(model);
+        let scalar_model = std::sync::Arc::new(scalar_model);
+
+        let mut optimized_nps = Vec::new();
+        let mut scalar_nps = Vec::new();
+        for _ in 0..3 {
+            let scalar = crate::search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+                haitaka::SFEN_STARTPOS,
+                64,
+                100,
+                scalar_model.clone(),
+                crate::SearchEvalMode::Incremental,
+                false,
+            )
+            .unwrap();
+            let optimized = crate::search_iterative_deepening_impl_with_eval_mode_and_dfpn_mode(
+                haitaka::SFEN_STARTPOS,
+                64,
+                100,
+                model.clone(),
+                crate::SearchEvalMode::Incremental,
+                false,
+            )
+            .unwrap();
+            scalar_nps.push(scalar.nps);
+            optimized_nps.push(optimized.nps);
+        }
+        scalar_nps.sort_by(f64::total_cmp);
+        optimized_nps.sort_by(f64::total_cmp);
+        let scalar_median = scalar_nps[1];
+        let optimized_median = optimized_nps[1];
+        let speedup = optimized_median / scalar_median;
+        eprintln!(
+            "phase6 100ms diagnostic: scalar={scalar_median:.0} NPS, optimized={optimized_median:.0} NPS, speedup={speedup:.2}x"
+        );
+        assert!(
+            speedup >= 1.5,
+            "optimized NNUE NPS speedup {speedup:.2}x is below the Phase 6 gate"
+        );
     }
 
     fn collect_legal_moves(board: &Board) -> Vec<Move> {
@@ -1692,6 +2036,15 @@ mod tests {
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1810b26d);
         #[cfg(feature = "anhoku")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x0d8f62a2);
+        assert_eq!(DONOR_SINGLE_REAL_FEATURES, 1_620);
+        assert_eq!(DONOR_RECEIVER_PAIR_V2_REAL_FEATURES, 16_200);
+        assert_eq!(HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH, 0xd0bd8e2b);
+        assert_eq!(donor_receiver_pair_v2_stats().v1_real_features, 152_523);
+        assert_eq!(donor_receiver_pair_v2_stats().v2_real_features, 167_103);
+        assert_eq!(
+            donor_receiver_pair_v2_stats().feature_increase_percent_x100,
+            955
+        );
         #[cfg(feature = "taimen")]
         assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x22478c02);
         #[cfg(feature = "haimen")]
@@ -1963,6 +2316,80 @@ mod tests {
             own_slot1 - own_slot0,
             PIECE_TYPE_COUNT * Color::NUM * SQUARES
         );
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn receiver_pair_v2_index_matches_trainer_layout() {
+        let own_pawn = donor_receiver_pair_v2_feature_index(
+            Color::Black,
+            Color::Black,
+            Piece::Pawn,
+            Piece::Bishop,
+            Square::E5,
+        );
+        let enemy_pawn = donor_receiver_pair_v2_feature_index(
+            Color::Black,
+            Color::White,
+            Piece::Pawn,
+            Piece::Bishop,
+            Square::E5,
+        );
+        let own_lance = donor_receiver_pair_v2_feature_index(
+            Color::Black,
+            Color::Black,
+            Piece::Lance,
+            Piece::Bishop,
+            Square::E5,
+        );
+        let own_rook_effective = donor_receiver_pair_v2_feature_index(
+            Color::Black,
+            Color::Black,
+            Piece::Pawn,
+            Piece::Rook,
+            Square::E5,
+        );
+        assert_eq!(donor_receiver_pair_v2_index_components(40, 0, 0, 4), 6520);
+        assert_eq!(donor_receiver_pair_v2_index_components(40, 1, 0, 4), 6601);
+        assert_eq!(donor_receiver_pair_v2_index_components(40, 0, 1, 4), 6682);
+        assert_eq!(donor_receiver_pair_v2_index_components(40, 0, 0, 5), 8140);
+        assert_eq!(own_pawn, 688);
+        assert_eq!(enemy_pawn, 769);
+        assert_eq!(own_lance, 850);
+        assert_eq!(own_rook_effective, 2308);
+        assert_eq!(enemy_pawn - own_pawn, SQUARES);
+        assert_eq!(own_lance - own_pawn, Color::NUM * SQUARES);
+        assert_eq!(
+            own_rook_effective - own_pawn,
+            (piece_slot(Piece::Rook) - piece_slot(Piece::Bishop))
+                * PIECE_TYPE_COUNT
+                * Color::NUM
+                * SQUARES
+        );
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn receiver_pair_v2_marks_native_and_effective_types() {
+        let board = Board::from_sfen("4k4/9/9/4B4/4R4/9/9/9/4K4 b - 1").unwrap();
+        let features = active_features(
+            &board,
+            Color::Black,
+            board.king(Color::Black),
+            FeatureFamily::HalfKAv2DonorReceiverPairV2,
+        );
+        let expected = HALFKAV2_REAL_FEATURES
+            + donor_receiver_pair_v2_feature_index(
+                Color::Black,
+                Color::Black,
+                Piece::Rook,
+                Piece::Bishop,
+                Square::E5,
+            );
+        assert!(features.iter().any(|&index| index == expected));
+        let v1_index = HALFKAV2_REAL_FEATURES
+            + donor_single_feature_index(Color::Black, Color::Black, Piece::Bishop, Square::E5);
+        assert!(!features.iter().any(|&index| index == v1_index));
     }
 
     #[test]
@@ -2275,6 +2702,84 @@ mod tests {
             // Captures, promotions, drops, king moves, and donor adjacency all
             // arise naturally over a deep variant rollout.
             assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
+        }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn receiver_pair_v2_incremental_matches_full_refresh_random_rollouts() {
+        let model = synthetic_donor_model(FeatureFamily::HalfKAv2DonorReceiverPairV2);
+        let mut rng = StdRng::seed_from_u64(0x11a0_2026);
+        for _ in 0..4 {
+            let mut board = Board::startpos();
+            let mut moves = Vec::new();
+            for _ in 0..24 {
+                let legal = collect_legal_moves(&board);
+                let Some(&mv) = legal.choose(&mut rng) else {
+                    break;
+                };
+                moves.push(mv);
+                board.play_unchecked(mv);
+            }
+            assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
+        }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn migration_rejects_wrong_family_and_malformed_source() {
+        let mut wrong = Vec::new();
+        wrong.extend_from_slice(&VERSION.to_le_bytes());
+        wrong.extend_from_slice(&HALFKAV2_NETWORK_HASH.to_le_bytes());
+        let error = migrate_donor_single_to_receiver_pair_v2(&wrong)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("requires HalfKAv2^+DonorSingleEff"));
+
+        let mut truncated = Vec::new();
+        truncated.extend_from_slice(&VERSION.to_le_bytes());
+        truncated.extend_from_slice(&HALFKAV2_DONOR_SINGLE_NETWORK_HASH.to_le_bytes());
+        let error = migrate_donor_single_to_receiver_pair_v2(&truncated)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unexpected end of NNUE file"));
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn migration_copies_each_v1_row_into_every_native_slice() {
+        let mut rows = vec![0u8; HALFKAV2_REAL_FEATURES + DONOR_SINGLE_REAL_FEATURES];
+        for (index, value) in rows[HALFKAV2_REAL_FEATURES..].iter_mut().enumerate() {
+            *value = (index % 251) as u8;
+        }
+        let mut expanded = Vec::new();
+        append_v2_transformer_rows(&mut expanded, &rows, 1);
+        assert_eq!(
+            expanded.len(),
+            HALFKAV2_REAL_FEATURES + DONOR_RECEIVER_PAIR_V2_REAL_FEATURES
+        );
+        assert_eq!(
+            &expanded[..HALFKAV2_REAL_FEATURES],
+            &rows[..HALFKAV2_REAL_FEATURES]
+        );
+        for effective_type in 0..PIECE_TYPE_COUNT {
+            for receiver_type in 0..PIECE_TYPE_COUNT {
+                for relative_color in 0..Color::NUM {
+                    for square in [0, 17, 80] {
+                        let old = square
+                            + effective_type * SQUARES
+                            + relative_color * PIECE_TYPE_COUNT * SQUARES;
+                        let new = square
+                            + relative_color * SQUARES
+                            + receiver_type * Color::NUM * SQUARES
+                            + effective_type * PIECE_TYPE_COUNT * Color::NUM * SQUARES;
+                        assert_eq!(
+                            expanded[HALFKAV2_REAL_FEATURES + new],
+                            rows[HALFKAV2_REAL_FEATURES + old]
+                        );
+                    }
+                }
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs::{self, File};
-use std::io::{BufWriter, IsTerminal, Read, Write, stderr, stdin};
+use std::io::{BufReader, BufWriter, IsTerminal, Read, Write, stderr, stdin};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,21 +9,40 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use haitaka::{Board, Color, Move, Piece, Square};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, SearchSummary, SearchWorkspace,
-    search_board_impl_handcrafted_in_workspace, search_board_impl_with_eval_mode_in_workspace,
+    NnueModel, NodeBudgetSearchSummary, SEARCH_MATE_SCORE_THRESHOLD, SEARCH_NODE_COUNTING_VERSION,
+    SEARCH_TRAINING_TRACE_VERSION, SearchEvalMode, SearchSummary, SearchTrainingTrace,
+    SearchWorkspace, search_board_impl_handcrafted_in_workspace,
+    search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace,
+    search_board_impl_handcrafted_with_node_budget_in_workspace,
+    search_board_impl_handcrafted_with_training_trace_in_workspace,
+    search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace,
+    search_board_impl_with_eval_mode_and_node_budget_in_workspace,
+    search_board_impl_with_eval_mode_and_training_trace_in_workspace,
+    search_board_impl_with_eval_mode_in_workspace,
 };
 use rand::rngs::StdRng;
+use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{ArtifactPaths, LoadedConfig, Ruleset};
+use crate::config::{
+    ArtifactPaths, IncompleteLabelPolicy, LabelRetryPolicy, LabelSearchBudget, LoadedConfig,
+    PositionPolicy, Ruleset, SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy,
+    TEACHER_MOVE_ENCODING,
+};
+use crate::openings::{GameOpeningMetadata, OpeningSource, OpeningSplit, color_swap_anhoku_sfen};
 
 const PACKED_SFEN_BYTES: usize = 64;
 pub(crate) const ENTRY_BYTES: usize = PACKED_SFEN_BYTES + 8;
+const SHUFFLE_IO_BUFFER_BYTES: usize = 64 * 1024;
+const POSITION_SELECTION_AUDIT_VERSION: &str = "side-parity-opening-result-ply-v2";
+const CANDIDATE_IDENTITY_VERSION: &str = "sample-root-sha256-v1";
+const GENERATION_SEMANTIC_IDENTITY_VERSION: &str = "generation-semantic-v2";
+const SCHEDULE_IDENTITY_VERSION: &str = "schedule-readiness-v1";
 #[cfg(all(unix, not(test)))]
 const GRACEFUL_STOP_MESSAGE: &[u8] =
     "graceful stop中です。もう一度ctrl-cすることで即座に終了できます\n".as_bytes();
@@ -66,20 +85,100 @@ struct DatasetManifest {
     ruleset: Ruleset,
     rule_id: u16,
     opening_sfen: String,
+    opening_policy: String,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    opening_ids: Vec<String>,
+    games: Vec<GameOpeningMetadata>,
+    split_policy: String,
+    split_seed: u64,
+    train_opening_ids: Vec<String>,
+    validation_opening_ids: Vec<String>,
+    validation_opening_schedule: String,
+    validation_opening_pairs_per_id: Option<u32>,
+    opening_group_count: usize,
+    opening_group_overlap: Vec<String>,
+    shuffle_policy: String,
+    shuffle_seed: u64,
+    shuffle_chunk_records: usize,
+    shuffle_memory_bound_bytes: usize,
     game_count: u32,
     completed_games: u32,
     sampled_positions: u64,
     search_depth: u8,
     label_search_depth: u8,
+    label_search_budget: String,
+    label_search_nodes: Option<u64>,
+    label_search_max_depth: u8,
+    node_counting_version: String,
+    position_policy: String,
+    training_trace_version: String,
+    incomplete_label_policy: String,
+    label_retry_policy: String,
+    max_label_attempts_per_game: Option<u16>,
+    position_selection_audit_version: String,
+    candidate_positions: u64,
+    candidate_roots_per_game: Option<u16>,
+    candidate_identity_version: String,
+    candidate_identity_sha256: String,
+    generation_semantic_identity_version: String,
+    generation_semantic_identity_sha256: String,
+    schedule_identity_version: String,
+    schedule_identity_sha256: String,
+    minimum_train_boards: Option<u64>,
+    minimum_train_positions: Option<u64>,
+    rejected_incomplete_label_positions: u64,
+    rejected_terminal_positions: u64,
+    rejected_mate_score_positions: u64,
+    rejected_node_accounting_positions: u64,
+    label_retry_exhausted_games: u64,
+    label_retry_attempts_per_accepted_position: f64,
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
+    position_selection: PositionSelectionStats,
+    opening_position_selection: BTreeMap<String, PositionSelectionStats>,
+    root_ply_min: Option<u16>,
+    root_ply_max: Option<u16>,
+    leaf_distance_min: Option<u16>,
+    leaf_distance_max: Option<u16>,
+    leaf_distance_mean: f64,
     rollout_search_depth: u8,
+    self_play_move_policy: String,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
+    label_search_qnodes: u64,
+    label_search_total_nodes: u64,
+    label_nodes_per_search: f64,
     rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    rollout_decisions: u64,
+    rollout_legal_moves: u64,
+    rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
+    rollout_near_best_candidates: u64,
+    rollout_selected_score_gap_sum: i64,
+    rollout_selected_score_gap_max: i32,
+    label_search_cpu_seconds: f64,
+    rollout_search_cpu_seconds: f64,
+    generation_cpu_seconds: f64,
     bootstrap_nnue: Option<String>,
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
+    seed: u64,
+    feature_family: String,
+    sampling_phase: String,
+    sample_after_opening: bool,
+    teacher_move_encoding: String,
+    opening_random_plies: u16,
     generated_at_unix_ms: u128,
     build_mode: String,
     entry_bytes: usize,
@@ -97,6 +196,36 @@ struct ShardManifest {
     ruleset: Ruleset,
     rule_id: u16,
     opening_sfen: String,
+    #[serde(default = "legacy_opening_policy")]
+    opening_policy: String,
+    #[serde(default)]
+    opening_suite_id: Option<String>,
+    #[serde(default)]
+    opening_suite_sha256: Option<String>,
+    #[serde(default = "legacy_opening_transformation")]
+    opening_transformation: String,
+    #[serde(default)]
+    opening_ids: Vec<String>,
+    #[serde(default)]
+    games: Vec<GameOpeningMetadata>,
+    #[serde(default = "legacy_split_policy")]
+    split_policy: String,
+    #[serde(default = "legacy_split_seed")]
+    split_seed: u64,
+    #[serde(default)]
+    train_opening_ids: Vec<String>,
+    #[serde(default)]
+    validation_opening_ids: Vec<String>,
+    #[serde(default = "legacy_validation_opening_schedule")]
+    validation_opening_schedule: String,
+    #[serde(default)]
+    validation_opening_pairs_per_id: Option<u32>,
+    #[serde(default = "legacy_shuffle_policy")]
+    shuffle_policy: String,
+    #[serde(default = "legacy_shuffle_seed")]
+    shuffle_seed: u64,
+    #[serde(default = "legacy_shuffle_chunk_records")]
+    shuffle_chunk_records: usize,
     game_start: u32,
     game_count: u32,
     sampled_positions: u64,
@@ -104,7 +233,91 @@ struct ShardManifest {
     #[serde(default)]
     label_search_depth: u8,
     #[serde(default)]
+    label_search_budget: String,
+    #[serde(default)]
+    label_search_nodes: Option<u64>,
+    #[serde(default)]
+    label_search_max_depth: u8,
+    #[serde(default)]
+    node_counting_version: String,
+    #[serde(default)]
+    position_policy: String,
+    #[serde(default)]
+    training_trace_version: String,
+    #[serde(default = "legacy_incomplete_label_policy")]
+    incomplete_label_policy: String,
+    #[serde(default = "legacy_label_retry_policy")]
+    label_retry_policy: String,
+    #[serde(default)]
+    max_label_attempts_per_game: Option<u16>,
+    #[serde(default)]
+    position_selection_audit_version: String,
+    #[serde(default)]
+    candidate_positions: u64,
+    #[serde(default)]
+    candidate_roots_per_game: Option<u16>,
+    #[serde(default)]
+    candidate_identity_version: String,
+    #[serde(default)]
+    candidate_identity_sha256: String,
+    #[serde(default)]
+    generation_semantic_identity_version: String,
+    #[serde(default)]
+    generation_semantic_identity_sha256: String,
+    #[serde(default)]
+    schedule_identity_version: String,
+    #[serde(default)]
+    schedule_identity_sha256: String,
+    #[serde(default)]
+    minimum_train_boards: Option<u64>,
+    #[serde(default)]
+    minimum_train_positions: Option<u64>,
+    #[serde(default)]
+    rejected_incomplete_label_positions: u64,
+    #[serde(default)]
+    rejected_terminal_positions: u64,
+    #[serde(default)]
+    rejected_mate_score_positions: u64,
+    #[serde(default)]
+    rejected_node_accounting_positions: u64,
+    #[serde(default)]
+    label_retry_exhausted_games: u64,
+    #[serde(default)]
+    label_retry_attempts_per_accepted_position: f64,
+    #[serde(default)]
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
+    #[serde(default)]
+    position_selection: PositionSelectionStats,
+    #[serde(default)]
+    opening_position_selection: BTreeMap<String, PositionSelectionStats>,
+    #[serde(default)]
+    root_ply_min: Option<u16>,
+    #[serde(default)]
+    root_ply_max: Option<u16>,
+    #[serde(default)]
+    leaf_distance_min: Option<u16>,
+    #[serde(default)]
+    leaf_distance_max: Option<u16>,
+    #[serde(default)]
+    leaf_distance_total: u64,
+    #[serde(default)]
     rollout_search_depth: u8,
+    #[serde(default = "legacy_self_play_move_policy")]
+    self_play_move_policy: String,
+    #[serde(default)]
+    rollout_candidate_limit: u16,
+    #[serde(default)]
+    rollout_score_margin: i32,
+    #[serde(default)]
+    rollout_temperature: f64,
+    #[serde(default)]
+    rollout_rng_version: String,
     #[serde(default)]
     label_searches: u64,
     #[serde(default)]
@@ -112,16 +325,98 @@ struct ShardManifest {
     #[serde(default)]
     label_search_states: u64,
     #[serde(default)]
+    label_search_qnodes: u64,
+    #[serde(default)]
     rollout_search_states: u64,
+    #[serde(default)]
+    rollout_search_qnodes: u64,
+    #[serde(default)]
+    rollout_decisions: u64,
+    #[serde(default)]
+    rollout_legal_moves: u64,
+    #[serde(default)]
+    rollout_candidates_scored: u64,
+    #[serde(default)]
+    rollout_candidates_truncated: u64,
+    #[serde(default)]
+    rollout_near_best_candidates: u64,
+    #[serde(default)]
+    rollout_selected_score_gap_sum: i64,
+    #[serde(default)]
+    rollout_selected_score_gap_max: i32,
+    #[serde(default)]
+    label_search_cpu_seconds: f64,
+    #[serde(default)]
+    rollout_search_cpu_seconds: f64,
     bootstrap_nnue: Option<String>,
     #[serde(default)]
     bootstrap_nnue_sha256: Option<String>,
     engine_revision: Option<String>,
     config_hash: String,
+    #[serde(default = "legacy_sampling_phase")]
+    sampling_phase: String,
+    #[serde(default)]
+    sample_after_opening: bool,
+    #[serde(default = "legacy_teacher_move_encoding")]
+    teacher_move_encoding: String,
+    #[serde(default)]
+    feature_family: String,
     generated_at_unix_ms: u128,
     build_mode: String,
     entry_bytes: usize,
     shard_index: u32,
+}
+
+fn legacy_sampling_phase() -> String {
+    "fixed-phase-legacy".to_string()
+}
+
+fn legacy_self_play_move_policy() -> String {
+    "label-on-sample-legacy".to_string()
+}
+
+fn legacy_incomplete_label_policy() -> String {
+    "error".to_string()
+}
+
+fn legacy_label_retry_policy() -> String {
+    "none".to_string()
+}
+
+fn legacy_opening_policy() -> String {
+    "uniform-random".to_string()
+}
+
+fn legacy_opening_transformation() -> String {
+    "none".to_string()
+}
+
+fn legacy_validation_opening_schedule() -> String {
+    "hash-v1".to_string()
+}
+
+fn legacy_split_policy() -> String {
+    "independent-legacy".to_string()
+}
+
+fn legacy_split_seed() -> u64 {
+    0x7370_6c69_742d_7631
+}
+
+fn legacy_shuffle_policy() -> String {
+    "game-order-legacy".to_string()
+}
+
+fn legacy_shuffle_seed() -> u64 {
+    0x7368_7566_666c_6531
+}
+
+fn legacy_shuffle_chunk_records() -> usize {
+    65_536
+}
+
+fn legacy_teacher_move_encoding() -> String {
+    "legacy-ambiguous-u16".to_string()
 }
 
 impl ShardManifest {
@@ -140,6 +435,49 @@ impl ShardManifest {
             self.rollout_search_depth
         }
     }
+
+    fn label_search_budget(&self) -> &str {
+        if self.label_search_budget.is_empty() {
+            "depth"
+        } else {
+            &self.label_search_budget
+        }
+    }
+
+    fn label_search_max_depth(&self) -> u8 {
+        if self.label_search_max_depth == 0 {
+            self.label_search_depth()
+        } else {
+            self.label_search_max_depth
+        }
+    }
+
+    fn node_counting_version_matches(&self, budget: LabelSearchBudget) -> bool {
+        self.node_counting_version == SEARCH_NODE_COUNTING_VERSION
+            || (self.node_counting_version.is_empty()
+                && matches!(budget, LabelSearchBudget::Depth { .. }))
+    }
+
+    fn position_policy(&self) -> &str {
+        if self.position_policy.is_empty() {
+            PositionPolicy::RootPosition.manifest_name()
+        } else {
+            &self.position_policy
+        }
+    }
+
+    fn training_trace_version_matches(&self, policy: PositionPolicy) -> bool {
+        self.training_trace_version == SEARCH_TRAINING_TRACE_VERSION
+            || (self.training_trace_version.is_empty() && !policy.uses_training_trace())
+    }
+
+    fn incomplete_label_policy(&self) -> &str {
+        if self.incomplete_label_policy.is_empty() {
+            "error"
+        } else {
+            &self.incomplete_label_policy
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -154,33 +492,378 @@ struct PendingSample {
 struct GameEntries {
     entries: Vec<u8>,
     stats: SearchUseStats,
+    opening: GameOpeningMetadata,
+    candidate_identity_sha256: String,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+struct PositionSelectionStats {
+    candidate_root_black: u64,
+    candidate_root_white: u64,
+    stored_root_black_leaf_black: u64,
+    stored_root_black_leaf_white: u64,
+    stored_root_white_leaf_black: u64,
+    stored_root_white_leaf_white: u64,
+    stored_leaf_distance_even: u64,
+    stored_leaf_distance_odd: u64,
+    rejected_incomplete_root_black: u64,
+    rejected_incomplete_root_white: u64,
+    rejected_terminal_root_black: u64,
+    rejected_terminal_root_white: u64,
+    rejected_terminal_leaf_black: u64,
+    rejected_terminal_leaf_white: u64,
+    rejected_mate_root_black: u64,
+    rejected_mate_root_white: u64,
+    rejected_node_accounting_root_black: u64,
+    rejected_node_accounting_root_white: u64,
+    rejected_mate_leaf_black: u64,
+    rejected_mate_leaf_white: u64,
+    rejected_incomplete_game_win: u64,
+    rejected_incomplete_game_loss: u64,
+    rejected_incomplete_game_draw: u64,
+    rejected_terminal_game_win: u64,
+    rejected_terminal_game_loss: u64,
+    rejected_terminal_game_draw: u64,
+    rejected_mate_game_win: u64,
+    rejected_mate_game_loss: u64,
+    rejected_mate_game_draw: u64,
+    rejected_node_accounting_game_win: u64,
+    rejected_node_accounting_game_loss: u64,
+    rejected_node_accounting_game_draw: u64,
+}
+
+impl PositionSelectionStats {
+    fn add(&mut self, other: Self) {
+        macro_rules! add_fields {
+            ($($field:ident),+ $(,)?) => {
+                $(self.$field += other.$field;)+
+            };
+        }
+        add_fields!(
+            candidate_root_black,
+            candidate_root_white,
+            stored_root_black_leaf_black,
+            stored_root_black_leaf_white,
+            stored_root_white_leaf_black,
+            stored_root_white_leaf_white,
+            stored_leaf_distance_even,
+            stored_leaf_distance_odd,
+            rejected_incomplete_root_black,
+            rejected_incomplete_root_white,
+            rejected_terminal_root_black,
+            rejected_terminal_root_white,
+            rejected_terminal_leaf_black,
+            rejected_terminal_leaf_white,
+            rejected_mate_root_black,
+            rejected_mate_root_white,
+            rejected_node_accounting_root_black,
+            rejected_node_accounting_root_white,
+            rejected_mate_leaf_black,
+            rejected_mate_leaf_white,
+            rejected_incomplete_game_win,
+            rejected_incomplete_game_loss,
+            rejected_incomplete_game_draw,
+            rejected_terminal_game_win,
+            rejected_terminal_game_loss,
+            rejected_terminal_game_draw,
+            rejected_mate_game_win,
+            rejected_mate_game_loss,
+            rejected_mate_game_draw,
+            rejected_node_accounting_game_win,
+            rejected_node_accounting_game_loss,
+            rejected_node_accounting_game_draw,
+        );
+    }
+
+    fn record_candidate(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.candidate_root_black += 1,
+            Color::White => self.candidate_root_white += 1,
+        }
+    }
+
+    fn record_stored(&mut self, root_side: Color, leaf_side: Color, leaf_distance: u16) {
+        match (root_side, leaf_side) {
+            (Color::Black, Color::Black) => self.stored_root_black_leaf_black += 1,
+            (Color::Black, Color::White) => self.stored_root_black_leaf_white += 1,
+            (Color::White, Color::Black) => self.stored_root_white_leaf_black += 1,
+            (Color::White, Color::White) => self.stored_root_white_leaf_white += 1,
+        }
+        if leaf_distance % 2 == 0 {
+            self.stored_leaf_distance_even += 1;
+        } else {
+            self.stored_leaf_distance_odd += 1;
+        }
+    }
+
+    fn record_incomplete(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_incomplete_root_black += 1,
+            Color::White => self.rejected_incomplete_root_white += 1,
+        }
+    }
+
+    fn record_terminal(&mut self, root_side: Color, leaf_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_terminal_root_black += 1,
+            Color::White => self.rejected_terminal_root_white += 1,
+        }
+        match leaf_side {
+            Color::Black => self.rejected_terminal_leaf_black += 1,
+            Color::White => self.rejected_terminal_leaf_white += 1,
+        }
+    }
+
+    fn record_mate(&mut self, root_side: Color, leaf_side: Option<Color>) {
+        match root_side {
+            Color::Black => self.rejected_mate_root_black += 1,
+            Color::White => self.rejected_mate_root_white += 1,
+        }
+        match leaf_side {
+            Some(Color::Black) => self.rejected_mate_leaf_black += 1,
+            Some(Color::White) => self.rejected_mate_leaf_white += 1,
+            None => {}
+        }
+    }
+
+    fn record_node_accounting(&mut self, root_side: Color) {
+        match root_side {
+            Color::Black => self.rejected_node_accounting_root_black += 1,
+            Color::White => self.rejected_node_accounting_root_white += 1,
+        }
+    }
+
+    fn record_rejection_outcomes(&mut self, outcome: GameOutcome) {
+        let incomplete = relative_rejection_counts(
+            self.rejected_incomplete_root_black,
+            self.rejected_incomplete_root_white,
+            outcome,
+        );
+        let terminal = relative_rejection_counts(
+            self.rejected_terminal_root_black,
+            self.rejected_terminal_root_white,
+            outcome,
+        );
+        let mate = relative_rejection_counts(
+            self.rejected_mate_root_black,
+            self.rejected_mate_root_white,
+            outcome,
+        );
+        let node_accounting = relative_rejection_counts(
+            self.rejected_node_accounting_root_black,
+            self.rejected_node_accounting_root_white,
+            outcome,
+        );
+        (
+            self.rejected_incomplete_game_win,
+            self.rejected_incomplete_game_loss,
+            self.rejected_incomplete_game_draw,
+        ) = incomplete;
+        (
+            self.rejected_terminal_game_win,
+            self.rejected_terminal_game_loss,
+            self.rejected_terminal_game_draw,
+        ) = terminal;
+        (
+            self.rejected_mate_game_win,
+            self.rejected_mate_game_loss,
+            self.rejected_mate_game_draw,
+        ) = mate;
+        (
+            self.rejected_node_accounting_game_win,
+            self.rejected_node_accounting_game_loss,
+            self.rejected_node_accounting_game_draw,
+        ) = node_accounting;
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 struct SearchUseStats {
     label_searches: u64,
     rollout_searches: u64,
     label_search_states: u64,
+    label_search_qnodes: u64,
     rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    label_search_elapsed_seconds: f64,
+    rollout_search_elapsed_seconds: f64,
+    rollout_decisions: u64,
+    rollout_legal_moves: u64,
+    rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
+    rollout_near_best_candidates: u64,
+    rollout_selected_score_gap_sum: i64,
+    rollout_selected_score_gap_max: i32,
+    candidate_positions: u64,
+    rejected_incomplete_label_positions: u64,
+    rejected_terminal_positions: u64,
+    rejected_mate_score_positions: u64,
+    rejected_node_accounting_positions: u64,
+    label_retry_exhausted_games: u64,
+    rejected_incomplete_root_plies: BTreeMap<u16, u64>,
+    rejected_terminal_root_plies: BTreeMap<u16, u64>,
+    rejected_mate_root_plies: BTreeMap<u16, u64>,
+    rejected_node_accounting_root_plies: BTreeMap<u16, u64>,
+    root_ply_min: Option<u16>,
+    root_ply_max: Option<u16>,
+    leaf_distance_min: Option<u16>,
+    leaf_distance_max: Option<u16>,
+    leaf_distance_total: u64,
+    position_selection: PositionSelectionStats,
 }
 
 impl SearchUseStats {
-    fn record_label(&mut self, summary: &SearchSummary) {
+    fn record_label(&mut self, summary: &TeacherSearchSummary) {
         self.label_searches += 1;
         self.label_search_states += summary.states;
+        self.label_search_qnodes += summary.qnodes;
+        self.label_search_elapsed_seconds += summary.elapsed_seconds;
     }
 
-    fn record_rollout(&mut self, summary: &SearchSummary) {
+    fn record_rollout(&mut self, summary: &TeacherSearchSummary) {
         self.rollout_searches += 1;
         self.rollout_search_states += summary.states;
+        self.rollout_search_qnodes += summary.qnodes;
+        self.rollout_search_elapsed_seconds += summary.elapsed_seconds;
+    }
+
+    fn record_rollout_decision(
+        &mut self,
+        legal_moves: u64,
+        candidates: u64,
+        near_best: u64,
+        score_gap: i32,
+    ) {
+        self.rollout_decisions += 1;
+        self.rollout_legal_moves += legal_moves;
+        self.rollout_candidates_scored += candidates;
+        self.rollout_candidates_truncated += legal_moves.saturating_sub(candidates);
+        self.rollout_near_best_candidates += near_best;
+        self.rollout_selected_score_gap_sum += i64::from(score_gap);
+        self.rollout_selected_score_gap_max = self.rollout_selected_score_gap_max.max(score_gap);
     }
 
     fn add(&mut self, other: Self) {
         self.label_searches += other.label_searches;
         self.rollout_searches += other.rollout_searches;
         self.label_search_states += other.label_search_states;
+        self.label_search_qnodes += other.label_search_qnodes;
         self.rollout_search_states += other.rollout_search_states;
+        self.rollout_search_qnodes += other.rollout_search_qnodes;
+        self.label_search_elapsed_seconds += other.label_search_elapsed_seconds;
+        self.rollout_search_elapsed_seconds += other.rollout_search_elapsed_seconds;
+        self.rollout_decisions += other.rollout_decisions;
+        self.rollout_legal_moves += other.rollout_legal_moves;
+        self.rollout_candidates_scored += other.rollout_candidates_scored;
+        self.rollout_candidates_truncated += other.rollout_candidates_truncated;
+        self.rollout_near_best_candidates += other.rollout_near_best_candidates;
+        self.rollout_selected_score_gap_sum += other.rollout_selected_score_gap_sum;
+        self.rollout_selected_score_gap_max = self
+            .rollout_selected_score_gap_max
+            .max(other.rollout_selected_score_gap_max);
+        self.candidate_positions += other.candidate_positions;
+        self.rejected_incomplete_label_positions += other.rejected_incomplete_label_positions;
+        self.rejected_terminal_positions += other.rejected_terminal_positions;
+        self.rejected_mate_score_positions += other.rejected_mate_score_positions;
+        self.rejected_node_accounting_positions += other.rejected_node_accounting_positions;
+        self.label_retry_exhausted_games += other.label_retry_exhausted_games;
+        merge_count_map(
+            &mut self.rejected_incomplete_root_plies,
+            other.rejected_incomplete_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_terminal_root_plies,
+            other.rejected_terminal_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_mate_root_plies,
+            other.rejected_mate_root_plies,
+        );
+        merge_count_map(
+            &mut self.rejected_node_accounting_root_plies,
+            other.rejected_node_accounting_root_plies,
+        );
+        self.root_ply_min = option_min(self.root_ply_min, other.root_ply_min);
+        self.root_ply_max = option_max(self.root_ply_max, other.root_ply_max);
+        self.leaf_distance_min = option_min(self.leaf_distance_min, other.leaf_distance_min);
+        self.leaf_distance_max = option_max(self.leaf_distance_max, other.leaf_distance_max);
+        self.leaf_distance_total += other.leaf_distance_total;
+        self.position_selection.add(other.position_selection);
     }
+
+    fn record_candidate(&mut self, root_side: Color) {
+        self.candidate_positions += 1;
+        self.position_selection.record_candidate(root_side);
+    }
+
+    fn record_stored_position(
+        &mut self,
+        root_ply: u16,
+        leaf_distance: u16,
+        root_side: Color,
+        leaf_side: Color,
+    ) {
+        self.root_ply_min = option_min(self.root_ply_min, Some(root_ply));
+        self.root_ply_max = option_max(self.root_ply_max, Some(root_ply));
+        self.leaf_distance_min = option_min(self.leaf_distance_min, Some(leaf_distance));
+        self.leaf_distance_max = option_max(self.leaf_distance_max, Some(leaf_distance));
+        self.leaf_distance_total += u64::from(leaf_distance);
+        self.position_selection
+            .record_stored(root_side, leaf_side, leaf_distance);
+    }
+}
+
+fn merge_count_map(target: &mut BTreeMap<u16, u64>, source: BTreeMap<u16, u64>) {
+    for (key, count) in source {
+        *target.entry(key).or_default() += count;
+    }
+}
+
+fn option_min<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (left, right) => left.or(right),
+    }
+}
+
+fn option_max<T: Ord + Copy>(left: Option<T>, right: Option<T>) -> Option<T> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (left, right) => left.or(right),
+    }
+}
+
+fn stored_position_count(stats: &SearchUseStats) -> u64 {
+    stats
+        .candidate_positions
+        .saturating_sub(stats.rejected_incomplete_label_positions)
+        .saturating_sub(stats.rejected_terminal_positions)
+        .saturating_sub(stats.rejected_mate_score_positions)
+        .saturating_sub(stats.rejected_node_accounting_positions)
+}
+
+fn leaf_distance_mean(stats: &SearchUseStats) -> f64 {
+    let stored = stored_position_count(stats);
+    if stored == 0 {
+        0.0
+    } else {
+        stats.leaf_distance_total as f64 / stored as f64
+    }
+}
+
+fn aggregate_opening_position_selection(
+    shard_results: &[ShardResult],
+) -> BTreeMap<String, PositionSelectionStats> {
+    let mut aggregate = BTreeMap::new();
+    for result in shard_results {
+        for (opening_id, stats) in &result.manifest.opening_position_selection {
+            aggregate
+                .entry(opening_id.clone())
+                .or_insert_with(PositionSelectionStats::default)
+                .add(*stats);
+        }
+    }
+    aggregate
 }
 
 impl From<&ShardManifest> for SearchUseStats {
@@ -189,7 +872,40 @@ impl From<&ShardManifest> for SearchUseStats {
             label_searches: manifest.label_searches,
             rollout_searches: manifest.rollout_searches,
             label_search_states: manifest.label_search_states,
+            label_search_qnodes: manifest.label_search_qnodes,
             rollout_search_states: manifest.rollout_search_states,
+            rollout_search_qnodes: manifest.rollout_search_qnodes,
+            label_search_elapsed_seconds: manifest.label_search_cpu_seconds,
+            rollout_search_elapsed_seconds: manifest.rollout_search_cpu_seconds,
+            rollout_decisions: manifest.rollout_decisions,
+            rollout_legal_moves: manifest.rollout_legal_moves,
+            rollout_candidates_scored: manifest.rollout_candidates_scored,
+            rollout_candidates_truncated: manifest.rollout_candidates_truncated,
+            rollout_near_best_candidates: manifest.rollout_near_best_candidates,
+            rollout_selected_score_gap_sum: manifest.rollout_selected_score_gap_sum,
+            rollout_selected_score_gap_max: manifest.rollout_selected_score_gap_max,
+            candidate_positions: if manifest.candidate_positions == 0 {
+                manifest.sampled_positions
+            } else {
+                manifest.candidate_positions
+            },
+            rejected_incomplete_label_positions: manifest.rejected_incomplete_label_positions,
+            rejected_terminal_positions: manifest.rejected_terminal_positions,
+            rejected_mate_score_positions: manifest.rejected_mate_score_positions,
+            rejected_node_accounting_positions: manifest.rejected_node_accounting_positions,
+            label_retry_exhausted_games: manifest.label_retry_exhausted_games,
+            rejected_incomplete_root_plies: manifest.rejected_incomplete_root_plies.clone(),
+            rejected_terminal_root_plies: manifest.rejected_terminal_root_plies.clone(),
+            rejected_mate_root_plies: manifest.rejected_mate_root_plies.clone(),
+            rejected_node_accounting_root_plies: manifest
+                .rejected_node_accounting_root_plies
+                .clone(),
+            root_ply_min: manifest.root_ply_min,
+            root_ply_max: manifest.root_ply_max,
+            leaf_distance_min: manifest.leaf_distance_min,
+            leaf_distance_max: manifest.leaf_distance_max,
+            leaf_distance_total: manifest.leaf_distance_total,
+            position_selection: manifest.position_selection,
         }
     }
 }
@@ -198,6 +914,80 @@ impl From<&ShardManifest> for SearchUseStats {
 enum GameOutcome {
     Draw,
     Winner(Color),
+}
+
+fn relative_rejection_counts(
+    black_root: u64,
+    white_root: u64,
+    outcome: GameOutcome,
+) -> (u64, u64, u64) {
+    match outcome {
+        GameOutcome::Draw => (0, 0, black_root + white_root),
+        GameOutcome::Winner(Color::Black) => (black_root, white_root, 0),
+        GameOutcome::Winner(Color::White) => (white_root, black_root, 0),
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TeacherSearchSummary {
+    best_move: Option<String>,
+    best_score: Option<i32>,
+    states: u64,
+    qnodes: u64,
+    total_nodes: u64,
+    node_limit: Option<u64>,
+    elapsed_seconds: f64,
+    training_trace: Option<SearchTrainingTrace>,
+}
+
+impl From<SearchSummary> for TeacherSearchSummary {
+    fn from(summary: SearchSummary) -> Self {
+        Self {
+            best_move: summary.best_move,
+            best_score: summary.best_score,
+            states: summary.states,
+            qnodes: summary.qsearch_stats.qnodes,
+            total_nodes: summary.states.saturating_add(summary.qsearch_stats.qnodes),
+            node_limit: None,
+            elapsed_seconds: summary.elapsed_ms / 1_000.0,
+            training_trace: None,
+        }
+    }
+}
+
+impl From<NodeBudgetSearchSummary> for TeacherSearchSummary {
+    fn from(summary: NodeBudgetSearchSummary) -> Self {
+        Self {
+            best_move: summary.best_move,
+            best_score: summary.best_score,
+            states: summary.alpha_beta_nodes,
+            qnodes: summary.qsearch_nodes,
+            total_nodes: summary.total_nodes,
+            node_limit: Some(summary.node_limit),
+            elapsed_seconds: summary.elapsed_ms / 1_000.0,
+            training_trace: None,
+        }
+    }
+}
+
+impl TeacherSearchSummary {
+    fn from_depth_with_trace(
+        summary: SearchSummary,
+        training_trace: Option<SearchTrainingTrace>,
+    ) -> Self {
+        let mut result = Self::from(summary);
+        result.training_trace = training_trace;
+        result
+    }
+
+    fn from_nodes_with_trace(
+        summary: NodeBudgetSearchSummary,
+        training_trace: Option<SearchTrainingTrace>,
+    ) -> Self {
+        let mut result = Self::from(summary);
+        result.training_trace = training_trace;
+        result
+    }
 }
 
 impl GameOutcome {
@@ -221,21 +1011,22 @@ enum Teacher {
 
 impl Teacher {
     fn from_config(loaded: &LoadedConfig) -> Result<Self> {
-        if let Some(path) = loaded.bootstrap_nnue() {
-            if path.exists() {
-                let bytes = fs::read(&path)
-                    .with_context(|| format!("failed to read bootstrap NNUE {}", path.display()))?;
-                let bootstrap_sha256 = hash_bytes_hex(&bytes);
-                let model = NnueModel::from_bytes(&bytes).map_err(|err| {
-                    anyhow!("failed to load bootstrap NNUE {}: {err}", path.display())
-                })?;
-                return Ok(Self::Nnue {
-                    model: Arc::new(model),
-                    bootstrap_sha256,
-                });
-            }
-        }
-        Ok(Self::Handcrafted)
+        let Some(path) = loaded.bootstrap_nnue() else {
+            return Ok(Self::Handcrafted);
+        };
+        let bytes = fs::read(&path).with_context(|| {
+            format!(
+                "paths.bootstrap_nnue is configured but could not be read: {}",
+                path.display()
+            )
+        })?;
+        let bootstrap_sha256 = hash_bytes_hex(&bytes);
+        let model = NnueModel::from_bytes(&bytes)
+            .map_err(|err| anyhow!("failed to load bootstrap NNUE {}: {err}", path.display()))?;
+        Ok(Self::Nnue {
+            model: Arc::new(model),
+            bootstrap_sha256,
+        })
     }
 
     fn describe(&self) -> &'static str {
@@ -254,12 +1045,12 @@ impl Teacher {
         }
     }
 
-    fn search(
+    fn search_depth(
         &self,
         board: &Board,
         depth: u8,
         workspace: &mut SearchWorkspace,
-    ) -> Result<SearchSummary> {
+    ) -> Result<TeacherSearchSummary> {
         match self {
             Self::Handcrafted => {
                 search_board_impl_handcrafted_in_workspace(board, depth, workspace)
@@ -273,6 +1064,2333 @@ impl Teacher {
                 workspace,
             )
             .map_err(|err| anyhow!("NNUE teacher search failed: {err}")),
+        }
+        .map(TeacherSearchSummary::from)
+    }
+
+    fn search_label(
+        &self,
+        board: &Board,
+        budget: LabelSearchBudget,
+        position_policy: PositionPolicy,
+        workspace: &mut SearchWorkspace,
+    ) -> Result<TeacherSearchSummary> {
+        let collect_trace = position_policy.uses_training_trace();
+        match budget {
+            LabelSearchBudget::Depth { depth } if !collect_trace => {
+                self.search_depth(board, depth, workspace)
+            }
+            LabelSearchBudget::Depth { depth } => match self {
+                Self::Handcrafted => search_board_impl_handcrafted_with_training_trace_in_workspace(
+                    board, depth, workspace,
+                )
+                .map_err(|err| anyhow!("handcrafted traced teacher search failed: {err}")),
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_training_trace_in_workspace(
+                        board,
+                        depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE traced teacher search failed: {err}"))
+                }
+            }
+            .map(|(summary, trace)| TeacherSearchSummary::from_depth_with_trace(summary, trace)),
+            LabelSearchBudget::Nodes { nodes, max_depth } if collect_trace => match self {
+                Self::Handcrafted => {
+                    search_board_impl_handcrafted_with_node_budget_and_training_trace_in_workspace(
+                        board, nodes, max_depth, workspace,
+                    )
+                    .map_err(|err| anyhow!("handcrafted traced node-budget teacher search failed: {err}"))
+                }
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_workspace(
+                        board,
+                        nodes,
+                        max_depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE traced node-budget teacher search failed: {err}"))
+                }
+            }
+            .map(|(summary, trace)| TeacherSearchSummary::from_nodes_with_trace(summary, trace)),
+            LabelSearchBudget::Nodes { nodes, max_depth } => match self {
+                Self::Handcrafted => search_board_impl_handcrafted_with_node_budget_in_workspace(
+                    board, nodes, max_depth, workspace,
+                )
+                .map_err(|err| anyhow!("handcrafted node-budget teacher search failed: {err}")),
+                Self::Nnue { model, .. } => {
+                    search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+                        board,
+                        nodes,
+                        max_depth,
+                        model.clone(),
+                        SearchEvalMode::Incremental,
+                        workspace,
+                    )
+                    .map_err(|err| anyhow!("NNUE node-budget teacher search failed: {err}"))
+                }
+            }
+            .map(TeacherSearchSummary::from),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ScoredRolloutMove {
+    move_: Move,
+    score: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RolloutDecision {
+    move_: Move,
+    best_score: i32,
+    selected_score: i32,
+}
+
+fn bounded_rollout_candidates(
+    mut legal_moves: Vec<Move>,
+    root_best_move: Move,
+    candidate_limit: usize,
+) -> Vec<Move> {
+    debug_assert!(candidate_limit > 0);
+    debug_assert!(legal_moves.contains(&root_best_move));
+    legal_moves.sort_by_key(ToString::to_string);
+    if legal_moves.len() <= candidate_limit {
+        return legal_moves;
+    }
+
+    let mut candidates = legal_moves[..candidate_limit].to_vec();
+    if !candidates.contains(&root_best_move) {
+        candidates[candidate_limit - 1] = root_best_move;
+        candidates.sort_by_key(ToString::to_string);
+    }
+    candidates
+}
+
+/// Choose one move from a bounded, cheap-search-ranked candidate set.
+///
+/// Candidate ordering is performed in the canonical orientation of the board
+/// and its 180-degree color-swapped image.  The same pair-index/ply stream is
+/// therefore used for both games in a color-swapped opening pair, while the
+/// selected canonical move is transformed back for the swapped game.
+fn choose_searched_stochastic_rollout_move(
+    board: &Board,
+    legal_moves: &[Move],
+    teacher: &Teacher,
+    search_depth: u8,
+    candidate_limit: u16,
+    score_margin: i32,
+    temperature: f64,
+    base_seed: u64,
+    dataset_name: &str,
+    pair_index: u32,
+    ply: u16,
+    rng_version: &str,
+    workspace: &mut SearchWorkspace,
+    stats: &mut SearchUseStats,
+) -> Result<RolloutDecision> {
+    ensure!(
+        !legal_moves.is_empty(),
+        "searched-stochastic rollout requires at least one legal move"
+    );
+    ensure!(
+        candidate_limit > 0,
+        "rollout candidate limit must be positive"
+    );
+    ensure!(
+        temperature.is_finite() && temperature > 0.0,
+        "rollout temperature must be finite and positive"
+    );
+
+    let current_sfen = board.to_string();
+    let swapped_sfen = color_swap_anhoku_sfen(&current_sfen).with_context(|| {
+        format!(
+            "failed to canonicalize rollout position for dataset `{dataset_name}`, pair {pair_index}, ply {ply}"
+        )
+    })?;
+    let use_swapped_orientation = swapped_sfen < current_sfen;
+    let canonical_board = Board::from_sfen(if use_swapped_orientation {
+        &swapped_sfen
+    } else {
+        &current_sfen
+    })
+    .map_err(|err| anyhow!("failed to parse canonical rollout position: {err}"))?;
+    let canonical_legal_moves = legal_moves
+        .iter()
+        .copied()
+        .map(|move_| {
+            if use_swapped_orientation {
+                transform_move(move_)
+            } else {
+                move_
+            }
+        })
+        .collect::<Vec<_>>();
+    let root_summary = teacher.search_depth(&canonical_board, search_depth, workspace)?;
+    stats.record_rollout(&root_summary);
+    let root_best_move = searched_best_move(&canonical_board, &root_summary)?;
+    let candidates = bounded_rollout_candidates(
+        canonical_legal_moves,
+        root_best_move,
+        usize::from(candidate_limit),
+    );
+
+    let mut scored = Vec::with_capacity(candidates.len());
+    for canonical_move in candidates {
+        ensure!(
+            canonical_board.is_legal(canonical_move),
+            "canonical rollout candidate `{canonical_move}` is not legal"
+        );
+        let mut child = canonical_board.clone();
+        child.play_unchecked(canonical_move);
+        let summary = teacher.search_depth(&child, search_depth, workspace)?;
+        stats.record_rollout(&summary);
+        let score = summary.best_score.map_or(0, |score| -score);
+        scored.push(ScoredRolloutMove {
+            move_: canonical_move,
+            score,
+        });
+    }
+
+    scored.sort_by(|left, right| {
+        right
+            .score
+            .cmp(&left.score)
+            .then_with(|| left.move_.to_string().cmp(&right.move_.to_string()))
+    });
+    let best_score = scored[0].score;
+    let cutoff = best_score.saturating_sub(score_margin);
+    let near_best_candidates = scored
+        .iter()
+        .filter(|candidate| candidate.score >= cutoff)
+        .count();
+    let selected_index = weighted_choice_index(
+        &scored[..near_best_candidates],
+        temperature,
+        rollout_stream_seed(base_seed, dataset_name, pair_index, ply, rng_version),
+    );
+    let selected = scored[selected_index];
+    let selected_move = if use_swapped_orientation {
+        transform_move(selected.move_)
+    } else {
+        selected.move_
+    };
+    ensure!(
+        legal_moves.contains(&selected_move),
+        "searched-stochastic rollout selected illegal move `{selected_move}`"
+    );
+    stats.record_rollout_decision(
+        legal_moves.len() as u64,
+        scored.len() as u64,
+        near_best_candidates as u64,
+        best_score.saturating_sub(selected.score),
+    );
+    Ok(RolloutDecision {
+        move_: selected_move,
+        best_score,
+        selected_score: selected.score,
+    })
+}
+
+fn weighted_choice_index(candidates: &[ScoredRolloutMove], temperature: f64, seed: u64) -> usize {
+    debug_assert!(!candidates.is_empty());
+    if candidates.len() == 1 {
+        return 0;
+    }
+    let best_score = candidates[0].score;
+    let weights = candidates
+        .iter()
+        .map(|candidate| {
+            (f64::from(candidate.score.saturating_sub(best_score)) / temperature)
+                .exp()
+                .max(f64::MIN_POSITIVE)
+        })
+        .collect::<Vec<_>>();
+    let total = weights.iter().sum::<f64>();
+    let target = unit_interval(splitmix64(seed)) * total;
+    let mut cumulative = 0.0;
+    for (index, weight) in weights.iter().enumerate() {
+        cumulative += weight;
+        if target < cumulative || index + 1 == weights.len() {
+            return index;
+        }
+    }
+    candidates.len() - 1
+}
+
+fn unit_interval(value: u64) -> f64 {
+    // Use the top 53 bits so the conversion is exact for the generated
+    // double and independent of rand crate implementation details.
+    (value >> 11) as f64 / (1u64 << 53) as f64
+}
+
+fn rollout_stream_seed(
+    base_seed: u64,
+    dataset_name: &str,
+    pair_index: u32,
+    ply: u16,
+    rng_version: &str,
+) -> u64 {
+    let mut hasher = Sha256::new();
+    hasher.update(b"haitaka-rollout-stream\0");
+    hasher.update(rng_version.as_bytes());
+    hasher.update([0]);
+    hasher.update(dataset_name.as_bytes());
+    hasher.update([0]);
+    hasher.update(base_seed.to_le_bytes());
+    hasher.update(pair_index.to_le_bytes());
+    hasher.update(ply.to_le_bytes());
+    let digest = hasher.finalize();
+    splitmix64(u64::from_le_bytes(
+        digest[..8].try_into().expect("SHA-256 prefix is 8 bytes"),
+    ))
+}
+
+fn transform_move(move_: Move) -> Move {
+    match move_ {
+        Move::Drop { piece, to } => Move::Drop {
+            piece,
+            to: to.flip(),
+        },
+        Move::BoardMove {
+            from,
+            to,
+            promotion,
+        } => Move::BoardMove {
+            from: from.flip(),
+            to: to.flip(),
+            promotion,
+        },
+    }
+}
+
+const TRAJECTORY_AUDIT_SCHEMA: &str = "haitaka-trajectory-audit-v2";
+const LABEL_CALIBRATION_SCHEMA: &str = "haitaka-label-calibration-v2";
+const TRAJECTORY_TRANCHE_GAMES: usize = 64;
+const TRAJECTORY_MIN_PAIRS_PER_OPENING: u64 = 2;
+const TRAJECTORY_MIN_UNIQUE_RATIO: f64 = 0.95;
+const TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME: f64 = 30.0;
+const CALIBRATION_MAX_INCOMPLETE_PERCENT: u64 = 1;
+const CALIBRATION_MAX_BIAS_DELTA: f64 = 0.05;
+const CALIBRATION_BUDGETS: [u64; 3] = [50_000, 100_000, 200_000];
+const CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT: f64 = 1.25;
+const CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT: f64 = 1.50;
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TrajectoryAuditOptions {
+    pub jobs: Option<u32>,
+    pub shard_index: Option<u32>,
+    pub shard_index_end: Option<u32>,
+    pub shard_count: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TrajectoryAuditReport {
+    schema: &'static str,
+    source: TrajectorySourceIdentity,
+    policy: TrajectoryPolicyIdentity,
+    limits: TrajectoryAuditLimits,
+    totals: TrajectoryTotals,
+    opening_coverage: TrajectoryOpeningCoverage,
+    tranches: Vec<TrajectoryTranche>,
+    trajectories: Vec<TrajectorySummary>,
+    paired_symmetry: PairedSymmetry,
+    decision: TrajectoryAuditDecision,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectorySourceIdentity {
+    config_path: String,
+    config_sha256: String,
+    ruleset: String,
+    rule_id: u16,
+    teacher_build_mode: String,
+    teacher_sha256: Option<String>,
+    engine_revision: Option<String>,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    train_opening_ids: Vec<String>,
+    ood_v2_opening_ids: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryPolicyIdentity {
+    self_play_move_policy: String,
+    rollout_search_depth: u8,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
+    opening_random_plies: u16,
+    stream_key: String,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryAuditLimits {
+    games_requested: u32,
+    games_audited: u64,
+    max_games: u64,
+    tranche_games: usize,
+    minimum_pairs_per_opening: u64,
+    initial_coverage_games: u64,
+    minimum_packed_board_unique_ratio: f64,
+    minimum_final_post_coverage_new_boards_per_game: f64,
+    jobs: usize,
+    shard_index: Option<u32>,
+    shard_index_end: Option<u32>,
+    shard_count: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryTotals {
+    games: u64,
+    game_plies: u64,
+    game_length_min: u16,
+    game_length_max: u16,
+    game_length_mean: f64,
+    packed_board_occurrences: u64,
+    distinct_packed_boards: u64,
+    packed_board_unique_ratio: f64,
+    black_wins: u64,
+    white_wins: u64,
+    draws: u64,
+    rollout_decisions: u64,
+    rollout_legal_moves: u64,
+    rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
+    rollout_near_best_candidates: u64,
+    selected_score_gap_mean: f64,
+    selected_score_gap_max: i32,
+    rollout_searches: u64,
+    rollout_search_states: u64,
+    rollout_search_qnodes: u64,
+    rollout_cpu_seconds: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryTranche {
+    ordinal_start: u64,
+    ordinal_end_exclusive: u64,
+    dataset_counts: BTreeMap<String, u64>,
+    games: u64,
+    packed_board_occurrences: u64,
+    new_packed_boards: u64,
+    new_packed_boards_per_game: f64,
+    cumulative_distinct_packed_boards: u64,
+    post_initial_coverage: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectorySummary {
+    dataset: String,
+    game_index: u32,
+    pair_index: u32,
+    opening_id: String,
+    color: String,
+    game_length: u16,
+    outcome: String,
+    packed_board_occurrences: u64,
+    distinct_packed_boards_in_game: u64,
+    new_packed_boards: u64,
+    selected_score_gap_mean: f64,
+    selected_score_gap_max: i32,
+    rollout_decisions: u64,
+    rollout_legal_moves: u64,
+    rollout_candidates_scored: u64,
+    rollout_candidates_truncated: u64,
+    rollout_cpu_seconds: f64,
+    trajectory_sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct PairedSymmetry {
+    pairs_expected: u64,
+    pairs_compared: u64,
+    exact_transformed_move_sequence_pairs: u64,
+    mismatched_pairs: u64,
+    unpaired_games: u64,
+    mismatch_examples: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryOpeningCoverage {
+    schedule: &'static str,
+    expected_train_ids: Vec<String>,
+    expected_ood_v2_ids: Vec<String>,
+    train_pair_counts: BTreeMap<String, u64>,
+    ood_v2_pair_counts: BTreeMap<String, u64>,
+    missing_train_ids: Vec<String>,
+    missing_ood_v2_ids: Vec<String>,
+    train_ids_below_minimum_pairs: Vec<String>,
+    ood_v2_ids_below_minimum_pairs: Vec<String>,
+    minimum_pairs_per_opening: u64,
+    unexpected_ids: Vec<String>,
+    complete: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct TrajectoryAuditDecision {
+    passed: bool,
+    packed_board_unique_ratio: f64,
+    final_tranche_new_packed_boards_per_game: f64,
+    final_post_coverage_tranche_new_packed_boards_per_game: Option<f64>,
+    failures: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TrajectoryTask {
+    dataset_name: &'static str,
+    game_index: u32,
+}
+
+#[derive(Debug)]
+struct TrajectoryGame {
+    task: TrajectoryTask,
+    opening: GameOpeningMetadata,
+    boards: Vec<[u8; PACKED_SFEN_BYTES]>,
+    moves: Vec<Move>,
+    score_gaps: Vec<i32>,
+    stats: SearchUseStats,
+    outcome: GameOutcome,
+    trajectory_sha256: String,
+    calibration_roots: Vec<CalibrationRoot>,
+}
+
+#[derive(Debug, Clone)]
+struct CalibrationRoot {
+    board: Board,
+    root_ply: u16,
+    side_to_move: Color,
+    outcome: GameOutcome,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LabelCalibrationReport {
+    schema: &'static str,
+    source: TrajectorySourceIdentity,
+    policy: TrajectoryPolicyIdentity,
+    calibration: LabelCalibrationIdentity,
+    trajectories: Vec<CalibrationTrajectorySummary>,
+    budgets: Vec<CalibrationBudgetReport>,
+    decision: LabelCalibrationDecision,
+}
+
+#[derive(Debug, Serialize)]
+struct LabelCalibrationIdentity {
+    games: u64,
+    suite_ids: Vec<String>,
+    train_suite_ids: Vec<String>,
+    ood_v2_suite_ids: Vec<String>,
+    candidate_root_schedule: String,
+    candidate_root_count: u64,
+    candidate_roots_sha256: String,
+    paired_root_mismatches: u64,
+    opening_ids_with_matched_roots: Vec<String>,
+    opening_ids_without_matched_roots: Vec<String>,
+    trajectory_hashes_sha256: String,
+    label_position_policy: String,
+    label_retry_policy: String,
+    max_label_attempts_per_game: Option<u16>,
+    max_depth: u8,
+    max_rejection_rate_delta: f64,
+    rejection_rate_delta_is_gate: bool,
+    max_overall_attempts_per_accepted_root: f64,
+    max_split_attempts_per_accepted_root: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationTrajectorySummary {
+    dataset: String,
+    opening_id: String,
+    pair_index: u32,
+    base_trajectory_sha256: String,
+    swapped_trajectory_sha256: String,
+    candidate_roots: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationBudgetReport {
+    nodes: u64,
+    train: CalibrationSplitReport,
+    ood_v2: CalibrationSplitReport,
+    attempts_per_accepted_root: f64,
+    passed: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct CalibrationSplitReport {
+    candidate_roots: u64,
+    accepted_roots: u64,
+    exhausted_games: u64,
+    attempts_per_accepted_root: f64,
+    accepted_bad_labels: u64,
+    incomplete_labels: u64,
+    incomplete_rate: f64,
+    terminal_labels: u64,
+    mate_labels: u64,
+    rejected_labels: u64,
+    alpha_beta_nodes: u64,
+    qsearch_nodes: u64,
+    accounted_nodes: u64,
+    requested_node_budget: u64,
+    node_accounting_exact: bool,
+    node_accounting_errors: u64,
+    incomplete_by_side: BinaryCalibrationCounts,
+    rejected_by_side: BinaryCalibrationCounts,
+    incomplete_by_outcome: OutcomeCalibrationCounts,
+    rejected_by_outcome: OutcomeCalibrationCounts,
+    side_rejection_rate_delta: f64,
+    outcome_rejection_rate_delta: f64,
+    passed: bool,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct BinaryCalibrationCounts {
+    black: u64,
+    white: u64,
+}
+
+#[derive(Debug, Default, Serialize)]
+struct OutcomeCalibrationCounts {
+    win: u64,
+    loss: u64,
+    draw: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct LabelCalibrationDecision {
+    passed: bool,
+    selected_budget_nodes: Option<u64>,
+    status: String,
+    failures: Vec<String>,
+}
+
+pub fn audit_trajectories(
+    loaded: &LoadedConfig,
+    options: TrajectoryAuditOptions,
+) -> Result<TrajectoryAuditReport> {
+    loaded.ruleset_requires_matching_engine()?;
+    ensure!(
+        loaded
+            .config
+            .data
+            .self_play_move_policy
+            .is_searched_stochastic(),
+        "trajectory-audit requires data.self_play_move_policy=searched-stochastic-rollout-v1; historical uniform-rollout-v1 is readable but not a Phase 8D production policy"
+    );
+    ensure!(
+        loaded.config.data.opening_random_plies == 0,
+        "trajectory-audit requires data.opening_random_plies=0"
+    );
+
+    let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
+    let teacher = Teacher::from_config(loaded)?;
+    let selector = ShardSelector::new(
+        options.shard_index,
+        options.shard_index_end,
+        options.shard_count,
+    )?;
+    let tasks = trajectory_tasks(loaded, &opening_split, selector)?;
+    ensure!(
+        tasks.len() <= 4096,
+        "trajectory-audit selected {} games, above the hard limit of 4096; use shard selectors or reduce data.train_games/data.validation_games",
+        tasks.len()
+    );
+    ensure!(!tasks.is_empty(), "trajectory-audit selected no games");
+    let jobs = resolve_jobs(options.jobs.unwrap_or(loaded.config.data.jobs))?
+        .min(tasks.len())
+        .max(1);
+    let trajectories = collect_trajectory_games(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        &tasks,
+        jobs,
+        false,
+    )?;
+    let engine_revision = detect_git_revision(loaded)?;
+    build_trajectory_audit_report(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        engine_revision,
+        trajectories,
+        jobs,
+        options,
+    )
+}
+
+fn trajectory_tasks(
+    loaded: &LoadedConfig,
+    opening_split: &OpeningSplit,
+    selector: ShardSelector,
+) -> Result<Vec<(TrajectoryTask, String)>> {
+    let mut tasks = Vec::new();
+    for (dataset_name, game_count) in [
+        ("train", loaded.config.data.train_games),
+        ("validation", loaded.config.data.validation_games),
+    ] {
+        let opening_ids = opening_split.ids_for(dataset_name)?;
+        ensure!(
+            !opening_ids.is_empty(),
+            "trajectory-audit requires at least one {dataset_name} opening ID"
+        );
+        for plan in shard_plans(game_count, loaded.config.data.shard_games, selector) {
+            for game_index in plan.game_start..plan.game_start + plan.game_count {
+                let opening_id =
+                    opening_ids[(game_index / 2 % opening_ids.len() as u32) as usize].clone();
+                tasks.push((
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index,
+                    },
+                    opening_id,
+                ));
+            }
+        }
+    }
+    Ok(tasks)
+}
+
+fn collect_trajectory_games(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    tasks: &[(TrajectoryTask, String)],
+    jobs: usize,
+    calibration_root_schedule: bool,
+) -> Result<Vec<TrajectoryGame>> {
+    let queue = Arc::new(Mutex::new(VecDeque::from(tasks.to_vec())));
+    let results = Arc::new(Mutex::new(Vec::<(
+        TrajectoryTask,
+        std::result::Result<TrajectoryGame, String>,
+    )>::new()));
+    thread::scope(|scope| {
+        for _ in 0..jobs.min(tasks.len()).max(1) {
+            let queue = Arc::clone(&queue);
+            let results = Arc::clone(&results);
+            scope.spawn(move || {
+                let mut workspace = SearchWorkspace::default();
+                loop {
+                    let Some((task, opening_id)) =
+                        queue.lock().expect("trajectory queue poisoned").pop_front()
+                    else {
+                        break;
+                    };
+                    let result = play_label_free_trajectory(
+                        loaded,
+                        teacher,
+                        opening_source,
+                        opening_split,
+                        task,
+                        Some(&opening_id),
+                        calibration_root_schedule,
+                        &mut workspace,
+                    )
+                    .map_err(|err| format!("{err:#}"));
+                    let failed = result.is_err();
+                    results
+                        .lock()
+                        .expect("trajectory results poisoned")
+                        .push((task, result));
+                    if failed {
+                        // One failure is enough to make the audit invalid, and
+                        // stopping this worker avoids producing a misleading
+                        // partial report while other workers drain normally.
+                        break;
+                    }
+                }
+            });
+        }
+    });
+
+    let mut results = Arc::try_unwrap(results)
+        .map_err(|_| anyhow!("trajectory workers still hold their result queue"))?
+        .into_inner()
+        .map_err(|_| anyhow!("trajectory result queue was poisoned"))?;
+    results.sort_by_key(|(task, _)| (dataset_sort_key(task.dataset_name), task.game_index));
+    let mut trajectories = Vec::with_capacity(results.len());
+    for (task, result) in results {
+        trajectories.push(result.map_err(|err| anyhow!(err)).with_context(|| {
+            format!(
+                "failed to audit {} trajectory game {}",
+                task.dataset_name, task.game_index
+            )
+        })?);
+    }
+    ensure!(
+        trajectories.len() == tasks.len(),
+        "trajectory workers returned {}/{} games",
+        trajectories.len(),
+        tasks.len()
+    );
+    Ok(trajectories)
+}
+
+fn dataset_sort_key(dataset_name: &str) -> u8 {
+    match dataset_name {
+        "train" => 0,
+        "validation" => 1,
+        _ => 2,
+    }
+}
+
+fn trajectory_audit_sort_key(
+    opening_split: &OpeningSplit,
+    game: &TrajectoryGame,
+) -> (u32, u8, u32, u32) {
+    trajectory_task_audit_sort_key(opening_split, game.task)
+}
+
+fn trajectory_task_audit_sort_key(
+    opening_split: &OpeningSplit,
+    task: TrajectoryTask,
+) -> (u32, u8, u32, u32) {
+    let opening_count = match task.dataset_name {
+        "train" => opening_split.train_ids.len(),
+        "validation" => opening_split.validation_ids.len(),
+        _ => 1,
+    }
+    .max(1) as u32;
+    let pair_index = task.game_index / 2;
+    (
+        pair_index / opening_count,
+        dataset_sort_key(task.dataset_name),
+        pair_index % opening_count,
+        task.game_index % 2,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn play_label_free_trajectory(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    task: TrajectoryTask,
+    forced_opening_id: Option<&str>,
+    calibration_root_schedule: bool,
+    search_workspace: &mut SearchWorkspace,
+) -> Result<TrajectoryGame> {
+    let seed = game_seed(loaded.config.data.seed, task.dataset_name, task.game_index);
+    let pair_seed = game_seed(
+        loaded.config.data.seed,
+        task.dataset_name,
+        task.game_index / 2,
+    );
+    let selected_opening = match forced_opening_id {
+        Some(opening_id) => {
+            opening_source.select_for_id(task.dataset_name, opening_id, task.game_index)?
+        }
+        None => {
+            opening_source.select(task.dataset_name, opening_split, pair_seed, task.game_index)?
+        }
+    };
+    let mut board = Board::from_sfen(&selected_opening.sfen)
+        .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
+    let sample_origin = if calibration_root_schedule {
+        loaded.config.data.sample_start_ply
+    } else {
+        sampling_origin(
+            seed,
+            loaded.config.data.sampling_policy,
+            loaded.config.data.sample_start_ply,
+            loaded.config.data.opening_random_plies,
+            loaded.config.data.sample_every_ply,
+        )
+    };
+    let mut boards = Vec::new();
+    let mut moves = Vec::new();
+    let mut score_gaps = Vec::new();
+    let mut calibration_roots = Vec::new();
+    let mut attempted_candidate_roots = 0u16;
+    let mut played_plies = 0u16;
+    let mut stats = SearchUseStats::default();
+
+    while played_plies < loaded.config.data.max_plies {
+        if !has_both_kings(&board) {
+            break;
+        }
+        let legal_moves = collect_legal_moves(&board);
+        if legal_moves.is_empty() {
+            break;
+        }
+        let calibration_root_limit =
+            if calibration_root_schedule && loaded.config.data.label_retry_policy.is_adaptive() {
+                loaded
+                    .config
+                    .data
+                    .max_label_attempts_per_game
+                    .expect("validated adaptive retry attempt cap")
+            } else {
+                loaded
+                    .config
+                    .data
+                    .max_candidate_roots_per_game
+                    .unwrap_or(loaded.config.data.max_positions_per_game)
+            };
+        let should_collect_root = played_plies >= sample_origin
+            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
+            && attempted_candidate_roots < calibration_root_limit;
+        if should_collect_root {
+            attempted_candidate_roots += 1;
+            if calibration_root_schedule {
+                calibration_roots.push(CalibrationRoot {
+                    board: board.clone(),
+                    root_ply: played_plies,
+                    side_to_move: board.side_to_move(),
+                    outcome: GameOutcome::Draw,
+                });
+            }
+        }
+        boards.push(pack_board_for_training(&board)?);
+        let decision = choose_searched_stochastic_rollout_move(
+            &board,
+            &legal_moves,
+            teacher,
+            loaded.config.data.rollout_search_depth,
+            loaded.config.data.rollout_candidate_limit,
+            loaded.config.data.rollout_score_margin,
+            loaded.config.data.rollout_temperature,
+            loaded.config.data.seed,
+            task.dataset_name,
+            task.game_index / 2,
+            played_plies,
+            &loaded.config.data.rollout_rng_version,
+            search_workspace,
+            &mut stats,
+        )?;
+        score_gaps.push(decision.best_score.saturating_sub(decision.selected_score));
+        moves.push(decision.move_);
+        board.play_unchecked(decision.move_);
+        played_plies += 1;
+    }
+
+    let outcome = determine_game_outcome(&board, played_plies, loaded.config.data.max_plies);
+    for root in &mut calibration_roots {
+        root.outcome = outcome;
+    }
+    let trajectory_sha256 = trajectory_hash(task, &selected_opening.metadata, &moves);
+    Ok(TrajectoryGame {
+        task,
+        opening: selected_opening.metadata,
+        boards,
+        moves,
+        score_gaps,
+        stats,
+        outcome,
+        trajectory_sha256,
+        calibration_roots,
+    })
+}
+
+fn determine_game_outcome(board: &Board, played_plies: u16, max_plies: u16) -> GameOutcome {
+    if played_plies >= max_plies {
+        GameOutcome::Draw
+    } else if !board.has(Color::Black, Piece::King) {
+        GameOutcome::Winner(Color::White)
+    } else if !board.has(Color::White, Piece::King) {
+        GameOutcome::Winner(Color::Black)
+    } else {
+        match board.status() {
+            haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
+            haitaka::GameStatus::Drawn | haitaka::GameStatus::Ongoing => GameOutcome::Draw,
+        }
+    }
+}
+
+fn trajectory_hash(task: TrajectoryTask, opening: &GameOpeningMetadata, moves: &[Move]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"haitaka-trajectory-v1\0");
+    hasher.update(task.dataset_name.as_bytes());
+    hasher.update([0]);
+    hasher.update(task.game_index.to_le_bytes());
+    for value in [&opening.opening_id, &opening.sfen] {
+        hasher.update((value.len() as u32).to_le_bytes());
+        hasher.update(value.as_bytes());
+    }
+    hasher.update((moves.len() as u32).to_le_bytes());
+    for move_ in moves {
+        let text = move_.to_string();
+        hasher.update((text.len() as u32).to_le_bytes());
+        hasher.update(text.as_bytes());
+    }
+    format!("{:x}", hasher.finalize())
+}
+
+fn trajectory_source_identity(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    engine_revision: Option<String>,
+) -> Result<TrajectorySourceIdentity> {
+    Ok(TrajectorySourceIdentity {
+        config_path: loaded.path.display().to_string(),
+        config_sha256: loaded.hash_hex.clone(),
+        ruleset: loaded.config.rules.ruleset.as_str().to_string(),
+        rule_id: loaded.effective_rule_id()?,
+        teacher_build_mode: teacher_build_mode(loaded, teacher),
+        teacher_sha256: teacher.bootstrap_sha256().map(str::to_string),
+        engine_revision,
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        train_opening_ids: opening_split.train_ids.clone(),
+        ood_v2_opening_ids: opening_split.validation_ids.clone(),
+    })
+}
+
+fn trajectory_policy_identity(loaded: &LoadedConfig) -> TrajectoryPolicyIdentity {
+    TrajectoryPolicyIdentity {
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
+        stream_key: "dataset+pair-index+ply+rollout-rng-version".to_string(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_trajectory_audit_report(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    engine_revision: Option<String>,
+    mut trajectories: Vec<TrajectoryGame>,
+    jobs: usize,
+    options: TrajectoryAuditOptions,
+) -> Result<TrajectoryAuditReport> {
+    let source = trajectory_source_identity(
+        loaded,
+        teacher,
+        opening_source,
+        opening_split,
+        engine_revision,
+    )?;
+    let policy = trajectory_policy_identity(loaded);
+    trajectories.sort_by_key(|game| trajectory_audit_sort_key(opening_split, game));
+    let initial_coverage_games =
+        ((opening_split.train_ids.len() + opening_split.validation_ids.len()) * 2) as u64;
+    let mut all_boards = BTreeSet::<[u8; PACKED_SFEN_BYTES]>::new();
+    let mut total_stats = SearchUseStats::default();
+    let mut summaries = Vec::with_capacity(trajectories.len());
+    let mut tranches = Vec::new();
+    let mut game_plies = 0u64;
+    let mut packed_board_occurrences = 0u64;
+    let mut score_gap_sum = 0i64;
+    let mut score_gap_max = 0i32;
+    let mut black_wins = 0u64;
+    let mut white_wins = 0u64;
+    let mut draws = 0u64;
+
+    for (tranche_index, chunk) in trajectories.chunks(TRAJECTORY_TRANCHE_GAMES).enumerate() {
+        let ordinal_start = (tranche_index * TRAJECTORY_TRANCHE_GAMES) as u64;
+        let ordinal_end_exclusive = ordinal_start + chunk.len() as u64;
+        let mut dataset_counts = BTreeMap::new();
+        let mut tranche_occurrences = 0u64;
+        let mut tranche_new_boards = 0u64;
+        for game in chunk {
+            let mut game_boards = BTreeSet::new();
+            let mut new_boards = 0u64;
+            for board in &game.boards {
+                game_boards.insert(*board);
+                if all_boards.insert(*board) {
+                    new_boards += 1;
+                }
+            }
+            *dataset_counts
+                .entry(trajectory_dataset_label(game.task.dataset_name).to_string())
+                .or_default() += 1;
+            tranche_occurrences += game.boards.len() as u64;
+            tranche_new_boards += new_boards;
+            game_plies += game.moves.len() as u64;
+            packed_board_occurrences += game.boards.len() as u64;
+            score_gap_sum += game
+                .score_gaps
+                .iter()
+                .map(|gap| i64::from(*gap))
+                .sum::<i64>();
+            score_gap_max =
+                score_gap_max.max(game.score_gaps.iter().copied().max().unwrap_or_default());
+            match game.outcome {
+                GameOutcome::Winner(Color::Black) => black_wins += 1,
+                GameOutcome::Winner(Color::White) => white_wins += 1,
+                GameOutcome::Draw => draws += 1,
+            }
+            total_stats.add(game.stats.clone());
+            let game_gap_sum = game
+                .score_gaps
+                .iter()
+                .map(|gap| i64::from(*gap))
+                .sum::<i64>();
+            summaries.push(TrajectorySummary {
+                dataset: trajectory_dataset_label(game.task.dataset_name).to_string(),
+                game_index: game.task.game_index,
+                pair_index: game.task.game_index / 2,
+                opening_id: game.opening.opening_id.clone(),
+                color: game.opening.color.clone(),
+                game_length: game.moves.len() as u16,
+                outcome: outcome_label(game.outcome).to_string(),
+                packed_board_occurrences: game.boards.len() as u64,
+                distinct_packed_boards_in_game: game_boards.len() as u64,
+                new_packed_boards: new_boards,
+                selected_score_gap_mean: if game.score_gaps.is_empty() {
+                    0.0
+                } else {
+                    game_gap_sum as f64 / game.score_gaps.len() as f64
+                },
+                selected_score_gap_max: game.score_gaps.iter().copied().max().unwrap_or_default(),
+                rollout_decisions: game.stats.rollout_decisions,
+                rollout_legal_moves: game.stats.rollout_legal_moves,
+                rollout_candidates_scored: game.stats.rollout_candidates_scored,
+                rollout_candidates_truncated: game.stats.rollout_candidates_truncated,
+                rollout_cpu_seconds: game.stats.rollout_search_elapsed_seconds,
+                trajectory_sha256: game.trajectory_sha256.clone(),
+            });
+        }
+        tranches.push(TrajectoryTranche {
+            ordinal_start,
+            ordinal_end_exclusive,
+            dataset_counts,
+            games: chunk.len() as u64,
+            packed_board_occurrences: tranche_occurrences,
+            new_packed_boards: tranche_new_boards,
+            new_packed_boards_per_game: if chunk.is_empty() {
+                0.0
+            } else {
+                tranche_new_boards as f64 / chunk.len() as f64
+            },
+            cumulative_distinct_packed_boards: all_boards.len() as u64,
+            post_initial_coverage: ordinal_start >= initial_coverage_games,
+        });
+    }
+
+    let paired_symmetry = audit_paired_symmetry(&trajectories);
+    let opening_coverage = audit_trajectory_opening_coverage(opening_split, &trajectories);
+    let packed_board_unique_ratio = ratio_f64(all_boards.len() as u64, packed_board_occurrences);
+    let final_tranche_new_boards_per_game = tranches
+        .last()
+        .map(|tranche| tranche.new_packed_boards_per_game)
+        .unwrap_or_default();
+    let final_post_coverage_tranche_new_boards_per_game = tranches
+        .iter()
+        .filter(|tranche| tranche.post_initial_coverage)
+        .next_back()
+        .map(|tranche| tranche.new_packed_boards_per_game);
+    let mut failures = Vec::new();
+    if packed_board_unique_ratio < TRAJECTORY_MIN_UNIQUE_RATIO {
+        failures.push(format!(
+            "packed-board uniqueness ratio {:.4} is below {:.2}",
+            packed_board_unique_ratio, TRAJECTORY_MIN_UNIQUE_RATIO
+        ));
+    }
+    match final_post_coverage_tranche_new_boards_per_game {
+        Some(yield_per_game)
+            if yield_per_game >= TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME => {}
+        Some(yield_per_game) => failures.push(format!(
+            "final post-coverage tranche new-board yield {:.2}/game is below {:.2}/game",
+            yield_per_game, TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME
+        )),
+        None => failures.push(format!(
+            "trajectory audit has no complete tranche after the initial {initial_coverage_games}-game opening-coverage cycle"
+        )),
+    }
+    if paired_symmetry.mismatched_pairs > 0 {
+        failures.push(format!(
+            "{} color-swapped pairs did not reproduce the transformed move sequence",
+            paired_symmetry.mismatched_pairs
+        ));
+    }
+    if paired_symmetry.unpaired_games > 0 {
+        failures.push(format!(
+            "{} audited games had no color-swapped partner",
+            paired_symmetry.unpaired_games
+        ));
+    }
+    if !opening_coverage.complete {
+        failures.push(format!(
+            "trajectory opening coverage is incomplete: missing {} train IDs and {} OOD-v2 IDs; {} train IDs and {} OOD-v2 IDs have fewer than {} pairs; unexpected IDs: {}",
+            opening_coverage.missing_train_ids.len(),
+            opening_coverage.missing_ood_v2_ids.len(),
+            opening_coverage.train_ids_below_minimum_pairs.len(),
+            opening_coverage.ood_v2_ids_below_minimum_pairs.len(),
+            opening_coverage.minimum_pairs_per_opening,
+            opening_coverage.unexpected_ids.len()
+        ));
+    }
+    if trajectories.is_empty() {
+        failures.push("no trajectories were audited".to_string());
+    }
+
+    let games = trajectories.len() as u64;
+    let game_length_min = trajectories
+        .iter()
+        .map(|game| game.moves.len() as u16)
+        .min()
+        .unwrap_or_default();
+    let game_length_max = trajectories
+        .iter()
+        .map(|game| game.moves.len() as u16)
+        .max()
+        .unwrap_or_default();
+    let totals = TrajectoryTotals {
+        games,
+        game_plies,
+        game_length_min,
+        game_length_max,
+        game_length_mean: if games == 0 {
+            0.0
+        } else {
+            game_plies as f64 / games as f64
+        },
+        packed_board_occurrences,
+        distinct_packed_boards: all_boards.len() as u64,
+        packed_board_unique_ratio,
+        black_wins,
+        white_wins,
+        draws,
+        rollout_decisions: total_stats.rollout_decisions,
+        rollout_legal_moves: total_stats.rollout_legal_moves,
+        rollout_candidates_scored: total_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: total_stats.rollout_candidates_truncated,
+        rollout_near_best_candidates: total_stats.rollout_near_best_candidates,
+        selected_score_gap_mean: if total_stats.rollout_decisions == 0 {
+            0.0
+        } else {
+            score_gap_sum as f64 / total_stats.rollout_decisions as f64
+        },
+        selected_score_gap_max: score_gap_max,
+        rollout_searches: total_stats.rollout_searches,
+        rollout_search_states: total_stats.rollout_search_states,
+        rollout_search_qnodes: total_stats.rollout_search_qnodes,
+        rollout_cpu_seconds: total_stats.rollout_search_elapsed_seconds,
+    };
+    Ok(TrajectoryAuditReport {
+        schema: TRAJECTORY_AUDIT_SCHEMA,
+        source,
+        policy,
+        limits: TrajectoryAuditLimits {
+            games_requested: loaded.config.data.train_games + loaded.config.data.validation_games,
+            games_audited: games,
+            max_games: 4096,
+            tranche_games: TRAJECTORY_TRANCHE_GAMES,
+            minimum_pairs_per_opening: TRAJECTORY_MIN_PAIRS_PER_OPENING,
+            initial_coverage_games,
+            minimum_packed_board_unique_ratio: TRAJECTORY_MIN_UNIQUE_RATIO,
+            minimum_final_post_coverage_new_boards_per_game:
+                TRAJECTORY_MIN_FINAL_NEW_BOARDS_PER_GAME,
+            jobs,
+            shard_index: options.shard_index,
+            shard_index_end: options.shard_index_end,
+            shard_count: options.shard_count,
+        },
+        totals,
+        opening_coverage,
+        tranches,
+        trajectories: summaries,
+        paired_symmetry,
+        decision: TrajectoryAuditDecision {
+            passed: failures.is_empty(),
+            packed_board_unique_ratio,
+            final_tranche_new_packed_boards_per_game: final_tranche_new_boards_per_game,
+            final_post_coverage_tranche_new_packed_boards_per_game:
+                final_post_coverage_tranche_new_boards_per_game,
+            failures,
+        },
+    })
+}
+
+fn trajectory_dataset_label(dataset_name: &str) -> &str {
+    match dataset_name {
+        "validation" => "ood-v2",
+        _ => dataset_name,
+    }
+}
+
+fn outcome_label(outcome: GameOutcome) -> &'static str {
+    match outcome {
+        GameOutcome::Draw => "draw",
+        GameOutcome::Winner(Color::Black) => "black-win",
+        GameOutcome::Winner(Color::White) => "white-win",
+    }
+}
+
+fn ratio_f64(numerator: u64, denominator: u64) -> f64 {
+    if denominator == 0 {
+        0.0
+    } else {
+        numerator as f64 / denominator as f64
+    }
+}
+
+fn audit_paired_symmetry(trajectories: &[TrajectoryGame]) -> PairedSymmetry {
+    let mut by_pair = BTreeMap::<(u8, u32), Vec<&TrajectoryGame>>::new();
+    for game in trajectories {
+        by_pair
+            .entry((
+                dataset_sort_key(game.task.dataset_name),
+                game.task.game_index / 2,
+            ))
+            .or_default()
+            .push(game);
+    }
+    let mut exact = 0u64;
+    let mut compared = 0u64;
+    let mut unpaired_games = 0u64;
+    let mut mismatch_examples = Vec::new();
+    for games in by_pair.values() {
+        let base = games.iter().find(|game| game.task.game_index % 2 == 0);
+        let swapped = games.iter().find(|game| game.task.game_index % 2 == 1);
+        match (base, swapped) {
+            (Some(base), Some(swapped)) => {
+                compared += 1;
+                let transformed = base
+                    .moves
+                    .iter()
+                    .copied()
+                    .map(transform_move)
+                    .collect::<Vec<_>>();
+                if transformed == swapped.moves
+                    && base.opening.opening_id == swapped.opening.opening_id
+                {
+                    exact += 1;
+                } else if mismatch_examples.len() < 16 {
+                    mismatch_examples.push(format!(
+                        "{} pair {} ({})",
+                        trajectory_dataset_label(base.task.dataset_name),
+                        base.task.game_index / 2,
+                        base.opening.opening_id
+                    ));
+                }
+            }
+            (Some(_), None) | (None, Some(_)) => unpaired_games += 1,
+            (None, None) => {}
+        }
+    }
+    let pairs_expected = by_pair.len() as u64;
+    PairedSymmetry {
+        pairs_expected,
+        pairs_compared: compared,
+        exact_transformed_move_sequence_pairs: exact,
+        mismatched_pairs: compared.saturating_sub(exact),
+        unpaired_games,
+        mismatch_examples,
+    }
+}
+
+fn audit_trajectory_opening_coverage(
+    opening_split: &OpeningSplit,
+    trajectories: &[TrajectoryGame],
+) -> TrajectoryOpeningCoverage {
+    let expected_train = opening_split
+        .train_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let expected_ood = opening_split
+        .validation_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let mut pairs = BTreeMap::<(u8, u32), Vec<&TrajectoryGame>>::new();
+    let mut unexpected = BTreeSet::new();
+    for game in trajectories {
+        let expected = if game.task.dataset_name == "train" {
+            &expected_train
+        } else {
+            &expected_ood
+        };
+        if !expected.contains(&game.opening.opening_id) {
+            unexpected.insert(game.opening.opening_id.clone());
+        }
+        pairs
+            .entry((
+                dataset_sort_key(game.task.dataset_name),
+                game.task.game_index / 2,
+            ))
+            .or_default()
+            .push(game);
+    }
+
+    let mut train_pair_counts = BTreeMap::new();
+    let mut ood_pair_counts = BTreeMap::new();
+    for games in pairs.values() {
+        let base = games.iter().find(|game| game.task.game_index % 2 == 0);
+        let swapped = games.iter().find(|game| game.task.game_index % 2 == 1);
+        let (Some(base), Some(swapped)) = (base, swapped) else {
+            continue;
+        };
+        if base.opening.opening_id != swapped.opening.opening_id {
+            continue;
+        }
+        let counts = if base.task.dataset_name == "train" {
+            &mut train_pair_counts
+        } else {
+            &mut ood_pair_counts
+        };
+        *counts.entry(base.opening.opening_id.clone()).or_default() += 1;
+    }
+
+    let missing_train_ids = expected_train
+        .iter()
+        .filter(|id| !train_pair_counts.contains_key(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let missing_ood_v2_ids = expected_ood
+        .iter()
+        .filter(|id| !ood_pair_counts.contains_key(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let train_ids_below_minimum_pairs = expected_train
+        .iter()
+        .filter(|id| {
+            train_pair_counts.get(*id).copied().unwrap_or_default()
+                < TRAJECTORY_MIN_PAIRS_PER_OPENING
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let ood_v2_ids_below_minimum_pairs = expected_ood
+        .iter()
+        .filter(|id| {
+            ood_pair_counts.get(*id).copied().unwrap_or_default() < TRAJECTORY_MIN_PAIRS_PER_OPENING
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let unexpected_ids = unexpected.into_iter().collect::<Vec<_>>();
+    let complete = missing_train_ids.is_empty()
+        && missing_ood_v2_ids.is_empty()
+        && train_ids_below_minimum_pairs.is_empty()
+        && ood_v2_ids_below_minimum_pairs.is_empty()
+        && unexpected_ids.is_empty()
+        && expected_train.len() == 52
+        && expected_ood.len() == 12
+        && expected_train.is_disjoint(&expected_ood);
+    TrajectoryOpeningCoverage {
+        schedule: "equal-color-swapped-pairs-per-split-v1",
+        expected_train_ids: expected_train.into_iter().collect(),
+        expected_ood_v2_ids: expected_ood.into_iter().collect(),
+        train_pair_counts,
+        ood_v2_pair_counts: ood_pair_counts,
+        missing_train_ids,
+        missing_ood_v2_ids,
+        train_ids_below_minimum_pairs,
+        ood_v2_ids_below_minimum_pairs,
+        minimum_pairs_per_opening: TRAJECTORY_MIN_PAIRS_PER_OPENING,
+        unexpected_ids,
+        complete,
+    }
+}
+
+pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport> {
+    loaded.ruleset_requires_matching_engine()?;
+    ensure!(
+        loaded
+            .config
+            .data
+            .self_play_move_policy
+            .is_searched_stochastic(),
+        "calibrate-labels requires data.self_play_move_policy=searched-stochastic-rollout-v1"
+    );
+    ensure!(
+        loaded.config.data.opening_random_plies == 0,
+        "calibrate-labels requires data.opening_random_plies=0"
+    );
+    let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
+    let mut suite_ids = opening_source.opening_ids();
+    suite_ids.sort();
+    ensure!(
+        suite_ids.len() == 64,
+        "calibrate-labels requires exactly 64 opening IDs (found {})",
+        suite_ids.len()
+    );
+    let train_ids = opening_split
+        .train_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let ood_ids = opening_split
+        .validation_ids
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        train_ids.len() + ood_ids.len() == suite_ids.len()
+            && train_ids.is_disjoint(&ood_ids)
+            && suite_ids
+                .iter()
+                .all(|id| train_ids.contains(id) || ood_ids.contains(id)),
+        "calibrate-labels requires the 64 suite IDs to partition into train and OOD-v2 groups"
+    );
+    ensure!(
+        train_ids.len() == 52 && ood_ids.len() == 12,
+        "calibrate-labels requires exactly 52 train IDs and 12 OOD-v2 IDs (found {} and {})",
+        train_ids.len(),
+        ood_ids.len()
+    );
+    let calibration_tasks = suite_ids
+        .iter()
+        .enumerate()
+        .flat_map(|(ordinal, opening_id)| {
+            let dataset_name = if train_ids.contains(opening_id) {
+                "train"
+            } else {
+                "validation"
+            };
+            let base_index = (ordinal as u32) * 2;
+            [
+                (
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index: base_index,
+                    },
+                    opening_id.clone(),
+                ),
+                (
+                    TrajectoryTask {
+                        dataset_name,
+                        game_index: base_index + 1,
+                    },
+                    opening_id.clone(),
+                ),
+            ]
+        })
+        .collect::<Vec<_>>();
+    let teacher = Teacher::from_config(loaded)?;
+    let jobs = resolve_jobs(loaded.config.data.jobs)?
+        .min(calibration_tasks.len())
+        .max(1);
+    let trajectories = collect_calibration_trajectory_games(
+        loaded,
+        &teacher,
+        &opening_source,
+        &opening_split,
+        &calibration_tasks,
+        jobs,
+    )?;
+    let mut trajectories_by_id = BTreeMap::<String, (&TrajectoryGame, &TrajectoryGame)>::new();
+    let mut root_hasher = Sha256::new();
+    let mut trajectory_hasher = Sha256::new();
+    let mut calibration_summaries = Vec::with_capacity(suite_ids.len());
+    let mut candidate_root_count = 0u64;
+    let mut paired_root_mismatches = 0u64;
+    let mut opening_ids_with_matched_roots = Vec::new();
+    let mut opening_ids_without_matched_roots = Vec::new();
+    for opening_id in &suite_ids {
+        let base = trajectories
+            .iter()
+            .find(|game| game.opening.opening_id == *opening_id && game.task.game_index % 2 == 0)
+            .ok_or_else(|| anyhow!("missing base calibration trajectory for `{opening_id}`"))?;
+        let swapped = trajectories
+            .iter()
+            .find(|game| game.opening.opening_id == *opening_id && game.task.game_index % 2 == 1)
+            .ok_or_else(|| anyhow!("missing swapped calibration trajectory for `{opening_id}`"))?;
+        trajectories_by_id.insert(opening_id.clone(), (base, swapped));
+        let roots_match = calibration_roots_match(base, swapped)?
+            && (!loaded.config.data.label_retry_policy.is_adaptive()
+                || base.calibration_roots.len()
+                    == usize::from(
+                        loaded
+                            .config
+                            .data
+                            .max_label_attempts_per_game
+                            .expect("validated adaptive retry attempt cap"),
+                    ));
+        if !roots_match {
+            paired_root_mismatches += 1;
+        }
+        if roots_match {
+            opening_ids_with_matched_roots.push(opening_id.clone());
+        } else {
+            opening_ids_without_matched_roots.push(opening_id.clone());
+        }
+        candidate_root_count +=
+            (base.calibration_roots.len() + swapped.calibration_roots.len()) as u64;
+        root_hasher.update(base.task.dataset_name.as_bytes());
+        root_hasher.update([0]);
+        root_hasher.update(opening_id.as_bytes());
+        root_hasher.update((base.calibration_roots.len() as u32).to_le_bytes());
+        for root in &base.calibration_roots {
+            root_hasher.update(root.root_ply.to_le_bytes());
+            let sfen = root.board.to_string();
+            root_hasher.update((sfen.len() as u32).to_le_bytes());
+            root_hasher.update(sfen.as_bytes());
+        }
+        for game in [base, swapped] {
+            trajectory_hasher.update(game.task.dataset_name.as_bytes());
+            trajectory_hasher.update([0]);
+            trajectory_hasher.update(opening_id.as_bytes());
+            trajectory_hasher.update(game.trajectory_sha256.as_bytes());
+        }
+        calibration_summaries.push(CalibrationTrajectorySummary {
+            dataset: trajectory_dataset_label(base.task.dataset_name).to_string(),
+            opening_id: opening_id.clone(),
+            pair_index: base.task.game_index / 2,
+            base_trajectory_sha256: base.trajectory_sha256.clone(),
+            swapped_trajectory_sha256: swapped.trajectory_sha256.clone(),
+            candidate_roots: (base.calibration_roots.len() + swapped.calibration_roots.len())
+                as u64,
+        });
+    }
+    let candidate_roots_sha256 = format!("{:x}", root_hasher.finalize());
+    let trajectory_hashes_sha256 = format!("{:x}", trajectory_hasher.finalize());
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let max_depth = label_budget.max_depth();
+    let mut budget_reports = Vec::with_capacity(CALIBRATION_BUDGETS.len());
+    for nodes in CALIBRATION_BUDGETS {
+        let (train, ood_v2) = if loaded.config.data.label_retry_policy.is_adaptive() {
+            let mut train_pairs = Vec::new();
+            let mut ood_pairs = Vec::new();
+            for opening_id in &suite_ids {
+                let (base, swapped) = trajectories_by_id
+                    .get(opening_id)
+                    .expect("calibration trajectory map contains every suite ID");
+                let target = if train_ids.contains(opening_id) {
+                    &mut train_pairs
+                } else {
+                    &mut ood_pairs
+                };
+                target.push((
+                    base.calibration_roots.as_slice(),
+                    swapped.calibration_roots.as_slice(),
+                ));
+            }
+            (
+                calibrate_adaptive_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &train_pairs,
+                )?,
+                calibrate_adaptive_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &ood_pairs,
+                )?,
+            )
+        } else {
+            let mut train_roots = Vec::new();
+            let mut ood_roots = Vec::new();
+            for opening_id in &suite_ids {
+                let (base, swapped) = trajectories_by_id
+                    .get(opening_id)
+                    .expect("calibration trajectory map contains every suite ID");
+                let target = if train_ids.contains(opening_id) {
+                    &mut train_roots
+                } else {
+                    &mut ood_roots
+                };
+                target.extend(base.calibration_roots.iter());
+                target.extend(swapped.calibration_roots.iter());
+            }
+            (
+                calibrate_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &train_roots,
+                )?,
+                calibrate_label_split(
+                    &teacher,
+                    loaded.config.data.position_policy,
+                    max_depth,
+                    nodes,
+                    &ood_roots,
+                )?,
+            )
+        };
+        let attempts_per_accepted_root = ratio_f64(
+            train.candidate_roots.saturating_add(ood_v2.candidate_roots),
+            train.accepted_roots.saturating_add(ood_v2.accepted_roots),
+        );
+        let passed = train.passed
+            && ood_v2.passed
+            && (!loaded.config.data.label_retry_policy.is_adaptive()
+                || attempts_per_accepted_root <= CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT);
+        let retryable_failure = train.incomplete_labels > 0
+            || ood_v2.incomplete_labels > 0
+            || train.node_accounting_errors > 0
+            || ood_v2.node_accounting_errors > 0;
+        budget_reports.push(CalibrationBudgetReport {
+            nodes,
+            attempts_per_accepted_root,
+            passed,
+            train,
+            ood_v2,
+        });
+        if loaded.config.data.label_retry_policy.is_adaptive() && (passed || !retryable_failure) {
+            break;
+        }
+    }
+    let mut failures = Vec::new();
+    if !opening_ids_without_matched_roots.is_empty() {
+        failures.push(if loaded.config.data.label_retry_policy.is_adaptive() {
+            format!(
+                "{} of 64 opening IDs did not produce the full matched {}-attempt candidate pool: {}",
+                opening_ids_without_matched_roots.len(),
+                loaded
+                    .config
+                    .data
+                    .max_label_attempts_per_game
+                    .expect("validated adaptive retry attempt cap"),
+                opening_ids_without_matched_roots.join(", ")
+            )
+        } else {
+            format!(
+                "{} of 64 opening IDs did not produce at least one matched candidate root: {}",
+                opening_ids_without_matched_roots.len(),
+                opening_ids_without_matched_roots.join(", ")
+            )
+        });
+    }
+    if paired_root_mismatches > 0 {
+        failures.push(format!(
+            "{paired_root_mismatches} color-swapped calibration pairs did not have identical transformed candidate roots"
+        ));
+    }
+    let selected_budget_nodes = if failures.is_empty() {
+        budget_reports
+            .iter()
+            .find(|report| report.passed)
+            .map(|report| report.nodes)
+    } else {
+        None
+    };
+    if selected_budget_nodes.is_none()
+        && opening_ids_without_matched_roots.is_empty()
+        && paired_root_mismatches == 0
+    {
+        failures.push(if loaded.config.data.label_retry_policy.is_adaptive() {
+            "adaptive retry did not satisfy accepted-root, exhaustion, node-accounting, and attempts-per-accept gates at an eligible predeclared budget"
+                .to_string()
+        } else {
+            "none of the predeclared 50k/100k/200k node budgets passed both train and OOD-v2 calibration gates; define an adaptive-retry contract before proceeding"
+                .to_string()
+        });
+    }
+    let status = if failures.is_empty() {
+        format!("passed; selected smallest budget {selected_budget_nodes:?}")
+    } else {
+        "blocked; no production label budget was selected".to_string()
+    };
+    let engine_revision = detect_git_revision(loaded)?;
+    Ok(LabelCalibrationReport {
+        schema: LABEL_CALIBRATION_SCHEMA,
+        source: trajectory_source_identity(
+            loaded,
+            &teacher,
+            &opening_source,
+            &opening_split,
+            engine_revision,
+        )?,
+        policy: trajectory_policy_identity(loaded),
+        calibration: LabelCalibrationIdentity {
+            games: trajectories.len() as u64,
+            suite_ids,
+            train_suite_ids: train_ids.into_iter().collect(),
+            ood_v2_suite_ids: ood_ids.into_iter().collect(),
+            candidate_root_schedule: if loaded.config.data.label_retry_policy.is_adaptive() {
+                "pair-coupled-adaptive-retry-v1".to_string()
+            } else {
+                "fixed-phase-calibration-v1".to_string()
+            },
+            candidate_root_count,
+            candidate_roots_sha256,
+            paired_root_mismatches,
+            opening_ids_with_matched_roots,
+            opening_ids_without_matched_roots,
+            trajectory_hashes_sha256,
+            label_position_policy: loaded
+                .config
+                .data
+                .position_policy
+                .manifest_name()
+                .to_string(),
+            label_retry_policy: loaded
+                .config
+                .data
+                .label_retry_policy
+                .manifest_name()
+                .to_string(),
+            max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
+            max_depth,
+            max_rejection_rate_delta: CALIBRATION_MAX_BIAS_DELTA,
+            rejection_rate_delta_is_gate: !loaded.config.data.label_retry_policy.is_adaptive(),
+            max_overall_attempts_per_accepted_root: CALIBRATION_MAX_OVERALL_ATTEMPTS_PER_ACCEPT,
+            max_split_attempts_per_accepted_root: CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT,
+        },
+        trajectories: calibration_summaries,
+        budgets: budget_reports,
+        decision: LabelCalibrationDecision {
+            passed: failures.is_empty(),
+            selected_budget_nodes,
+            status,
+            failures,
+        },
+    })
+}
+
+fn collect_calibration_trajectory_games(
+    loaded: &LoadedConfig,
+    teacher: &Teacher,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    tasks: &[(TrajectoryTask, String)],
+    jobs: usize,
+) -> Result<Vec<TrajectoryGame>> {
+    let queue = Arc::new(Mutex::new(VecDeque::from(tasks.to_vec())));
+    let results = Arc::new(Mutex::new(Vec::<(
+        TrajectoryTask,
+        std::result::Result<TrajectoryGame, String>,
+    )>::new()));
+    thread::scope(|scope| {
+        for _ in 0..jobs.min(tasks.len()).max(1) {
+            let queue = Arc::clone(&queue);
+            let results = Arc::clone(&results);
+            scope.spawn(move || {
+                let mut workspace = SearchWorkspace::default();
+                loop {
+                    let Some((task, opening_id)) = queue
+                        .lock()
+                        .expect("calibration queue poisoned")
+                        .pop_front()
+                    else {
+                        break;
+                    };
+                    let result = play_label_free_trajectory(
+                        loaded,
+                        teacher,
+                        opening_source,
+                        opening_split,
+                        task,
+                        Some(&opening_id),
+                        true,
+                        &mut workspace,
+                    )
+                    .map_err(|err| format!("{err:#}"));
+                    let failed = result.is_err();
+                    results
+                        .lock()
+                        .expect("calibration results poisoned")
+                        .push((task, result));
+                    if failed {
+                        break;
+                    }
+                }
+            });
+        }
+    });
+    let mut results = Arc::try_unwrap(results)
+        .map_err(|_| anyhow!("calibration workers still hold their result queue"))?
+        .into_inner()
+        .map_err(|_| anyhow!("calibration result queue was poisoned"))?;
+    results.sort_by_key(|(task, _)| (dataset_sort_key(task.dataset_name), task.game_index));
+    let mut trajectories = Vec::with_capacity(results.len());
+    for (task, result) in results {
+        trajectories.push(result.map_err(|err| anyhow!(err)).with_context(|| {
+            format!(
+                "failed to generate {} calibration trajectory game {}",
+                task.dataset_name, task.game_index
+            )
+        })?);
+    }
+    ensure!(
+        trajectories.len() == tasks.len(),
+        "calibration workers returned {}/{} games",
+        trajectories.len(),
+        tasks.len()
+    );
+    Ok(trajectories)
+}
+
+fn calibration_roots_match(base: &TrajectoryGame, swapped: &TrajectoryGame) -> Result<bool> {
+    calibration_root_slices_match(&base.calibration_roots, &swapped.calibration_roots)
+}
+
+fn calibration_root_slices_match(
+    base_roots: &[CalibrationRoot],
+    swapped_roots: &[CalibrationRoot],
+) -> Result<bool> {
+    if base_roots.is_empty() || base_roots.len() != swapped_roots.len() {
+        return Ok(false);
+    }
+    for (base_root, swapped_root) in base_roots.iter().zip(swapped_roots) {
+        if base_root.root_ply != swapped_root.root_ply
+            || color_swap_anhoku_sfen(&base_root.board.to_string())?
+                != swapped_root.board.to_string()
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+#[derive(Debug)]
+struct CalibrationSearchObservation {
+    incomplete: bool,
+    terminal: bool,
+    mate: bool,
+    accounting_error: bool,
+    alpha_beta_nodes: u64,
+    qsearch_nodes: u64,
+    accounted_nodes: u64,
+}
+
+impl CalibrationSearchObservation {
+    fn is_admissible(&self) -> bool {
+        !self.incomplete && !self.terminal && !self.mate
+    }
+}
+
+fn observe_calibration_label(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    root: &CalibrationRoot,
+    workspace: &mut SearchWorkspace,
+) -> Result<CalibrationSearchObservation> {
+    let summary = teacher.search_label(
+        &root.board,
+        LabelSearchBudget::Nodes { nodes, max_depth },
+        position_policy,
+        workspace,
+    )?;
+    let counter_sum = summary.states.checked_add(summary.qnodes);
+    let terminal = !has_both_kings(&root.board)
+        || root.board.status() != haitaka::GameStatus::Ongoing
+        || summary
+            .training_trace
+            .as_ref()
+            .is_some_and(|trace| trace.terminal || !has_both_kings(&trace.leaf_board));
+    Ok(CalibrationSearchObservation {
+        incomplete: !node_budget_summary_is_complete(&summary),
+        terminal,
+        mate: summary
+            .best_score
+            .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32),
+        accounting_error: summary.node_limit != Some(nodes)
+            || counter_sum != Some(summary.total_nodes)
+            || summary.total_nodes > nodes,
+        alpha_beta_nodes: summary.states,
+        qsearch_nodes: summary.qnodes,
+        accounted_nodes: summary.total_nodes,
+    })
+}
+
+fn calibrate_adaptive_label_split(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    root_pairs: &[(&[CalibrationRoot], &[CalibrationRoot])],
+) -> Result<CalibrationSplitReport> {
+    let mut workspace = SearchWorkspace::default();
+    let mut candidate_roots = 0u64;
+    let mut accepted_roots = 0u64;
+    let mut exhausted_games = 0u64;
+    let mut incomplete_labels = 0u64;
+    let mut terminal_labels = 0u64;
+    let mut mate_labels = 0u64;
+    let mut alpha_beta_nodes = 0u64;
+    let mut qsearch_nodes = 0u64;
+    let mut accounted_nodes = 0u64;
+    let mut node_accounting_errors = 0u64;
+    let mut incomplete_by_side = BinaryCalibrationCounts::default();
+    let mut rejected_by_side = BinaryCalibrationCounts::default();
+    let mut incomplete_by_outcome = OutcomeCalibrationCounts::default();
+    let mut rejected_by_outcome = OutcomeCalibrationCounts::default();
+    let mut candidate_by_side = BinaryCalibrationCounts::default();
+    let mut candidate_by_outcome = OutcomeCalibrationCounts::default();
+
+    for (base_roots, swapped_roots) in root_pairs {
+        let mut pair_accepted = false;
+        for (base, swapped) in base_roots.iter().zip(*swapped_roots) {
+            let roots = [base, swapped];
+            let mut observations = Vec::with_capacity(2);
+            for root in roots {
+                candidate_roots += 1;
+                increment_binary(&mut candidate_by_side, root.side_to_move);
+                increment_outcome(
+                    &mut candidate_by_outcome,
+                    root.outcome.relative_to(root.side_to_move),
+                );
+                let observation = observe_calibration_label(
+                    teacher,
+                    position_policy,
+                    max_depth,
+                    nodes,
+                    root,
+                    &mut workspace,
+                )?;
+                alpha_beta_nodes = alpha_beta_nodes.saturating_add(observation.alpha_beta_nodes);
+                qsearch_nodes = qsearch_nodes.saturating_add(observation.qsearch_nodes);
+                accounted_nodes = accounted_nodes.saturating_add(observation.accounted_nodes);
+                node_accounting_errors += u64::from(observation.accounting_error);
+                incomplete_labels += u64::from(observation.incomplete);
+                terminal_labels += u64::from(observation.terminal);
+                mate_labels += u64::from(observation.mate);
+                if observation.incomplete {
+                    increment_binary(&mut incomplete_by_side, root.side_to_move);
+                    increment_outcome(
+                        &mut incomplete_by_outcome,
+                        root.outcome.relative_to(root.side_to_move),
+                    );
+                }
+                observations.push(observation);
+            }
+            if observations
+                .iter()
+                .all(CalibrationSearchObservation::is_admissible)
+            {
+                accepted_roots += 2;
+                pair_accepted = true;
+                break;
+            }
+            for root in roots {
+                increment_binary(&mut rejected_by_side, root.side_to_move);
+                increment_outcome(
+                    &mut rejected_by_outcome,
+                    root.outcome.relative_to(root.side_to_move),
+                );
+            }
+        }
+        if !pair_accepted {
+            exhausted_games += 2;
+        }
+    }
+
+    let rejected_labels = candidate_roots.saturating_sub(accepted_roots);
+    let attempts_per_accepted_root = ratio_f64(candidate_roots, accepted_roots);
+    let requested_node_budget = nodes.saturating_mul(candidate_roots);
+    let side_rejection_rate_delta = binary_rate_delta(&rejected_by_side, &candidate_by_side);
+    let outcome_rejection_rate_delta =
+        outcome_rate_delta(&rejected_by_outcome, &candidate_by_outcome);
+    let expected_accepted_roots = (root_pairs.len() as u64).saturating_mul(2);
+    let passed = accepted_roots == expected_accepted_roots
+        && exhausted_games == 0
+        && node_accounting_errors == 0
+        && attempts_per_accepted_root <= CALIBRATION_MAX_SPLIT_ATTEMPTS_PER_ACCEPT;
+    Ok(CalibrationSplitReport {
+        candidate_roots,
+        accepted_roots,
+        exhausted_games,
+        attempts_per_accepted_root,
+        accepted_bad_labels: 0,
+        incomplete_labels,
+        incomplete_rate: ratio_f64(incomplete_labels, candidate_roots),
+        terminal_labels,
+        mate_labels,
+        rejected_labels,
+        alpha_beta_nodes,
+        qsearch_nodes,
+        accounted_nodes,
+        requested_node_budget,
+        node_accounting_exact: node_accounting_errors == 0,
+        node_accounting_errors,
+        incomplete_by_side,
+        rejected_by_side,
+        incomplete_by_outcome,
+        rejected_by_outcome,
+        side_rejection_rate_delta,
+        outcome_rejection_rate_delta,
+        passed,
+    })
+}
+
+fn calibrate_label_split(
+    teacher: &Teacher,
+    position_policy: PositionPolicy,
+    max_depth: u8,
+    nodes: u64,
+    roots: &[&CalibrationRoot],
+) -> Result<CalibrationSplitReport> {
+    let mut workspace = SearchWorkspace::default();
+    let mut incomplete_labels = 0u64;
+    let mut terminal_labels = 0u64;
+    let mut mate_labels = 0u64;
+    let mut alpha_beta_nodes = 0u64;
+    let mut qsearch_nodes = 0u64;
+    let mut accounted_nodes = 0u64;
+    let mut node_accounting_errors = 0u64;
+    let mut incomplete_by_side = BinaryCalibrationCounts::default();
+    let mut rejected_by_side = BinaryCalibrationCounts::default();
+    let mut incomplete_by_outcome = OutcomeCalibrationCounts::default();
+    let mut rejected_by_outcome = OutcomeCalibrationCounts::default();
+    let mut candidate_by_side = BinaryCalibrationCounts::default();
+    let mut candidate_by_outcome = OutcomeCalibrationCounts::default();
+    for root in roots {
+        increment_binary(&mut candidate_by_side, root.side_to_move);
+        increment_outcome(
+            &mut candidate_by_outcome,
+            root.outcome.relative_to(root.side_to_move),
+        );
+        let summary = teacher.search_label(
+            &root.board,
+            LabelSearchBudget::Nodes { nodes, max_depth },
+            position_policy,
+            &mut workspace,
+        )?;
+        alpha_beta_nodes = alpha_beta_nodes.saturating_add(summary.states);
+        qsearch_nodes = qsearch_nodes.saturating_add(summary.qnodes);
+        accounted_nodes = accounted_nodes.saturating_add(summary.total_nodes);
+        let counter_sum = summary.states.checked_add(summary.qnodes);
+        if summary.node_limit != Some(nodes)
+            || counter_sum != Some(summary.total_nodes)
+            || summary.total_nodes > nodes
+        {
+            node_accounting_errors += 1;
+        }
+        let terminal = summary
+            .training_trace
+            .as_ref()
+            .is_some_and(|trace| trace.terminal || !has_both_kings(&trace.leaf_board));
+        let mate = summary
+            .best_score
+            .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32);
+        terminal_labels += u64::from(terminal);
+        mate_labels += u64::from(mate);
+        let incomplete = !node_budget_summary_is_complete(&summary);
+        incomplete_labels += u64::from(incomplete);
+        if incomplete {
+            increment_binary(&mut incomplete_by_side, root.side_to_move);
+            increment_outcome(
+                &mut incomplete_by_outcome,
+                root.outcome.relative_to(root.side_to_move),
+            );
+        }
+        let rejected = incomplete || terminal || mate;
+        if rejected {
+            increment_binary(&mut rejected_by_side, root.side_to_move);
+            increment_outcome(
+                &mut rejected_by_outcome,
+                root.outcome.relative_to(root.side_to_move),
+            );
+        }
+    }
+    let rejected_labels = rejected_by_side
+        .black
+        .saturating_add(rejected_by_side.white);
+    let candidate_count = roots.len() as u64;
+    let requested_node_budget = nodes.saturating_mul(candidate_count);
+    let side_rejection_rate_delta = binary_rate_delta(&rejected_by_side, &candidate_by_side);
+    let outcome_rejection_rate_delta =
+        outcome_rate_delta(&rejected_by_outcome, &candidate_by_outcome);
+    let passed = candidate_count > 0
+        && incomplete_labels.saturating_mul(100)
+            <= candidate_count.saturating_mul(CALIBRATION_MAX_INCOMPLETE_PERCENT)
+        && terminal_labels == 0
+        && mate_labels == 0
+        && node_accounting_errors == 0
+        && side_rejection_rate_delta <= CALIBRATION_MAX_BIAS_DELTA
+        && outcome_rejection_rate_delta <= CALIBRATION_MAX_BIAS_DELTA;
+    Ok(CalibrationSplitReport {
+        candidate_roots: candidate_count,
+        accepted_roots: candidate_count.saturating_sub(rejected_labels),
+        exhausted_games: 0,
+        attempts_per_accepted_root: ratio_f64(
+            candidate_count,
+            candidate_count.saturating_sub(rejected_labels),
+        ),
+        accepted_bad_labels: 0,
+        incomplete_labels,
+        incomplete_rate: ratio_f64(incomplete_labels, candidate_count),
+        terminal_labels,
+        mate_labels,
+        rejected_labels,
+        alpha_beta_nodes,
+        qsearch_nodes,
+        accounted_nodes,
+        requested_node_budget,
+        node_accounting_exact: node_accounting_errors == 0,
+        node_accounting_errors,
+        incomplete_by_side,
+        rejected_by_side,
+        incomplete_by_outcome,
+        rejected_by_outcome,
+        side_rejection_rate_delta,
+        outcome_rejection_rate_delta,
+        passed,
+    })
+}
+
+fn increment_binary(counts: &mut BinaryCalibrationCounts, side: Color) {
+    match side {
+        Color::Black => counts.black += 1,
+        Color::White => counts.white += 1,
+    }
+}
+
+fn increment_outcome(counts: &mut OutcomeCalibrationCounts, result: i8) {
+    match result {
+        1 => counts.win += 1,
+        -1 => counts.loss += 1,
+        0 => counts.draw += 1,
+        _ => {}
+    }
+}
+
+fn rejection_rate(rejected: u64, candidates: u64) -> f64 {
+    ratio_f64(rejected, candidates)
+}
+
+fn binary_rate_delta(
+    rejected: &BinaryCalibrationCounts,
+    candidates: &BinaryCalibrationCounts,
+) -> f64 {
+    (rejection_rate(rejected.black, candidates.black)
+        - rejection_rate(rejected.white, candidates.white))
+    .abs()
+}
+
+fn outcome_rate_delta(
+    rejected: &OutcomeCalibrationCounts,
+    candidates: &OutcomeCalibrationCounts,
+) -> f64 {
+    let rates = [
+        (rejected.win, candidates.win),
+        (rejected.loss, candidates.loss),
+        (rejected.draw, candidates.draw),
+    ]
+    .into_iter()
+    .filter(|(_, candidates)| *candidates > 0)
+    .map(|(rejected, candidates)| rejection_rate(rejected, candidates))
+    .collect::<Vec<_>>();
+    match (
+        rates.iter().copied().min_by(f64::total_cmp),
+        rates.iter().copied().max_by(f64::total_cmp),
+    ) {
+        (Some(min), Some(max)) => max - min,
+        _ => 0.0,
+    }
+}
+
+pub fn write_trajectory_audit_report(
+    loaded: &LoadedConfig,
+    report: &TrajectoryAuditReport,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    write_json_report(loaded, report, output, "trajectory-audit.json")
+}
+
+pub fn write_label_calibration_report(
+    loaded: &LoadedConfig,
+    report: &LabelCalibrationReport,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    write_json_report(loaded, report, output, "label-calibration.json")
+}
+
+fn write_json_report<T: Serialize>(
+    loaded: &LoadedConfig,
+    report: &T,
+    output: Option<PathBuf>,
+    default_name: &str,
+) -> Result<PathBuf> {
+    let artifacts = loaded.artifact_paths();
+    let path = output
+        .map(|path| loaded.resolve_path(&path))
+        .unwrap_or_else(|| artifacts.artifacts_dir.join(default_name));
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let mut bytes = serde_json::to_vec_pretty(report)?;
+    bytes.push(b'\n');
+    fs::write(&path, bytes).with_context(|| format!("failed to write {}", path.display()))?;
+    Ok(path)
+}
+
+fn node_budget_summary_is_complete(summary: &TeacherSearchSummary) -> bool {
+    summary.best_move.is_some() && summary.best_score.is_some()
+}
+
+fn label_node_accounting_is_exact(
+    summary: &TeacherSearchSummary,
+    budget: LabelSearchBudget,
+) -> bool {
+    match budget {
+        LabelSearchBudget::Depth { .. } => true,
+        LabelSearchBudget::Nodes { nodes, .. } => {
+            summary.node_limit == Some(nodes)
+                && summary.states.checked_add(summary.qnodes) == Some(summary.total_nodes)
+                && summary.total_nodes <= nodes
+        }
+    }
+}
+
+fn apply_incomplete_label_policy(
+    summary: TeacherSearchSummary,
+    budget: LabelSearchBudget,
+    policy: IncompleteLabelPolicy,
+    root_side: Color,
+    root_ply: u16,
+    stats: &mut SearchUseStats,
+) -> Result<Option<TeacherSearchSummary>> {
+    if !matches!(budget, LabelSearchBudget::Nodes { .. })
+        || node_budget_summary_is_complete(&summary)
+    {
+        return Ok(Some(summary));
+    }
+
+    stats.record_candidate(root_side);
+    match policy {
+        IncompleteLabelPolicy::Error => {
+            let nodes = budget.nodes().unwrap_or_default();
+            bail!(
+                "node-budget teacher did not complete depth 1 within {nodes} nodes; increase data.label_search_nodes or set data.incomplete_label_policy=reject-position"
+            );
+        }
+        IncompleteLabelPolicy::RejectPosition => {
+            stats.rejected_incomplete_label_positions += 1;
+            stats.position_selection.record_incomplete(root_side);
+            *stats
+                .rejected_incomplete_root_plies
+                .entry(root_ply)
+                .or_default() += 1;
+            Ok(None)
         }
     }
 }
@@ -290,11 +3408,21 @@ pub fn generate_data_with_options(
     let opening_sfen = loaded.opening_sfen()?;
     let _: Board = Board::from_sfen(&opening_sfen)
         .map_err(|err| anyhow!("invalid opening SFEN in config: {err}"))?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
 
+    let teacher = Teacher::from_config(loaded)?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
-    let teacher = Teacher::from_config(loaded)?;
     let engine_revision = detect_git_revision(loaded)?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -313,6 +3441,8 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
+        &opening_split,
         &engine_revision,
         shard_selector,
         resume,
@@ -326,6 +3456,8 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
+        &opening_split,
         loaded.config.data.train_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -334,6 +3466,15 @@ pub fn generate_data_with_options(
         shard_selector,
         allow_identity_mismatch,
     )?;
+    if shard_selector.is_full_run() {
+        let artifacts = loaded.artifact_paths();
+        ensure_minimum_train_boards(
+            loaded,
+            &artifacts.train_bin,
+            &artifacts.train_manifest,
+            train_positions,
+        )?;
+    }
     if graceful_stop_requested() {
         bail!(
             "generate-data stopped gracefully after training split elapsed={}; \
@@ -347,6 +3488,8 @@ pub fn generate_data_with_options(
         &artifacts,
         &teacher,
         &opening_sfen,
+        &opening_source,
+        &opening_split,
         loaded.config.data.validation_games,
         &engine_revision,
         generated_at_unix_ms,
@@ -464,6 +3607,8 @@ fn generate_split(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     game_count: u32,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
@@ -501,6 +3646,8 @@ fn generate_split(
             let loaded = loaded.clone();
             let artifacts = artifacts.clone();
             let opening_sfen = opening_sfen.to_string();
+            let opening_source = opening_source.clone();
+            let opening_split = opening_split.clone();
             let engine_revision = engine_revision.clone();
             let dataset_name = dataset_name.to_string();
 
@@ -515,6 +3662,8 @@ fn generate_split(
                         &artifacts,
                         &teacher,
                         &opening_sfen,
+                        &opening_source,
+                        &opening_split,
                         &engine_revision,
                         generated_at_unix_ms,
                         plan,
@@ -549,7 +3698,14 @@ fn generate_split(
         .into_inner()
         .map_err(|_| anyhow!("failed to lock shard results"))?;
     shard_results.sort_by_key(|result| result.manifest.game_start);
-    let sampled_positions = assemble_shards(&shard_results, bin_path)?;
+    let sampled_positions = assemble_shards(
+        &shard_results,
+        bin_path,
+        loaded.config.data.shuffle_policy,
+        loaded.config.data.shuffle_seed,
+        loaded.config.data.shuffle_chunk_records,
+        dataset_name,
+    )?;
     let completed_games = shard_results
         .iter()
         .map(|result| result.manifest.game_count)
@@ -567,34 +3723,194 @@ fn generate_split(
             stats.add(SearchUseStats::from(&result.manifest));
             stats
         });
+    let games = shard_results
+        .iter()
+        .flat_map(|result| result.manifest.games.iter().cloned())
+        .collect::<Vec<_>>();
+    let mut candidate_identity_hasher = Sha256::new();
+    for result in &shard_results {
+        candidate_identity_hasher.update(result.manifest.game_start.to_le_bytes());
+        candidate_identity_hasher.update(result.manifest.candidate_identity_sha256.as_bytes());
+    }
+    let candidate_identity_sha256 = format!("{:x}", candidate_identity_hasher.finalize());
+    let opening_position_selection = aggregate_opening_position_selection(&shard_results);
+    let opening_ids = games
+        .iter()
+        .map(|game| game.opening_id.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let elapsed = split_started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         generated_positions as f64 / elapsed.as_secs_f64()
     } else {
         0.0
     };
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let label_search_total_nodes = search_stats
+        .label_search_states
+        .saturating_add(search_stats.label_search_qnodes);
+    let label_nodes_per_search = if search_stats.label_searches == 0 {
+        0.0
+    } else {
+        label_search_total_nodes as f64 / search_stats.label_searches as f64
+    };
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
+    let schedule_identity_sha256 =
+        schedule_identity_sha256(loaded, dataset_name, game_count, None)?;
 
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids,
+        games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
+        opening_group_count: opening_split.ids_for(dataset_name)?.len(),
+        opening_group_overlap: opening_split.overlap(),
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
+        shuffle_memory_bound_bytes: shuffle_memory_bound_bytes(
+            loaded.config.data.shuffle_chunk_records,
+        ),
         game_count,
         completed_games,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256,
+        generation_semantic_identity_version: GENERATION_SEMANTIC_IDENTITY_VERSION.to_string(),
+        generation_semantic_identity_sha256,
+        schedule_identity_version: SCHEDULE_IDENTITY_VERSION.to_string(),
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_mean: leaf_distance_mean(&search_stats),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
+        label_search_total_nodes,
+        label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
+        generation_cpu_seconds: search_stats.label_search_elapsed_seconds
+            + search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
+        seed: loaded.config.data.seed,
+        feature_family: loaded.training_features().to_string(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
         generated_at_unix_ms,
-        build_mode: teacher_build_mode(loaded, teacher),
+        build_mode,
         entry_bytes: ENTRY_BYTES,
         shard_count: shard_results.len(),
         jobs,
@@ -640,6 +3956,18 @@ pub fn merge_data(
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
     let opening_sfen = loaded.opening_sfen()?;
+    let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
+    let teacher = Teacher::from_config(loaded)?;
+    let engine_revision = detect_git_revision(loaded)?;
+    let opening_split = opening_source.split_openings(
+        loaded.config.data.split_policy,
+        loaded.config.data.split_seed,
+        loaded.config.data.train_games,
+        loaded.config.data.validation_games,
+        loaded.config.data.validation_opening_ids.as_deref(),
+        loaded.config.data.validation_opening_schedule,
+        loaded.config.data.validation_opening_pairs_per_id,
+    )?;
     let generated_at_unix_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -653,8 +3981,18 @@ pub fn merge_data(
         input_dirs,
         loaded.config.data.train_games,
         &opening_sfen,
+        &opening_source,
+        &opening_split,
+        &teacher,
+        &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
+    )?;
+    ensure_minimum_train_boards(
+        loaded,
+        &artifacts.train_bin,
+        &artifacts.train_manifest,
+        train_positions,
     )?;
     let validation_positions = merge_split(
         "validation",
@@ -664,6 +4002,10 @@ pub fn merge_data(
         input_dirs,
         loaded.config.data.validation_games,
         &opening_sfen,
+        &opening_source,
+        &opening_split,
+        &teacher,
+        &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
@@ -714,6 +4056,34 @@ impl ShardSelector {
         let end = partition_boundary(total_shards, self.index_end + 1, self.count);
         start..end
     }
+
+    fn is_full_run(self) -> bool {
+        self.count == 1 && self.index == 0 && self.index_end == 0
+    }
+}
+
+fn ensure_minimum_train_boards(
+    loaded: &LoadedConfig,
+    train_bin: &Path,
+    train_manifest: &Path,
+    train_positions: u64,
+) -> Result<()> {
+    let Some(minimum) = loaded.config.data.minimum_train_boards()? else {
+        return Ok(());
+    };
+    let audit = crate::dataset_audit::audit_dataset(train_bin, train_manifest, None).with_context(
+        || {
+            format!(
+                "failed to audit the training dataset before applying the {minimum}-board minimum"
+            )
+        },
+    )?;
+    let distinct_boards = audit.distinct_packed_boards();
+    ensure!(
+        distinct_boards >= minimum,
+        "training dataset contains {distinct_boards} distinct packed boards ({train_positions} accepted records), below the configured minimum of {minimum}; do not start training"
+    );
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -738,6 +4108,76 @@ struct MergeTeacherIdentity {
     build_mode: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MergeGenerationIdentity {
+    version: String,
+    sha256: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GenerationSemanticIdentityMaterial {
+    schema: &'static str,
+    dataset: String,
+    ruleset: Ruleset,
+    rule_id: u16,
+    opening_sfen: String,
+    opening_policy: String,
+    opening_suite_id: Option<String>,
+    opening_suite_sha256: Option<String>,
+    opening_transformation: String,
+    split_policy: String,
+    split_seed: u64,
+    train_opening_ids: Vec<String>,
+    validation_opening_ids: Vec<String>,
+    validation_opening_schedule: String,
+    validation_opening_pairs_per_id: Option<u32>,
+    seed: u64,
+    max_plies: u16,
+    opening_random_plies: u16,
+    sample_start_ply: u16,
+    sample_every_ply: u16,
+    sampling_phase: String,
+    sample_after_opening: bool,
+    label_search_budget: String,
+    label_search_nodes: Option<u64>,
+    label_search_max_depth: u8,
+    node_counting_version: &'static str,
+    position_policy: String,
+    training_trace_version: &'static str,
+    incomplete_label_policy: String,
+    label_retry_policy: String,
+    max_positions_per_game: u16,
+    max_candidate_roots_per_game: Option<u16>,
+    max_label_attempts_per_game: Option<u16>,
+    candidate_identity_version: &'static str,
+    self_play_move_policy: String,
+    rollout_search_depth: u8,
+    rollout_candidate_limit: u16,
+    rollout_score_margin: i32,
+    rollout_temperature: f64,
+    rollout_rng_version: String,
+    feature_family: String,
+    teacher_build_mode: String,
+    teacher_sha256: Option<String>,
+    engine_revision: Option<String>,
+    teacher_move_encoding: &'static str,
+    entry_bytes: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct ScheduleIdentityMaterial {
+    schema: &'static str,
+    dataset: String,
+    train_games: u32,
+    validation_games: u32,
+    shard_games: u32,
+    requested_game_count: u32,
+    minimum_train_boards: Option<u64>,
+    shard_index: Option<u32>,
+    game_start: Option<u32>,
+    game_count: Option<u32>,
+}
+
 impl MergeTeacherIdentity {
     fn from_manifest(manifest: &ShardManifest) -> Self {
         Self {
@@ -747,6 +4187,118 @@ impl MergeTeacherIdentity {
             build_mode: manifest.build_mode.clone(),
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generation_semantic_identity_sha256(
+    loaded: &LoadedConfig,
+    dataset_name: &str,
+    opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    teacher_build_mode: &str,
+    teacher_sha256: Option<&str>,
+    engine_revision: Option<&str>,
+) -> Result<String> {
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let material = GenerationSemanticIdentityMaterial {
+        schema: GENERATION_SEMANTIC_IDENTITY_VERSION,
+        dataset: dataset_name.to_string(),
+        ruleset: loaded.config.rules.ruleset,
+        rule_id: loaded.effective_rule_id()?,
+        opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
+        seed: loaded.config.data.seed,
+        max_plies: loaded.config.data.max_plies,
+        opening_random_plies: loaded.config.data.opening_random_plies,
+        sample_start_ply: loaded.config.data.sample_start_ply,
+        sample_every_ply: loaded.config.data.sample_every_ply,
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION,
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION,
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_positions_per_game: loaded.config.data.max_positions_per_game,
+        max_candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_search_depth: loaded.config.data.rollout_search_depth,
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
+        feature_family: loaded.training_features().to_string(),
+        teacher_build_mode: teacher_build_mode.to_string(),
+        teacher_sha256: teacher_sha256.map(str::to_string),
+        engine_revision: engine_revision.map(str::to_string),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING,
+        entry_bytes: ENTRY_BYTES,
+    };
+    Ok(hash_bytes_hex(&serde_json::to_vec(&material)?))
+}
+
+fn schedule_identity_sha256(
+    loaded: &LoadedConfig,
+    dataset_name: &str,
+    requested_game_count: u32,
+    plan: Option<ShardPlan>,
+) -> Result<String> {
+    let material = ScheduleIdentityMaterial {
+        schema: SCHEDULE_IDENTITY_VERSION,
+        dataset: dataset_name.to_string(),
+        train_games: loaded.config.data.train_games,
+        validation_games: loaded.config.data.validation_games,
+        shard_games: loaded.config.data.shard_games,
+        requested_game_count,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
+        shard_index: plan.map(|plan| plan.shard_index),
+        game_start: plan.map(|plan| plan.game_start),
+        game_count: plan.map(|plan| plan.game_count),
+    };
+    Ok(hash_bytes_hex(&serde_json::to_vec(&material)?))
 }
 
 struct Progress {
@@ -866,6 +4418,8 @@ fn generate_or_reuse_shard(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     plan: ShardPlan,
@@ -883,6 +4437,8 @@ fn generate_or_reuse_shard(
             loaded,
             dataset_name,
             opening_sfen,
+            opening_source,
+            opening_split,
             teacher,
             engine_revision,
             plan,
@@ -902,7 +4458,10 @@ fn generate_or_reuse_shard(
     );
     let mut sampled_positions = 0u64;
     let mut search_stats = SearchUseStats::default();
+    let mut games = Vec::with_capacity(plan.game_count as usize);
+    let mut opening_position_selection = BTreeMap::<String, PositionSelectionStats>::new();
     let mut search_workspace = SearchWorkspace::default();
+    let mut candidate_identity_hasher = Sha256::new();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
         let shard_index = plan.shard_index;
@@ -913,37 +4472,180 @@ fn generate_or_reuse_shard(
             loaded,
             teacher,
             &mut search_workspace,
-            opening_sfen,
+            opening_source,
+            opening_split,
             game_index,
         )
         .context(error_context)?;
         sampled_positions += (game.entries.len() / ENTRY_BYTES) as u64;
+        candidate_identity_hasher.update(game_index.to_le_bytes());
+        candidate_identity_hasher.update(game.candidate_identity_sha256.as_bytes());
+        opening_position_selection
+            .entry(game.opening.opening_id.clone())
+            .or_default()
+            .add(game.stats.position_selection);
         search_stats.add(game.stats);
+        games.push(game.opening);
         writer.write_all(&game.entries)?;
     }
     writer.flush()?;
+
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
+    let requested_game_count = match dataset_name {
+        "train" => loaded.config.data.train_games,
+        "validation" => loaded.config.data.validation_games,
+        _ => unreachable!("generate_or_reuse_shard validates the dataset name"),
+    };
+    let schedule_identity_sha256 =
+        schedule_identity_sha256(loaded, dataset_name, requested_game_count, Some(plan))?;
 
     let manifest = ShardManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids: games
+            .iter()
+            .map(|game| game.opening_id.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect(),
+        games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
         game_start: plan.game_start,
         game_count: plan.game_count,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
+        generation_semantic_identity_version: GENERATION_SEMANTIC_IDENTITY_VERSION.to_string(),
+        generation_semantic_identity_sha256,
+        schedule_identity_version: SCHEDULE_IDENTITY_VERSION.to_string(),
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_total: search_stats.leaf_distance_total,
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: bootstrap_nnue_path(loaded),
         bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        feature_family: loaded.training_features().to_string(),
         generated_at_unix_ms,
-        build_mode: teacher_build_mode(loaded, teacher),
+        build_mode,
         entry_bytes: ENTRY_BYTES,
         shard_index: plan.shard_index,
     };
@@ -965,6 +4667,8 @@ fn reusable_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     teacher: &Teacher,
     engine_revision: &Option<String>,
     plan: ShardPlan,
@@ -980,12 +4684,26 @@ fn reusable_shard(
             .with_context(|| format!("failed to read {}", manifest_path.display()))?,
     )
     .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let expected_semantic_identity = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
     if !shard_manifest_matches(
         loaded,
         dataset_name,
         opening_sfen,
+        opening_source,
+        opening_split,
         plan,
         &manifest,
+        &expected_semantic_identity,
         allow_identity_mismatch,
     )? {
         return Ok(None);
@@ -1024,20 +4742,91 @@ fn shard_manifest_matches(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     plan: ShardPlan,
     manifest: &ShardManifest,
+    expected_semantic_identity: &str,
     ignore_identity: bool,
 ) -> Result<bool> {
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let requested_game_count = match dataset_name {
+        "train" => loaded.config.data.train_games,
+        "validation" => loaded.config.data.validation_games,
+        _ => bail!("unknown dataset split `{dataset_name}`"),
+    };
+    let expected_schedule_identity =
+        schedule_identity_sha256(loaded, dataset_name, requested_game_count, Some(plan))?;
+    let semantic_identity_matches = manifest.generation_semantic_identity_version
+        == GENERATION_SEMANTIC_IDENTITY_VERSION
+        && manifest.generation_semantic_identity_sha256 == expected_semantic_identity;
+    let legacy_config_identity_matches = manifest.generation_semantic_identity_version.is_empty()
+        && manifest.config_hash == loaded.hash_hex;
+    let schedule_extension_config_mismatch = manifest.generation_semantic_identity_version
+        == GENERATION_SEMANTIC_IDENTITY_VERSION
+        && manifest.schedule_identity_version == SCHEDULE_IDENTITY_VERSION
+        && manifest.schedule_identity_sha256 != expected_schedule_identity;
+    let config_identity_matches = if semantic_identity_matches {
+        manifest.config_hash == loaded.hash_hex || schedule_extension_config_mismatch
+    } else {
+        legacy_config_identity_matches
+    };
     Ok(manifest.dataset == dataset_name
         && manifest.ruleset == loaded.config.rules.ruleset
         && manifest.rule_id == loaded.effective_rule_id()?
         && manifest.opening_sfen == opening_sfen
+        && (ignore_identity
+            || (manifest.opening_policy == opening_source.policy()
+                && manifest.opening_suite_id.as_deref() == opening_source.suite_id()
+                && manifest.opening_suite_sha256.as_deref() == opening_source.suite_sha256()
+                && manifest.opening_transformation == opening_source.transformation()
+                && manifest.split_policy == loaded.config.data.split_policy.manifest_name()
+                && manifest.split_seed == loaded.config.data.split_seed
+                && manifest.train_opening_ids == opening_split.train_ids
+                && manifest.validation_opening_ids == opening_split.validation_ids
+                && manifest.validation_opening_schedule
+                    == opening_split.validation_schedule.manifest_name()
+                && manifest.validation_opening_pairs_per_id
+                    == opening_split.validation_pairs_per_id
+                && manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name()
+                && manifest.shuffle_seed == loaded.config.data.shuffle_seed
+                && manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records))
         && manifest.game_start == plan.game_start
         && manifest.game_count == plan.game_count
-        && manifest.search_depth == loaded.config.data.search_depth
-        && manifest.label_search_depth() == loaded.config.data.search_depth
+        && manifest.search_depth == label_budget.legacy_search_depth()
+        && manifest.label_search_depth() == label_budget.max_depth()
+        && manifest.label_search_budget() == label_budget.manifest_name()
+        && manifest.label_search_nodes == label_budget.nodes()
+        && manifest.label_search_max_depth() == label_budget.max_depth()
+        && manifest.node_counting_version_matches(label_budget)
+        && manifest.position_policy() == loaded.config.data.position_policy.manifest_name()
+        && manifest.training_trace_version_matches(loaded.config.data.position_policy)
+        && manifest.incomplete_label_policy()
+            == loaded.config.data.incomplete_label_policy.manifest_name()
+        && manifest.label_retry_policy == loaded.config.data.label_retry_policy.manifest_name()
+        && manifest.max_label_attempts_per_game == loaded.config.data.max_label_attempts_per_game
+        && manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION
+        && manifest.candidate_roots_per_game == loaded.config.data.max_candidate_roots_per_game
+        && (manifest.candidate_identity_version.is_empty()
+            || manifest.candidate_identity_version == CANDIDATE_IDENTITY_VERSION)
+        && (manifest.generation_semantic_identity_version != GENERATION_SEMANTIC_IDENTITY_VERSION
+            || (manifest.rollout_candidate_limit == loaded.config.data.rollout_candidate_limit
+                && manifest.rollout_score_margin == loaded.config.data.rollout_score_margin
+                && manifest.rollout_temperature == loaded.config.data.rollout_temperature
+                && manifest.rollout_rng_version == loaded.config.data.rollout_rng_version
+                && manifest.feature_family == loaded.training_features()))
+        && (manifest.feature_family.is_empty()
+            || manifest.feature_family == loaded.training_features())
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
-        && (ignore_identity || manifest.config_hash == loaded.hash_hex)
+        && (ignore_identity
+            || manifest.self_play_move_policy
+                == loaded.config.data.self_play_move_policy.manifest_name())
+        && (ignore_identity
+            || (manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name()
+                && manifest.sample_after_opening
+                    == loaded.config.data.sampling_policy.samples_after_opening()
+                && manifest.teacher_move_encoding == TEACHER_MOVE_ENCODING))
+        && (ignore_identity || config_identity_matches)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
 }
@@ -1061,14 +4850,16 @@ enum MismatchChoice {
     Regenerate,
 }
 
-/// Decides whether resumed shards with a mismatching git revision or config hash
-/// may be reused. Returns `true` when such shards should be reused as-is.
+/// Decides whether resumed shards with a mismatching generation identity may be
+/// reused. Returns `true` when such shards should be reused as-is.
 #[allow(clippy::too_many_arguments)]
 fn resolve_identity_mismatch(
     loaded: &LoadedConfig,
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
     resume: bool,
@@ -1085,6 +4876,8 @@ fn resolve_identity_mismatch(
         artifacts,
         teacher,
         opening_sfen,
+        opening_source,
+        opening_split,
         engine_revision,
         shard_selector,
     )?;
@@ -1098,7 +4891,7 @@ fn resolve_identity_mismatch(
     };
     match prompt_identity_mismatch_choice(percent)? {
         MismatchChoice::Abort => bail!(
-            "aborting: existing shards have a mismatching git revision and/or config hash. \
+            "aborting: existing shards have a mismatching generation identity (config, engine, opening, sampling, self-play move, and/or teacher-move contract). \
              Re-run with --ignore-identity-mismatch to reuse them, or with --no-resume to regenerate."
         ),
         MismatchChoice::Reuse => Ok(true),
@@ -1114,6 +4907,8 @@ fn detect_identity_mismatch(
     artifacts: &ArtifactPaths,
     teacher: &Teacher,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     engine_revision: &Option<String>,
     shard_selector: ShardSelector,
 ) -> Result<(u32, u32)> {
@@ -1125,6 +4920,17 @@ fn detect_identity_mismatch(
     ] {
         let shards_dir = artifacts.datasets_dir.join("shards").join(dataset_name);
         let plans = shard_plans(game_count, loaded.config.data.shard_games, shard_selector);
+        let build_mode = teacher_build_mode(loaded, teacher);
+        let expected_semantic_identity = generation_semantic_identity_sha256(
+            loaded,
+            dataset_name,
+            opening_sfen,
+            opening_source,
+            opening_split,
+            &build_mode,
+            teacher.bootstrap_sha256(),
+            engine_revision.as_deref(),
+        )?;
         for plan in plans {
             total_games += plan.game_count;
             let manifest_path = shards_dir.join(format!("shard-{:06}.json", plan.shard_index));
@@ -1145,11 +4951,29 @@ fn detect_identity_mismatch(
                 continue;
             }
             let strict =
-                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, false)?
-                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
+                shard_manifest_matches(
+                    loaded,
+                    dataset_name,
+                    opening_sfen,
+                    opening_source,
+                    opening_split,
+                    plan,
+                    &manifest,
+                    &expected_semantic_identity,
+                    false,
+                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
             let relaxed =
-                shard_manifest_matches(loaded, dataset_name, opening_sfen, plan, &manifest, true)?
-                    && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
+                shard_manifest_matches(
+                    loaded,
+                    dataset_name,
+                    opening_sfen,
+                    opening_source,
+                    opening_split,
+                    plan,
+                    &manifest,
+                    &expected_semantic_identity,
+                    true,
+                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
             if relaxed && !strict {
                 mismatched_games += plan.game_count;
             }
@@ -1164,7 +4988,7 @@ fn prompt_identity_mismatch_choice(percent: f64) -> Result<MismatchChoice> {
     let mut err = stderr();
     let _ = writeln!(
         err,
-        "Identity mismatch (git revision and/or config hash) found in existing shards \
+        "Generation identity mismatch found in existing shards \
          covering {percent:.1}% of this run's data."
     );
     if !stdin().is_terminal() || !err.is_terminal() {
@@ -1198,16 +5022,30 @@ fn generate_game_entries(
     loaded: &LoadedConfig,
     teacher: &Teacher,
     search_workspace: &mut SearchWorkspace,
-    opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     game_index: u32,
 ) -> Result<GameEntries> {
-    let mut rng =
-        StdRng::seed_from_u64(game_seed(loaded.config.data.seed, dataset_name, game_index));
-    let mut board = Board::from_sfen(opening_sfen)
+    let seed = game_seed(loaded.config.data.seed, dataset_name, game_index);
+    let pair_seed = game_seed(loaded.config.data.seed, dataset_name, game_index / 2);
+    let selected_opening =
+        opening_source.select(dataset_name, opening_split, pair_seed, game_index)?;
+    let mut rng = StdRng::seed_from_u64(seed);
+    let sample_origin = sampling_origin(
+        seed,
+        loaded.config.data.sampling_policy,
+        loaded.config.data.sample_start_ply,
+        loaded.config.data.opening_random_plies,
+        loaded.config.data.sample_every_ply,
+    );
+    let mut board = Board::from_sfen(&selected_opening.sfen)
         .map_err(|err| anyhow!("failed to parse opening SFEN: {err}"))?;
     let mut samples = Vec::new();
     let mut played_plies = 0u16;
     let mut stats = SearchUseStats::default();
+    let label_search_budget = loaded.config.data.label_search_budget()?;
+    let mut attempted_candidate_roots = 0u16;
+    let mut candidate_identity_hasher = Sha256::new();
 
     while played_plies < loaded.config.data.max_plies {
         if !has_both_kings(&board) {
@@ -1218,23 +5056,76 @@ fn generate_game_entries(
             break;
         }
 
-        let should_sample = played_plies >= loaded.config.data.sample_start_ply
-            && (played_plies - loaded.config.data.sample_start_ply)
-                % loaded.config.data.sample_every_ply
-                == 0
-            && samples.len() < usize::from(loaded.config.data.max_positions_per_game);
-        let needs_rollout_search =
-            played_plies >= loaded.config.data.opening_random_plies && !should_sample;
+        let candidate_limit_available = if loaded.config.data.label_retry_policy.is_adaptive() {
+            samples.len() < usize::from(loaded.config.data.max_positions_per_game)
+                && attempted_candidate_roots
+                    < loaded
+                        .config
+                        .data
+                        .max_label_attempts_per_game
+                        .expect("validated adaptive retry attempt cap")
+        } else {
+            match loaded.config.data.max_candidate_roots_per_game {
+                Some(limit) => attempted_candidate_roots < limit,
+                None => samples.len() < usize::from(loaded.config.data.max_positions_per_game),
+            }
+        };
+        let should_sample = played_plies >= sample_origin
+            && (played_plies - sample_origin) % loaded.config.data.sample_every_ply == 0
+            && candidate_limit_available;
+        let needs_rollout_search = played_plies >= loaded.config.data.opening_random_plies
+            && (loaded.config.data.self_play_move_policy.is_rollout_policy() || !should_sample);
         let label_summary = if should_sample {
-            let summary =
-                teacher.search(&board, loaded.config.data.search_depth, search_workspace)?;
+            attempted_candidate_roots += 1;
+            update_candidate_identity(
+                &mut candidate_identity_hasher,
+                game_index,
+                played_plies,
+                &board,
+            );
+            let summary = teacher.search_label(
+                &board,
+                label_search_budget,
+                loaded.config.data.position_policy,
+                search_workspace,
+            )?;
             stats.record_label(&summary);
-            Some(summary)
+            let summary = apply_incomplete_label_policy(
+                summary,
+                label_search_budget,
+                loaded.config.data.incomplete_label_policy,
+                board.side_to_move(),
+                played_plies,
+                &mut stats,
+            )?;
+            match summary {
+                Some(summary)
+                    if loaded.config.data.label_retry_policy.is_adaptive()
+                        && !label_node_accounting_is_exact(&summary, label_search_budget) =>
+                {
+                    let root_side = board.side_to_move();
+                    stats.record_candidate(root_side);
+                    stats.rejected_node_accounting_positions += 1;
+                    stats.position_selection.record_node_accounting(root_side);
+                    *stats
+                        .rejected_node_accounting_root_plies
+                        .entry(played_plies)
+                        .or_default() += 1;
+                    None
+                }
+                summary => summary,
+            }
         } else {
             None
         };
-        let rollout_summary = if needs_rollout_search {
-            let summary = teacher.search(
+        let rollout_summary = if needs_rollout_search
+            && !loaded
+                .config
+                .data
+                .self_play_move_policy
+                .is_searched_stochastic()
+        {
+            let summary = teacher.search_depth(
                 &board,
                 loaded.config.data.rollout_search_depth,
                 search_workspace,
@@ -1244,35 +5135,76 @@ fn generate_game_entries(
         } else {
             None
         };
+        let rollout_decision = if needs_rollout_search
+            && loaded
+                .config
+                .data
+                .self_play_move_policy
+                .is_searched_stochastic()
+        {
+            Some(choose_searched_stochastic_rollout_move(
+                &board,
+                &legal_moves,
+                teacher,
+                loaded.config.data.rollout_search_depth,
+                loaded.config.data.rollout_candidate_limit,
+                loaded.config.data.rollout_score_margin,
+                loaded.config.data.rollout_temperature,
+                loaded.config.data.seed,
+                dataset_name,
+                game_index / 2,
+                played_plies,
+                &loaded.config.data.rollout_rng_version,
+                search_workspace,
+                &mut stats,
+            )?)
+        } else {
+            None
+        };
 
-        if should_sample {
-            let summary = label_summary
-                .as_ref()
-                .ok_or_else(|| anyhow!("teacher search unexpectedly missing"))?;
-            let score = summary
-                .best_score
-                .unwrap_or_else(|| terminal_teacher_score(&board))
-                .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-            samples.push(PendingSample {
-                board: board.clone(),
-                score,
-                game_ply: played_plies,
-                side_to_move: board.side_to_move(),
-            });
+        if let Some(summary) = label_summary.as_ref() {
+            record_pending_sample(
+                loaded.config.data.position_policy,
+                loaded.config.data.label_retry_policy,
+                &board,
+                summary,
+                played_plies,
+                &mut samples,
+                &mut stats,
+            )?;
         }
 
         let mv = if played_plies < loaded.config.data.opening_random_plies {
             legal_moves[rng.random_range(0..legal_moves.len())]
+        } else if let Some(decision) = rollout_decision {
+            decision.move_
         } else {
-            let summary = label_summary
-                .as_ref()
-                .or(rollout_summary.as_ref())
-                .ok_or_else(|| anyhow!("rollout search unexpectedly missing"))?;
+            let summary = select_self_play_search(
+                loaded.config.data.self_play_move_policy,
+                label_summary.as_ref(),
+                rollout_summary.as_ref(),
+            )
+            .ok_or_else(|| anyhow!("self-play move search unexpectedly missing"))?;
             searched_best_move(&board, summary)?
         };
 
         board.play_unchecked(mv);
         played_plies += 1;
+    }
+
+    if loaded.config.data.label_retry_policy.is_adaptive()
+        && label_retry_attempt_cap_exhausted(
+            samples.len(),
+            loaded.config.data.max_positions_per_game,
+            attempted_candidate_roots,
+            loaded
+                .config
+                .data
+                .max_label_attempts_per_game
+                .expect("validated adaptive retry attempt cap"),
+        )
+    {
+        stats.label_retry_exhausted_games += 1;
     }
 
     let outcome = if played_plies >= loaded.config.data.max_plies {
@@ -1288,6 +5220,7 @@ fn generate_game_entries(
             haitaka::GameStatus::Ongoing => GameOutcome::Draw,
         }
     };
+    stats.position_selection.record_rejection_outcomes(outcome);
 
     let mut entries = Vec::with_capacity(samples.len() * ENTRY_BYTES);
     for sample in samples {
@@ -1302,10 +5235,164 @@ fn generate_game_entries(
             game_result,
         )?;
     }
-    Ok(GameEntries { entries, stats })
+    Ok(GameEntries {
+        entries,
+        stats,
+        opening: selected_opening.metadata,
+        candidate_identity_sha256: format!("{:x}", candidate_identity_hasher.finalize()),
+    })
 }
 
-fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
+fn label_retry_attempt_cap_exhausted(
+    accepted_positions: usize,
+    max_positions_per_game: u16,
+    attempted_candidate_roots: u16,
+    max_label_attempts_per_game: u16,
+) -> bool {
+    accepted_positions < usize::from(max_positions_per_game)
+        && attempted_candidate_roots >= max_label_attempts_per_game
+}
+
+fn update_candidate_identity(hasher: &mut Sha256, game_index: u32, root_ply: u16, board: &Board) {
+    let board = board.to_string();
+    hasher.update(game_index.to_le_bytes());
+    hasher.update(root_ply.to_le_bytes());
+    hasher.update((board.len() as u32).to_le_bytes());
+    hasher.update(board.as_bytes());
+}
+
+fn record_pending_sample(
+    position_policy: PositionPolicy,
+    label_retry_policy: LabelRetryPolicy,
+    root_board: &Board,
+    summary: &TeacherSearchSummary,
+    root_ply: u16,
+    samples: &mut Vec<PendingSample>,
+    stats: &mut SearchUseStats,
+) -> Result<()> {
+    let root_side = root_board.side_to_move();
+    stats.record_candidate(root_side);
+    match position_policy {
+        PositionPolicy::RootPosition => {
+            if label_retry_policy.is_adaptive()
+                && (!has_both_kings(root_board)
+                    || root_board.status() != haitaka::GameStatus::Ongoing)
+            {
+                stats.rejected_terminal_positions += 1;
+                *stats
+                    .rejected_terminal_root_plies
+                    .entry(root_ply)
+                    .or_default() += 1;
+                stats
+                    .position_selection
+                    .record_terminal(root_side, root_side);
+                return Ok(());
+            }
+            if label_retry_policy.is_adaptive()
+                && summary
+                    .best_score
+                    .is_some_and(|score| score.unsigned_abs() >= SEARCH_MATE_SCORE_THRESHOLD as u32)
+            {
+                stats.rejected_mate_score_positions += 1;
+                *stats.rejected_mate_root_plies.entry(root_ply).or_default() += 1;
+                stats
+                    .position_selection
+                    .record_mate(root_side, Some(root_side));
+                return Ok(());
+            }
+            let score = summary
+                .best_score
+                .unwrap_or_else(|| terminal_teacher_score(root_board))
+                .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+            stats.record_stored_position(root_ply, 0, root_side, root_side);
+            samples.push(PendingSample {
+                board: root_board.clone(),
+                score,
+                game_ply: root_ply,
+                side_to_move: root_board.side_to_move(),
+            });
+        }
+        PositionPolicy::QsearchPvLeaf => match summary.training_trace.as_ref() {
+            Some(trace) if trace.terminal || !has_both_kings(&trace.leaf_board) => {
+                stats.rejected_terminal_positions += 1;
+                *stats
+                    .rejected_terminal_root_plies
+                    .entry(root_ply)
+                    .or_default() += 1;
+                stats
+                    .position_selection
+                    .record_terminal(root_side, trace.leaf_board.side_to_move());
+            }
+            _ if summary
+                .best_score
+                .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD) =>
+            {
+                stats.rejected_mate_score_positions += 1;
+                *stats.rejected_mate_root_plies.entry(root_ply).or_default() += 1;
+                stats.position_selection.record_mate(
+                    root_side,
+                    summary
+                        .training_trace
+                        .as_ref()
+                        .map(|trace| trace.leaf_board.side_to_move()),
+                );
+            }
+            Some(trace) => {
+                let score = trace.static_eval.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                stats.record_stored_position(
+                    root_ply,
+                    trace.root_ply_distance,
+                    root_side,
+                    trace.leaf_board.side_to_move(),
+                );
+                samples.push(PendingSample {
+                    board: trace.leaf_board.clone(),
+                    score,
+                    game_ply: root_ply,
+                    side_to_move: trace.leaf_board.side_to_move(),
+                });
+            }
+            None => {
+                bail!(
+                    "traced teacher search did not produce a qsearch-PV leaf for ordinary root position `{root_board}`"
+                );
+            }
+        },
+    }
+    Ok(())
+}
+
+fn select_self_play_search<'a, T>(
+    policy: SelfPlayMovePolicy,
+    label: Option<&'a T>,
+    rollout: Option<&'a T>,
+) -> Option<&'a T> {
+    match policy {
+        SelfPlayMovePolicy::SearchedStochasticRolloutV1 => rollout,
+        SelfPlayMovePolicy::UniformRolloutV1 => rollout,
+        SelfPlayMovePolicy::LabelOnSampleLegacy => label.or(rollout),
+    }
+}
+
+fn sampling_origin(
+    game_seed: u64,
+    policy: SamplingPolicy,
+    sample_start_ply: u16,
+    opening_random_plies: u16,
+    sample_every_ply: u16,
+) -> u16 {
+    match policy {
+        SamplingPolicy::PerGameRandomV1 => {
+            let base = sample_start_ply.max(opening_random_plies);
+            let phase = (splitmix64(game_seed ^ 0x7361_6d70_6c65_7631)
+                % u64::from(sample_every_ply)) as u16;
+            base.saturating_add(phase)
+        }
+        SamplingPolicy::FixedPhaseLegacy => sample_start_ply,
+    }
+}
+
+fn searched_best_move(board: &Board, summary: &TeacherSearchSummary) -> Result<Move> {
     let best_move = summary
         .best_move
         .as_deref()
@@ -1319,24 +5406,146 @@ fn searched_best_move(board: &Board, summary: &SearchSummary) -> Result<Move> {
     Ok(mv)
 }
 
-fn assemble_shards(shard_results: &[ShardResult], bin_path: &Path) -> Result<u64> {
-    let mut writer = BufWriter::new(
+fn assemble_shards(
+    shard_results: &[ShardResult],
+    bin_path: &Path,
+    policy: ShufflePolicy,
+    shuffle_seed: u64,
+    chunk_records: usize,
+    dataset_name: &str,
+) -> Result<u64> {
+    let sampled_positions = shard_results
+        .iter()
+        .map(|result| result.manifest.sampled_positions)
+        .sum::<u64>();
+    if policy == ShufflePolicy::GameOrderLegacy {
+        let mut writer = BufWriter::new(
+            File::create(bin_path)
+                .with_context(|| format!("failed to create {}", bin_path.display()))?,
+        );
+        for result in shard_results {
+            let mut reader = BufReader::new(
+                File::open(&result.bin_path)
+                    .with_context(|| format!("failed to open {}", result.bin_path.display()))?,
+            );
+            std::io::copy(&mut reader, &mut writer)?;
+        }
+        writer.flush()?;
+        return Ok(sampled_positions);
+    }
+
+    let parent = bin_path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = bin_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("dataset.bin");
+    let temp_dir = parent.join(format!(".{file_name}.shuffle-tmp"));
+    if temp_dir.exists() {
+        fs::remove_dir_all(&temp_dir)
+            .with_context(|| format!("failed to clear {}", temp_dir.display()))?;
+    }
+    fs::create_dir_all(&temp_dir)
+        .with_context(|| format!("failed to create {}", temp_dir.display()))?;
+
+    let split_seed = shuffle_seed
+        ^ match dataset_name {
+            "train" => 0x7472_6169_6e2d_7631,
+            "validation" => 0x7661_6c69_642d_7631,
+            _ => bail!("unknown dataset split `{dataset_name}`"),
+        };
+    let mut records = Vec::<[u8; ENTRY_BYTES]>::with_capacity(chunk_records);
+    let mut chunk_count = 0usize;
+    for result in shard_results {
+        let mut reader = BufReader::with_capacity(
+            SHUFFLE_IO_BUFFER_BYTES,
+            File::open(&result.bin_path)
+                .with_context(|| format!("failed to open {}", result.bin_path.display()))?,
+        );
+        for _ in 0..result.manifest.sampled_positions {
+            let mut record = [0u8; ENTRY_BYTES];
+            reader.read_exact(&mut record)?;
+            records.push(record);
+            if records.len() == chunk_records {
+                write_shuffle_chunk(&temp_dir, &mut records, split_seed, chunk_count)?;
+                chunk_count += 1;
+            }
+        }
+    }
+    if !records.is_empty() {
+        write_shuffle_chunk(&temp_dir, &mut records, split_seed, chunk_count)?;
+        chunk_count += 1;
+    }
+    drop(records);
+
+    let mut writer = BufWriter::with_capacity(
+        SHUFFLE_IO_BUFFER_BYTES,
         File::create(bin_path)
             .with_context(|| format!("failed to create {}", bin_path.display()))?,
     );
-    let mut sampled_positions = 0u64;
-    let mut buffer = Vec::new();
-    for result in shard_results {
-        buffer.clear();
-        File::open(&result.bin_path)
-            .with_context(|| format!("failed to open {}", result.bin_path.display()))?
-            .read_to_end(&mut buffer)
-            .with_context(|| format!("failed to read {}", result.bin_path.display()))?;
-        writer.write_all(&buffer)?;
-        sampled_positions += result.manifest.sampled_positions;
+    let (offset, step) = chunk_permutation(split_seed, chunk_count);
+    for position in 0..chunk_count {
+        let chunk_index = (offset + position.wrapping_mul(step)) % chunk_count;
+        let chunk = temp_dir.join(format!("chunk-{chunk_index:08}.bin"));
+        let mut reader = BufReader::with_capacity(
+            SHUFFLE_IO_BUFFER_BYTES,
+            File::open(&chunk).with_context(|| format!("failed to open {}", chunk.display()))?,
+        );
+        std::io::copy(&mut reader, &mut writer)?;
     }
     writer.flush()?;
+    fs::remove_dir_all(&temp_dir)
+        .with_context(|| format!("failed to remove {}", temp_dir.display()))?;
     Ok(sampled_positions)
+}
+
+fn write_shuffle_chunk(
+    temp_dir: &Path,
+    records: &mut Vec<[u8; ENTRY_BYTES]>,
+    seed: u64,
+    chunk_index: usize,
+) -> Result<()> {
+    let mut rng = StdRng::seed_from_u64(splitmix64(seed ^ chunk_index as u64));
+    records.shuffle(&mut rng);
+    let path = temp_dir.join(format!("chunk-{chunk_index:08}.bin"));
+    let mut writer = BufWriter::with_capacity(
+        SHUFFLE_IO_BUFFER_BYTES,
+        File::create(&path).with_context(|| format!("failed to create {}", path.display()))?,
+    );
+    for record in records.iter() {
+        writer.write_all(record)?;
+    }
+    writer.flush()?;
+    records.clear();
+    Ok(())
+}
+
+fn shuffle_memory_bound_bytes(chunk_records: usize) -> usize {
+    chunk_records
+        .saturating_mul(ENTRY_BYTES)
+        .saturating_add(2 * SHUFFLE_IO_BUFFER_BYTES)
+}
+
+fn chunk_permutation(seed: u64, count: usize) -> (usize, usize) {
+    if count <= 1 {
+        return (0, 1);
+    }
+    let offset = (splitmix64(seed ^ 0x6f66_6673_6574_7631) % count as u64) as usize;
+    let mut step = (splitmix64(seed ^ 0x7374_6570_2d76_3100) % count as u64) as usize;
+    step = step.max(1);
+    while gcd(step, count) != 1 {
+        step += 1;
+        if step == count {
+            step = 1;
+        }
+    }
+    (offset, step)
+}
+
+fn gcd(mut left: usize, mut right: usize) -> usize {
+    while right != 0 {
+        (left, right) = (right, left % right);
+    }
+    left
 }
 
 fn merge_split(
@@ -1347,12 +5556,28 @@ fn merge_split(
     input_dirs: &[PathBuf],
     game_count: u32,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
+    teacher: &Teacher,
+    engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     ignore_identity_mismatch: bool,
 ) -> Result<u64> {
     let started = Instant::now();
+    let build_mode = teacher_build_mode(loaded, teacher);
+    let expected_generation_identity = generation_semantic_identity_sha256(
+        loaded,
+        dataset_name,
+        opening_sfen,
+        opening_source,
+        opening_split,
+        &build_mode,
+        teacher.bootstrap_sha256(),
+        engine_revision.as_deref(),
+    )?;
     let mut by_start = BTreeMap::new();
     let mut teacher_identity = None;
+    let mut generation_identity = None;
     for input_dir in input_dirs {
         let shard_dir = input_dir.join("datasets").join("shards").join(dataset_name);
         if !shard_dir.exists() {
@@ -1373,7 +5598,11 @@ fn merge_split(
                 loaded,
                 dataset_name,
                 opening_sfen,
+                opening_source,
+                opening_split,
                 &mut teacher_identity,
+                &mut generation_identity,
+                &expected_generation_identity,
                 &manifest,
                 ignore_identity_mismatch,
             )
@@ -1408,34 +5637,195 @@ fn merge_split(
         bail!("incomplete {dataset_name} shards: covered {expected_start}/{game_count} games");
     }
 
-    let sampled_positions = assemble_shards(&shard_results, bin_path)?;
+    let sampled_positions = assemble_shards(
+        &shard_results,
+        bin_path,
+        loaded.config.data.shuffle_policy,
+        loaded.config.data.shuffle_seed,
+        loaded.config.data.shuffle_chunk_records,
+        dataset_name,
+    )?;
     let search_stats = shard_results
         .iter()
         .fold(SearchUseStats::default(), |mut stats, result| {
             stats.add(SearchUseStats::from(&result.manifest));
             stats
         });
+    let games = shard_results
+        .iter()
+        .flat_map(|result| result.manifest.games.iter().cloned())
+        .collect::<Vec<_>>();
+    let mut candidate_identity_hasher = Sha256::new();
+    for result in &shard_results {
+        candidate_identity_hasher.update(result.manifest.game_start.to_le_bytes());
+        candidate_identity_hasher.update(result.manifest.candidate_identity_sha256.as_bytes());
+    }
+    let candidate_identity_sha256 = format!("{:x}", candidate_identity_hasher.finalize());
+    let opening_position_selection = aggregate_opening_position_selection(&shard_results);
+    let opening_ids = games
+        .iter()
+        .map(|game| game.opening_id.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let elapsed = started.elapsed();
     let positions_per_second = if elapsed.as_secs_f64() > 0.0 {
         sampled_positions as f64 / elapsed.as_secs_f64()
     } else {
         0.0
     };
+    let label_budget = loaded.config.data.label_search_budget()?;
+    let label_search_total_nodes = search_stats
+        .label_search_states
+        .saturating_add(search_stats.label_search_qnodes);
+    let label_nodes_per_search = if search_stats.label_searches == 0 {
+        0.0
+    } else {
+        label_search_total_nodes as f64 / search_stats.label_searches as f64
+    };
+    let first_manifest = shard_results
+        .first()
+        .map(|result| &result.manifest)
+        .ok_or_else(|| anyhow!("cannot assemble an empty {dataset_name} split"))?;
+    let has_generation_identity =
+        first_manifest.generation_semantic_identity_version == GENERATION_SEMANTIC_IDENTITY_VERSION;
+    let generation_semantic_identity_version =
+        first_manifest.generation_semantic_identity_version.clone();
+    let generation_semantic_identity_sha256 =
+        first_manifest.generation_semantic_identity_sha256.clone();
+    let (schedule_identity_version, schedule_identity_sha256) = if has_generation_identity {
+        (
+            SCHEDULE_IDENTITY_VERSION.to_string(),
+            schedule_identity_sha256(loaded, dataset_name, game_count, None)?,
+        )
+    } else {
+        (String::new(), String::new())
+    };
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
+        opening_policy: opening_source.policy().to_string(),
+        opening_suite_id: opening_source.suite_id().map(str::to_string),
+        opening_suite_sha256: opening_source.suite_sha256().map(str::to_string),
+        opening_transformation: opening_source.transformation().to_string(),
+        opening_ids,
+        games,
+        split_policy: loaded.config.data.split_policy.manifest_name().to_string(),
+        split_seed: loaded.config.data.split_seed,
+        train_opening_ids: opening_split.train_ids.clone(),
+        validation_opening_ids: opening_split.validation_ids.clone(),
+        validation_opening_schedule: opening_split
+            .validation_schedule
+            .manifest_name()
+            .to_string(),
+        validation_opening_pairs_per_id: opening_split.validation_pairs_per_id,
+        opening_group_count: opening_split.ids_for(dataset_name)?.len(),
+        opening_group_overlap: opening_split.overlap(),
+        shuffle_policy: loaded
+            .config
+            .data
+            .shuffle_policy
+            .manifest_name()
+            .to_string(),
+        shuffle_seed: loaded.config.data.shuffle_seed,
+        shuffle_chunk_records: loaded.config.data.shuffle_chunk_records,
+        shuffle_memory_bound_bytes: shuffle_memory_bound_bytes(
+            loaded.config.data.shuffle_chunk_records,
+        ),
         game_count,
         completed_games: expected_start,
         sampled_positions,
-        search_depth: loaded.config.data.search_depth,
-        label_search_depth: loaded.config.data.search_depth,
+        search_depth: label_budget.legacy_search_depth(),
+        label_search_depth: label_budget.max_depth(),
+        label_search_budget: label_budget.manifest_name().to_string(),
+        label_search_nodes: label_budget.nodes(),
+        label_search_max_depth: label_budget.max_depth(),
+        node_counting_version: SEARCH_NODE_COUNTING_VERSION.to_string(),
+        position_policy: loaded
+            .config
+            .data
+            .position_policy
+            .manifest_name()
+            .to_string(),
+        training_trace_version: SEARCH_TRAINING_TRACE_VERSION.to_string(),
+        incomplete_label_policy: loaded
+            .config
+            .data
+            .incomplete_label_policy
+            .manifest_name()
+            .to_string(),
+        label_retry_policy: loaded
+            .config
+            .data
+            .label_retry_policy
+            .manifest_name()
+            .to_string(),
+        max_label_attempts_per_game: loaded.config.data.max_label_attempts_per_game,
+        position_selection_audit_version: POSITION_SELECTION_AUDIT_VERSION.to_string(),
+        candidate_positions: search_stats.candidate_positions,
+        candidate_roots_per_game: loaded.config.data.max_candidate_roots_per_game,
+        candidate_identity_version: CANDIDATE_IDENTITY_VERSION.to_string(),
+        candidate_identity_sha256,
+        generation_semantic_identity_version,
+        generation_semantic_identity_sha256,
+        schedule_identity_version,
+        schedule_identity_sha256,
+        minimum_train_boards: loaded.config.data.minimum_train_boards()?,
+        minimum_train_positions: loaded.config.data.minimum_train_positions,
+        rejected_incomplete_label_positions: search_stats.rejected_incomplete_label_positions,
+        rejected_terminal_positions: search_stats.rejected_terminal_positions,
+        rejected_mate_score_positions: search_stats.rejected_mate_score_positions,
+        rejected_node_accounting_positions: search_stats.rejected_node_accounting_positions,
+        label_retry_exhausted_games: search_stats.label_retry_exhausted_games,
+        label_retry_attempts_per_accepted_position: ratio_f64(
+            search_stats.candidate_positions,
+            stored_position_count(&search_stats),
+        ),
+        rejected_incomplete_root_plies: search_stats.rejected_incomplete_root_plies.clone(),
+        rejected_terminal_root_plies: search_stats.rejected_terminal_root_plies.clone(),
+        rejected_mate_root_plies: search_stats.rejected_mate_root_plies.clone(),
+        rejected_node_accounting_root_plies: search_stats
+            .rejected_node_accounting_root_plies
+            .clone(),
+        position_selection: search_stats.position_selection,
+        opening_position_selection,
+        root_ply_min: search_stats.root_ply_min,
+        root_ply_max: search_stats.root_ply_max,
+        leaf_distance_min: search_stats.leaf_distance_min,
+        leaf_distance_max: search_stats.leaf_distance_max,
+        leaf_distance_mean: leaf_distance_mean(&search_stats),
         rollout_search_depth: loaded.config.data.rollout_search_depth,
+        self_play_move_policy: loaded
+            .config
+            .data
+            .self_play_move_policy
+            .manifest_name()
+            .to_string(),
+        rollout_candidate_limit: loaded.config.data.rollout_candidate_limit,
+        rollout_score_margin: loaded.config.data.rollout_score_margin,
+        rollout_temperature: loaded.config.data.rollout_temperature,
+        rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
         label_searches: search_stats.label_searches,
         rollout_searches: search_stats.rollout_searches,
         label_search_states: search_stats.label_search_states,
+        label_search_qnodes: search_stats.label_search_qnodes,
+        label_search_total_nodes,
+        label_nodes_per_search,
         rollout_search_states: search_stats.rollout_search_states,
+        rollout_search_qnodes: search_stats.rollout_search_qnodes,
+        rollout_decisions: search_stats.rollout_decisions,
+        rollout_legal_moves: search_stats.rollout_legal_moves,
+        rollout_candidates_scored: search_stats.rollout_candidates_scored,
+        rollout_candidates_truncated: search_stats.rollout_candidates_truncated,
+        rollout_near_best_candidates: search_stats.rollout_near_best_candidates,
+        rollout_selected_score_gap_sum: search_stats.rollout_selected_score_gap_sum,
+        rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
+        label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
+        rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
+        generation_cpu_seconds: search_stats.label_search_elapsed_seconds
+            + search_stats.rollout_search_elapsed_seconds,
         bootstrap_nnue: teacher_identity
             .as_ref()
             .and_then(|identity| identity.bootstrap_nnue.clone()),
@@ -1446,6 +5836,17 @@ fn merge_split(
             .as_ref()
             .and_then(|identity| identity.engine_revision.clone()),
         config_hash: loaded.hash_hex.clone(),
+        seed: loaded.config.data.seed,
+        feature_family: loaded.training_features().to_string(),
+        sampling_phase: loaded
+            .config
+            .data
+            .sampling_policy
+            .manifest_name()
+            .to_string(),
+        sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
+        teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
+        opening_random_plies: loaded.config.data.opening_random_plies,
         generated_at_unix_ms,
         build_mode: format!("{}+merged", loaded.runtime_mode()),
         entry_bytes: ENTRY_BYTES,
@@ -1472,10 +5873,15 @@ fn validate_merge_shard(
     loaded: &LoadedConfig,
     dataset_name: &str,
     opening_sfen: &str,
+    opening_source: &OpeningSource,
+    opening_split: &OpeningSplit,
     teacher_identity: &mut Option<MergeTeacherIdentity>,
+    generation_identity: &mut Option<MergeGenerationIdentity>,
+    expected_generation_identity: &str,
     manifest: &ShardManifest,
     ignore_identity_mismatch: bool,
 ) -> Result<()> {
+    let label_budget = loaded.config.data.label_search_budget()?;
     ensure_merge(
         manifest.dataset == dataset_name,
         "dataset name does not match",
@@ -1492,13 +5898,104 @@ fn validate_merge_shard(
         manifest.opening_sfen == opening_sfen,
         "opening_sfen does not match",
     )?;
+    validate_merge_teacher_identity(teacher_identity, manifest, ignore_identity_mismatch)?;
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.opening_policy == opening_source.policy(),
+            "opening_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_suite_id.as_deref() == opening_source.suite_id(),
+            "opening_suite_id does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_suite_sha256.as_deref() == opening_source.suite_sha256(),
+            "opening_suite_sha256 does not match",
+        )?;
+        ensure_merge(
+            manifest.opening_transformation == opening_source.transformation(),
+            "opening_transformation does not match",
+        )?;
+        ensure_merge(
+            manifest.split_policy == loaded.config.data.split_policy.manifest_name(),
+            "split_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.split_seed == loaded.config.data.split_seed,
+            "split_seed does not match",
+        )?;
+        ensure_merge(
+            manifest.train_opening_ids == opening_split.train_ids
+                && manifest.validation_opening_ids == opening_split.validation_ids,
+            "opening split groups do not match",
+        )?;
+        ensure_merge(
+            manifest.validation_opening_schedule
+                == opening_split.validation_schedule.manifest_name(),
+            "validation_opening_schedule does not match",
+        )?;
+        ensure_merge(
+            manifest.validation_opening_pairs_per_id == opening_split.validation_pairs_per_id,
+            "validation_opening_pairs_per_id does not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_policy == loaded.config.data.shuffle_policy.manifest_name(),
+            "shuffle_policy does not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_seed == loaded.config.data.shuffle_seed,
+            "shuffle_seed does not match",
+        )?;
+        ensure_merge(
+            manifest.shuffle_chunk_records == loaded.config.data.shuffle_chunk_records,
+            "shuffle_chunk_records does not match",
+        )?;
+    }
+    validate_merge_generation_identity(
+        generation_identity,
+        expected_generation_identity,
+        manifest,
+    )?;
     ensure_merge(
-        manifest.search_depth == loaded.config.data.search_depth,
+        manifest.search_depth == label_budget.legacy_search_depth(),
         "search_depth does not match",
     )?;
     ensure_merge(
-        manifest.label_search_depth() == loaded.config.data.search_depth,
+        manifest.label_search_depth() == label_budget.max_depth(),
         "label_search_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_budget() == label_budget.manifest_name(),
+        "label_search_budget does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_nodes == label_budget.nodes(),
+        "label_search_nodes does not match",
+    )?;
+    ensure_merge(
+        manifest.label_search_max_depth() == label_budget.max_depth(),
+        "label_search_max_depth does not match",
+    )?;
+    ensure_merge(
+        manifest.node_counting_version_matches(label_budget),
+        "node_counting_version does not match",
+    )?;
+    ensure_merge(
+        manifest.position_policy() == loaded.config.data.position_policy.manifest_name(),
+        "position_policy does not match",
+    )?;
+    ensure_merge(
+        manifest.training_trace_version_matches(loaded.config.data.position_policy),
+        "training_trace_version does not match",
+    )?;
+    ensure_merge(
+        manifest.incomplete_label_policy()
+            == loaded.config.data.incomplete_label_policy.manifest_name(),
+        "incomplete_label_policy does not match",
+    )?;
+    ensure_merge(
+        manifest.position_selection_audit_version == POSITION_SELECTION_AUDIT_VERSION,
+        "position_selection_audit_version does not match",
     )?;
     ensure_merge(
         manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth,
@@ -1506,15 +6003,93 @@ fn validate_merge_shard(
     )?;
     if !ignore_identity_mismatch {
         ensure_merge(
-            manifest.config_hash == loaded.hash_hex,
+            manifest.self_play_move_policy
+                == loaded.config.data.self_play_move_policy.manifest_name(),
+            "self_play_move_policy does not match",
+        )?;
+    }
+    if !ignore_identity_mismatch {
+        ensure_merge(
+            manifest.sampling_phase == loaded.config.data.sampling_policy.manifest_name(),
+            "sampling_phase does not match",
+        )?;
+        ensure_merge(
+            manifest.sample_after_opening
+                == loaded.config.data.sampling_policy.samples_after_opening(),
+            "sample_after_opening does not match",
+        )?;
+        ensure_merge(
+            manifest.teacher_move_encoding == TEACHER_MOVE_ENCODING,
+            "teacher_move_encoding does not match",
+        )?;
+    }
+    if !ignore_identity_mismatch {
+        let requested_game_count = match dataset_name {
+            "train" => loaded.config.data.train_games,
+            "validation" => loaded.config.data.validation_games,
+            _ => unreachable!("dataset name was checked above"),
+        };
+        let expected_schedule_identity = schedule_identity_sha256(
+            loaded,
+            dataset_name,
+            requested_game_count,
+            Some(ShardPlan {
+                shard_index: manifest.shard_index,
+                game_start: manifest.game_start,
+                game_count: manifest.game_count,
+            }),
+        )?;
+        let schedule_extension = manifest.generation_semantic_identity_version
+            == GENERATION_SEMANTIC_IDENTITY_VERSION
+            && manifest.schedule_identity_version == SCHEDULE_IDENTITY_VERSION
+            && manifest.schedule_identity_sha256 != expected_schedule_identity;
+        ensure_merge(
+            manifest.config_hash == loaded.hash_hex || schedule_extension,
             "config_hash does not match. If you're sure to continue merging using mismatching identity, rerun with --ignore-identity-mismatch flag",
         )?;
     }
-    validate_merge_teacher_identity(teacher_identity, manifest, ignore_identity_mismatch)?;
     ensure_merge(
         manifest.entry_bytes == ENTRY_BYTES,
         "entry_bytes does not match",
     )?;
+    Ok(())
+}
+
+fn validate_merge_generation_identity(
+    expected: &mut Option<MergeGenerationIdentity>,
+    expected_sha256: &str,
+    manifest: &ShardManifest,
+) -> Result<()> {
+    let version = manifest.generation_semantic_identity_version.as_str();
+    let sha256 = manifest.generation_semantic_identity_sha256.as_str();
+    if version.is_empty() {
+        ensure_merge(
+            sha256.is_empty(),
+            "generation semantic identity hash is present without a version",
+        )?;
+    } else {
+        ensure_merge(
+            version == GENERATION_SEMANTIC_IDENTITY_VERSION,
+            "unsupported generation semantic identity version",
+        )?;
+        ensure_merge(
+            sha256 == expected_sha256,
+            "generation semantic identity does not match the configured teacher, opening, seed, rollout, sampling, label budget, feature, or ABI contract",
+        )?;
+    }
+
+    let current = MergeGenerationIdentity {
+        version: version.to_string(),
+        sha256: sha256.to_string(),
+    };
+    if let Some(expected) = expected.as_ref() {
+        ensure_merge(
+            current == *expected,
+            "generation semantic identity does not match across shards",
+        )?;
+    } else {
+        *expected = Some(current);
+    }
     Ok(())
 }
 
@@ -1864,6 +6439,75 @@ mod tests {
     }
 
     #[test]
+    fn adaptive_retry_exhaustion_requires_the_attempt_cap() {
+        assert!(!label_retry_attempt_cap_exhausted(10, 64, 10, 72));
+        assert!(label_retry_attempt_cap_exhausted(10, 64, 72, 72));
+        assert!(!label_retry_attempt_cap_exhausted(64, 64, 72, 72));
+    }
+
+    #[test]
+    fn per_game_sampling_phase_covers_both_parities_and_starts_after_opening() {
+        let origins = (0..100)
+            .map(|game_index| {
+                sampling_origin(
+                    game_seed(75, "train", game_index),
+                    SamplingPolicy::PerGameRandomV1,
+                    8,
+                    16,
+                    2,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert!(origins.iter().all(|&ply| ply >= 16));
+        assert!(origins.iter().any(|ply| ply % 2 == 0));
+        assert!(origins.iter().any(|ply| ply % 2 == 1));
+
+        let repeated = (0..100)
+            .map(|game_index| {
+                sampling_origin(
+                    game_seed(75, "train", game_index),
+                    SamplingPolicy::PerGameRandomV1,
+                    8,
+                    16,
+                    2,
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(origins, repeated);
+    }
+
+    #[test]
+    fn uniform_rollout_never_uses_the_label_search_for_self_play() {
+        let label = "depth-3-label";
+        let rollout = "depth-1-rollout";
+
+        assert_eq!(
+            select_self_play_search(
+                SelfPlayMovePolicy::UniformRolloutV1,
+                Some(&label),
+                Some(&rollout),
+            ),
+            Some(&rollout)
+        );
+        assert_eq!(
+            select_self_play_search(
+                SelfPlayMovePolicy::LabelOnSampleLegacy,
+                Some(&label),
+                Some(&rollout),
+            ),
+            Some(&label)
+        );
+    }
+
+    #[test]
+    fn legacy_sampling_requires_the_explicit_fixed_phase_policy() {
+        assert_eq!(
+            sampling_origin(123, SamplingPolicy::FixedPhaseLegacy, 8, 16, 2),
+            8
+        );
+    }
+
+    #[test]
     fn packer_preserves_feature_signature() {
         let board = Board::from_sfen(
             "lnsgkgsnl/1r5b1/pppp1pppp/4p4/4+P4/9/PPPP1PPPP/1B5R1/LNSGKGSNL b - 3",
@@ -2052,6 +6696,25 @@ run_search_smoke = false
     }
 
     #[test]
+    fn generate_data_rejects_a_configured_missing_bootstrap_nnue() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("missing-bootstrap.toml");
+        let config = deterministic_test_config(active_test_ruleset(), "out").replace(
+            "\n[data]",
+            "\nbootstrap_nnue = \"missing-bootstrap.nnue\"\n\n[data]",
+        );
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let missing_bootstrap = loaded.bootstrap_nnue().unwrap();
+
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+
+        assert!(error.contains("paths.bootstrap_nnue is configured but could not be read"));
+        assert!(error.contains(&missing_bootstrap.display().to_string()));
+        assert!(!loaded.artifact_paths().output_dir.exists());
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -2119,6 +6782,261 @@ run_search_smoke = false
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
+    fn searched_stochastic_generation_is_deterministic_across_jobs_and_shard_lanes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("searched-stochastic.toml");
+        fs::write(&config_path, adaptive_retry_test_config("out")).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let artifacts = loaded.artifact_paths();
+        let options = |jobs, shard_index, shard_count| GenerateOptions {
+            jobs: Some(jobs),
+            resume: Some(false),
+            shard_index,
+            shard_index_end: shard_index,
+            shard_count,
+            ignore_identity_mismatch: false,
+        };
+
+        generate_data_with_options(&loaded, options(1, None, None)).unwrap();
+        let expected_train = fs::read(&artifacts.train_bin).unwrap();
+        let expected_validation = fs::read(&artifacts.validation_bin).unwrap();
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(&artifacts.train_manifest).unwrap()).unwrap();
+        assert_eq!(
+            manifest["label_retry_policy"].as_str(),
+            Some("root-position-adaptive-retry-v1")
+        );
+        assert_eq!(manifest["max_label_attempts_per_game"].as_u64(), Some(4));
+        assert_eq!(manifest["label_retry_exhausted_games"].as_u64(), Some(0));
+        assert_eq!(
+            manifest["label_retry_attempts_per_accepted_position"].as_f64(),
+            Some(1.0)
+        );
+        fs::rename(&artifacts.output_dir, temp.path().join("full-jobs-one")).unwrap();
+
+        generate_data_with_options(&loaded, options(2, None, None)).unwrap();
+        assert_eq!(fs::read(&artifacts.train_bin).unwrap(), expected_train);
+        assert_eq!(
+            fs::read(&artifacts.validation_bin).unwrap(),
+            expected_validation
+        );
+        fs::rename(&artifacts.output_dir, temp.path().join("full-jobs-two")).unwrap();
+
+        let mut lanes = Vec::new();
+        for lane in 0..2 {
+            generate_data_with_options(&loaded, options(2, Some(lane), Some(2))).unwrap();
+            let lane_path = temp.path().join(format!("lane-{lane}"));
+            fs::rename(&artifacts.output_dir, &lane_path).unwrap();
+            lanes.push(lane_path);
+        }
+        merge_data(&loaded, &lanes, false).unwrap();
+        assert_eq!(fs::read(&artifacts.train_bin).unwrap(), expected_train);
+        assert_eq!(
+            fs::read(&artifacts.validation_bin).unwrap(),
+            expected_validation
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn suite_generation_records_deterministic_color_swapped_pair_metadata() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let config_path = temp.path().join("suite.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert_eq!(manifest["opening_policy"], "suite");
+        assert_eq!(manifest["opening_suite_id"], "anhoku-v1");
+        assert_eq!(
+            manifest["opening_transformation"],
+            "anhoku-rotate180-color-swap-v1"
+        );
+        assert_eq!(manifest["games"].as_array().unwrap().len(), 4);
+        for pair in manifest["games"].as_array().unwrap().chunks_exact(2) {
+            assert_eq!(pair[0]["opening_id"], pair[1]["opening_id"]);
+            assert_eq!(pair[0]["color"], "base");
+            assert_eq!(pair[1]["color"], "swapped");
+            assert_ne!(pair[0]["sfen"], pair[1]["sfen"]);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn grouped_split_and_bounded_shuffle_are_disjoint_and_deterministic() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let first_config = temp.path().join("first.toml");
+        let second_config = temp.path().join("second.toml");
+        fs::write(
+            &first_config,
+            suite_test_config("out-first", &suite.display().to_string()),
+        )
+        .unwrap();
+        fs::write(
+            &second_config,
+            suite_test_config("out-second", &suite.display().to_string()),
+        )
+        .unwrap();
+        let first = LoadedConfig::from_path(&first_config).unwrap();
+        let second = LoadedConfig::from_path(&second_config).unwrap();
+        generate_data(&first).unwrap();
+        generate_data(&second).unwrap();
+
+        let first_artifacts = first.artifact_paths();
+        let second_artifacts = second.artifact_paths();
+        assert_eq!(
+            fs::read(&first_artifacts.train_bin).unwrap(),
+            fs::read(&second_artifacts.train_bin).unwrap()
+        );
+        assert_eq!(
+            fs::read(&first_artifacts.validation_bin).unwrap(),
+            fs::read(&second_artifacts.validation_bin).unwrap()
+        );
+
+        let train: serde_json::Value =
+            serde_json::from_slice(&fs::read(&first_artifacts.train_manifest).unwrap()).unwrap();
+        let validation: serde_json::Value =
+            serde_json::from_slice(&fs::read(&first_artifacts.validation_manifest).unwrap())
+                .unwrap();
+        let train_openings = train["opening_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|id| id.as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        let validation_openings = validation["opening_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|id| id.as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert!(train_openings.is_disjoint(&validation_openings));
+        let train_games = train["games"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|game| game["game_id"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        let validation_games = validation["games"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|game| game["game_id"].as_str().unwrap())
+            .collect::<BTreeSet<_>>();
+        assert!(train_games.is_disjoint(&validation_games));
+        assert_eq!(train["opening_group_overlap"].as_array().unwrap().len(), 0);
+        assert_eq!(
+            train["shuffle_memory_bound_bytes"],
+            shuffle_memory_bound_bytes(2)
+        );
+        let audit = serde_json::to_value(
+            crate::dataset_audit::audit_dataset(
+                &first_artifacts.train_bin,
+                &first_artifacts.train_manifest,
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(audit["groups"]["opening_group_overlap_count"], 0);
+        assert_eq!(audit["groups"]["unique_game_ids"], 4);
+
+        let raw = [0_u32, 1]
+            .into_iter()
+            .flat_map(|index| {
+                fs::read(
+                    first_artifacts
+                        .datasets_dir
+                        .join("shards/train")
+                        .join(format!("shard-{index:06}.bin")),
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
+        assert_ne!(fs::read(&first_artifacts.train_bin).unwrap(), raw);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn resume_and_merge_reject_split_and_shuffle_identity_mismatches() {
+        let temp = tempdir().unwrap();
+        let suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let config_path = temp.path().join("phase3.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["split_seed"] = serde_json::json!(999);
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["split_seed"] = serde_json::json!(76);
+            manifest["shuffle_seed"] = serde_json::json!(999);
+        });
+        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(error.contains("shuffle_seed does not match"));
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn suite_content_change_invalidates_resume_and_merge_identity() {
+        let temp = tempdir().unwrap();
+        let source_suite = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("openings")
+            .join("anhoku-v1.tsv");
+        let suite = temp.path().join("suite.tsv");
+        fs::copy(source_suite, &suite).unwrap();
+        let config_path = temp.path().join("suite.toml");
+        fs::write(
+            &config_path,
+            suite_test_config("out", &suite.display().to_string()),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        let mut changed = fs::read_to_string(&suite).unwrap();
+        changed.push_str("# identity change\n");
+        fs::write(&suite, changed).unwrap();
+        let changed_loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let error = format!("{:#}", generate_data(&changed_loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        let error = format!(
+            "{:#}",
+            merge_data(&changed_loaded, &[input], false).unwrap_err()
+        );
+        assert!(error.contains("opening_suite_sha256 does not match"));
+    }
+
+    #[test]
     #[cfg(any(
         feature = "annan",
         feature = "anhoku",
@@ -2158,6 +7076,43 @@ run_search_smoke = false
                 .unwrap();
         assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
         assert_eq!(manifest["generated_shards"].as_u64().unwrap(), 0);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn resume_rejects_sampling_self_play_and_teacher_move_mismatches_without_override() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-contract.toml");
+        fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("fixed-phase-legacy".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String(TEACHER_MOVE_ENCODING.to_string());
+            manifest["self_play_move_policy"] =
+                serde_json::Value::String("uniform-rollout-v1".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
+
+        mutate_first_shard_manifest(&loaded, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String("legacy-ambiguous-u16".to_string());
+        });
+        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
+        assert!(error.contains("--ignore-identity-mismatch"));
     }
 
     #[test]
@@ -2202,6 +7157,126 @@ run_search_smoke = false
             serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
                 .unwrap();
         assert!(manifest["generated_shards"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn resume_regenerates_fixed_node_shards_when_budget_identity_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-fixed-node-identity.toml");
+        let config = fixed_node_counter_test_config(active_test_ruleset(), "out")
+            .replace("resume = false", "resume = true");
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let mismatches = [
+            (
+                "label_search_budget",
+                serde_json::Value::String("depth".into()),
+            ),
+            ("label_search_nodes", serde_json::Value::from(4_999)),
+            ("label_search_max_depth", serde_json::Value::from(63)),
+            (
+                "node_counting_version",
+                serde_json::Value::String("different-node-contract".into()),
+            ),
+            (
+                "incomplete_label_policy",
+                serde_json::Value::String("reject-position".into()),
+            ),
+        ];
+        for (field, value) in mismatches {
+            mutate_first_shard_manifest(&loaded, "train", |manifest| {
+                manifest[field] = value;
+            });
+            generate_data(&loaded).unwrap();
+            let manifest: serde_json::Value = serde_json::from_slice(
+                &fs::read(loaded.artifact_paths().train_manifest.clone()).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                manifest["generated_shards"].as_u64().unwrap() > 0,
+                "{field} mismatch should regenerate its shard"
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn resume_regenerates_qsearch_leaf_shards_when_trace_identity_changes() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("resume-qsearch-leaf-identity.toml");
+        let config = qsearch_leaf_test_config(active_test_ruleset(), "out")
+            .replace("resume = false", "resume = true");
+        fs::write(&config_path, config).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let mismatches = [
+            (
+                "position_policy",
+                serde_json::Value::String("root-position".into()),
+            ),
+            (
+                "training_trace_version",
+                serde_json::Value::String("different-trace-contract".into()),
+            ),
+        ];
+        for (field, value) in mismatches {
+            mutate_first_shard_manifest(&loaded, "train", |manifest| {
+                manifest[field] = value;
+            });
+            generate_data(&loaded).unwrap();
+            let manifest: serde_json::Value = serde_json::from_slice(
+                &fs::read(loaded.artifact_paths().train_manifest.clone()).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                manifest["generated_shards"].as_u64().unwrap() > 0,
+                "{field} mismatch should regenerate its shard"
+            );
+        }
     }
 
     #[test]
@@ -2384,6 +7459,18 @@ run_search_smoke = false
         let artifacts = loaded.artifact_paths();
         let teacher = Teacher::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
         let engine_revision = detect_git_revision(&loaded).unwrap();
         let selector = ShardSelector::new(None, None, None).unwrap();
 
@@ -2392,6 +7479,8 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -2407,6 +7496,8 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -2426,6 +7517,8 @@ run_search_smoke = false
             &artifacts,
             &teacher,
             &opening_sfen,
+            &opening_source,
+            &opening_split,
             &engine_revision,
             selector,
         )
@@ -2661,6 +7754,137 @@ run_search_smoke = false
 
         let err = format!("{:?}", merge_data(&loaded, &[input], false).unwrap_err());
         assert!(err.contains("rollout_search_depth does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn merge_rejects_fixed_node_counting_version_mismatch() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-fixed-node-version.toml");
+        fs::write(
+            &config_path,
+            fixed_node_counter_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["node_counting_version"] =
+                serde_json::Value::String("different-node-contract".to_string());
+        });
+
+        let err = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(err.contains("node_counting_version does not match"));
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn merge_rejects_qsearch_leaf_trace_version_mismatch() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-qsearch-leaf-version.toml");
+        fs::write(
+            &config_path,
+            qsearch_leaf_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["training_trace_version"] =
+                serde_json::Value::String("different-trace-contract".to_string());
+        });
+
+        let err = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(err.contains("training_trace_version does not match"));
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn merge_rejects_sampling_self_play_and_teacher_move_mismatches() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("merge-contract.toml");
+        fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        generate_data(&loaded).unwrap();
+        let input = temp.path().join("machine-a");
+        fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("fixed-phase-legacy".to_string());
+        });
+        let error = format!(
+            "{:#}",
+            merge_data(&loaded, &[input.clone()], false).unwrap_err()
+        );
+        assert!(error.contains("sampling_phase does not match"));
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["sampling_phase"] =
+                serde_json::Value::String("per-game-random-v1".to_string());
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String("legacy-ambiguous-u16".to_string());
+        });
+        let error = format!(
+            "{:#}",
+            merge_data(&loaded, &[input.clone()], false).unwrap_err()
+        );
+        assert!(error.contains("teacher_move_encoding does not match"));
+
+        mutate_first_shard_manifest_in_dir(&input, "train", |manifest| {
+            manifest["teacher_move_encoding"] =
+                serde_json::Value::String(TEACHER_MOVE_ENCODING.to_string());
+            manifest["self_play_move_policy"] =
+                serde_json::Value::String("uniform-rollout-v1".to_string());
+        });
+        let error = format!("{:#}", merge_data(&loaded, &[input], false).unwrap_err());
+        assert!(error.contains("self_play_move_policy does not match"));
     }
 
     #[test]
@@ -2976,10 +8200,351 @@ seed = 9
         assert_eq!(manifest["search_depth"].as_u64().unwrap(), 2);
         assert_eq!(manifest["label_search_depth"].as_u64().unwrap(), 2);
         assert_eq!(manifest["rollout_search_depth"].as_u64().unwrap(), 1);
+        assert_eq!(manifest["self_play_move_policy"], "uniform-rollout-v1");
         assert_eq!(manifest["label_searches"].as_u64().unwrap(), 3);
-        assert_eq!(manifest["rollout_searches"].as_u64().unwrap(), 3);
+        assert_eq!(manifest["rollout_searches"].as_u64().unwrap(), 6);
         assert!(manifest["label_search_states"].as_u64().unwrap() > 0);
         assert!(manifest["rollout_search_states"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn fixed_node_labels_use_exact_budgets_and_keep_rollouts_depth_limited() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("fixed-node-counters.toml");
+        fs::write(
+            &config_path,
+            fixed_node_counter_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        let label_searches = manifest["label_searches"].as_u64().unwrap();
+        let label_states = manifest["label_search_states"].as_u64().unwrap();
+        let label_qnodes = manifest["label_search_qnodes"].as_u64().unwrap();
+        let label_total = manifest["label_search_total_nodes"].as_u64().unwrap();
+
+        assert_eq!(manifest["search_depth"].as_u64().unwrap(), 0);
+        assert_eq!(manifest["label_search_budget"], "nodes");
+        assert_eq!(manifest["label_search_nodes"].as_u64().unwrap(), 5_000);
+        assert_eq!(manifest["label_search_max_depth"].as_u64().unwrap(), 64);
+        assert_eq!(
+            manifest["node_counting_version"],
+            SEARCH_NODE_COUNTING_VERSION
+        );
+        assert_eq!(manifest["rollout_search_depth"].as_u64().unwrap(), 1);
+        assert_eq!(label_total, label_states + label_qnodes);
+        assert_eq!(label_total, label_searches * 5_000);
+        assert_eq!(
+            manifest["label_nodes_per_search"].as_f64().unwrap(),
+            5_000.0
+        );
+        assert!(manifest["rollout_searches"].as_u64().unwrap() > 0);
+        assert!(manifest["rollout_search_states"].as_u64().unwrap() > 0);
+        assert!(manifest["generation_cpu_seconds"].as_f64().unwrap() >= 0.0);
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        not(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn qsearch_leaf_generation_records_policy_distances_and_rejections() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("qsearch-leaf.toml");
+        fs::write(
+            &config_path,
+            qsearch_leaf_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+
+        generate_data(&loaded).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        let stored = manifest["sampled_positions"].as_u64().unwrap();
+        let candidates = manifest["candidate_positions"].as_u64().unwrap();
+        let terminal = manifest["rejected_terminal_positions"].as_u64().unwrap();
+        let mate = manifest["rejected_mate_score_positions"].as_u64().unwrap();
+        let incomplete = manifest["rejected_incomplete_label_positions"]
+            .as_u64()
+            .unwrap();
+
+        assert_eq!(manifest["position_policy"], "qsearch-pv-leaf");
+        assert_eq!(
+            manifest["training_trace_version"],
+            SEARCH_TRAINING_TRACE_VERSION
+        );
+        assert!(stored > 0);
+        assert_eq!(manifest["candidate_roots_per_game"].as_u64(), Some(2));
+        assert!(candidates <= 2);
+        assert_eq!(candidates, stored + incomplete + terminal + mate);
+        assert!(manifest["leaf_distance_min"].as_u64().unwrap() >= 1);
+        assert!(manifest["leaf_distance_max"].as_u64().unwrap() >= 1);
+        assert!(manifest["leaf_distance_mean"].as_f64().unwrap() >= 1.0);
+        assert!(manifest["root_ply_min"].is_number());
+        assert!(manifest["root_ply_max"].is_number());
+        assert_eq!(
+            manifest["position_selection_audit_version"],
+            POSITION_SELECTION_AUDIT_VERSION
+        );
+        let selection = &manifest["position_selection"];
+        assert_eq!(
+            selection["candidate_root_black"].as_u64().unwrap()
+                + selection["candidate_root_white"].as_u64().unwrap(),
+            candidates
+        );
+        assert_eq!(
+            selection["stored_leaf_distance_even"].as_u64().unwrap()
+                + selection["stored_leaf_distance_odd"].as_u64().unwrap(),
+            stored
+        );
+        assert!(
+            manifest["opening_position_selection"]
+                .as_object()
+                .is_some_and(|openings| !openings.is_empty())
+        );
+    }
+
+    #[test]
+    fn qsearch_leaf_samples_orient_results_to_leaf_and_count_rejections() {
+        let root = Board::startpos();
+        let mut leaf = root.clone();
+        let mv = collect_legal_moves(&leaf)[0];
+        leaf.play_unchecked(mv);
+        assert_ne!(root.side_to_move(), leaf.side_to_move());
+
+        let traced = |best_score, terminal| TeacherSearchSummary {
+            best_move: Some(mv.to_string()),
+            best_score: Some(best_score),
+            states: 1,
+            qnodes: 1,
+            total_nodes: 2,
+            node_limit: None,
+            elapsed_seconds: 0.0,
+            training_trace: Some(SearchTrainingTrace {
+                leaf_board: leaf.clone(),
+                static_eval: 123,
+                root_ply_distance: 1,
+                terminal,
+            }),
+        };
+        let mut samples = Vec::new();
+        let mut stats = SearchUseStats::default();
+
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
+            &root,
+            &traced(123, false),
+            8,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].side_to_move, leaf.side_to_move());
+        assert_eq!(samples[0].score, 123);
+        assert_eq!(samples[0].game_ply, 8);
+        assert_eq!(
+            GameOutcome::Winner(root.side_to_move()).relative_to(samples[0].side_to_move),
+            -1
+        );
+        let pack_sample = |sample: &PendingSample| {
+            let mut bytes = Vec::new();
+            let packed = pack_board_for_training(&sample.board).unwrap();
+            write_training_entry(
+                &mut bytes,
+                &packed,
+                sample.score,
+                0,
+                sample.game_ply,
+                GameOutcome::Winner(root.side_to_move()).relative_to(sample.side_to_move),
+            )
+            .unwrap();
+            bytes
+        };
+        assert_eq!(pack_sample(&samples[0]), pack_sample(&samples[0]));
+
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
+            &root,
+            &traced(123, true),
+            10,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        record_pending_sample(
+            PositionPolicy::QsearchPvLeaf,
+            LabelRetryPolicy::None,
+            &root,
+            &traced(SEARCH_MATE_SCORE_THRESHOLD, false),
+            12,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(stats.candidate_positions, 3);
+        assert_eq!(stats.rejected_terminal_positions, 1);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+        assert_eq!(stats.position_selection.candidate_root_black, 3);
+        assert_eq!(stats.position_selection.stored_root_black_leaf_white, 1);
+        assert_eq!(stats.position_selection.stored_leaf_distance_odd, 1);
+        assert_eq!(stats.position_selection.rejected_terminal_root_black, 1);
+        assert_eq!(stats.position_selection.rejected_terminal_leaf_white, 1);
+        assert_eq!(stats.position_selection.rejected_mate_root_black, 1);
+        assert_eq!(stats.position_selection.rejected_mate_leaf_white, 1);
+        stats
+            .position_selection
+            .record_rejection_outcomes(GameOutcome::Winner(root.side_to_move()));
+        assert_eq!(stats.position_selection.rejected_terminal_game_win, 1);
+        assert_eq!(stats.position_selection.rejected_mate_game_win, 1);
+    }
+
+    #[test]
+    fn adaptive_root_retry_rejects_mate_then_accepts_an_ordinary_label() {
+        let root = Board::startpos();
+        let best_move = collect_legal_moves(&root)[0].to_string();
+        let summary = |score| TeacherSearchSummary {
+            best_move: Some(best_move.clone()),
+            best_score: Some(score),
+            states: 10,
+            qnodes: 5,
+            total_nodes: 15,
+            node_limit: Some(50_000),
+            elapsed_seconds: 0.0,
+            training_trace: None,
+        };
+        let mut samples = Vec::new();
+        let mut stats = SearchUseStats::default();
+
+        record_pending_sample(
+            PositionPolicy::RootPosition,
+            LabelRetryPolicy::RootPositionAdaptiveRetryV1,
+            &root,
+            &summary(SEARCH_MATE_SCORE_THRESHOLD),
+            8,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert!(samples.is_empty());
+        assert_eq!(stats.candidate_positions, 1);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+
+        record_pending_sample(
+            PositionPolicy::RootPosition,
+            LabelRetryPolicy::RootPositionAdaptiveRetryV1,
+            &root,
+            &summary(321),
+            10,
+            &mut samples,
+            &mut stats,
+        )
+        .unwrap();
+        assert_eq!(samples.len(), 1);
+        assert_eq!(samples[0].score, 321);
+        assert_eq!(stats.candidate_positions, 2);
+        assert_eq!(stats.rejected_mate_score_positions, 1);
+    }
+
+    #[test]
+    fn incomplete_fixed_node_labels_are_rejected_only_by_explicit_policy() {
+        let incomplete = TeacherSearchSummary {
+            best_move: None,
+            best_score: None,
+            states: 1_000,
+            qnodes: 4_000,
+            total_nodes: 5_000,
+            node_limit: Some(5_000),
+            elapsed_seconds: 0.25,
+            training_trace: None,
+        };
+        let budget = LabelSearchBudget::Nodes {
+            nodes: 5_000,
+            max_depth: 64,
+        };
+
+        let mut rejected_stats = SearchUseStats::default();
+        let accepted = apply_incomplete_label_policy(
+            incomplete.clone(),
+            budget,
+            IncompleteLabelPolicy::RejectPosition,
+            Color::White,
+            8,
+            &mut rejected_stats,
+        )
+        .unwrap();
+        assert!(accepted.is_none());
+        assert_eq!(rejected_stats.candidate_positions, 1);
+        assert_eq!(rejected_stats.rejected_incomplete_label_positions, 1);
+        assert_eq!(
+            rejected_stats
+                .position_selection
+                .rejected_incomplete_root_white,
+            1
+        );
+
+        let mut strict_stats = SearchUseStats::default();
+        let error = apply_incomplete_label_policy(
+            incomplete,
+            budget,
+            IncompleteLabelPolicy::Error,
+            Color::Black,
+            8,
+            &mut strict_stats,
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("did not complete depth 1 within 5000 nodes"));
+        assert_eq!(strict_stats.candidate_positions, 1);
+        assert_eq!(strict_stats.rejected_incomplete_label_positions, 0);
     }
 
     #[test]
@@ -3053,6 +8618,79 @@ run_search_smoke = false
         )
     }
 
+    #[cfg(feature = "anhoku")]
+    fn searched_stochastic_test_config(ruleset: &str, output_dir: &str) -> String {
+        deterministic_test_config(ruleset, output_dir)
+            .replace("validation_games = 2", "validation_games = 4")
+            .replace("max_plies = 8", "max_plies = 4")
+            .replace(
+                "opening_random_plies = 2",
+                r#"opening_random_plies = 0
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_search_depth = 1
+rollout_candidate_limit = 4
+rollout_score_margin = 80
+rollout_temperature = 40.0
+rollout_rng_version = "splitmix64-v1""#,
+            )
+    }
+
+    #[cfg(feature = "anhoku")]
+    fn adaptive_retry_test_config(output_dir: &str) -> String {
+        searched_stochastic_test_config("anhoku", output_dir)
+            .replace(
+                "\nsearch_depth = 1\n",
+                r#"
+label_search_nodes = 5000
+label_search_max_depth = 64
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 4
+"#,
+            )
+            .replace("max_positions_per_game = 4", "max_positions_per_game = 1")
+    }
+
+    #[cfg(feature = "anhoku")]
+    fn suite_test_config(output_dir: &str, suite: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 4
+validation_games = 2
+max_plies = 4
+search_depth = 1
+opening_random_plies = 0
+opening_policy = "suite"
+opening_suite = "{suite}"
+opening_suite_id = "anhoku-v1"
+self_play_move_policy = "uniform-rollout-v1"
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+shuffle_policy = "chunk-v1"
+shuffle_seed = 77
+shuffle_chunk_records = 2
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 2
+seed = 75
+jobs = 1
+shard_games = 2
+progress_every_percent = 50
+resume = true
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
     fn distributed_empty_lane_test_config(ruleset: &str, output_dir: &str) -> String {
         format!(
             r#"
@@ -3098,6 +8736,74 @@ validation_games = 1
 max_plies = 6
 search_depth = 2
 rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 2
+max_positions_per_game = 8
+seed = 7
+jobs = 1
+shard_games = 1
+progress_every_percent = 50
+resume = false
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
+    fn fixed_node_counter_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 6
+label_search_nodes = 5000
+label_search_max_depth = 64
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 2
+max_positions_per_game = 8
+seed = 7
+jobs = 1
+shard_games = 1
+progress_every_percent = 50
+resume = false
+
+[verify]
+run_search_smoke = false
+"#,
+        )
+    }
+
+    fn qsearch_leaf_test_config(ruleset: &str, output_dir: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "{ruleset}"
+
+[paths]
+output_dir = "{output_dir}"
+
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 6
+search_depth = 1
+position_policy = "qsearch-pv-leaf"
+max_candidate_roots_per_game = 2
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
 opening_random_plies = 0
 sample_start_ply = 0
 sample_every_ply = 2
@@ -3159,7 +8865,29 @@ run_search_smoke = false
     fn remove_explicit_search_depths(manifest: &mut serde_json::Value) {
         let object = manifest.as_object_mut().unwrap();
         object.remove("label_search_depth");
+        object.remove("label_search_budget");
+        object.remove("label_search_nodes");
+        object.remove("label_search_max_depth");
+        object.remove("node_counting_version");
+        object.remove("position_policy");
+        object.remove("training_trace_version");
+        object.remove("incomplete_label_policy");
+        object.remove("candidate_positions");
+        object.remove("rejected_incomplete_label_positions");
+        object.remove("rejected_terminal_positions");
+        object.remove("rejected_mate_score_positions");
+        object.remove("position_selection");
+        object.remove("opening_position_selection");
+        object.remove("root_ply_min");
+        object.remove("root_ply_max");
+        object.remove("leaf_distance_min");
+        object.remove("leaf_distance_max");
+        object.remove("leaf_distance_total");
         object.remove("rollout_search_depth");
+        object.remove("label_search_qnodes");
+        object.remove("rollout_search_qnodes");
+        object.remove("label_search_cpu_seconds");
+        object.remove("rollout_search_cpu_seconds");
     }
 
     #[test]
@@ -3413,6 +9141,237 @@ run_search_smoke = false
                 TrainerColor::White
             };
             Some(TrainerPiece { color, piece_type })
+        }
+    }
+
+    #[test]
+    fn searched_rollout_streams_are_pair_and_ply_specific() {
+        let pair_zero = rollout_stream_seed(75, "train", 0, 12, "splitmix64-v1");
+        let pair_one = rollout_stream_seed(75, "train", 1, 12, "splitmix64-v1");
+        let next_ply = rollout_stream_seed(75, "train", 0, 13, "splitmix64-v1");
+        assert_ne!(pair_zero, pair_one);
+        assert_ne!(pair_zero, next_ply);
+
+        let move_ = collect_legal_moves(&Board::startpos())[0];
+        assert_eq!(transform_move(transform_move(move_)), move_);
+        let candidates = [
+            ScoredRolloutMove { move_, score: 100 },
+            ScoredRolloutMove { move_, score: 50 },
+        ];
+        assert_eq!(
+            weighted_choice_index(&candidates, 40.0, pair_zero),
+            weighted_choice_index(&candidates, 40.0, pair_zero)
+        );
+    }
+
+    #[test]
+    fn bounded_rollout_candidates_always_include_the_root_best_move() {
+        let mut legal_moves = collect_legal_moves(&Board::startpos());
+        legal_moves.sort_by_key(ToString::to_string);
+        let root_best_move = *legal_moves.last().unwrap();
+        assert!(!legal_moves[..2].contains(&root_best_move));
+
+        let candidates = bounded_rollout_candidates(legal_moves.clone(), root_best_move, 2);
+        assert_eq!(candidates.len(), 2);
+        assert!(candidates.contains(&root_best_move));
+
+        let mut stats = SearchUseStats::default();
+        stats.record_rollout_decision(legal_moves.len() as u64, candidates.len() as u64, 1, 0);
+        assert_eq!(stats.rollout_legal_moves, legal_moves.len() as u64);
+        assert_eq!(stats.rollout_candidates_scored, 2);
+        assert_eq!(
+            stats.rollout_candidates_truncated,
+            legal_moves.len() as u64 - 2
+        );
+    }
+
+    #[test]
+    fn empty_calibration_root_pairs_do_not_match() {
+        assert!(!calibration_root_slices_match(&[], &[]).unwrap());
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn adaptive_calibration_retries_pairs_and_detects_exhaustion_symmetrically() {
+        let observation = |mate| CalibrationSearchObservation {
+            incomplete: false,
+            terminal: false,
+            mate,
+            accounting_error: false,
+            alpha_beta_nodes: 1,
+            qsearch_nodes: 1,
+            accounted_nodes: 2,
+        };
+        let attempts = [
+            [observation(true), observation(false)],
+            [observation(false), observation(false)],
+        ];
+        assert_eq!(
+            attempts
+                .iter()
+                .position(|pair| pair.iter().all(CalibrationSearchObservation::is_admissible)),
+            Some(1)
+        );
+        assert!(
+            attempts[..1]
+                .iter()
+                .all(|pair| !pair.iter().all(CalibrationSearchObservation::is_admissible))
+        );
+
+        let base_board = Board::startpos();
+        let swapped_board =
+            Board::from_sfen(&color_swap_anhoku_sfen(&base_board.to_string()).unwrap()).unwrap();
+        let base = CalibrationRoot {
+            board: base_board,
+            root_ply: 8,
+            side_to_move: Color::Black,
+            outcome: GameOutcome::Draw,
+        };
+        let swapped = CalibrationRoot {
+            board: swapped_board,
+            root_ply: 8,
+            side_to_move: Color::White,
+            outcome: GameOutcome::Draw,
+        };
+        assert!(calibration_root_slices_match(&[base], &[swapped]).unwrap());
+    }
+
+    #[test]
+    fn minimum_train_boards_changes_schedule_but_not_generation_semantics() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("identity.toml");
+        fs::write(
+            &config_path,
+            deterministic_test_config(active_test_ruleset(), "out"),
+        )
+        .unwrap();
+        let mut small = LoadedConfig::from_path(&config_path).unwrap();
+        small.config.data.minimum_train_boards = Some(262_144);
+        let mut large = small.clone();
+        large.config.data.minimum_train_boards = Some(1_048_576);
+        let opening_sfen = small.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&small, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                small.config.data.split_policy,
+                small.config.data.split_seed,
+                small.config.data.train_games,
+                small.config.data.validation_games,
+                small.config.data.validation_opening_ids.as_deref(),
+                small.config.data.validation_opening_schedule,
+                small.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+        let semantic = |loaded: &LoadedConfig| {
+            generation_semantic_identity_sha256(
+                loaded,
+                "train",
+                &opening_sfen,
+                &opening_source,
+                &opening_split,
+                "handcrafted",
+                None,
+                Some("test-revision"),
+            )
+            .unwrap()
+        };
+        assert_eq!(semantic(&small), semantic(&large));
+        assert_ne!(
+            schedule_identity_sha256(&small, "train", small.config.data.train_games, None).unwrap(),
+            schedule_identity_sha256(&large, "train", large.config.data.train_games, None).unwrap()
+        );
+    }
+
+    #[test]
+    fn minimum_train_boards_extension_reuses_semantically_identical_shards() {
+        let temp = tempdir().unwrap();
+        let first_config = temp.path().join("minimum-one.toml");
+        let second_config = temp.path().join("minimum-two.toml");
+        let base = deterministic_test_config(active_test_ruleset(), "out");
+        fs::write(
+            &first_config,
+            base.replace(
+                "max_positions_per_game = 4",
+                "max_positions_per_game = 4\nminimum_train_boards = 1",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            &second_config,
+            base.replace(
+                "max_positions_per_game = 4",
+                "max_positions_per_game = 4\nminimum_train_boards = 2",
+            ),
+        )
+        .unwrap();
+
+        let first = LoadedConfig::from_path(&first_config).unwrap();
+        generate_data(&first).unwrap();
+        let second = LoadedConfig::from_path(&second_config).unwrap();
+        generate_data(&second).unwrap();
+
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(second.artifact_paths().train_manifest).unwrap())
+                .unwrap();
+        assert_eq!(manifest["generated_shards"].as_u64(), Some(0));
+        assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
+        assert_eq!(
+            manifest["schedule_identity_version"].as_str(),
+            Some(SCHEDULE_IDENTITY_VERSION)
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn phase8d_trajectory_schedule_covers_every_opening_with_two_pairs() {
+        let config_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("haitaka_learn.anhoku-v0.6-phase8d-a.toml");
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let opening_sfen = loaded.opening_sfen().unwrap();
+        let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
+        let opening_split = opening_source
+            .split_openings(
+                loaded.config.data.split_policy,
+                loaded.config.data.split_seed,
+                loaded.config.data.train_games,
+                loaded.config.data.validation_games,
+                loaded.config.data.validation_opening_ids.as_deref(),
+                loaded.config.data.validation_opening_schedule,
+                loaded.config.data.validation_opening_pairs_per_id,
+            )
+            .unwrap();
+        let mut tasks = trajectory_tasks(
+            &loaded,
+            &opening_split,
+            ShardSelector::new(None, None, None).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(tasks.len(), 256);
+        let mut game_counts = BTreeMap::new();
+        for (task, opening_id) in &tasks {
+            *game_counts
+                .entry((task.dataset_name, opening_id.clone()))
+                .or_insert(0u64) += 1;
+        }
+        assert_eq!(game_counts.len(), 64);
+        assert!(game_counts.values().all(|games| *games == 4));
+        for pair in tasks.chunks_exact(2) {
+            assert_eq!(pair[0].0.dataset_name, pair[1].0.dataset_name);
+            assert_eq!(pair[0].0.game_index / 2, pair[1].0.game_index / 2);
+            assert_eq!(pair[0].1, pair[1].1);
+        }
+        tasks.sort_by_key(|(task, _)| trajectory_task_audit_sort_key(&opening_split, *task));
+        for cycle in tasks.chunks_exact(128) {
+            let mut cycle_game_counts = BTreeMap::new();
+            for (task, opening_id) in cycle {
+                *cycle_game_counts
+                    .entry((task.dataset_name, opening_id.clone()))
+                    .or_insert(0u64) += 1;
+            }
+            assert_eq!(cycle_game_counts.len(), 64);
+            assert!(cycle_game_counts.values().all(|games| *games == 2));
         }
     }
 }

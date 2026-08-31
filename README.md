@@ -209,6 +209,7 @@ Use the same feature flag consistently across crates when working on a variant.
   - Annan / Anhoku / Taimen / Haimen / Neko / Nekoneko / Yokoneko / Yokonekoneko / Tenkyo / Tenjiku: `HalfKAv2^+DonorSingleEff`
   - Antouzai: `HalfKAv2^+DonorPairSlots`
   - Anki: `HalfKAv2^+DonorKnight8Slots`
+  - experimental Anhoku Feature V2: `HalfKAv2^+DonorReceiverPairV2` (V1 remains the default until the controlled Phase 11-B experiment)
 - `haitaka_wasm` can load external `.nnue` files and search with that evaluator.
   - You can find an example NNUE file for standard Shogi at [Fairy Stockfish's official site](https://fairy-stockfish.github.io/nnue/)
 - `haitaka_learn` now supports standard, handicap, Annan, Anhoku, Antouzai, Taimen, Haimen, Tenkyo, Tenjiku, Anki, and the Neko family (Neko, Nekoneko, Yokoneko, Yokonekoneko) NNUE data generation / train / export / verify flows.
