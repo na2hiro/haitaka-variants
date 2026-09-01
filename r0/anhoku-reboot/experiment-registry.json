@@ -1,0 +1,24 @@
+{
+  "schema": "haitaka-experiment-registry-v1",
+  "preregistrations": [
+    {
+      "id": "r0-config-independence-v1",
+      "registered_at": "2026-09-01T00:00:00+09:00",
+      "hypothesis": "Changing only training initialization cannot change combined data generation bytes or semantic identity.",
+      "changed_variable": "training.initial_checkpoint",
+      "controls": ["combined generation config", "code", "executable", "trajectory evaluator", "label evaluator", "seeds"],
+      "config_sha256": "e5ae7d348b546a29fe2691e4e85d3f7f6f2319a7bc50d76b4ef1df021eeaaec4",
+      "gate": {
+        "metric": "generated shard byte mismatch count",
+        "direction": "lower-is-better",
+        "baseline": "same generation config with scratch initialization",
+        "minimum_effect_or_margin": 0.0,
+        "uncertainty_rule": "exact deterministic equality; no sampling uncertainty",
+        "multiplicity_handling": "all train and validation shards must pass",
+        "decision_rule": "PASS iff mismatch count equals zero and generation semantic hashes are equal",
+        "cost_ceiling": "CPU tests only; no production data, GPU, or strength match"
+      }
+    }
+  ],
+  "outcomes": []
+}

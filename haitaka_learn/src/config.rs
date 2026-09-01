@@ -1,4 +1,5 @@
 use std::fs;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, bail, ensure};
@@ -357,6 +358,598 @@ pub struct LoadedConfig {
     pub config: LearnConfig,
 }
 
+/// Strict, execution-only schema for the transitional R0-R3 combined data
+/// generator.  Unlike `LearnConfig`, this type cannot deserialize training,
+/// export, verification, or selection settings.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CombinedDataGenerationConfig {
+    pub rules: RulesConfig,
+    #[serde(default)]
+    pub paths: GenerationPathsConfig,
+    #[serde(default)]
+    pub data: DataConfig,
+    pub generation: GenerationConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct GenerationPathsConfig {
+    #[serde(default = "default_output_dir")]
+    pub output_dir: PathBuf,
+}
+
+impl Default for GenerationPathsConfig {
+    fn default() -> Self {
+        Self {
+            output_dir: default_output_dir(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EvaluatorKind {
+    Handcrafted,
+    Nnue,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct EvaluatorConfig {
+    pub kind: EvaluatorKind,
+    #[serde(default)]
+    pub model: Option<PathBuf>,
+    #[serde(default)]
+    pub model_sha256: Option<String>,
+}
+
+impl EvaluatorConfig {
+    fn validate(&self, field: &str) -> Result<()> {
+        match self.kind {
+            EvaluatorKind::Handcrafted => {
+                ensure!(
+                    self.model.is_none() && self.model_sha256.is_none(),
+                    "{field} kind=handcrafted must not configure model or model_sha256"
+                );
+                Ok(())
+            }
+            EvaluatorKind::Nnue => {
+                ensure!(self.model.is_some(), "{field} kind=nnue requires model");
+                let hash = self
+                    .model_sha256
+                    .as_deref()
+                    .ok_or_else(|| anyhow!("{field} kind=nnue requires model_sha256"))?;
+                ensure!(
+                    is_sha256(hash),
+                    "{field}.model_sha256 must be 64 lowercase hexadecimal characters"
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrajectoryEvaluatorConfig {
+    pub evaluator: EvaluatorConfig,
+    pub search_depth: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GenerationLabelBudgetKind {
+    Depth,
+    Nodes,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct LabelEvaluatorConfig {
+    pub evaluator: EvaluatorConfig,
+    pub search_budget: GenerationLabelBudgetKind,
+    #[serde(default)]
+    pub search_depth: Option<u8>,
+    #[serde(default)]
+    pub search_nodes: Option<u64>,
+    #[serde(default)]
+    pub max_depth: Option<u8>,
+    pub target_semantics: String,
+    pub score_transform_version: String,
+}
+
+impl LabelEvaluatorConfig {
+    pub fn search_budget(&self) -> Result<LabelSearchBudget> {
+        match (
+            self.search_budget,
+            self.search_depth,
+            self.search_nodes,
+            self.max_depth,
+        ) {
+            (GenerationLabelBudgetKind::Depth, Some(depth), None, None) if depth > 0 => {
+                Ok(LabelSearchBudget::Depth { depth })
+            }
+            (GenerationLabelBudgetKind::Nodes, None, Some(nodes), Some(max_depth))
+                if nodes > 0 && max_depth > 0 =>
+            {
+                Ok(LabelSearchBudget::Nodes { nodes, max_depth })
+            }
+            (GenerationLabelBudgetKind::Depth, ..) => bail!(
+                "generation.label_evaluator search_budget=depth requires positive search_depth and forbids search_nodes/max_depth"
+            ),
+            (GenerationLabelBudgetKind::Nodes, ..) => bail!(
+                "generation.label_evaluator search_budget=nodes requires positive search_nodes/max_depth and forbids search_depth"
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct GenerationConfig {
+    pub record_format: String,
+    pub trajectory_evaluator: TrajectoryEvaluatorConfig,
+    pub label_evaluator: LabelEvaluatorConfig,
+}
+
+impl GenerationConfig {
+    fn validate(&self) -> Result<()> {
+        ensure!(
+            self.record_format == "haitaka-packed-training-record-v3-72-byte",
+            "generation.record_format must be `haitaka-packed-training-record-v3-72-byte`"
+        );
+        self.trajectory_evaluator
+            .evaluator
+            .validate("generation.trajectory_evaluator")?;
+        ensure!(
+            self.trajectory_evaluator.search_depth > 0,
+            "generation.trajectory_evaluator.search_depth must be at least 1"
+        );
+        self.label_evaluator
+            .evaluator
+            .validate("generation.label_evaluator")?;
+        self.label_evaluator.search_budget()?;
+        ensure!(
+            !self.label_evaluator.target_semantics.trim().is_empty(),
+            "generation.label_evaluator.target_semantics must not be empty"
+        );
+        ensure!(
+            !self
+                .label_evaluator
+                .score_transform_version
+                .trim()
+                .is_empty(),
+            "generation.label_evaluator.score_transform_version must not be empty"
+        );
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadedGenerationConfig {
+    pub path: PathBuf,
+    pub source_hash_hex: String,
+    pub hash_hex: String,
+    pub config: CombinedDataGenerationConfig,
+}
+
+impl LoadedGenerationConfig {
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let canonical_path = fs::canonicalize(path)
+            .with_context(|| format!("failed to resolve generation config {}", path.display()))?;
+        let raw_toml = fs::read_to_string(&canonical_path).with_context(|| {
+            format!(
+                "failed to read generation config {}",
+                canonical_path.display()
+            )
+        })?;
+        reject_legacy_generation_fields(&raw_toml)?;
+        let strict: CombinedDataGenerationConfig = toml::from_str(&raw_toml)
+            .context("failed to parse strict combined data-generation TOML")?;
+        strict.generation.validate()?;
+        ensure!(
+            strict.data.self_play_move_policy != SelfPlayMovePolicy::LabelOnSampleLegacy,
+            "strict generation rejects data.self_play_move_policy=label-on-sample-legacy because it couples trajectory selection to the label evaluator"
+        );
+
+        let mut strict = strict;
+        match strict.generation.label_evaluator.search_budget()? {
+            LabelSearchBudget::Depth { depth } => {
+                strict.data.search_depth = Some(depth);
+                strict.data.label_search_nodes = None;
+                strict.data.label_search_max_depth = None;
+            }
+            LabelSearchBudget::Nodes { nodes, max_depth } => {
+                strict.data.search_depth = None;
+                strict.data.label_search_nodes = Some(nodes);
+                strict.data.label_search_max_depth = Some(max_depth);
+            }
+        }
+        strict.data.rollout_search_depth = strict.generation.trajectory_evaluator.search_depth;
+        let compatibility_validation = LearnConfig {
+            rules: strict.rules.clone(),
+            paths: PathsConfig {
+                output_dir: strict.paths.output_dir.clone(),
+                ..PathsConfig::default()
+            },
+            data: strict.data.clone(),
+            training: TrainingConfig::default(),
+            export: ExportConfig::default(),
+            verify: VerifyConfig::default(),
+            selection: SelectionConfig::default(),
+        };
+        compatibility_validation.validate()?;
+        let source_hash_hex = hash_config_text(&raw_toml);
+        let hash_hex = hash_serializable_config(&strict)?;
+        Ok(Self {
+            path: canonical_path,
+            source_hash_hex,
+            hash_hex,
+            config: strict,
+        })
+    }
+
+    pub fn config_dir(&self) -> &Path {
+        self.path.parent().unwrap_or_else(|| Path::new("."))
+    }
+
+    pub fn resolve_path(&self, path: &Path) -> PathBuf {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            self.config_dir().join(path)
+        }
+    }
+
+    pub fn runtime_mode(&self) -> &'static str {
+        active_variant_feature().unwrap_or("standard")
+    }
+
+    pub fn ruleset_requires_matching_engine(&self) -> Result<()> {
+        validate_ruleset_engine(self.config.rules.ruleset)
+    }
+
+    pub fn opening_sfen(&self) -> Result<String> {
+        opening_sfen_for(&self.config.rules, || {
+            self.ruleset_requires_matching_engine()
+        })
+    }
+
+    pub fn effective_rule_id(&self) -> Result<u16> {
+        effective_rule_id_for(&self.config.rules)
+    }
+
+    pub fn artifact_paths(&self) -> ArtifactPaths {
+        ArtifactPaths::new_for_output(
+            self.resolve_path(&self.config.paths.output_dir),
+            "unused-generation-export.nnue",
+        )
+    }
+
+    pub fn opening_suite(&self) -> Option<PathBuf> {
+        self.config
+            .data
+            .opening_suite
+            .as_ref()
+            .map(|path| self.resolve_path(path))
+    }
+
+    pub fn record_format(&self) -> &str {
+        &self.config.generation.record_format
+    }
+
+    #[cfg(test)]
+    pub fn from_legacy_test_path(path: &Path) -> Result<Self> {
+        let legacy = LoadedConfig::from_path(path)?;
+        let evaluator = if let Some(model) = legacy.config.paths.bootstrap_nnue.clone() {
+            let resolved = legacy.resolve_path(&model);
+            let sha256 = if resolved.exists() {
+                format!("{:x}", Sha256::digest(fs::read(&resolved)?))
+            } else {
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string()
+            };
+            EvaluatorConfig {
+                kind: EvaluatorKind::Nnue,
+                model: Some(model),
+                model_sha256: Some(sha256),
+            }
+        } else {
+            EvaluatorConfig {
+                kind: EvaluatorKind::Handcrafted,
+                model: None,
+                model_sha256: None,
+            }
+        };
+        let label_budget = legacy.config.data.label_search_budget()?;
+        let label_evaluator = match label_budget {
+            LabelSearchBudget::Depth { depth } => LabelEvaluatorConfig {
+                evaluator: evaluator.clone(),
+                search_budget: GenerationLabelBudgetKind::Depth,
+                search_depth: Some(depth),
+                search_nodes: None,
+                max_depth: None,
+                target_semantics: "legacy-root-backed-up".to_string(),
+                score_transform_version: "legacy-score-over-410".to_string(),
+            },
+            LabelSearchBudget::Nodes { nodes, max_depth } => LabelEvaluatorConfig {
+                evaluator: evaluator.clone(),
+                search_budget: GenerationLabelBudgetKind::Nodes,
+                search_depth: None,
+                search_nodes: Some(nodes),
+                max_depth: Some(max_depth),
+                target_semantics: "legacy-root-backed-up".to_string(),
+                score_transform_version: "legacy-score-over-410".to_string(),
+            },
+        };
+        Ok(Self {
+            path: legacy.path,
+            source_hash_hex: legacy.hash_hex.clone(),
+            hash_hex: legacy.hash_hex,
+            config: CombinedDataGenerationConfig {
+                rules: legacy.config.rules,
+                paths: GenerationPathsConfig {
+                    output_dir: legacy.config.paths.output_dir,
+                },
+                data: legacy.config.data.clone(),
+                generation: GenerationConfig {
+                    record_format: "haitaka-packed-training-record-v3-72-byte".to_string(),
+                    trajectory_evaluator: TrajectoryEvaluatorConfig {
+                        evaluator,
+                        search_depth: legacy.config.data.rollout_search_depth,
+                    },
+                    label_evaluator,
+                },
+            },
+        })
+    }
+
+    pub fn trajectory_evaluator(&self) -> &TrajectoryEvaluatorConfig {
+        &self.config.generation.trajectory_evaluator
+    }
+
+    pub fn label_evaluator(&self) -> &LabelEvaluatorConfig {
+        &self.config.generation.label_evaluator
+    }
+}
+
+/// Strict training-stage schema.  Dataset generation policy and evaluator
+/// settings are intentionally not representable here; the input dataset is
+/// identified by its already-published manifests.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrainingWorkflowConfig {
+    pub rules: RulesConfig,
+    pub paths: TrainingPathsConfig,
+    pub dataset: TrainingDatasetConfig,
+    #[serde(default)]
+    pub training: TrainingConfig,
+    #[serde(default)]
+    pub export: ExportConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrainingPathsConfig {
+    pub output_dir: PathBuf,
+    pub trainer_checkout: PathBuf,
+    #[serde(default)]
+    pub legacy_ood_validation_bin: Option<PathBuf>,
+    #[serde(default = "default_python")]
+    pub python: String,
+    #[serde(default = "default_cmake")]
+    pub cmake: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrainingDatasetConfig {
+    pub train_games: u32,
+    pub validation_games: u32,
+    #[serde(default)]
+    pub minimum_train_boards: Option<u64>,
+    pub train_bin: PathBuf,
+    pub validation_bin: PathBuf,
+    pub train_manifest: PathBuf,
+    pub validation_manifest: PathBuf,
+    pub train_manifest_sha256: String,
+    pub validation_manifest_sha256: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadedTrainingConfig {
+    legacy: LoadedConfig,
+    pub source_hash_hex: String,
+    pub canonical_hash_hex: String,
+    pub dataset: TrainingDatasetConfig,
+}
+
+impl LoadedTrainingConfig {
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let canonical_path = fs::canonicalize(path)
+            .with_context(|| format!("failed to resolve training config {}", path.display()))?;
+        let raw_toml = fs::read_to_string(&canonical_path).with_context(|| {
+            format!(
+                "failed to read training config {}",
+                canonical_path.display()
+            )
+        })?;
+        let strict: TrainingWorkflowConfig =
+            toml::from_str(&raw_toml).context("failed to parse strict training-stage TOML")?;
+        ensure!(
+            strict.dataset.train_games > 0 && strict.dataset.validation_games > 0,
+            "training dataset game counts must be positive"
+        );
+        for (field, hash) in [
+            (
+                "dataset.train_manifest_sha256",
+                strict.dataset.train_manifest_sha256.as_str(),
+            ),
+            (
+                "dataset.validation_manifest_sha256",
+                strict.dataset.validation_manifest_sha256.as_str(),
+            ),
+        ] {
+            ensure!(
+                is_sha256(hash),
+                "{field} must be 64 lowercase hexadecimal characters"
+            );
+        }
+        strict.training.initial_checkpoint.validate()?;
+
+        let source_hash_hex = hash_config_text(&raw_toml);
+        let canonical_hash_hex = hash_serializable_config(&strict)?;
+        let mut data = DataConfig {
+            train_games: strict.dataset.train_games,
+            validation_games: strict.dataset.validation_games,
+            minimum_train_boards: strict.dataset.minimum_train_boards,
+            ..DataConfig::default()
+        };
+        // The default legacy label policy is irrelevant to training, but the
+        // internal compatibility representation still validates it.
+        data.resume = false;
+        let config = LearnConfig {
+            rules: strict.rules,
+            paths: PathsConfig {
+                output_dir: strict.paths.output_dir,
+                trainer_checkout: Some(strict.paths.trainer_checkout),
+                bootstrap_nnue: None,
+                legacy_ood_validation_bin: strict.paths.legacy_ood_validation_bin,
+                python: strict.paths.python,
+                cmake: strict.paths.cmake,
+            },
+            data,
+            training: strict.training,
+            export: strict.export,
+            verify: VerifyConfig::default(),
+            selection: SelectionConfig::default(),
+        };
+        config.validate()?;
+        let hash_hex = canonical_hash_hex.clone();
+        let loaded = Self {
+            legacy: LoadedConfig {
+                path: canonical_path,
+                hash_hex,
+                config,
+            },
+            source_hash_hex,
+            canonical_hash_hex,
+            dataset: strict.dataset,
+        };
+        let artifacts = loaded.legacy.artifact_paths();
+        for (field, configured, expected) in [
+            (
+                "dataset.train_bin",
+                &loaded.dataset.train_bin,
+                &artifacts.train_bin,
+            ),
+            (
+                "dataset.validation_bin",
+                &loaded.dataset.validation_bin,
+                &artifacts.validation_bin,
+            ),
+            (
+                "dataset.train_manifest",
+                &loaded.dataset.train_manifest,
+                &artifacts.train_manifest,
+            ),
+            (
+                "dataset.validation_manifest",
+                &loaded.dataset.validation_manifest,
+                &artifacts.validation_manifest,
+            ),
+        ] {
+            ensure!(
+                loaded.resolve_path(configured) == expected.as_path(),
+                "{field} must currently resolve to {}; the locator is explicit even though the R0 trainer layout remains fixed",
+                expected.display()
+            );
+        }
+        Ok(loaded)
+    }
+
+    pub fn resolved_initial_checkpoint(&self) -> InitialCheckpoint {
+        match &self.config.training.initial_checkpoint {
+            InitialCheckpoint::Scratch => InitialCheckpoint::Scratch,
+            InitialCheckpoint::FullPrecision {
+                path,
+                sha256,
+                state_policy,
+            } => InitialCheckpoint::FullPrecision {
+                path: self.resolve_path(path),
+                sha256: sha256.clone(),
+                state_policy: *state_policy,
+            },
+            InitialCheckpoint::QuantizedImportDiagnostic {
+                path,
+                sha256,
+                source_feature_family,
+                import_transform_version,
+            } => InitialCheckpoint::QuantizedImportDiagnostic {
+                path: self.resolve_path(path),
+                sha256: sha256.clone(),
+                source_feature_family: source_feature_family.clone(),
+                import_transform_version: import_transform_version.clone(),
+            },
+        }
+    }
+}
+
+impl Deref for LoadedTrainingConfig {
+    type Target = LoadedConfig;
+
+    fn deref(&self) -> &Self::Target {
+        &self.legacy
+    }
+}
+
+fn reject_legacy_generation_fields(raw_toml: &str) -> Result<()> {
+    let value: toml::Value =
+        toml::from_str(raw_toml).context("failed to inspect combined data-generation TOML")?;
+    let Some(root) = value.as_table() else {
+        bail!("combined data-generation config must be a TOML table");
+    };
+    for field in ["training", "export", "verify", "selection"] {
+        ensure!(
+            !root.contains_key(field),
+            "generate-data rejects training-only or later-stage field `{field}`; use a strict combined data-generation config"
+        );
+    }
+    if let Some(data) = root.get("data").and_then(toml::Value::as_table) {
+        for field in [
+            "search_depth",
+            "label_search_nodes",
+            "label_search_max_depth",
+            "rollout_search_depth",
+        ] {
+            ensure!(
+                !data.contains_key(field),
+                "ambiguous legacy generation field `data.{field}` is rejected; configure the typed generation evaluator"
+            );
+        }
+    }
+    Ok(())
+}
+
+fn hash_config_text(raw: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(raw.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn hash_serializable_config(config: &impl Serialize) -> Result<String> {
+    let bytes = serde_json::to_vec(config).context("failed to canonicalize stage config")?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
+
+fn is_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+#[allow(dead_code)] // Legacy all-purpose configs remain readable for audit/import only.
 impl LoadedConfig {
     pub fn from_path(path: &Path) -> Result<Self> {
         let canonical_path = fs::canonicalize(path)
@@ -549,6 +1142,92 @@ impl LoadedConfig {
     }
 }
 
+fn validate_ruleset_engine(ruleset: Ruleset) -> Result<()> {
+    match ruleset {
+        Ruleset::Handicap | Ruleset::Standard => {
+            if active_variant_feature().is_some() {
+                bail!(
+                    "ruleset={} requires the default haitaka_learn build without variant features",
+                    ruleset.as_str()
+                );
+            }
+            Ok(())
+        }
+        ruleset => {
+            let required_feature = ruleset
+                .spec()
+                .and_then(|spec| spec.required_feature)
+                .expect("non-standard variant rulesets should have a required feature");
+            ensure!(
+                active_variant_feature() == Some(required_feature),
+                "ruleset={} requires building haitaka_learn with `--features {required_feature}`",
+                ruleset.as_str()
+            );
+            Ok(())
+        }
+    }
+}
+
+fn opening_sfen_for<F>(rules: &RulesConfig, validate_engine: F) -> Result<String>
+where
+    F: FnOnce() -> Result<()>,
+{
+    validate_engine()?;
+    if let Some(sfen) = &rules.opening_sfen {
+        return Ok(sfen.clone());
+    }
+    match rules.ruleset {
+        Ruleset::Standard
+        | Ruleset::Annan
+        | Ruleset::Anhoku
+        | Ruleset::Antouzai
+        | Ruleset::Taimen
+        | Ruleset::Haimen
+        | Ruleset::Neko
+        | Ruleset::Nekoneko
+        | Ruleset::Yokoneko
+        | Ruleset::Yokonekoneko
+        | Ruleset::Tenkyo
+        | Ruleset::Tenjiku
+        | Ruleset::Anki => rules
+            .ruleset
+            .spec()
+            .map(|spec| spec.default_opening_sfen.to_string())
+            .ok_or_else(|| anyhow!("missing ruleset spec for {}", rules.ruleset.as_str())),
+        Ruleset::Handicap => {
+            let preset = rules
+                .handicap
+                .ok_or_else(|| anyhow!("rules.handicap must be set for ruleset=handicap"))?;
+            Ok(match preset {
+                HandicapPreset::TwoPiece => haitaka::SFEN_2PIECE_HANDICAP,
+                HandicapPreset::FourPiece => haitaka::SFEN_4PIECE_HANDICAP,
+                HandicapPreset::SixPiece => haitaka::SFEN_6PIECE_HANDICAP,
+            }
+            .to_string())
+        }
+    }
+}
+
+fn effective_rule_id_for(rules: &RulesConfig) -> Result<u16> {
+    if let Some(rule_id) = rules.rule_id {
+        return Ok(rule_id);
+    }
+    match rules.ruleset {
+        Ruleset::Handicap => match rules.handicap {
+            Some(HandicapPreset::SixPiece) => Ok(6),
+            Some(HandicapPreset::FourPiece) => Ok(4),
+            Some(HandicapPreset::TwoPiece) => Ok(2),
+            None => bail!(
+                "rules.rule_id must be set when ruleset=handicap uses a custom opening_sfen without a named handicap preset"
+            ),
+        },
+        ruleset => ruleset
+            .spec()
+            .map(|spec| spec.default_rule_id)
+            .ok_or_else(|| anyhow!("missing ruleset spec for {}", ruleset.as_str())),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ArtifactPaths {
     pub output_dir: PathBuf,
@@ -569,6 +1248,10 @@ pub struct ArtifactPaths {
 impl ArtifactPaths {
     fn new(loaded: &LoadedConfig) -> Self {
         let output_dir = loaded.resolve_path(&loaded.config.paths.output_dir);
+        Self::new_for_output(output_dir, &loaded.config.export.output_name)
+    }
+
+    fn new_for_output(output_dir: PathBuf, output_name: &str) -> Self {
         let datasets_dir = output_dir.join("datasets");
         let artifacts_dir = output_dir.join("artifacts");
         let logs_dir = output_dir.join("logs");
@@ -581,7 +1264,7 @@ impl ArtifactPaths {
             bootstrap_migrated_nnue: artifacts_dir.join("bootstrap-donor-receiver-pair-v2.nnue"),
             export_metadata: artifacts_dir.join("export.json"),
             verify_report: artifacts_dir.join("verify.json"),
-            exported_nnue: artifacts_dir.join(&loaded.config.export.output_name),
+            exported_nnue: artifacts_dir.join(output_name),
             output_dir,
             datasets_dir,
             artifacts_dir,
@@ -842,6 +1525,7 @@ impl LearnConfig {
             );
         }
         ensure!(self.data.shard_games > 0, "data.shard_games must be > 0");
+        self.training.initial_checkpoint.validate()?;
         ensure!(
             self.training.initial_learning_rate.is_finite()
                 && self.training.initial_learning_rate > 0.0,
@@ -941,7 +1625,8 @@ impl LearnConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct RulesConfig {
     pub ruleset: Ruleset,
     #[serde(default)]
@@ -1013,6 +1698,7 @@ pub struct PathsConfig {
     #[serde(default)]
     pub trainer_checkout: Option<PathBuf>,
     #[serde(default)]
+    #[allow(dead_code)] // Historical audit field; strict execution schemas cannot contain it.
     pub bootstrap_nnue: Option<PathBuf>,
     /// Optional legacy two-opening OOD validation binary used by diagnostic runs.
     #[serde(default)]
@@ -1036,7 +1722,8 @@ impl Default for PathsConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct DataConfig {
     #[serde(default = "default_train_games")]
     pub train_games: u32,
@@ -1231,8 +1918,11 @@ impl DataConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TrainingConfig {
+    #[serde(default)]
+    pub initial_checkpoint: InitialCheckpoint,
     #[serde(default = "default_features")]
     pub features: Option<String>,
     #[serde(default = "default_training_resume")]
@@ -1270,6 +1960,7 @@ pub struct TrainingConfig {
 impl Default for TrainingConfig {
     fn default() -> Self {
         Self {
+            initial_checkpoint: InitialCheckpoint::Scratch,
             features: default_features(),
             resume: default_training_resume(),
             num_workers: default_num_workers(),
@@ -1290,7 +1981,68 @@ impl Default for TrainingConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum InitialCheckpoint {
+    #[default]
+    Scratch,
+    FullPrecision {
+        path: PathBuf,
+        sha256: String,
+        state_policy: FullPrecisionStatePolicy,
+    },
+    QuantizedImportDiagnostic {
+        path: PathBuf,
+        sha256: String,
+        source_feature_family: String,
+        import_transform_version: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum FullPrecisionStatePolicy {
+    WeightsOnly,
+    FullResume,
+}
+
+impl InitialCheckpoint {
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            Self::Scratch => Ok(()),
+            Self::FullPrecision { sha256, .. } => {
+                ensure!(
+                    is_sha256(sha256),
+                    "training.initial_checkpoint.sha256 must be 64 lowercase hexadecimal characters"
+                );
+                Ok(())
+            }
+            Self::QuantizedImportDiagnostic {
+                sha256,
+                source_feature_family,
+                import_transform_version,
+                ..
+            } => {
+                ensure!(
+                    is_sha256(sha256),
+                    "training.initial_checkpoint.sha256 must be 64 lowercase hexadecimal characters"
+                );
+                ensure!(
+                    !source_feature_family.trim().is_empty(),
+                    "quantized diagnostic import requires source_feature_family"
+                );
+                ensure!(
+                    import_transform_version == "serialize-py-quantized-import-v1",
+                    "unsupported quantized import_transform_version"
+                );
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct ExportConfig {
     #[serde(default = "default_output_name")]
     pub output_name: String,
@@ -1699,6 +2451,91 @@ mod tests {
 
     use super::*;
     use tempfile::tempdir;
+
+    fn strict_generation_toml(output: &str) -> String {
+        format!(
+            r#"
+[rules]
+ruleset = "anhoku"
+[paths]
+output_dir = "{output}"
+[data]
+train_games = 1
+validation_games = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+[generation]
+record_format = "haitaka-packed-training-record-v3-72-byte"
+[generation.trajectory_evaluator]
+search_depth = 1
+[generation.trajectory_evaluator.evaluator]
+kind = "handcrafted"
+[generation.label_evaluator]
+search_budget = "depth"
+search_depth = 1
+target_semantics = "root-backed-up-v1"
+score_transform_version = "raw-score-v1"
+[generation.label_evaluator.evaluator]
+kind = "handcrafted"
+"#
+        )
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn strict_generation_rejects_training_and_nested_unknown_fields() {
+        let temp = tempdir().unwrap();
+        let config = temp.path().join("generation.toml");
+        fs::write(
+            &config,
+            format!(
+                "{}\n[training]\ninitial_learning_rate = 0.1\n",
+                strict_generation_toml("out")
+            ),
+        )
+        .unwrap();
+        let error = format!(
+            "{:#}",
+            LoadedGenerationConfig::from_path(&config).unwrap_err()
+        );
+        assert!(error.contains("rejects training-only"));
+
+        fs::write(
+            &config,
+            strict_generation_toml("out").replace(
+                "train_games = 1",
+                "train_games = 1\ntraining_initial_checkpoint = \"x\"",
+            ),
+        )
+        .unwrap();
+        let error = format!(
+            "{:#}",
+            LoadedGenerationConfig::from_path(&config).unwrap_err()
+        );
+        assert!(error.contains("unknown field `training_initial_checkpoint`"));
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn canonical_generation_hash_ignores_comments_and_key_order() {
+        let temp = tempdir().unwrap();
+        let first = temp.path().join("first.toml");
+        let second = temp.path().join("second.toml");
+        let raw = strict_generation_toml("out");
+        fs::write(&first, &raw).unwrap();
+        fs::write(
+            &second,
+            raw.replace(
+                "train_games = 1\nvalidation_games = 1",
+                "# reordered\nvalidation_games = 1\ntrain_games = 1",
+            ),
+        )
+        .unwrap();
+        let first = LoadedGenerationConfig::from_path(&first).unwrap();
+        let second = LoadedGenerationConfig::from_path(&second).unwrap();
+        assert_ne!(first.source_hash_hex, second.source_hash_hex);
+        assert_eq!(first.hash_hex, second.hash_hex);
+    }
 
     #[test]
     fn parses_minimal_config() {

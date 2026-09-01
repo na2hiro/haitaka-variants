@@ -1,0 +1,30 @@
+# Replace the manifest hashes after a strict generation run. This file is a
+# schema example and is intentionally not an authorization to start training.
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-reboot-r0-debug"
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
+python = "python3"
+cmake = "cmake"
+
+[dataset]
+train_games = 2
+validation_games = 2
+train_bin = "out/anhoku-reboot-r0-debug/datasets/train.bin"
+validation_bin = "out/anhoku-reboot-r0-debug/datasets/validation.bin"
+train_manifest = "out/anhoku-reboot-r0-debug/datasets/train.json"
+validation_manifest = "out/anhoku-reboot-r0-debug/datasets/validation.json"
+train_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+validation_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+initial_checkpoint = { kind = "scratch" }
+resume = false
+teacher_move_consumers = false
+
+[export]
+output_name = "haitaka-anhoku-reboot-r0-debug.nnue"
+description = "R0 schema example; not a production training authorization"

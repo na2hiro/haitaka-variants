@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
+    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, FullPrecisionStatePolicy, InitialCheckpoint, LoadedConfig,
+    LoadedTrainingConfig, Ruleset, TEACHER_MOVE_ENCODING,
 };
 use crate::dataset::ENTRY_BYTES;
 use crate::dataset_audit::audit_dataset;
@@ -111,7 +112,8 @@ struct DatasetCompletionManifest {
     teacher_move_encoding: String,
 }
 
-pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
+pub fn train(loaded: &LoadedTrainingConfig, resume_override: Option<bool>) -> Result<PathBuf> {
+    verify_declared_dataset_manifests(loaded)?;
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -128,7 +130,7 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
         "haitaka-variant-nnue-pytorch training",
     )?;
 
-    find_latest_valid_checkpoint(
+    let checkpoint = find_latest_valid_checkpoint(
         &artifacts.logs_dir,
         &loaded.config.paths.python,
         &trainer_checkout,
@@ -138,23 +140,28 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
             "training finished but no valid checkpoint was found under {}",
             artifacts.logs_dir.display()
         )
-    })
+    })?;
+    crate::r0::write_training_manifest(loaded, &checkpoint, None)?;
+    Ok(checkpoint)
 }
 
 /// Materialize the configured warm-start as a trainer checkpoint while doing
 /// no optimization. In particular, this exercises the V1-to-V2 migration and
 /// the real PyTorch deserializer before an hourly GPU run is authorized.
-pub fn prepare_bootstrap(loaded: &LoadedConfig) -> Result<PathBuf> {
+pub fn prepare_bootstrap(loaded: &LoadedTrainingConfig) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
     let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
     materialize_bootstrap_pt(loaded, &trainer_checkout)?.ok_or_else(|| {
-        anyhow!("paths.bootstrap_nnue is required to prepare a bootstrap checkpoint")
+        anyhow!("training.initial_checkpoint must not be scratch to prepare a checkpoint")
     })
 }
 
-pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Result<PathBuf> {
+pub fn export(
+    loaded: &LoadedTrainingConfig,
+    source_checkpoint: Option<PathBuf>,
+) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
@@ -198,6 +205,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
         &checkpoint,
         &artifacts.exported_nnue,
     )?;
+    crate::r0::write_training_manifest(loaded, &checkpoint, Some(&artifacts.exported_nnue))?;
 
     Ok(artifacts.exported_nnue)
 }
@@ -282,7 +290,7 @@ pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> 
 }
 
 pub(crate) fn training_args(
-    loaded: &LoadedConfig,
+    loaded: &LoadedTrainingConfig,
     resume_override: Option<bool>,
     trainer_checkout: &Path,
 ) -> Result<Vec<String>> {
@@ -297,7 +305,22 @@ pub(crate) fn training_args(
     } else {
         None
     };
-    let bootstrap_model = if resume_checkpoint.is_none() {
+    let declared_full_resume = if resume_checkpoint.is_none() {
+        match loaded.resolved_initial_checkpoint() {
+            InitialCheckpoint::FullPrecision {
+                path,
+                sha256,
+                state_policy: FullPrecisionStatePolicy::FullResume,
+            } => {
+                ensure_artifact_sha256(&path, &sha256, "full-resume initial checkpoint")?;
+                Some(path)
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let bootstrap_model = if resume_checkpoint.is_none() && declared_full_resume.is_none() {
         materialize_bootstrap_pt(loaded, trainer_checkout)?
     } else {
         None
@@ -344,7 +367,7 @@ pub(crate) fn training_args(
         args.push("--ood-validation".to_string());
         args.push(ood.display().to_string());
     }
-    if let Some(checkpoint) = resume_checkpoint {
+    if let Some(checkpoint) = resume_checkpoint.or(declared_full_resume) {
         println!("resuming training from {}", checkpoint.display());
         args.push("--resume_from_checkpoint".to_string());
         args.push(checkpoint.display().to_string());
@@ -357,22 +380,13 @@ pub(crate) fn training_args(
 }
 
 pub(crate) fn spawn_training(
-    loaded: &LoadedConfig,
-    trainer_checkout: &Path,
-    resume_override: Option<bool>,
+    _loaded: &LoadedConfig,
+    _trainer_checkout: &Path,
+    _resume_override: Option<bool>,
 ) -> Result<Child> {
-    ensure_training_inputs_ready(loaded)?;
-    let args = training_args(loaded, resume_override, trainer_checkout)?;
-    Command::new(&loaded.config.paths.python)
-        .args(args)
-        .current_dir(trainer_checkout)
-        .spawn()
-        .with_context(|| {
-            format!(
-                "failed to start haitaka-variant-nnue-pytorch training using `{}`",
-                loaded.config.paths.python
-            )
-        })
+    bail!(
+        "train-select is disabled for ambiguous legacy all-purpose configs after R0; use the strict training command and register evaluation separately"
+    )
 }
 
 pub(crate) fn export_checkpoint_to(
@@ -542,16 +556,31 @@ struct FileBackup {
 }
 
 fn materialize_bootstrap_pt(
-    loaded: &LoadedConfig,
+    loaded: &LoadedTrainingConfig,
     trainer_checkout: &Path,
 ) -> Result<Option<PathBuf>> {
-    let Some(bootstrap_nnue) = loaded.bootstrap_nnue() else {
-        return Ok(None);
+    let initial = loaded.resolved_initial_checkpoint();
+    let (bootstrap_nnue, expected_sha256, source_features) = match initial {
+        InitialCheckpoint::Scratch => return Ok(None),
+        InitialCheckpoint::FullPrecision { path, sha256, .. } => {
+            ensure_artifact_sha256(&path, &sha256, "full-precision initial checkpoint")?;
+            return Ok(Some(path));
+        }
+        InitialCheckpoint::QuantizedImportDiagnostic {
+            path,
+            sha256,
+            source_feature_family,
+            ..
+        } => (path, sha256, source_feature_family),
     };
-    ensure_file_exists(&bootstrap_nnue, "bootstrap NNUE")?;
+    ensure_artifact_sha256(
+        &bootstrap_nnue,
+        &expected_sha256,
+        "quantized diagnostic initial network",
+    )?;
 
     let artifacts = loaded.artifact_paths();
-    let import_features = bootstrap_import_features(loaded);
+    let import_features = source_features.as_str();
     let training_features = loaded.training_features();
     let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
         let source = fs::read(&bootstrap_nnue)
@@ -607,6 +636,7 @@ fn materialize_bootstrap_pt(
     Ok(Some(artifacts.bootstrap_model_pt))
 }
 
+#[cfg(test)]
 fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
     // A warm-start NNUE must be parsed with the exact family that produced its
     // network hash.  The Phase 7.1 v0.5.1 anchor is already a donor-family
@@ -649,6 +679,33 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     } else {
         bail!("{label} is missing: {}", path.display())
     }
+}
+
+fn ensure_artifact_sha256(path: &Path, expected: &str, label: &str) -> Result<()> {
+    ensure_file_exists(path, label)?;
+    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let actual = format!("{:x}", Sha256::digest(&bytes));
+    if actual != expected {
+        bail!(
+            "{label} {} has sha256 {actual}, expected {expected}",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+fn verify_declared_dataset_manifests(loaded: &LoadedTrainingConfig) -> Result<()> {
+    let artifacts = loaded.artifact_paths();
+    ensure_artifact_sha256(
+        &artifacts.train_manifest,
+        &loaded.dataset.train_manifest_sha256,
+        "training dataset manifest",
+    )?;
+    ensure_artifact_sha256(
+        &artifacts.validation_manifest,
+        &loaded.dataset.validation_manifest_sha256,
+        "validation dataset manifest",
+    )
 }
 
 fn ensure_training_board_minimum(

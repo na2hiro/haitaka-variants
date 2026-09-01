@@ -1,0 +1,49 @@
+{
+  "schema": "haitaka-historical-evidence-v1",
+  "records": [
+    {
+      "id": "phase8b-dataset",
+      "artifacts": [{ "path": "plans/anhoku-nnue-handcrafted-strength-plan.md", "bytes": 93244, "sha256": "e5ae7d348b546a29fe2691e4e85d3f7f6f2319a7bc50d76b4ef1df021eeaaec4" }],
+      "valid_claims": ["Duplicated-trajectory experiment history"],
+      "invalid_claims": ["Diverse 256k-board corpus"],
+      "classification": "historical-only"
+    },
+    {
+      "id": "phase8d-11-dataset-and-models",
+      "artifacts": [
+        { "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue", "bytes": 161206531, "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/haitaka-anhoku-v0.6-phase8d-b1-root-262k.nnue", "bytes": 161206539, "sha256": "7437671b62b61397397ac12f28f011f5909e8922a43bbeedbdb34da36864f2da" }
+      ],
+      "valid_claims": ["C/16 self-distillation history", "Config-matched feature diagnostic in which no gain was established"],
+      "invalid_claims": ["Handcrafted-teacher training result", "Matched-example causal ablation"],
+      "classification": "historical-only"
+    },
+    {
+      "id": "historical-movetime-strength-retention-selection",
+      "artifacts": [
+        { "path": "target/release/haitaka_cli", "bytes": 11657280, "sha256": "1275f92d1d83ab2cb4219afeb2bd1db326fe99cae9952745a589a7af30542542" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/handcrafted-benchmark/7437671b62b61397/self-play-report.json", "bytes": 3494, "sha256": "d35d921288fbd06c37df480e6684369f4ae5eab1b1140dc218bea42909c122d8" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/c16-vs-candidate-20260829/self-play-report.json", "bytes": 3618, "sha256": "b690ae39e294724e12ae04c71170b348959664b95da0991526994a047e482f47" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/phase8b-root-vs-candidate-20260829/batch-3072/self-play-report.json", "bytes": 3740, "sha256": "7be90c4a1e81a7971f65fbc2d61b36fc155c2362f9ad2050dfaf553b5cc34a7a" },
+        { "path": "out/anhoku-v0.7-phase11b-seed80-v2/artifacts/phase11b-gate/seed80/batch-3072/self-play-report.json", "bytes": 3598, "sha256": "dd77c9dbf9fc8460e9599b0389e79eb1e699c219ff5e760bcdd0172687cfa406" }
+      ],
+      "valid_claims": ["Diagnostic record of historical harness behavior"],
+      "invalid_claims": ["Strength estimate", "Retention gate", "Checkpoint-selection evidence"],
+      "classification": "non-decisional"
+    },
+    {
+      "id": "phase8r-equal-node",
+      "artifacts": [{ "path": "out/anhoku-v0.6-phase8r/decision/self-play-report.json", "bytes": 3632, "sha256": "b45870c483b7db5b8b947cb05a3f41bf8b2c70385a4943e2d87ac748f1135da6" }],
+      "valid_claims": ["Diagnostic equal-node observation containing 342 fallback moves in 42 of 2048 games"],
+      "invalid_claims": ["Clean equal-node strength estimate"],
+      "classification": "diagnostic-only"
+    },
+    {
+      "id": "historical-nps",
+      "artifacts": [{ "path": "plans/anhoku-nnue-handcrafted-strength-plan.md", "bytes": 93244, "sha256": "e5ae7d348b546a29fe2691e4e85d3f7f6f2319a7bc50d76b4ef1df021eeaaec4" }],
+      "valid_claims": ["Diagnostic throughput history"],
+      "invalid_claims": ["Production single-game throughput ratio"],
+      "classification": "diagnostic-only"
+    }
+  ]
+}

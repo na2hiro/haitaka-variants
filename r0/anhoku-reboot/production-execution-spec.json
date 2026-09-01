@@ -1,0 +1,14 @@
+{
+  "schema": "haitaka-production-execution-v1",
+  "interface": "PENDING_PRODUCT_DECISION",
+  "complete_search_path": "PENDING_PRODUCT_DECISION: choose usi-wasm-v1 history-bearing position+moves or a new history-bearing direct interface",
+  "concurrent_games": 1,
+  "supported_host_classes": [],
+  "supported_device_classes": [],
+  "clock_policy": "monotonic deadline controller; exact version to be qualified in R1",
+  "cold_warm_protocol": "PENDING_PRODUCT_DECISION",
+  "max_serialized_bytes": 0,
+  "max_peak_memory_bytes": 0,
+  "max_load_time_ms": 0,
+  "max_per_move_latency_ms": 0
+}

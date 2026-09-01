@@ -4,6 +4,7 @@ mod dataset_audit;
 mod openings;
 mod phase11a;
 mod phase11c;
+mod r0;
 mod selection;
 mod trainer;
 mod verify;
@@ -13,7 +14,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand};
-use config::LoadedConfig;
+use config::{LoadedConfig, LoadedGenerationConfig, LoadedTrainingConfig};
 
 #[derive(Debug, Parser)]
 #[command(name = "haitaka_learn")]
@@ -109,6 +110,12 @@ enum Command {
         config: PathBuf,
         #[arg(long)]
         output: PathBuf,
+    },
+    /// Validate the frozen R0 registry, historical evidence, artifact hashes,
+    /// and production execution contract without generating data.
+    R0Gate {
+        #[arg(long, default_value = "r0/anhoku-reboot")]
+        bundle: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -231,7 +238,9 @@ enum Command {
     },
     Pipeline {
         #[arg(long)]
-        config: PathBuf,
+        generation_config: PathBuf,
+        #[arg(long)]
+        training_config: PathBuf,
         #[arg(long)]
         no_resume: bool,
     },
@@ -255,6 +264,14 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::R0Gate { bundle } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            r0::validate_bundle(&bundle, &workspace_root)?;
+            println!("R0 gate passed: {}", bundle.display());
+        }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
                 fs::read(&input).with_context(|| format!("failed to read {}", input.display()))?;
@@ -369,7 +386,7 @@ fn main() -> Result<()> {
             ensure!(report.passed, "DonorReceiverPairV2 trainer parity failed");
         }
         Command::ValidateOpenings { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             loaded.ruleset_requires_matching_engine()?;
             let (suite_id, positions, sha256) = openings::validate_configured_suite(&loaded)?;
             println!(
@@ -395,7 +412,7 @@ fn main() -> Result<()> {
             shard_count,
             output,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let report = dataset::audit_trajectories(
                 &loaded,
                 dataset::TrajectoryAuditOptions {
@@ -409,7 +426,7 @@ fn main() -> Result<()> {
             println!("trajectory audit written to {}", path.display());
         }
         Command::CalibrateLabels { config, output } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let report = dataset::calibrate_labels(&loaded)?;
             let path = dataset::write_label_calibration_report(&loaded, &report, output)?;
             println!("label calibration written to {}", path.display());
@@ -423,7 +440,7 @@ fn main() -> Result<()> {
             shard_count,
             ignore_identity_mismatch,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let output = dataset::generate_data_with_options(
                 &loaded,
                 dataset::GenerateOptions {
@@ -447,7 +464,7 @@ fn main() -> Result<()> {
             input,
             ignore_identity_mismatch,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let output = dataset::merge_data(&loaded, &input, ignore_identity_mismatch)?;
             println!(
                 "merged {} training and {} validation samples into {}",
@@ -457,12 +474,12 @@ fn main() -> Result<()> {
             );
         }
         Command::Train { config, no_resume } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
         }
         Command::PrepareBootstrap { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let bootstrap = trainer::prepare_bootstrap(&loaded)?;
             println!("prepared bootstrap checkpoint: {}", bootstrap.display());
         }
@@ -505,7 +522,7 @@ fn main() -> Result<()> {
             println!("existing candidates ranked: {}", selected.display());
         }
         Command::Export { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let exported = trainer::export(&loaded, None)?;
             println!("exported NNUE: {}", exported.display());
         }
@@ -514,7 +531,7 @@ fn main() -> Result<()> {
             checkpoint,
             output,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let trainer_checkout = loaded.trainer_checkout()?;
             let _guard = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
             trainer::export_checkpoint_to(&loaded, &trainer_checkout, &checkpoint, &output)?;
@@ -538,18 +555,24 @@ fn main() -> Result<()> {
                 report.report_path.display()
             );
         }
-        Command::Pipeline { config, no_resume } => {
-            let loaded = LoadedConfig::from_path(&config)?;
-            let data = dataset::generate_data_with_options(&loaded, generate_options(no_resume))?;
+        Command::Pipeline {
+            generation_config,
+            training_config,
+            no_resume,
+        } => {
+            let generation = LoadedGenerationConfig::from_path(&generation_config)?;
+            let training = LoadedTrainingConfig::from_path(&training_config)?;
+            let data =
+                dataset::generate_data_with_options(&generation, generate_options(no_resume))?;
             println!(
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
             );
-            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
+            let checkpoint = trainer::train(&training, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
-            let exported = trainer::export(&loaded, Some(checkpoint.clone()))?;
+            let exported = trainer::export(&training, Some(checkpoint.clone()))?;
             println!("exported NNUE: {}", exported.display());
-            let report = verify::verify(&loaded)?;
+            let report = verify::verify(&training)?;
             println!(
                 "verified {} position(s); report written to {}",
                 report.positions.len(),

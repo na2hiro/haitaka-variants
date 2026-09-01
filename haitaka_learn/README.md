@@ -1,5 +1,33 @@
 # haitaka_learn
 
+## R0 stage separation
+
+New execution uses strict, stage-specific TOML schemas. `generate-data`,
+`merge-data`, `trajectory-audit`, `calibrate-labels`, and `validate-openings`
+accept only a combined generation config such as
+`haitaka_learn.anhoku-reboot-r0.generation.toml`. It declares trajectory and
+label evaluators independently and cannot represent training initialization.
+Unknown or legacy cross-stage fields are errors.
+
+`train`, `prepare-bootstrap`, and `export` accept only a training config such as
+`haitaka_learn.anhoku-reboot-r0.training.example.toml`. Training consumes
+explicit dataset-manifest locators and hashes and declares
+`training.initial_checkpoint` as scratch, full precision, or a marked
+quantized-import diagnostic. The `pipeline` command requires separate
+`--generation-config` and `--training-config` files.
+
+Successful generation and training/export commands publish stage manifests in
+the run's `artifacts/` directory. `r0-gate` validates the experiment registry,
+historical claim quarantine, frozen artifacts, and production execution spec:
+
+```console
+cargo run -p haitaka_learn --features anhoku -- r0-gate \
+  --bundle r0/anhoku-reboot
+```
+
+Historical all-purpose TOMLs remain audit inputs only; execution commands do
+not guess how `paths.bootstrap_nnue` was intended.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data
