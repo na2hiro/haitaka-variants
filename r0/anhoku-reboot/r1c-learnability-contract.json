@@ -1,0 +1,112 @@
+{
+  "schema": "haitaka-r1c-learnability-contract-v1",
+  "frozen_at": "2026-09-01T00:00:00+09:00",
+  "ruleset": "anhoku",
+  "feature_family": "HalfKAv2^+DonorSingleEff",
+  "device": "cpu",
+  "gpu_allowed": false,
+  "framework": "PyTorch CPU",
+  "input_artifacts": {
+    "r1a_report": {
+      "path": "out/anhoku-reboot-r1a/r1a-gate-report.json",
+      "sha256": "97eeffb16c6dedd8dcb1c2e0ccdf0c48681fee3252d4a1c30f9d9a45367b0477"
+    },
+    "r1a_corpus": {
+      "path": "out/anhoku-reboot-r1a/parity-corpus.jsonl",
+      "sha256": "6b958fdfc279f1c5a79c34a213321f972ea7e9ed68c998c9c53a1b4715207d6c"
+    },
+    "r1a_features": {
+      "path": "out/anhoku-reboot-r1a/rust-features.jsonl",
+      "sha256": "4cbdad4d4021bcd6e0d753890e4924380a82d70de5ef486284578321384f3f7a"
+    },
+    "r1b_report": {
+      "path": "out/anhoku-reboot-r1b/r1b-gate-report.json",
+      "sha256": "a5d93dc62efb97f56e94498280a0430e4297dcdd5b7a4afa1d6ff5ac6786fe21"
+    },
+    "r1b_quantization_limits": {
+      "path": "r0/anhoku-reboot/r1b-quantization-limits.json",
+      "sha256": "98630bb24ae23f2d28db57a4375ade98f096664ea3d35e41c540e3fda1a4661e"
+    },
+    "r1b_independent_serializer": {
+      "path": "scripts/r1b-parity-oracle.py",
+      "sha256": "dea792da93a5734da47b12b53930cbaf66c7b848e2f7ae7b2953e30274cd87b2"
+    }
+  },
+  "overfit_corpus": {
+    "positions": 8192,
+    "selection": "numeric fixture ids r1a-00000 through r1a-08191 inclusive, in ascending order",
+    "filtering": "none",
+    "cycling": false,
+    "sampling": false,
+    "target": "R1-A handcrafted static score in side-to-move orientation",
+    "initial_prediction_score": 0,
+    "loss": "mean squared error between sigmoid(prediction / 410) and sigmoid(target / 410)"
+  },
+  "exact_oracles": {
+    "optimizer": {
+      "name": "Adam full-batch",
+      "dtype": "float64",
+      "seed": 12648430,
+      "steps": 2000,
+      "learning_rate": 0.03
+    },
+    "maximum_final_to_initial_loss_ratio": 0.000001,
+    "targets": {
+      "constant": "linear bias target 0.25",
+      "side_sign": "linear target 0.5 times (+1 Black-to-move, -1 White-to-move)",
+      "coalesced_material": "linear target coalesced material score / 1000 using the nine frozen trainer piece slots",
+      "sentinel_feature_rows": "sixteen-output identity target from signed side-to-move-oriented production feature-row counts"
+    },
+    "sentinel_feature_rows": [
+      8914,
+      19401,
+      19914,
+      30575,
+      31088,
+      19420,
+      30592,
+      19415,
+      151238,
+      151242,
+      152102,
+      152106,
+      151237,
+      151243,
+      152101,
+      152107
+    ]
+  },
+  "deployment_overfit": {
+    "graph": "complete 512x8 DonorSingleEff deployment checkpoint; trained coefficients use the bucketed PSQT branch and all other parameters remain zero",
+    "optimizer": "deterministic full-batch conjugate-gradient least squares in PyTorch float64",
+    "maximum_iterations": 512,
+    "relative_normal_residual_tolerance": 1e-12,
+    "maximum_full_precision_final_to_initial_loss_ratio": 0.10,
+    "minimum_serialized_loss_reduction_retention": 0.90,
+    "repeat_export_must_be_byte_identical": true,
+    "python_integer_and_rust_runtime_scores_must_be_exact": true,
+    "rust_full_refresh_and_incremental_scores_must_be_exact": true
+  },
+  "quantization": {
+    "limits_source": "r0/anhoku-reboot/r1b-quantization-limits.json",
+    "apply_to": "all, each even/odd fixture-id split, each reference-score bucket, and every split/score-bucket cross",
+    "serializer_clamped_weights": 0,
+    "accumulator_overflows": 0
+  },
+  "collision_diagnostic": {
+    "coalesced_slot": "Gold, Tokin, promoted Lance, promoted Knight, and promoted Silver",
+    "real_position_frequency_source": "the fixed 8192-position overfit corpus",
+    "synthetic_pair_piece_substitutions": [
+      "Gold<->Tokin",
+      "Gold<->promoted Lance",
+      "Gold<->promoted Knight",
+      "Gold<->promoted Silver"
+    ],
+    "colors": [
+      "black",
+      "white"
+    ],
+    "assertions": "each substitution pair has identical packed bytes and active features but the frozen handcrafted material component differs by exactly 50 runtime score units in absolute value"
+  },
+  "pass_rule": "PASS iff every exact oracle satisfies its frozen ratio, full-precision overfit loss is at most 10% of initial loss, serialized loss retains at least 90% of the full-precision reduction, all frozen R1-B absolute group limits pass, repeat exports are byte-identical, Python integer scores equal Rust full-refresh and incremental scores exactly, serializer clamps and accumulator overflows are zero, and the collision diagnostic is complete."
+}

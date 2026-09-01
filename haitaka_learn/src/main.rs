@@ -7,6 +7,7 @@ mod phase11c;
 mod r0;
 mod r1a;
 mod r1b;
+mod r1c;
 mod selection;
 mod trainer;
 mod verify;
@@ -134,6 +135,28 @@ enum Command {
         r1a_dir: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1b")]
         output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1b-quantization-limits.json")]
+        limits: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
+    },
+    /// Train the frozen CPU-only exactly-representable and 8,192-position
+    /// deployment learnability oracles, then verify serialized Rust parity.
+    R1cGate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        output_dir: PathBuf,
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1c-learnability-contract.json"
+        )]
+        contract: PathBuf,
         #[arg(long, default_value = "r0/anhoku-reboot/r1b-quantization-limits.json")]
         limits: PathBuf,
         #[arg(
@@ -327,6 +350,34 @@ fn main() -> Result<()> {
                 if report.passed { "PASS" } else { "FAIL" },
             );
             ensure!(report.passed, "R1-B gate failed");
+        }
+        Command::R1cGate {
+            r1a_dir,
+            r1b_dir,
+            output_dir,
+            contract,
+            limits,
+            python,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1c::run(r1c::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                limits_path: &limits,
+                python: &python,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-C gate written to {}: {}",
+                output_dir.join("r1c-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-C gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

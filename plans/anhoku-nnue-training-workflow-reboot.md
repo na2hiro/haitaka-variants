@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0, R1-A, and R1-B complete with machine gates passed; R1-C is next
+- Status: Phase R0 and R1-A/B/C complete with machine gates passed; R1-D1 is next
 - Created: 2026-08-31
 - Last audited: 2026-09-01
 - Last implementation update: 2026-09-01
@@ -603,6 +603,52 @@ their frequency in real positions, relative clone error, calibration, and
 residual strata rather than demanding exact scores. A frequent, high-regret
 collision is direct evidence that may authorize one minimal identity-preserving
 feature experiment later; its existence alone does not explain the current Elo.
+
+#### R1-C implementation record (2026-09-01)
+
+Implemented and passed on branch `reboot` without a GPU:
+
+- Froze the CPU-only oracle, exact targets, optimizer settings, 8,192-position
+  subset, sentinel rows, collision fixtures, and pass thresholds before opening
+  results in `r0/anhoku-reboot/r1c-learnability-contract.json`.
+- Added `r1c-gate`. Its independent PyTorch helper trains constant, side/sign,
+  coalesced-material, and 16 production-row sentinel targets, then fits the
+  complete deployment checkpoint through the real bucketed DonorSingleEff PSQT
+  path and exports it with the independent R1-B serializer.
+- Every exactly representable oracle passed the frozen final/initial loss ratio
+  of `0.000001`. The deployment overfit probability loss fell from
+  `0.0668115660` to `0.0000232274`, or `0.03477%` of its initial value, exceeding
+  the required 90% reduction by a wide margin.
+- Serialized loss was `0.0000231965` and retained `100.000046%` of the measured
+  full-precision reduction. Every R1-B split, score bucket, and split/bucket
+  cross passed the frozen absolute score-delta and loss-degradation limits;
+  serializer clamps and accumulator overflows were both zero.
+- Across 8,192 positions and 8,154 move transitions, Python integer inference,
+  Rust full refresh, and Rust incremental inference had zero score,
+  accumulator, restored-parent, or transition mismatches. Repeat serialized
+  exports were byte-identical.
+- The fixed corpus contains 412 promoted gold-like instances in 112/8,192
+  positions (`1.3671875%`). Eight explicit Black/White Gold-versus-promoted-minor
+  pairs prove identical packed bytes and active features despite an exact
+  50-unit handcrafted-material difference. This is a measured structural
+  collision, not evidence that it currently limits strength.
+- The machine-readable report and SHA-256 inventory are in
+  `out/anhoku-reboot-r1c/r1c-gate-report.json`; all six top-level gates and all
+  nested Python gates are `true`.
+
+Final CPU-only verification completed:
+
+- `target/release/haitaka_learn r0-gate --bundle r0/anhoku-reboot`
+- `target/release/haitaka_learn r1a-gate --config haitaka_learn.anhoku-reboot-r1a.training.toml --output-dir out/anhoku-reboot-r1a-r1c-regression`
+- `target/release/haitaka_learn r1b-gate --r1a-dir out/anhoku-reboot-r1a-r1c-regression --output-dir out/anhoku-reboot-r1b-r1c-regression --limits r0/anhoku-reboot/r1b-quantization-limits.json --python ../engine/variant-nnue-pytorch/.venv/bin/python`
+- `target/release/haitaka_learn r1c-gate --r1a-dir out/anhoku-reboot-r1a --r1b-dir out/anhoku-reboot-r1b --output-dir out/anhoku-reboot-r1c --contract r0/anhoku-reboot/r1c-learnability-contract.json --limits r0/anhoku-reboot/r1b-quantization-limits.json --python ../engine/variant-nnue-pytorch/.venv/bin/python`
+- `cargo test -p haitaka_learn -p haitaka_wasm --features anhoku`
+- `cargo check -p haitaka_learn --features anhoku`, `cargo fmt --all -- --check`,
+  and `git diff --check`
+
+No GPU, labels, production data generation, self-play, or model-strength game
+was run. R1-D1 is now authorized; R1-D2/D3, R2, and production corpus generation
+remain unauthorized by this result.
 
 ### R1-D: interruption-safe search and honest self-play
 
