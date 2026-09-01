@@ -412,6 +412,13 @@ enum SearchBudget {
 #[derive(Debug, Clone, PartialEq)]
 struct EngineSearchResult {
     best_move: Option<String>,
+    play_move_was_searched: bool,
+    last_completed_iteration_value: Option<i32>,
+    completed_root_moves_in_interrupted_iteration: u32,
+    partial_root_state: bool,
+    interruption_reason: String,
+    emergency_fallback_used: bool,
+    missing_move: bool,
     total_nodes: u64,
     requested_budget_nodes: u64,
     consumed_budget_nodes: u64,
@@ -1008,6 +1015,15 @@ fn search_in_process_handcrafted(
             let summary = haitaka_wasm::search_board_impl_handcrafted(board, depth)?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1015,7 +1031,7 @@ fn search_in_process_handcrafted(
                 completed_depth: depth,
                 incomplete_iterations: 0,
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1028,6 +1044,15 @@ fn search_in_process_handcrafted(
             )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1035,7 +1060,7 @@ fn search_in_process_handcrafted(
                 completed_depth: summary.completed_depth,
                 incomplete_iterations: u64::from(summary.timed_out),
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1049,7 +1074,7 @@ fn search_in_process_handcrafted(
                     SEARCH_NODE_BUDGET_MAX_DEPTH,
                     &mut workspace,
                 )?;
-            Ok(node_budget_engine_result(board, summary))
+            Ok(node_budget_engine_result(summary))
         }
     }
 }
@@ -1069,6 +1094,15 @@ fn search_in_process_nnue(
             )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1076,7 +1110,7 @@ fn search_in_process_nnue(
                 completed_depth: depth,
                 incomplete_iterations: 0,
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1091,6 +1125,15 @@ fn search_in_process_nnue(
             )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1098,7 +1141,7 @@ fn search_in_process_nnue(
                 completed_depth: summary.completed_depth,
                 incomplete_iterations: u64::from(summary.timed_out),
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1114,21 +1157,25 @@ fn search_in_process_nnue(
                     SearchEvalMode::Incremental,
                     &mut workspace,
                 )?;
-            Ok(node_budget_engine_result(board, summary))
+            Ok(node_budget_engine_result(summary))
         }
     }
 }
 
-fn node_budget_engine_result(
-    board: &Board,
-    summary: haitaka_wasm::NodeBudgetSearchSummary,
-) -> EngineSearchResult {
-    let fallback_used = summary.best_move.is_none();
-    let best_move = summary
-        .best_move
-        .or_else(|| legal_moves(board).first().map(ToString::to_string));
+fn node_budget_engine_result(summary: haitaka_wasm::NodeBudgetSearchSummary) -> EngineSearchResult {
+    let fallback_used = summary.root_result.emergency_fallback_used;
+    let best_move = summary.best_move;
     EngineSearchResult {
         best_move,
+        play_move_was_searched: summary.root_result.play_move_was_searched,
+        last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+        completed_root_moves_in_interrupted_iteration: summary
+            .root_result
+            .completed_root_moves_in_interrupted_iteration,
+        partial_root_state: summary.root_result.partial_root_state,
+        interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+        emergency_fallback_used: summary.root_result.emergency_fallback_used,
+        missing_move: summary.root_result.missing_move,
         total_nodes: summary.alpha_beta_nodes,
         requested_budget_nodes: summary.node_limit,
         consumed_budget_nodes: summary.total_nodes,
@@ -1138,10 +1185,7 @@ fn node_budget_engine_result(
         node_budget_cap_hits: summary.cap_hits,
         fallback_used,
         elapsed_ms: summary.elapsed_ms,
-        qsearch: QsearchTelemetry {
-            qnodes: summary.qsearch_nodes,
-            ..QsearchTelemetry::default()
-        },
+        qsearch: summary.qsearch_stats.into(),
     }
 }
 
@@ -1460,6 +1504,13 @@ struct UsiInfoTelemetry {
     incomplete_iterations: u64,
     node_budget_cap_hits: u64,
     fallback_used: bool,
+    play_move_was_searched: bool,
+    last_completed_iteration_value: Option<i32>,
+    completed_root_moves_in_interrupted_iteration: u32,
+    partial_root_state: bool,
+    interruption_reason: Option<String>,
+    emergency_fallback_used: bool,
+    missing_move: bool,
     node_counting_version: Option<String>,
     qsearch: QsearchTelemetry,
 }
@@ -1574,6 +1625,16 @@ impl UsiEngineClient {
         };
         Ok(EngineSearchResult {
             best_move: bestmove,
+            play_move_was_searched: telemetry.play_move_was_searched,
+            last_completed_iteration_value: telemetry.last_completed_iteration_value,
+            completed_root_moves_in_interrupted_iteration: telemetry
+                .completed_root_moves_in_interrupted_iteration,
+            partial_root_state: telemetry.partial_root_state,
+            interruption_reason: telemetry
+                .interruption_reason
+                .unwrap_or_else(|| "unspecified".to_string()),
+            emergency_fallback_used: telemetry.emergency_fallback_used,
+            missing_move: telemetry.missing_move,
             total_nodes: alpha_beta_nodes,
             requested_budget_nodes: telemetry.requested_budget_nodes,
             consumed_budget_nodes: telemetry.consumed_budget_nodes,
@@ -1581,7 +1642,7 @@ impl UsiEngineClient {
             completed_depth: telemetry.completed_depth,
             incomplete_iterations: telemetry.incomplete_iterations,
             node_budget_cap_hits: telemetry.node_budget_cap_hits,
-            fallback_used: telemetry.fallback_used,
+            fallback_used: telemetry.fallback_used || telemetry.emergency_fallback_used,
             elapsed_ms: started_at.elapsed().as_secs_f64() * 1_000.0,
             qsearch: telemetry.qsearch,
         })
@@ -1743,6 +1804,48 @@ fn merge_usi_info_telemetry(telemetry: &mut UsiInfoTelemetry, line: &str) {
             "fallback" => {
                 if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
                     telemetry.fallback_used = value != 0;
+                }
+            }
+            "rootResultSchema" => {
+                let _ = tokens.next();
+            }
+            "playMoveWasSearched" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.play_move_was_searched = value != 0;
+                }
+            }
+            "lastCompletedIterationValue" => {
+                telemetry.last_completed_iteration_value = tokens
+                    .next()
+                    .filter(|value| *value != "null")
+                    .and_then(|value| value.parse::<i32>().ok());
+            }
+            "completedIterationDepth" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.completed_depth = value;
+                }
+            }
+            "completedRootMovesInInterruptedIteration" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u32>().ok()) {
+                    telemetry.completed_root_moves_in_interrupted_iteration = value;
+                }
+            }
+            "partialRootState" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.partial_root_state = value != 0;
+                }
+            }
+            "interruptionReason" => {
+                telemetry.interruption_reason = tokens.next().map(str::to_string);
+            }
+            "emergencyFallbackUsed" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.emergency_fallback_used = value != 0;
+                }
+            }
+            "missingMove" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.missing_move = value != 0;
                 }
             }
             "nodeCountingVersion" => {
@@ -4278,6 +4381,13 @@ mod tests {
         let mv = Move::from_str(best_move).expect("fallback should be a USI move");
         assert!(board.is_legal(mv));
         assert!(result.fallback_used);
+        assert!(result.emergency_fallback_used);
+        assert!(!result.play_move_was_searched);
+        assert_eq!(result.last_completed_iteration_value, None);
+        assert_eq!(result.completed_root_moves_in_interrupted_iteration, 0);
+        assert!(!result.partial_root_state);
+        assert_eq!(result.interruption_reason, "node-budget");
+        assert!(!result.missing_move);
         assert_eq!(result.requested_budget_nodes, 1);
         assert_eq!(result.consumed_budget_nodes, 1);
         assert_eq!(
@@ -4544,7 +4654,7 @@ mod tests {
     #[test]
     fn usi_info_parser_captures_qsearch_telemetry() {
         let telemetry = parse_usi_info_telemetry(
-            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 string ignored",
+            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 lastCompletedIterationValue 12 completedIterationDepth 4 completedRootMovesInInterruptedIteration 3 partialRootState 1 interruptionReason deadline emergencyFallbackUsed 0 missingMove 0 string ignored",
         );
 
         assert_eq!(telemetry.total_nodes, 12_345);
@@ -4553,6 +4663,14 @@ mod tests {
         assert_eq!(telemetry.qsearch.qsearch_cap_hits, 2);
         assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 8);
         assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 9);
+        assert!(telemetry.play_move_was_searched);
+        assert_eq!(telemetry.last_completed_iteration_value, Some(12));
+        assert_eq!(telemetry.completed_depth, 4);
+        assert_eq!(telemetry.completed_root_moves_in_interrupted_iteration, 3);
+        assert!(telemetry.partial_root_state);
+        assert_eq!(telemetry.interruption_reason.as_deref(), Some("deadline"));
+        assert!(!telemetry.emergency_fallback_used);
+        assert!(!telemetry.missing_move);
 
         let missing = parse_usi_info_telemetry("info depth 1 nodes 9 nps 1000");
         assert_eq!(missing.total_nodes, 9);

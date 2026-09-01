@@ -8,6 +8,7 @@ mod r0;
 mod r1a;
 mod r1b;
 mod r1c;
+mod r1d1;
 mod selection;
 mod trainer;
 mod verify;
@@ -164,6 +165,25 @@ enum Command {
             default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
         )]
         python: PathBuf,
+    },
+    /// Run the frozen deterministic interrupted-root-result and combined-node
+    /// accounting gate. This command never plays games or changes adjudication.
+    R1d1Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        r1c_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d1-search-contract.json")]
+        contract: PathBuf,
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1d1-forced-interruption-fixtures.json"
+        )]
+        fixtures: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -378,6 +398,34 @@ fn main() -> Result<()> {
                 if report.passed { "PASS" } else { "FAIL" },
             );
             ensure!(report.passed, "R1-C gate failed");
+        }
+        Command::R1d1Gate {
+            r1a_dir,
+            r1b_dir,
+            r1c_dir,
+            output_dir,
+            contract,
+            fixtures,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d1::run(r1d1::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                r1c_dir: &r1c_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                fixtures_path: &fixtures,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D1 gate written to {}: {}",
+                output_dir.join("r1d1-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D1 gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

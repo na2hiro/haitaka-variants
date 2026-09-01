@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 and R1-A/B/C complete with machine gates passed; R1-D1 is next
+- Status: Phase R0 and R1-A/B/C/D1 complete with machine gates passed; R1-D2 is next
 - Created: 2026-08-31
 - Last audited: 2026-09-01
 - Last implementation update: 2026-09-01
@@ -236,7 +236,7 @@ These rules apply to every phase.
 | Phase | Question | Expensive generation/training allowed? | Exit evidence |
 | --- | --- | --- | --- |
 | R0 | Can initialization, trajectory policy, and label teacher be made independent and auditable? | No | Typed configs, manifests, registry, regression tests |
-| R1 | Are board packing, features, sign, score, serialization, runtime inference, and interrupted search correct? | Debug scale only | Exact oracle/integer parity and zero-fallback harness reports |
+| R1 | Are board packing, features, sign, score, serialization, runtime inference, and interrupted search correct? | Debug scale only | R1-A/B/C plus separate R1-D1/D2/D3 machine gates |
 | R2 | Is training deterministic, finite, resumable, and capable of learning? | At most one debug GPU-hour | Exposure/overfit/resume/validation gates |
 | R3 | Which teacher, target, search budget, and score transform are defensible? | Probe corpus only | Deep-reference calibration protocol and frozen target |
 | R4 | Can we produce broad, independent, cost-effective positions and immutable splits? | Up to 1M pilot positions | Audited pilot corpus and scale forecast |
@@ -652,79 +652,247 @@ remain unauthorized by this result.
 
 ### R1-D: interruption-safe search and honest self-play
 
-Repair both timed and node-budget search before any model-selection or strength
-game:
+R1-D is not one worker assignment. It is three separately authorized steps,
+each ending in its own commit, machine-readable report, gate command, and
+closeout entry. R1-C must pass before R1-D1 begins; R1-D2 is unauthorized until
+R1-D1 passes; R1-D3 is unauthorized until R1-D2 passes. A worker assigned one
+step must not implement the next step in the same assignment, except for the
+minimal typed interface scaffolding required by the current step.
+
+| Step | Scope | Prerequisite | Exit evidence |
+| --- | --- | --- | --- |
+| R1-D1 | Interrupted root-result contract and exact node accounting | R1-C passed | Search-result contract, forced-interruption corpus, `r1d1-gate` |
+| R1-D2 | Repetition/history, TT, qsearch, DFPN, and adjudication | R1-D1 passed | History/adjudication golden corpus, `r1d2-gate` |
+| R1-D3 | Match integrity, production timing, and null qualification | R1-D2 passed | Complete-pair null reports, timing/equivalence report, `r1d3-gate` |
+
+#### R1-D1: interrupted root result and node accounting
+
+**Objective:** every search API returns an honest, typed result under tiny time
+or node budgets, without conflating a legal play move with a trustworthy label
+value.
+
+Required work:
 
 - Seed search with a legal root move, but distinguish an unsearched emergency
   move from a searched best-so-far move.
-- Publish the best move after each completed root child so an interrupted
-  iteration can return useful partial-root work instead of discarding the whole
+- Publish the best move after every completed root child so an interrupted
+  iteration preserves useful partial-root work instead of discarding the whole
   iteration.
-- Keep the play and value contracts separate. A search result exposes
-  `play_move_best_so_far` plus `last_completed_iteration_value`, completion
-  depth, and partial-root metadata. A partial-root move may be legal for play,
-  but its order-dependent partial value is never silently accepted as a
-  training label. Label generation either uses the last fully completed value
-  under its frozen target semantics or rejects the position as incomplete.
-- Record completed iteration depth, completed root moves in the interrupted
-  iteration, interruption reason, emergency-fallback use, and missing-move
-  status for every search.
-- Preserve full qsearch telemetry under node budgets; do not report only qnodes
-  while zeroing qsearch depth, cap, check-move, and pruning counters.
+- Keep the play and value contracts separate. The result type must expose at
+  least `play_move_best_so_far`, whether that move was searched,
+  `last_completed_iteration_value`, completed iteration depth, completed root
+  moves in the interrupted iteration, partial-root state, interruption reason,
+  emergency-fallback use, and missing-move state.
+- A partial-root move is legal for play but its order-dependent partial value is
+  never a training label. Label generation uses only the last fully completed
+  value under its frozen target semantics or rejects the position as incomplete.
 - Define the node budget as the versioned combined count
-  `alpha_beta_nodes + qnodes`. Tiny-budget tests must prove that consumed nodes
-  never exceed the request, exact-exhaustion cases consume the declared budget,
-  and in-process, USI, and production-interface paths agree without an
-  arbitrary move fallback.
-- A nonterminal missing move is a harness error that aborts the match. It is
-  never scored as a loss.
-- A promotion match requires zero missing moves and zero unsearched emergency
-  fallbacks. Partial-root moves are permitted only under a frozen policy and
-  must be reported separately by engine.
-- Make in-process, USI, fixed-time, and node-budget behavior follow the same
-  best-move contract.
-- Replace `terminal_winner`'s generic non-ongoing-as-loss rule with explicit win,
-  loss, and draw handling.
-- Add the Anhoku repetition/perpetual-check adjudication required by the game
-  rules, maintain game history in self-play, and record a versioned termination
-  reason. Maximum-ply adjudication remains explicit and separate.
-- Pass root game history into every search API and implement line-local
-  repetition/perpetual-check detection inside alpha-beta; game-loop-only
-  adjudication is insufficient because search can otherwise choose and value a
-  repetition cycle incorrectly. Apply the same history contract in qsearch and
-  root DFPN. Because identical boards can have different values under different
-  repetition/perpetual-check histories, either add the relevant history context
-  to TT identity or suppress TT probe/store at history-sensitive nodes. Add
-  same-board/different-history TT tests plus golden tests for ordinary fourfold
-  draw, the perpetual-check loser, terminal-on-final-max-ply precedence, and any
-  applicable Anhoku entering-king rule.
-- Root DFPN must use the same monotonic deadline/budget contract and expose its
-  completion/interruption metadata. Unless it proves a terminal root result, it
-  must not consume the entire move budget without allowing a searched legal root
-  move to be published; freeze a reservation/interleaving policy and test
-  deadline expiry inside DFPN.
-- Add controlled tests with an artificially slow evaluator and tiny time/node
-  limits that interrupt before depth 1, after one root child, and during later
-  iterations.
-- Freeze the monotonic clock and deadline-controller semantics. Report per-move
-  requested time, elapsed time, overrun, cold/warm model state, and scheduler
-  delay where measurable, along with completed-depth and completed-root-child
-  distributions. Before strength play, predeclare numeric p95, p99, and maximum
-  lateness limits plus an engine-symmetry/equivalence margin; any failed limit
-  or systematic asymmetry invalidates the match even when every search returns
-  a move.
+  `alpha_beta_nodes + qnodes`. Preserve full qsearch telemetry, including depth,
+  cap, check-move, and pruning counters.
+- Make in-process, USI, fixed-time, node-budget, and production-interface
+  adapters expose the same result semantics. Remove lexicographic or otherwise
+  arbitrary fallback substitution from these paths.
+- Add deterministic forced-interruption tests with an artificially slow
+  evaluator and tiny limits: before any root child finishes, immediately after
+  one root child, during a later root child, between completed iterations, and
+  inside qsearch.
 
-Qualify the harness with enough independent opening groups that an
-A-versus-identical-A paired interval lies wholly inside a predeclared zero-bias
-equivalence margin. For distinct A and B, replay the identical pair schedule
-with engine order reversed and require the sign-transformed effect estimates to
-agree within a separate tolerance; the A/B strength effect itself is not
-expected to be zero. Runs must have zero missing/emergency moves and pass the
-time-overrun boundary. Match identity must include the resolved thread count,
-CPU, affinity, compiler flags, opening-suite hash, adjudication version,
-clock/controller version, search-limit version, and cold/warm protocol.
+R1-D1 is deliberately not allowed to change repetition rules, TT history
+semantics, DFPN policy, game adjudication, match statistics, or promotion
+thresholds; those belong to D2 and D3.
 
-### Cost ceiling
+Before opening the forced-interruption results, freeze the typed result schema,
+node-counting version, corpus cases, and exact assertions in
+`r0/anhoku-reboot/r1d1-search-contract.json`. The worker must add `r1d1-gate`
+and publish `out/anhoku-reboot-r1d1/r1d1-gate-report.json` with hashes of the
+executable, contract, fixtures, and raw traces.
+
+R1-D1 passes only when:
+
+- every nonterminal test position returns a legal move;
+- an unsearched emergency move appears only when no root child completed and is
+  explicitly marked; after one completed root child, the returned play move is
+  searched;
+- partial-root values never enter generated labels and the completed-value field
+  is exact in every interruption case;
+- combined consumed nodes never exceed the request, exact-exhaustion cases match
+  the declared budget, and alpha-beta plus qnodes reconciles exactly;
+- qsearch telemetry is complete and internally consistent;
+- all adapters agree on move/value/completeness semantics; and
+- R0 and R1-A/B/C gates plus the affected Rust tests still pass.
+
+Stop after the D1 report and closeout. Do not run self-play qualification games
+or begin history/adjudication work.
+
+##### R1-D1 implementation record (complete, 2026-09-01)
+
+- Added the frozen `haitaka-search-root-result-v1` contract and deterministic
+  forced-interruption fixtures. Search results now separate the legal play move
+  from `last_completed_iteration_value`, publish root progress after every
+  completed child, and explicitly identify searched moves, partial-root state,
+  interruption reason, emergency use, and missing moves.
+- Removed the lexicographic CLI/USI substitution path. Timed, fixed-depth,
+  fixed-node, in-process, USI, CLI, and WASM-facing adapters now carry the same
+  typed semantics. A legal unsearched emergency seed is used only before any
+  root child completes; a searched partial-root best move supersedes it after
+  the first completed child.
+- Versioned combined node accounting as `alpha-beta-plus-qsearch-v2`. Admission
+  counts each alpha-beta or qsearch node exactly once before its body executes;
+  the combined count never exceeds the request. Interrupted node searches now
+  preserve complete qsearch depth, cap, check-move, and pruning telemetry.
+- Training labels and training traces use only the last fully completed
+  iteration. The forced partial-root and tiny-budget cases publish no completed
+  value or training trace.
+- Added `r1d1-gate`. Its artificially slow deterministic fixture controller
+  covers interruption before a root child, after one root child, during the
+  second child, between iterations, inside qsearch, and at exact combined
+  budgets of one and three nodes. The one-node case consumes exactly `1 + 0`
+  alpha-beta/qsearch nodes and marks a legal emergency move; the three-node case
+  consumes exactly `2 + 1`, preserves one searched root move, and publishes no
+  partial label value.
+- The machine-readable report and SHA-256 inventory are in
+  `out/anhoku-reboot-r1d1/r1d1-gate-report.json`; all eight named gates and all
+  five adapter-parity checks are `true`.
+
+Final CPU-only verification completed:
+
+- `target/release/haitaka_learn r0-gate --bundle r0/anhoku-reboot`
+- `target/release/haitaka_learn r1a-gate --config haitaka_learn.anhoku-reboot-r1a.training.toml --output-dir out/anhoku-reboot-r1a-r1d1-regression`
+- `target/release/haitaka_learn r1b-gate --r1a-dir out/anhoku-reboot-r1a-r1d1-regression --output-dir out/anhoku-reboot-r1b-r1d1-regression --limits r0/anhoku-reboot/r1b-quantization-limits.json --python ../engine/variant-nnue-pytorch/.venv/bin/python`
+- `target/release/haitaka_learn r1c-gate --r1a-dir out/anhoku-reboot-r1a-r1d1-regression --r1b-dir out/anhoku-reboot-r1b-r1d1-regression --output-dir out/anhoku-reboot-r1c-r1d1-regression --contract r0/anhoku-reboot/r1c-learnability-contract.json --limits r0/anhoku-reboot/r1b-quantization-limits.json --python ../engine/variant-nnue-pytorch/.venv/bin/python`
+- `target/release/haitaka_learn r1d1-gate --r1a-dir out/anhoku-reboot-r1a-r1d1-regression --r1b-dir out/anhoku-reboot-r1b-r1d1-regression --r1c-dir out/anhoku-reboot-r1c-r1d1-regression --output-dir out/anhoku-reboot-r1d1 --contract r0/anhoku-reboot/r1d1-search-contract.json --fixtures r0/anhoku-reboot/r1d1-forced-interruption-fixtures.json`
+- `cargo test -p haitaka_learn -p haitaka_wasm -p haitaka_cli --features anhoku`
+- `cargo check -p haitaka_learn -p haitaka_wasm -p haitaka_cli --features anhoku`,
+  `cargo fmt --all -- --check`, and `git diff --check`
+
+No GPU, labels, production data generation, self-play, model-strength game,
+repetition/adjudication change, TT-history change, or DFPN-policy change was
+made. R1-D2 is now authorized; R1-D3, R2, and production corpus generation
+remain unauthorized by this result.
+
+#### R1-D2: history, repetition, TT, qsearch, DFPN, and adjudication
+
+**Objective:** identical board layouts are evaluated according to their actual
+game and line history, with correct Anhoku terminal semantics throughout search
+and self-play.
+
+Required work:
+
+- Pass root game history into every search API and maintain line-local history
+  in alpha-beta, qsearch, and root DFPN. Game-loop-only repetition detection is
+  insufficient.
+- Implement the Anhoku repetition and perpetual-check rules, including the
+  correct loser/draw result and any applicable entering-king rule.
+- Because identical boards can have different values under different
+  repetition counts or checking histories, either include the necessary
+  repetition context in TT identity or suppress TT probe/store at
+  history-sensitive nodes.
+- Replace `terminal_winner`'s generic non-ongoing-as-loss behavior with explicit
+  win, loss, draw, repetition/adjudication, and maximum-ply handling. Record a
+  versioned termination reason and define terminal-on-final-max-ply precedence.
+- Root DFPN must obey the D1 move/value result contract, use the same monotonic
+  deadline and combined-node budget, and expose completion/interruption
+  metadata. Unless it proves a terminal root result, it must not consume the
+  complete move budget without permitting a searched legal root move to be
+  published; freeze a reservation or interleaving policy.
+- Add same-board/different-history fixtures and golden lines covering ordinary
+  fourfold repetition, perpetual-check loss for either side, qsearch repetition,
+  TT contamination attempts, DFPN repetition, deadline expiry within DFPN,
+  terminal-on-final-max-ply precedence, and entering-king if applicable.
+
+R1-D2 must not run match-equivalence games or tune timing/statistical thresholds;
+those belong to D3.
+
+Before executing the golden corpus, freeze the rules/adjudication version,
+history representation, TT policy, DFPN budget policy, termination precedence,
+and expected outcomes in `r0/anhoku-reboot/r1d2-history-contract.json`. Add
+`r1d2-gate` and publish
+`out/anhoku-reboot-r1d2/r1d2-gate-report.json` with raw trace and artifact hashes.
+
+R1-D2 passes only when:
+
+- every golden history produces the exact expected result, termination reason,
+  score orientation, and legal move behavior in all applicable search APIs;
+- same-board/different-history cases cannot contaminate one another through TT;
+- alpha-beta, qsearch, DFPN, USI, in-process, and production-interface history
+  semantics agree;
+- DFPN interruption respects the frozen budget/reservation policy and preserves
+  the D1 searched-move contract;
+- all self-play outcomes distinguish real draws, adjudications, capped games,
+  and unfinished games; and
+- R0, R1-A/B/C, and R1-D1 gates plus the affected Rust tests still pass.
+
+Stop after the D2 report and closeout. Do not run A=A games or begin match
+qualification.
+
+#### R1-D3: honest match harness and production timing qualification
+
+**Objective:** prove that the match harness measures evaluator strength rather
+than missing moves, malformed pairs, timing asymmetry, load contention, or
+adjudication bugs.
+
+Required work:
+
+- A nonterminal missing move is a harness error that aborts the match; it is
+  never scored as a loss. Qualifying runs require zero missing moves and zero
+  unsearched emergency fallbacks. Searched partial-root moves are permitted only
+  under the frozen D1 policy and are reported separately by engine.
+- Require every scheduled pair to be complete or deterministically retried,
+  uniquely indexed, based on the identical opening/start SFEN, and played with
+  opposite colors and engine order. Recompute pair/pentanomial bins from raw
+  games; malformed or incomplete pairs fail closed rather than being excluded.
+- Exercise the R0-frozen production path: shipped WASM interface, complete
+  history-bearing USI search path, one concurrent game, declared host/device
+  class, and frozen cold/warm protocol. Native/in-process runs are equivalence
+  diagnostics, not substitutes.
+- Freeze the monotonic clock/deadline-controller version. Record requested and
+  elapsed time, deadline lateness, scheduler delay where measurable, cold/warm
+  state, completed depth/root-child distributions, interruption reasons,
+  combined node counts, missing/emergency moves, and termination reason for
+  every search.
+- Before games, preregister numeric p95, p99, and maximum lateness limits,
+  engine-symmetry bounds, the A=A zero-bias equivalence margin, A/B order-reversal
+  tolerance, opening groups, pair count, and fixed-cap analysis. Do not use an
+  ordinary confidence interval after sequential peeking.
+- Qualify with enough independent opening groups that the A-versus-identical-A
+  paired interval lies wholly inside the zero-bias equivalence margin. For a
+  distinct deterministic A/B diagnostic, replay the identical pair schedule
+  with engine order reversed and require sign-transformed estimates to agree
+  within tolerance; the A/B effect itself is not expected to be zero.
+- Match identity includes model/executable hashes, resolved thread count, CPU,
+  affinity, compiler flags, memory configuration, concurrency, opening-suite
+  hash, adjudication, clock/controller, search-limit, and cold/warm versions.
+
+Freeze the complete protocol in `r0/anhoku-reboot/r1d3-match-contract.json`
+before launching null games. Add `r1d3-gate` and publish
+`out/anhoku-reboot-r1d3/r1d3-gate-report.json` plus hash-frozen raw games.
+
+R1-D3 passes only when:
+
+- every scheduled pair is valid and complete and all bins recompute exactly;
+- every game has an explicit legal termination reason;
+- qualifying games have zero missing moves and zero unsearched emergency
+  fallbacks;
+- each evaluator passes the frozen p95, p99, maximum lateness, and symmetry
+  limits under one-game production concurrency;
+- the A=A interval lies wholly inside the equivalence margin and the A/B
+  sign-transformed order-reversal estimates agree within tolerance;
+- the shipped production-interface result agrees with the declared native
+  equivalence diagnostics; and
+- R0, R1-A/B/C, R1-D1, and R1-D2 gates plus the affected Rust tests still pass.
+
+Only null/equivalence qualification games are authorized. Stop after the D3
+report and R1 closeout; do not run a candidate-versus-handcrafted strength match.
+
+#### R1 aggregate completion
+
+R1 passes only after R1-A, R1-B, R1-C, R1-D1, R1-D2, and R1-D3 all have passing
+machine-readable reports linked from one R1 closeout manifest. Rerun all six
+gates from the clean strength-run source identity and publish their artifact
+hashes. R2 remains unauthorized until that closeout explicitly records the
+aggregate pass.
+
+### R1 aggregate cost ceiling
 
 Debug networks, at most 100,000 labels, and only harness-qualification null
 games. No model-strength games.
@@ -733,9 +901,11 @@ games. No model-strength games.
 
 Any exact-oracle failure blocks all later work. A synthetic target failure
 routes to packing/features/sign/optimizer. A full-precision success followed by
-serialized failure routes to quantization or serialization. Any missing move,
-unsearched fallback, unexplained A=A bias, or incomplete match identity routes
-to search/harness correctness; no historical match may be used as a substitute.
+serialized failure routes to quantization or serialization. Missing moves,
+partial-value leakage, or node-accounting mismatches route to R1-D1. Repetition,
+TT-history, qsearch-history, DFPN, or adjudication failures route to R1-D2.
+Malformed pairs, deadline violations, unexplained A=A bias, or incomplete match
+identity route to R1-D3. No historical match may be used as a substitute.
 
 ## Phase R2: deterministic trainer and finite evaluation
 
@@ -1470,7 +1640,9 @@ is never allowed for a strength claim.
 
 | Observation | Most likely class | Next action |
 | --- | --- | --- |
-| Timed search returns no move or any strength game uses an emergency fallback | Search/harness correctness | Invalidate the run and return to R1-D |
+| Search result loses a legal move, leaks a partial value, or miscounts nodes | Interrupted-search contract | Invalidate the run and return to R1-D1 |
+| Repetition, perpetual check, TT history, qsearch, DFPN, or adjudication differs by path | History/search correctness | Invalidate the run and return to R1-D2 |
+| A match has a missing/emergency move, malformed pair, timing violation, or unexplained A=A bias | Match-harness correctness | Invalidate the run and return to R1-D3 |
 | Pack, feature, sign, sentinel, or integer parity fails | Correctness | Stay in R1; no training or games |
 | Synthetic/tiny train loss does not fall | Loader, optimizer, objective, or capacity | Stay in R1/R2 and isolate with a smaller oracle |
 | Full precision learns but export loses the gain | Quantization/serialization | Measure scaling, add QAT, or fix serializer |
@@ -1509,7 +1681,7 @@ is never allowed for a strength claim.
 - Do not generate 10M-100M labels before publishing a throughput and cost model.
 - Do not tune on sealed data or repeatedly reuse one promotion opening seed.
 
-## First authorized assignment
+## Initial R0 assignment (complete)
 
 Implement Phase R0. Alongside it, write only the R1 fixture schemas and test
 specifications needed to make the next assignment unambiguous:
@@ -1531,3 +1703,23 @@ specifications needed to make the next assignment unambiguous:
 Stop after tests and a Phase R0 closeout document. Do not generate a new
 production corpus, rent a GPU, run a strength match, change the deployed feature
 family, or begin R2 in the same assignment.
+
+## Current worker routing
+
+The status line at the top of this document is authoritative. At the current
+revision, the only authorized implementation assignment is R1-D1. Its worker
+must stop after the R1-D1 gate, report, regression tests, implementation record,
+and commit.
+
+After the explicit R1-C pass, issue three fresh assignments in this order:
+
+1. R1-D1 only: interrupted root-result contract and node accounting;
+2. R1-D2 only: history, repetition, TT, qsearch, DFPN, and adjudication;
+3. R1-D3 only: match integrity, production timing, and null qualification.
+
+Each assignment begins from the prior passing commit, freezes its contract
+before opening gate results, implements only its declared scope, reruns every
+required earlier gate, publishes a machine-readable report, updates this plan's
+implementation record/status, and stops. Do not batch D1-D3 into one commit or
+silently begin the next step. R2, production data generation, GPU training, and
+model-strength games remain unauthorized until the aggregate R1 closeout passes.

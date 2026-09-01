@@ -1,0 +1,123 @@
+{
+  "schema": "haitaka-r1d1-search-contract-v1",
+  "ruleset": "anhoku",
+  "scope": "interrupted-root-result-and-node-accounting-only",
+  "node_counting": {
+    "version": "alpha-beta-plus-qsearch-v2",
+    "formula": "consumed_nodes = alpha_beta_nodes + qsearch_nodes",
+    "admission": "A node is counted exactly once before its alpha-beta or qsearch body executes. A node whose admission would exceed the limit is rejected and is not counted.",
+    "exhaustion": "A node-limited search is exhausted exactly when consumed_nodes equals requested_nodes; consumed_nodes must never exceed requested_nodes."
+  },
+  "result_schema": {
+    "schema": "haitaka-search-root-result-v1",
+    "required_fields": [
+      "play_move_best_so_far",
+      "play_move_was_searched",
+      "last_completed_iteration_value",
+      "completed_iteration_depth",
+      "completed_root_moves_in_interrupted_iteration",
+      "partial_root_state",
+      "interruption_reason",
+      "emergency_fallback_used",
+      "missing_move"
+    ],
+    "label_rule": "Only last_completed_iteration_value may be consumed as a training label. A partial-root value is never published in that field or in a training trace.",
+    "play_rule": "A nonterminal root always publishes a legal play move. Before any root child completes it is the explicitly marked unsearched emergency seed. After a root child completes, it is the searched best-so-far root move.",
+    "terminal_rule": "Only a terminal root may set missing_move=true without failing the gate."
+  },
+  "fixture_driver": {
+    "schema": "haitaka-r1d1-forced-interruption-fixtures-v1",
+    "position": "anhoku-startpos",
+    "evaluator": "artificially-slow-handcrafted-v1",
+    "determinism": "Interruption checkpoints are counted synchronously in the single-threaded root search; wall-clock observations are diagnostic only.",
+    "cases": [
+      {
+        "id": "before-any-root-child",
+        "trigger": "before-first-root-child",
+        "expected_completed_depth": 0,
+        "expected_completed_root_moves": 0,
+        "expected_play_move_was_searched": false,
+        "expected_partial_root_state": false,
+        "expected_emergency_fallback_used": true,
+        "expected_completed_value": "null"
+      },
+      {
+        "id": "after-one-root-child",
+        "trigger": "after-root-child-1",
+        "expected_completed_depth": 0,
+        "expected_completed_root_moves": 1,
+        "expected_play_move_was_searched": true,
+        "expected_partial_root_state": true,
+        "expected_emergency_fallback_used": false,
+        "expected_completed_value": "null"
+      },
+      {
+        "id": "during-later-root-child",
+        "trigger": "inside-root-child-2",
+        "expected_completed_depth": 0,
+        "expected_completed_root_moves": 1,
+        "expected_play_move_was_searched": true,
+        "expected_partial_root_state": true,
+        "expected_emergency_fallback_used": false,
+        "expected_completed_value": "null"
+      },
+      {
+        "id": "between-completed-iterations",
+        "trigger": "after-completed-depth-1",
+        "expected_completed_depth": 1,
+        "expected_completed_root_moves": 0,
+        "expected_play_move_was_searched": true,
+        "expected_partial_root_state": false,
+        "expected_emergency_fallback_used": false,
+        "expected_completed_value": "equals-uninterrupted-depth-1"
+      },
+      {
+        "id": "inside-qsearch",
+        "trigger": "after-qnode-1",
+        "expected_completed_depth": 0,
+        "expected_completed_root_moves": 0,
+        "expected_play_move_was_searched": false,
+        "expected_partial_root_state": false,
+        "expected_emergency_fallback_used": true,
+        "expected_completed_value": "null",
+        "expected_qnodes": 1,
+        "expected_qsearch_max_ply": 0
+      },
+      {
+        "id": "node-budget-before-root-child",
+        "trigger": "combined-node-budget-1",
+        "requested_nodes": 1,
+        "expected_consumed_nodes": 1,
+        "expected_alpha_beta_nodes": 1,
+        "expected_qsearch_nodes": 0,
+        "expected_completed_root_moves": 0,
+        "expected_play_move_was_searched": false,
+        "expected_emergency_fallback_used": true
+      },
+      {
+        "id": "node-budget-after-one-root-child",
+        "trigger": "combined-node-budget-3",
+        "requested_nodes": 3,
+        "expected_consumed_nodes": 3,
+        "expected_alpha_beta_nodes": 2,
+        "expected_qsearch_nodes": 1,
+        "expected_completed_root_moves": 1,
+        "expected_play_move_was_searched": true,
+        "expected_emergency_fallback_used": false
+      }
+    ]
+  },
+  "adapter_assertions": [
+    "in-process, USI, fixed-time, node-budget, and production-interface adapters publish identical root-result field meanings",
+    "no adapter substitutes a lexicographically selected or otherwise arbitrary move",
+    "legacy best_move aliases play_move_best_so_far and legacy best_score aliases last_completed_iteration_value"
+  ],
+  "forbidden_changes": [
+    "repetition rules",
+    "transposition-table history semantics",
+    "DFPN policy",
+    "game adjudication",
+    "match statistics",
+    "promotion thresholds"
+  ]
+}

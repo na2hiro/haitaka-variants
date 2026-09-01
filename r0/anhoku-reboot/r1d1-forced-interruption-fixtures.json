@@ -1,0 +1,15 @@
+{
+  "schema": "haitaka-r1d1-forced-interruption-fixtures-v1",
+  "ruleset": "anhoku",
+  "position": "anhoku-startpos",
+  "evaluator": "artificially-slow-handcrafted-v1",
+  "cases": [
+    {"id":"before-any-root-child","trigger":"before-first-root-child"},
+    {"id":"after-one-root-child","trigger":"after-root-child-1"},
+    {"id":"during-later-root-child","trigger":"inside-root-child-2"},
+    {"id":"between-completed-iterations","trigger":"after-completed-depth-1"},
+    {"id":"inside-qsearch","trigger":"after-qnode-1"},
+    {"id":"node-budget-before-root-child","trigger":"combined-node-budget-1","requested_nodes":1},
+    {"id":"node-budget-after-one-root-child","trigger":"combined-node-budget-3","requested_nodes":3}
+  ]
+}
