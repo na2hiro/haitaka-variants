@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 complete and machine gate passed; Phase R1 is next
+- Status: Phase R0 and R1-A complete with machine gates passed; R1-B is next
 - Created: 2026-08-31
 - Last audited: 2026-09-01
 - Last implementation update: 2026-09-01
@@ -459,6 +459,50 @@ For every position:
 Use sentinel networks whose row weights encode the row identity. Output-only
 tests are insufficient because two implementations can share the same mistaken
 index mapping.
+
+#### R1-A implementation record (2026-09-01)
+
+Implemented and passed on branch `reboot`:
+
+- Added `r1a-gate`, which builds a deterministic 10,240-position Anhoku corpus
+  in stable fixture-ID order without RNG, filtering, cycling, or sampling. The
+  corpus contains 10,240 distinct canonical packed boards and complete
+  color-swapped/rotated pairing.
+- Added an independent packed-bitstream decoder and feature-signature oracle.
+  All 10,240 boards pass
+  `pack(unpack(pack(board))) == pack(board)` and signature equality. The report
+  separately counts the expected gold-like ABI identity collisions.
+- Added a C++ loader audit selector for the real HalfKAv2 plus DonorSingleEff
+  rows (excluding factorized training aliases) and a standalone dump helper.
+  The 20,480 Rust/C++ perspective dumps are byte-identical.
+- Added an in-memory row-identity sentinel transformer with eight independent
+  bounded `i16` and `i32` signatures per row. Incremental and full-refresh
+  accumulator states are exact across 10,202 move transitions and restored
+  parent snapshots.
+- Added independent side-to-move depth-0 and hand-checkable kings-only depth-1
+  score oracles, packed-record score/side checks in the C++ loader, and exact
+  color-swap score checks. All pass. The depth-0 oracle explicitly preserves
+  the frozen handcrafted mobility convention: it counts move destinations,
+  so optional promotion alternatives on one destination count once.
+- Machine-checked coverage includes both sides, every piece type, every output
+  bucket, captures, promotions, drops, king moves, checks, double checks,
+  terminal-adjacent positions, empty and maximum hands, and donor/receiver
+  relation gain, removal, and replacement.
+- Gate artifacts and their SHA-256 identities are recorded in
+  `out/anhoku-reboot-r1a/r1a-gate-report.json`; `passed` and all nine named
+  gates are `true`.
+
+CPU-only verification completed:
+
+- `target/release/haitaka_learn r1a-gate --config haitaka_learn.anhoku-reboot-r1a.training.toml --output-dir out/anhoku-reboot-r1a`
+- `cargo test -p haitaka_learn --features anhoku` (128 passed)
+- `cargo test -p haitaka_wasm --features anhoku` (86 passed)
+- `cargo check -p haitaka_learn --features anhoku`
+- `target/release/haitaka_learn r0-gate --bundle r0/anhoku-reboot`
+- `cargo fmt --all -- --check` and `git diff --check`
+
+No GPU, labels, training, model-strength game, or production data generation
+was run. R1-B, R1-C, R1-D, and R2 remain unauthorized by this result.
 
 ### R1-B: checkpoint/export/runtime parity
 

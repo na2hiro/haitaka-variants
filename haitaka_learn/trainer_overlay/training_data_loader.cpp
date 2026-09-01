@@ -911,6 +911,14 @@ EXPORT Stream<SparseBatch>* CDECL create_sparse_batch_stream(
             concurrency, filename, batch_size, cyclic, skipPredicate
         );
     }
+    // R1-A compares the production runtime's real rows, not the factorized
+    // training aliases that are folded by the serializer.  Keep this audit-only
+    // selector explicit so it cannot be selected by an ordinary trainer config.
+    if (feature_set == "HalfKAv2+DonorSingleEff-R1Oracle") {
+        return new FeaturedBatchStream<FeatureSet<HalfKAv2, DonorSingleEff>, SparseBatch>(
+            concurrency, filename, batch_size, cyclic, skipPredicate
+        );
+    }
     if (feature_set == "HalfKAv2^+DonorReceiverPairV2") {
         return new FeaturedBatchStream<FeatureSet<HalfKAv2Factorized, DonorReceiverPairV2>, SparseBatch>(
             concurrency, filename, batch_size, cyclic, skipPredicate

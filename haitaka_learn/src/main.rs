@@ -5,6 +5,7 @@ mod openings;
 mod phase11a;
 mod phase11c;
 mod r0;
+mod r1a;
 mod selection;
 mod trainer;
 mod verify;
@@ -116,6 +117,14 @@ enum Command {
     R0Gate {
         #[arg(long, default_value = "r0/anhoku-reboot")]
         bundle: PathBuf,
+    },
+    /// Build and execute the complete deterministic R1-A board, feature, sign,
+    /// C++ loader, and incremental-accumulator oracle gate.
+    R1aGate {
+        #[arg(long, default_value = "haitaka_learn.anhoku-reboot-r1a.training.toml")]
+        config: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        output_dir: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -269,6 +278,21 @@ fn main() -> Result<()> {
                 .to_path_buf();
             r0::validate_bundle(&bundle, &workspace_root)?;
             println!("R0 gate passed: {}", bundle.display());
+        }
+        Command::R1aGate { config, output_dir } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1a::run(&config, &output_dir, &workspace_root)?;
+            println!(
+                "R1-A gate written to {}: {} ({} positions, {} transitions)",
+                output_dir.join("r1a-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+                report.corpus_positions,
+                report.transitions_checked,
+            );
+            ensure!(report.passed, "R1-A gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

@@ -1028,6 +1028,10 @@ mod tests {
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
         assert!(
+            overlay_training_data_loader_cpp_contents()
+                .contains("HalfKAv2+DonorSingleEff-R1Oracle")
+        );
+        assert!(
             overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorReceiverPairV2")
         );
         assert!(overlay_donor_features_py_contents().contains("DonorReceiverPairV2"));

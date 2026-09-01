@@ -268,8 +268,136 @@ pub struct NnuePositionState {
     perspectives: [PerspectiveAccumulator; Color::NUM],
 }
 
+/// Exact active feature rows used by the production DonorSingleEff runtime.
+///
+/// This is an audit surface for the R1 correctness ladder.  Indices are sorted
+/// within each block so they can be compared directly with the C++ sparse
+/// loader without depending on either implementation's enumeration order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct R1ActiveFeatureIndices {
+    pub base: Vec<usize>,
+    pub donor: Vec<usize>,
+}
+
+/// In-memory row-identity sentinel network for R1-A accumulator checks.
+///
+/// It deliberately has no output buckets: R1-A exercises feature-transformer
+/// full refreshes and incremental updates, while serialized/output parity is
+/// the separate R1-B gate.
+#[derive(Debug, Clone)]
+pub struct R1SentinelNetwork {
+    model: NnueModel,
+}
+
 pub const DONOR_SINGLE_FEATURE_NAME: &str = "HalfKAv2^+DonorSingleEff";
 pub const DONOR_RECEIVER_PAIR_V2_FEATURE_NAME: &str = "HalfKAv2^+DonorReceiverPairV2";
+
+/// Number of real HalfKAv2 rows before the variant donor block.
+pub const R1_HALFKAV2_BASE_FEATURES: usize = HALFKAV2_REAL_FEATURES;
+
+/// Stable construction identity for the R1-A row sentinel.
+pub const R1_SENTINEL_CONSTRUCTION: &str =
+    "haitaka-r1a-donor-single-row-identity-splitmix64-8x-i16-8x-i32-v1";
+
+/// Return the exact production feature rows for one accumulator perspective.
+#[cfg(feature = "anhoku")]
+pub fn r1_donor_single_active_feature_indices(
+    board: &Board,
+    perspective: Color,
+) -> R1ActiveFeatureIndices {
+    let features = active_features(
+        board,
+        perspective,
+        board.king(perspective),
+        FeatureFamily::HalfKAv2DonorSingle,
+    );
+    let mut base = Vec::new();
+    let mut donor = Vec::new();
+    for &index in features.iter() {
+        if index < HALFKAV2_REAL_FEATURES {
+            base.push(index);
+        } else {
+            donor.push(index);
+        }
+    }
+    base.sort_unstable();
+    donor.sort_unstable();
+    R1ActiveFeatureIndices { base, donor }
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn r1_donor_single_active_feature_indices(
+    _board: &Board,
+    _perspective: Color,
+) -> R1ActiveFeatureIndices {
+    R1ActiveFeatureIndices {
+        base: Vec::new(),
+        donor: Vec::new(),
+    }
+}
+
+impl R1SentinelNetwork {
+    /// Construct a bounded sentinel in which every row contributes eight
+    /// independent deterministic signatures to both accumulator arrays.
+    #[cfg(feature = "anhoku")]
+    pub fn donor_single() -> Self {
+        let family = FeatureFamily::HalfKAv2DonorSingle;
+        let num_features = family.num_real_features();
+        let mut weights = vec![0i16; TRANSFORMED_FEATURE_DIMENSIONS * num_features];
+        let mut psqt_weights = vec![0i32; PSQT_BUCKETS * num_features];
+        for row in 0..num_features {
+            for dimension in 0..8 {
+                let signature = r1_sentinel_mix(
+                    0x5241_5749_3136_0000 ^ (row as u64) ^ ((dimension as u64) << 48),
+                );
+                weights[row * TRANSFORMED_FEATURE_DIMENSIONS + dimension] =
+                    (signature % 63) as i16 - 31;
+                let psqt_signature = r1_sentinel_mix(
+                    0x5241_5749_3332_0000 ^ (row as u64) ^ ((dimension as u64) << 48),
+                );
+                psqt_weights[row * PSQT_BUCKETS + dimension] =
+                    (psqt_signature % 131_071) as i32 - 65_535;
+            }
+        }
+        let biases = (0..TRANSFORMED_FEATURE_DIMENSIONS)
+            .map(|dimension| (r1_sentinel_mix(0x4249_4153 ^ dimension as u64) % 31) as i16 - 15)
+            .collect();
+        Self {
+            model: NnueModel {
+                description: R1_SENTINEL_CONSTRUCTION.to_string(),
+                family,
+                transformer: FeatureTransformer {
+                    biases,
+                    weights,
+                    psqt_weights,
+                },
+                buckets: Vec::new(),
+            },
+        }
+    }
+
+    pub fn build_position_state_full(&self, board: &Board) -> NnuePositionState {
+        self.model.build_position_state_full(board)
+    }
+
+    pub fn apply_move(
+        &self,
+        parent_board: &Board,
+        child_board: &Board,
+        parent_state: &NnuePositionState,
+        mv: Move,
+    ) -> NnuePositionState {
+        self.model
+            .apply_move(parent_board, child_board, parent_state, mv)
+    }
+}
+
+fn r1_sentinel_mix(mut value: u64) -> u64 {
+    value = value.wrapping_add(0x9e37_79b9_7f4a_7c15);
+    value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    value ^ (value >> 31)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DonorReceiverPairV2Stats {

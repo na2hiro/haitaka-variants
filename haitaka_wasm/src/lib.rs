@@ -14,9 +14,10 @@ use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
     DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats, NnueModel,
-    NnuePositionState, collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
+    NnuePositionState, R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices,
+    R1SentinelNetwork, collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
     donor_receiver_pair_v2_quantized_rows, donor_receiver_pair_v2_stats,
-    migrate_donor_single_to_receiver_pair_v2,
+    migrate_donor_single_to_receiver_pair_v2, r1_donor_single_active_feature_indices,
 };
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
@@ -2885,18 +2886,13 @@ fn evaluate_or_mate(
     if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
         return terminal;
     }
-    let us = board.side_to_move();
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
         return -MATE_SCORE + ply;
     }
 
     match &ctx.evaluation {
-        EvaluationStrategy::Handcrafted => {
-            let them = !us;
-            material_score(board, us) - material_score(board, them)
-                + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
-        }
+        EvaluationStrategy::Handcrafted => handcrafted_static_eval(board),
         EvaluationStrategy::Nnue {
             model,
             mode: SearchEvalMode::FullRefresh,
@@ -2954,6 +2950,18 @@ fn count_legal_moves(board: &Board) -> usize {
         false
     });
     count
+}
+
+/// Handcrafted depth-0 score from the side-to-move perspective.
+///
+/// Exposed for the R1-A independent sign/orientation oracle. Search continues
+/// to handle missing kings, mate-distance scores, and no-move terminals before
+/// calling this ordinary-position evaluator.
+pub fn handcrafted_static_eval(board: &Board) -> i32 {
+    let us = board.side_to_move();
+    let them = !us;
+    material_score(board, us) - material_score(board, them)
+        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32)
 }
 
 fn record_move_try(ctx: &mut SearchContext<'_>, source: MoveSource) {
