@@ -27,7 +27,10 @@
         { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/phase8b-root-vs-candidate-20260829/batch-3072/self-play-report.json", "bytes": 3740, "sha256": "7be90c4a1e81a7971f65fbc2d61b36fc155c2362f9ad2050dfaf553b5cc34a7a" },
         { "path": "out/anhoku-v0.7-phase11b-seed80-v2/artifacts/phase11b-gate/seed80/batch-3072/self-play-report.json", "bytes": 3598, "sha256": "dd77c9dbf9fc8460e9599b0389e79eb1e699c219ff5e760bcdd0172687cfa406" }
       ],
-      "valid_claims": ["Diagnostic record of historical harness behavior"],
+      "valid_claims": [
+        "Diagnostic record of historical harness behavior",
+        "Exact no-move-loss contamination counts, recomputed from hash-frozen raw JSONL: Phase 8D candidate-versus-handcrafted 330/1024; C/16 retention 381/1024; Phase 8B retention 1771/4096; Phase 8D anchored checkpoint ranking 1795/4096; Phase 11 V2-versus-V1 1822/4096"
+      ],
       "invalid_claims": ["Strength estimate", "Retention gate", "Checkpoint-selection evidence"],
       "classification": "non-decisional"
     },

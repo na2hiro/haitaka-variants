@@ -3990,6 +3990,10 @@ pub fn merge_data(
     input_dirs: &[PathBuf],
     ignore_identity_mismatch: bool,
 ) -> Result<DatasetOutput> {
+    ensure!(
+        !ignore_identity_mismatch,
+        "strict merge-data forbids --ignore-identity-mismatch; regenerate shards with matching identities"
+    );
     loaded.ruleset_requires_matching_engine()?;
     if input_dirs.is_empty() {
         bail!("merge-data requires at least one --input directory");
@@ -8355,7 +8359,7 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
-    fn merge_ignores_identity_mismatch_with_flag() {
+    fn strict_merge_rejects_identity_mismatch_override() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-ignore-identity.toml");
         fs::write(
@@ -8379,9 +8383,8 @@ run_search_smoke = false
         assert!(err.contains("config_hash does not match"));
         assert!(err.contains("--ignore-identity-mismatch"));
 
-        let output = merge_data(&loaded, &[input], true).unwrap();
-        assert!(output.train_positions > 0);
-        assert!(output.validation_positions > 0);
+        let error = format!("{:#}", merge_data(&loaded, &[input], true).unwrap_err());
+        assert!(error.contains("strict merge-data forbids --ignore-identity-mismatch"));
     }
 
     #[test]

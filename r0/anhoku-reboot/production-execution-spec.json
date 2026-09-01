@@ -1,14 +1,20 @@
 {
   "schema": "haitaka-production-execution-v1",
-  "interface": "PENDING_PRODUCT_DECISION",
-  "complete_search_path": "PENDING_PRODUCT_DECISION: choose usi-wasm-v1 history-bearing position+moves or a new history-bearing direct interface",
+  "interface": "shogitter-engine-package-v1 / wasm-bindgen / usi-wasm-v1 in a dedicated Web Worker",
+  "complete_search_path": "load package JS and WASM in one dedicated Worker; construct one UsiEngine; load the profile NNUE once; send usinewgame; send position startpos|sfen ... moves ... so repetition history is replayed; send go movetime 100; consume the returned legal bestmove",
   "concurrent_games": 1,
-  "supported_host_classes": [],
-  "supported_device_classes": [],
-  "clock_policy": "monotonic deadline controller; exact version to be qualified in R1",
-  "cold_warm_protocol": "PENDING_PRODUCT_DECISION",
-  "max_serialized_bytes": 0,
-  "max_peak_memory_bytes": 0,
-  "max_load_time_ms": 0,
-  "max_per_move_latency_ms": 0
+  "supported_host_classes": [
+    "desktop Chromium, Firefox, or Safari with WebAssembly, ES modules, dedicated Workers, performance.now, and at least 1 GiB available memory for the engine Worker"
+  ],
+  "supported_device_classes": [
+    "x86_64 desktop CPU with WebAssembly SIMD128",
+    "arm64 desktop CPU with WebAssembly SIMD128"
+  ],
+  "clock_policy": "instant 0.1.13 wasm-bindgen monotonic performance.now clock; deadline begins immediately before search; poll every 256 alpha-beta or qsearch nodes; requested move time is 100 ms",
+  "cold_warm_protocol": "Measure package/module instantiation plus NNUE load as a cold-load sample in a fresh Worker. Promotion games use one already-instantiated Worker and one already-loaded NNUE; send usinewgame before each game to clear the transposition table, then replay the complete position-and-moves history. Do not reload the module or NNUE between games.",
+  "target_move_time_ms": 100,
+  "max_serialized_bytes": 201326592,
+  "max_peak_memory_bytes": 536870912,
+  "max_load_time_ms": 5000,
+  "max_per_move_latency_ms": 125
 }

@@ -28,6 +28,10 @@ cargo run -p haitaka_learn --features anhoku -- r0-gate \
 Historical all-purpose TOMLs remain audit inputs only; execution commands do
 not guess how `paths.bootstrap_nnue` was intended.
 
+Strict generation and merge also fail closed on identity mismatches. The
+legacy `--ignore-identity-mismatch` escape hatch is rejected; mismatched shards
+must be regenerated from the registered config and code identity.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data
@@ -187,7 +191,8 @@ Key fields:
     shard's identity differs from the current run (e.g. a local patch that doesn't affect
     data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
-    Pass `--ignore-identity-mismatch` to reuse them non-interactively (e.g. on sharded/CI runs).
+    Strict R0 generation rejects `--ignore-identity-mismatch`; regenerate the
+    mismatched shards instead.
     Throughput (`speed`) and `eta` are computed from freshly generated games only, so restored
     shards no longer distort them.
 - `[training]`
@@ -362,10 +367,10 @@ Merge shard outputs copied back from multiple machines:
 cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
 ```
 
-`merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
-expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
-`--ignore-identity-mismatch` to skip identity checks. Sampling-policy and teacher-move
-contract mismatches are also rejected unless this explicit override is supplied.
+`merge-data` fails if shards disagree on the git revision or config hash and
+does not expose an identity override. Sampling-policy and teacher-move contract
+mismatches are also rejected. Regenerate mismatched shards rather than merging
+unregistered identities.
 Self-play move policy, split policy/seed, assigned opening groups, shuffle policy/seed,
 and chunk size are checked in the same way.
 

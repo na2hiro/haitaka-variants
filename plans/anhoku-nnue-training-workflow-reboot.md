@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 implementation complete; gate pending the frozen production execution specification
+- Status: Phase R0 complete and machine gate passed; Phase R1 is next
 - Created: 2026-08-31
 - Last audited: 2026-09-01
 - Last implementation update: 2026-09-01
@@ -368,21 +368,53 @@ CPU-only verification completed:
 - focused byte-identical generation regression
 - `cargo fmt --all -- --check` and `git diff --check`
 
-Remaining before the R0 gate can pass:
+R0 closeout completed after audit:
 
-- Freeze the product-selected shipped interface and complete history-bearing
-  search path in `r0/anhoku-reboot/production-execution-spec.json`.
-- Freeze supported host and device classes and the exact clock and cold/warm
-  protocol.
-- Freeze positive ceilings for serialized bytes, peak memory, load time, and
-  per-move latency.
-- Run `haitaka_learn r0-gate --bundle r0/anhoku-reboot` successfully after
-  those values replace the deliberately rejected `PENDING_PRODUCT_DECISION`
-  placeholders.
+- Froze the production path as Shogitter Engine Package v1 using
+  `wasm-bindgen` and `usi-wasm-v1` in one dedicated Web Worker. Positions are
+  supplied through `position startpos|sfen ... moves ...`, preserving replay
+  history, and searched with `go movetime 100` at one-game concurrency.
+- Froze desktop Chromium/Firefox/Safari hosts with WebAssembly, ES modules,
+  Workers, `performance.now`, and at least 1 GiB available to the Worker;
+  supported CPU classes are x86_64 and arm64 with WASM SIMD128.
+- Froze cold load as fresh Worker/module/NNUE instantiation and warm games as a
+  persistent Worker/model with `usinewgame` clearing the TT before each game.
+  The deadline uses `instant 0.1.13`'s WASM monotonic clock and is polled every
+  256 alpha-beta or qsearch nodes.
+- Froze ceilings of 192 MiB serialized model bytes, 512 MiB peak Worker memory,
+  5,000 ms cold load, and 125 ms maximum per move at the 100 ms target. These
+  are preregistered acceptance bounds; R1 must measure and qualify them, not
+  revise them after results are opened.
+- Made the experiment registry non-vacuous: every preregistration requires
+  exactly one outcome and at least one hash-checked stage manifest. The R0
+  outcome links a verification manifest that independently records the
+  trajectory evaluator, label evaluator, both initialization identities, the
+  exact strict generation config, test source, assertions, command, and result.
+- Bound the preregistration to
+  `haitaka_learn.anhoku-reboot-r0.generation.toml` by path, bytes, and SHA-256;
+  the gate reparses it as a strict generation config and recomputes its source
+  hash.
+- Removed the strict `merge-data` CLI override and made its public API reject an
+  identity-mismatch override before reading or writing merge artifacts.
+- Added a machine-checked contamination report. The gate recomputes counts from
+  hash-frozen raw JSONL using `incompleteIterations == plies + 1`: Phase 8D
+  candidate-versus-handcrafted 330/1,024, C/16 retention 381/1,024, Phase 8B
+  retention 1,771/4,096, Phase 8D anchored checkpoint ranking 1,795/4,096, and
+  Phase 11 V2-versus-V1 1,822/4,096. It also recomputes Phase 8R's 342 fallback
+  moves in 42/2,048 games.
+- Added strict machine-readable R1 specifications for the deterministic parity
+  corpus, generated sentinel network, and interruption-safe search contract in
+  `r0/anhoku-reboot/r1-fixture-specifications.json`. These specify inputs,
+  transitions, independent oracles, activation/export artifacts, interruption
+  cases, result fields, and fail-closed pass rules without implementing R1.
+- `target/debug/haitaka_learn r0-gate --bundle r0/anhoku-reboot` passed on
+  2026-09-01 after independently validating the registry, frozen artifacts,
+  raw contamination evidence, R1 fixture specifications, and production
+  execution contract.
 
-Until that contract is supplied and the gate passes, R1 and all new data runs
-remain unauthorized. No GPU rental, strength match, or production data
-generation was performed during R0 implementation.
+No GPU rental, strength match, or production data generation was performed
+during R0. R1 correctness work is now authorized; R2 and production corpus
+generation remain unauthorized until their own gates pass.
 
 ### Cost ceiling
 

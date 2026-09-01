@@ -173,8 +173,6 @@ enum Command {
         config: PathBuf,
         #[arg(long, required = true)]
         input: Vec<PathBuf>,
-        #[arg(long)]
-        ignore_identity_mismatch: bool,
     },
     Train {
         #[arg(long)]
@@ -459,13 +457,9 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::MergeData {
-            config,
-            input,
-            ignore_identity_mismatch,
-        } => {
+        Command::MergeData { config, input } => {
             let loaded = LoadedGenerationConfig::from_path(&config)?;
-            let output = dataset::merge_data(&loaded, &input, ignore_identity_mismatch)?;
+            let output = dataset::merge_data(&loaded, &input, false)?;
             println!(
                 "merged {} training and {} validation samples into {}",
                 output.train_positions,

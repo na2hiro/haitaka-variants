@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail, ensure};
@@ -185,6 +186,7 @@ pub enum StageKind {
     CombinedGeneration,
     Training,
     Evaluation,
+    Verification,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -251,6 +253,21 @@ pub struct ExecutionEnvironment {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+pub struct R0IndependenceVerificationManifestV1 {
+    pub schema: String,
+    pub generation_config: ArtifactRef,
+    pub test_source: ArtifactRef,
+    pub test_name: String,
+    pub command: String,
+    pub trajectory_evaluator_identity: String,
+    pub label_evaluator_identity: String,
+    pub training_initialization_identities: Vec<String>,
+    pub assertions: Vec<String>,
+    pub result: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct GateRegistration {
     pub metric: String,
     pub direction: MetricDirection,
@@ -277,7 +294,8 @@ pub struct ExperimentPreregistration {
     pub hypothesis: String,
     pub changed_variable: String,
     pub controls: Vec<String>,
-    pub config_sha256: String,
+    pub config_stage: StageKind,
+    pub config: ArtifactRef,
     pub gate: GateRegistration,
 }
 
@@ -322,6 +340,71 @@ pub struct HistoricalEvidenceRecord {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
+pub enum ContaminationKind {
+    NoMoveLossPath,
+    EmergencyFallback,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct HistoricalContaminationCount {
+    pub id: String,
+    pub kind: ContaminationKind,
+    pub source_artifacts: Vec<ArtifactRef>,
+    pub affected_games: u64,
+    pub total_games: u64,
+    pub fallback_moves: Option<u64>,
+    pub counting_rule: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct HistoricalContaminationReportV1 {
+    pub schema: String,
+    pub counts: Vec<HistoricalContaminationCount>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct R1FixtureSpecificationsV1 {
+    pub schema: String,
+    pub deterministic_parity_corpus: R1ParityCorpusSpec,
+    pub sentinel_network: R1SentinelNetworkSpec,
+    pub interruption_safe_search: R1InterruptionSafeSearchSpec,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct R1ParityCorpusSpec {
+    pub schema: String,
+    pub deterministic_order: String,
+    pub required_position_classes: Vec<String>,
+    pub required_move_transitions: Vec<String>,
+    pub required_oracles: Vec<String>,
+    pub pass_rule: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct R1SentinelNetworkSpec {
+    pub schema: String,
+    pub construction: String,
+    pub required_patterns: Vec<String>,
+    pub required_exports: Vec<String>,
+    pub pass_rule: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct R1InterruptionSafeSearchSpec {
+    pub schema: String,
+    pub required_cases: Vec<String>,
+    pub required_result_fields: Vec<String>,
+    pub pass_rule: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum EvidenceClassification {
     HistoricalOnly,
     DiagnosticOnly,
@@ -339,6 +422,7 @@ pub struct ProductionExecutionSpecV1 {
     pub supported_device_classes: Vec<String>,
     pub clock_policy: String,
     pub cold_warm_protocol: String,
+    pub target_move_time_ms: u64,
     pub max_serialized_bytes: u64,
     pub max_peak_memory_bytes: u64,
     pub max_load_time_ms: u64,
@@ -371,6 +455,14 @@ pub fn validate_bundle(bundle_dir: &Path, workspace_root: &Path) -> Result<()> {
     let registry: ExperimentRegistryV1 = read_json(&bundle_dir.join("experiment-registry.json"))?;
     validate_registry(&registry, workspace_root)?;
 
+    let contamination: HistoricalContaminationReportV1 =
+        read_json(&bundle_dir.join("historical-contamination-counts.json"))?;
+    validate_contamination_report(&contamination, workspace_root)?;
+
+    let r1_fixtures: R1FixtureSpecificationsV1 =
+        read_json(&bundle_dir.join("r1-fixture-specifications.json"))?;
+    validate_r1_fixture_specifications(&r1_fixtures)?;
+
     let spec: ProductionExecutionSpecV1 =
         read_json(&bundle_dir.join("production-execution-spec.json"))?;
     validate_production_spec(&spec)?;
@@ -382,6 +474,21 @@ fn validate_registry(registry: &ExperimentRegistryV1, root: &Path) -> Result<()>
         registry.schema == "haitaka-experiment-registry-v1",
         "wrong registry schema"
     );
+    ensure!(
+        !registry.preregistrations.is_empty(),
+        "experiment registry has no preregistrations"
+    );
+    ensure!(
+        !registry.outcomes.is_empty(),
+        "experiment registry has no outcomes"
+    );
+    ensure!(
+        registry
+            .outcomes
+            .iter()
+            .all(|outcome| !outcome.stage_manifests.is_empty()),
+        "experiment registry has an outcome without stage-manifest links"
+    );
     let mut ids = BTreeSet::new();
     for prereg in &registry.preregistrations {
         ensure!(
@@ -389,7 +496,22 @@ fn validate_registry(registry: &ExperimentRegistryV1, root: &Path) -> Result<()>
             "duplicate preregistration {}",
             prereg.id
         );
-        ensure_sha256(&prereg.config_sha256, "preregistration config_sha256")?;
+        prereg.config.validate(root)?;
+        if prereg.config_stage == StageKind::CombinedGeneration {
+            let config_path = root.join(&prereg.config.path);
+            let loaded = LoadedGenerationConfig::from_path(&config_path).with_context(|| {
+                format!(
+                    "preregistration {} does not reference a strict generation config",
+                    prereg.id
+                )
+            })?;
+            ensure!(
+                loaded.source_hash_hex == prereg.config.sha256,
+                "preregistration {} config hash is not bound to {}",
+                prereg.id,
+                prereg.config.path.display()
+            );
+        }
         ensure!(
             !prereg.gate.metric.trim().is_empty()
                 && !prereg.gate.baseline.trim().is_empty()
@@ -401,12 +523,23 @@ fn validate_registry(registry: &ExperimentRegistryV1, root: &Path) -> Result<()>
             prereg.id
         );
     }
+    let mut outcome_ids = BTreeSet::new();
     for outcome in &registry.outcomes {
+        ensure!(
+            outcome_ids.insert(&outcome.preregistration_id),
+            "duplicate outcome for preregistration {}",
+            outcome.preregistration_id
+        );
         ensure!(
             ids.contains(&outcome.preregistration_id),
             "outcome references missing preregistration {}",
             outcome.preregistration_id
         );
+        let preregistration = registry
+            .preregistrations
+            .iter()
+            .find(|prereg| prereg.id == outcome.preregistration_id)
+            .expect("membership was checked above");
         ensure!(
             !outcome.proves.is_empty() && !outcome.does_not_prove.is_empty(),
             "outcome {} has incomplete attribution",
@@ -419,6 +552,12 @@ fn validate_registry(registry: &ExperimentRegistryV1, root: &Path) -> Result<()>
             "outcome {} does not link trajectory evaluator, label evaluator, and initialization independently",
             outcome.preregistration_id
         );
+        ensure!(
+            !outcome.stage_manifests.is_empty(),
+            "outcome {} has no stage-manifest links",
+            outcome.preregistration_id
+        );
+        let mut independently_linked = false;
         for manifest in &outcome.stage_manifests {
             ensure_sha256(&manifest.sha256, "stage manifest sha256")?;
             let bytes = fs::read(root.join(&manifest.path)).with_context(|| {
@@ -429,6 +568,429 @@ fn validate_registry(registry: &ExperimentRegistryV1, root: &Path) -> Result<()>
                 "stage manifest hash mismatch for {}",
                 manifest.path.display()
             );
+            match manifest.stage {
+                StageKind::CombinedGeneration => {
+                    validate_combined_generation_manifest(
+                        &serde_json::from_slice(&bytes).with_context(|| {
+                            format!("failed to parse {}", manifest.path.display())
+                        })?,
+                        root,
+                    )?;
+                }
+                StageKind::Training => {
+                    validate_training_manifest(
+                        &serde_json::from_slice(&bytes).with_context(|| {
+                            format!("failed to parse {}", manifest.path.display())
+                        })?,
+                        root,
+                    )?;
+                }
+                StageKind::Evaluation => {
+                    validate_evaluation_manifest(
+                        &serde_json::from_slice(&bytes).with_context(|| {
+                            format!("failed to parse {}", manifest.path.display())
+                        })?,
+                        root,
+                    )?;
+                }
+                StageKind::Verification => {
+                    let verification: R0IndependenceVerificationManifestV1 =
+                        serde_json::from_slice(&bytes).with_context(|| {
+                            format!("failed to parse {}", manifest.path.display())
+                        })?;
+                    validate_r0_verification_manifest(
+                        &verification,
+                        preregistration,
+                        outcome,
+                        root,
+                    )?;
+                    independently_linked = true;
+                }
+            }
+        }
+        ensure!(
+            independently_linked,
+            "outcome {} lacks a manifest that independently links both evaluators and initialization",
+            outcome.preregistration_id
+        );
+    }
+    ensure!(
+        outcome_ids == ids,
+        "every preregistration must have exactly one outcome"
+    );
+    Ok(())
+}
+
+fn validate_combined_generation_manifest(
+    manifest: &CombinedGenerationManifestV1,
+    root: &Path,
+) -> Result<()> {
+    ensure!(
+        manifest.schema == "haitaka-combined-generation-v1",
+        "wrong combined-generation manifest schema"
+    );
+    manifest.executable.validate(root)?;
+    ensure_sha256(
+        &manifest.config_source_sha256,
+        "generation config source sha256",
+    )?;
+    ensure_sha256(
+        &manifest.config_canonical_sha256,
+        "generation config canonical sha256",
+    )?;
+    for evaluator in [&manifest.trajectory_evaluator, &manifest.label_evaluator] {
+        ensure!(
+            !evaluator.kind.trim().is_empty(),
+            "evaluator kind is missing"
+        );
+        ensure!(
+            !evaluator.search.trim().is_empty(),
+            "evaluator search is missing"
+        );
+        if let Some(model) = &evaluator.model {
+            model.validate(root)?;
+        }
+    }
+    ensure!(
+        !manifest.output_shards.is_empty(),
+        "generation manifest has no output shards"
+    );
+    for artifact in &manifest.output_shards {
+        artifact.validate(root)?;
+    }
+    Ok(())
+}
+
+fn validate_training_manifest(manifest: &TrainingManifestV1, root: &Path) -> Result<()> {
+    ensure!(
+        manifest.schema == "haitaka-training-stage-v1",
+        "wrong training manifest schema"
+    );
+    manifest.trainer_executable.validate(root)?;
+    ensure!(
+        !manifest.input_dataset_manifests.is_empty(),
+        "training manifest has no inputs"
+    );
+    ensure!(
+        !manifest.checkpoints.is_empty(),
+        "training manifest has no checkpoints"
+    );
+    for artifact in manifest
+        .input_dataset_manifests
+        .iter()
+        .chain(manifest.checkpoints.iter())
+        .chain(manifest.export.iter())
+    {
+        artifact.validate(root)?;
+    }
+    Ok(())
+}
+
+fn validate_evaluation_manifest(manifest: &EvaluationManifestV1, root: &Path) -> Result<()> {
+    ensure!(
+        manifest.schema == "haitaka-evaluation-stage-v1",
+        "wrong evaluation manifest schema"
+    );
+    manifest.model.validate(root)?;
+    manifest.harness.validate(root)?;
+    manifest.openings.validate(root)?;
+    ensure!(
+        manifest.execution_environment.concurrency == 1,
+        "evaluation concurrency must be one"
+    );
+    ensure!(
+        !manifest.raw_results.is_empty(),
+        "evaluation manifest has no raw results"
+    );
+    for artifact in &manifest.raw_results {
+        artifact.validate(root)?;
+    }
+    Ok(())
+}
+
+fn validate_r0_verification_manifest(
+    manifest: &R0IndependenceVerificationManifestV1,
+    preregistration: &ExperimentPreregistration,
+    outcome: &ExperimentOutcome,
+    root: &Path,
+) -> Result<()> {
+    ensure!(
+        manifest.schema == "haitaka-r0-independence-verification-v1",
+        "wrong R0 verification manifest schema"
+    );
+    manifest.generation_config.validate(root)?;
+    manifest.test_source.validate(root)?;
+    ensure!(
+        preregistration.config_stage == StageKind::CombinedGeneration
+            && preregistration.config == manifest.generation_config,
+        "R0 verification generation config does not match its preregistration"
+    );
+    let loaded = LoadedGenerationConfig::from_path(&root.join(&manifest.generation_config.path))?;
+    ensure!(
+        loaded.source_hash_hex == manifest.generation_config.sha256,
+        "R0 verification generation config hash is not bound to its file"
+    );
+    ensure!(
+        manifest.training_initialization_identities.len() >= 2,
+        "R0 verification must compare at least two training initializations"
+    );
+    ensure!(
+        !manifest.assertions.is_empty(),
+        "R0 verification has no assertions"
+    );
+    ensure!(manifest.result == "pass", "R0 verification did not pass");
+    ensure!(
+        manifest.trajectory_evaluator_identity == outcome.trajectory_evaluator_identity
+            && manifest.label_evaluator_identity == outcome.label_evaluator_identity
+            && manifest.training_initialization_identities.join(" versus ")
+                == outcome.initialization_identity,
+        "R0 outcome identities do not match its verification manifest"
+    );
+    Ok(())
+}
+
+fn validate_contamination_report(
+    report: &HistoricalContaminationReportV1,
+    root: &Path,
+) -> Result<()> {
+    ensure!(
+        report.schema == "haitaka-historical-contamination-v1",
+        "wrong historical contamination schema"
+    );
+    ensure!(
+        !report.counts.is_empty(),
+        "historical contamination report is empty"
+    );
+    let expected = [
+        (
+            "phase8d-candidate-vs-handcrafted",
+            ContaminationKind::NoMoveLossPath,
+            330,
+            1_024,
+            None,
+        ),
+        (
+            "phase8d-c16-retention",
+            ContaminationKind::NoMoveLossPath,
+            381,
+            1_024,
+            None,
+        ),
+        (
+            "phase8d-phase8b-retention",
+            ContaminationKind::NoMoveLossPath,
+            1_771,
+            4_096,
+            None,
+        ),
+        (
+            "phase8d-anchored-checkpoint-ranking",
+            ContaminationKind::NoMoveLossPath,
+            1_795,
+            4_096,
+            None,
+        ),
+        (
+            "phase11-v2-vs-v1",
+            ContaminationKind::NoMoveLossPath,
+            1_822,
+            4_096,
+            None,
+        ),
+        (
+            "phase8r-equal-node-fallbacks",
+            ContaminationKind::EmergencyFallback,
+            42,
+            2_048,
+            Some(342),
+        ),
+    ];
+    ensure!(
+        report.counts.len() == expected.len(),
+        "historical contamination report must contain every frozen affected run"
+    );
+    for (id, kind, affected_games, total_games, fallback_moves) in expected {
+        let count = report
+            .counts
+            .iter()
+            .find(|count| count.id == id)
+            .with_context(|| format!("historical contamination report is missing {id}"))?;
+        ensure!(
+            count.kind == kind
+                && count.affected_games == affected_games
+                && count.total_games == total_games
+                && count.fallback_moves == fallback_moves,
+            "{id} does not match the frozen contamination count"
+        );
+    }
+    let mut ids = BTreeSet::new();
+    for count in &report.counts {
+        ensure!(
+            ids.insert(&count.id),
+            "duplicate contamination count {}",
+            count.id
+        );
+        ensure!(
+            !count.source_artifacts.is_empty(),
+            "{} has no source artifacts",
+            count.id
+        );
+        let mut total_games = 0_u64;
+        let mut affected_games = 0_u64;
+        let mut fallback_moves = 0_u64;
+        for artifact in &count.source_artifacts {
+            artifact.validate(root)?;
+            let file = fs::File::open(root.join(&artifact.path))?;
+            for line in BufReader::new(file).lines() {
+                let line = line?;
+                if line.trim().is_empty() {
+                    continue;
+                }
+                let game: serde_json::Value = serde_json::from_str(&line)?;
+                total_games += 1;
+                match count.kind {
+                    ContaminationKind::NoMoveLossPath => {
+                        let plies = game["plies"].as_u64().context("game is missing plies")?;
+                        let incomplete = game["incompleteIterations"]
+                            .as_u64()
+                            .context("game is missing incompleteIterations")?;
+                        affected_games += u64::from(incomplete == plies + 1);
+                    }
+                    ContaminationKind::EmergencyFallback => {
+                        let fallbacks = game["fallbacks"]
+                            .as_u64()
+                            .context("game is missing fallbacks")?;
+                        affected_games += u64::from(fallbacks > 0);
+                        fallback_moves += fallbacks;
+                    }
+                }
+            }
+        }
+        ensure!(
+            total_games == count.total_games && affected_games == count.affected_games,
+            "{} contamination count changed: observed {affected_games}/{total_games}, expected {}/{}",
+            count.id,
+            count.affected_games,
+            count.total_games
+        );
+        match count.kind {
+            ContaminationKind::NoMoveLossPath => ensure!(
+                count.counting_rule == "incompleteIterations == plies + 1"
+                    && count.fallback_moves.is_none(),
+                "{} has the wrong no-move counting contract",
+                count.id
+            ),
+            ContaminationKind::EmergencyFallback => ensure!(
+                count.counting_rule == "fallbacks > 0; fallback_moves = sum(fallbacks)"
+                    && count.fallback_moves == Some(fallback_moves),
+                "{} fallback count changed: observed {fallback_moves}",
+                count.id
+            ),
+        }
+    }
+    Ok(())
+}
+
+fn validate_r1_fixture_specifications(spec: &R1FixtureSpecificationsV1) -> Result<()> {
+    ensure!(
+        spec.schema == "haitaka-r1-fixture-specifications-v1",
+        "wrong R1 fixture specification schema"
+    );
+    ensure!(
+        spec.deterministic_parity_corpus.schema == "haitaka-r1-parity-corpus-v1",
+        "wrong R1 parity corpus schema"
+    );
+    ensure!(
+        spec.sentinel_network.schema == "haitaka-r1-sentinel-network-v1",
+        "wrong R1 sentinel network schema"
+    );
+    ensure!(
+        spec.interruption_safe_search.schema == "haitaka-r1-interruption-safe-search-v1",
+        "wrong R1 interruption schema"
+    );
+    ensure!(
+        !spec
+            .deterministic_parity_corpus
+            .required_position_classes
+            .is_empty()
+            && !spec
+                .deterministic_parity_corpus
+                .required_move_transitions
+                .is_empty()
+            && !spec.deterministic_parity_corpus.required_oracles.is_empty()
+            && !spec.sentinel_network.required_patterns.is_empty()
+            && !spec.sentinel_network.required_exports.is_empty()
+            && !spec.interruption_safe_search.required_cases.is_empty()
+            && !spec
+                .interruption_safe_search
+                .required_result_fields
+                .is_empty(),
+        "R1 fixture specifications are incomplete"
+    );
+    for (value, label) in [
+        (
+            spec.deterministic_parity_corpus
+                .deterministic_order
+                .as_str(),
+            "R1 parity deterministic order",
+        ),
+        (
+            spec.deterministic_parity_corpus.pass_rule.as_str(),
+            "R1 parity pass rule",
+        ),
+        (
+            spec.sentinel_network.construction.as_str(),
+            "R1 sentinel construction",
+        ),
+        (
+            spec.sentinel_network.pass_rule.as_str(),
+            "R1 sentinel pass rule",
+        ),
+        (
+            spec.interruption_safe_search.pass_rule.as_str(),
+            "R1 interruption pass rule",
+        ),
+    ] {
+        ensure_resolved_policy(value, label)?;
+    }
+    for (values, label) in [
+        (
+            spec.deterministic_parity_corpus
+                .required_position_classes
+                .as_slice(),
+            "R1 position class",
+        ),
+        (
+            spec.deterministic_parity_corpus
+                .required_move_transitions
+                .as_slice(),
+            "R1 move transition",
+        ),
+        (
+            spec.deterministic_parity_corpus.required_oracles.as_slice(),
+            "R1 parity oracle",
+        ),
+        (
+            spec.sentinel_network.required_patterns.as_slice(),
+            "R1 sentinel pattern",
+        ),
+        (
+            spec.sentinel_network.required_exports.as_slice(),
+            "R1 sentinel export",
+        ),
+        (
+            spec.interruption_safe_search.required_cases.as_slice(),
+            "R1 interruption case",
+        ),
+        (
+            spec.interruption_safe_search
+                .required_result_fields
+                .as_slice(),
+            "R1 interruption result field",
+        ),
+    ] {
+        for value in values {
+            ensure_resolved_policy(value, label)?;
         }
     }
     Ok(())
@@ -462,11 +1024,16 @@ fn validate_production_spec(spec: &ProductionExecutionSpecV1) -> Result<()> {
         ensure_resolved_policy(device, "supported device class")?;
     }
     ensure!(
-        spec.max_serialized_bytes > 0
+        spec.target_move_time_ms > 0
+            && spec.max_serialized_bytes > 0
             && spec.max_peak_memory_bytes > 0
             && spec.max_load_time_ms > 0
             && spec.max_per_move_latency_ms > 0,
         "all production numerical ceilings must be positive"
+    );
+    ensure!(
+        spec.max_per_move_latency_ms >= spec.target_move_time_ms,
+        "per-move latency ceiling cannot be below the target move time"
     );
     Ok(())
 }
@@ -524,7 +1091,7 @@ mod tests {
     }
 
     #[test]
-    fn registry_rejects_outcome_without_preregistration() {
+    fn registry_rejects_an_empty_preregistration_set() {
         let registry = ExperimentRegistryV1 {
             schema: "haitaka-experiment-registry-v1".to_string(),
             preregistrations: Vec::new(),
@@ -544,7 +1111,68 @@ mod tests {
             validate_registry(&registry, Path::new("."))
                 .unwrap_err()
                 .to_string()
-                .contains("missing preregistration")
+                .contains("no preregistrations")
+        );
+    }
+
+    #[test]
+    fn registry_rejects_vacuous_outcomes_and_manifest_links() {
+        let preregistration = ExperimentPreregistration {
+            id: "r0".to_string(),
+            registered_at: "2026-09-01T00:00:00+09:00".to_string(),
+            hypothesis: "independence".to_string(),
+            changed_variable: "training.initial_checkpoint".to_string(),
+            controls: vec!["generation config".to_string()],
+            config_stage: StageKind::CombinedGeneration,
+            config: ArtifactRef {
+                path: PathBuf::from("not-read-before-vacuity-check.toml"),
+                bytes: 1,
+                sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .to_string(),
+            },
+            gate: GateRegistration {
+                metric: "mismatches".to_string(),
+                direction: MetricDirection::LowerIsBetter,
+                baseline: "scratch".to_string(),
+                minimum_effect_or_margin: 0.0,
+                uncertainty_rule: "exact".to_string(),
+                multiplicity_handling: "all shards".to_string(),
+                decision_rule: "zero".to_string(),
+                cost_ceiling: "CPU".to_string(),
+            },
+        };
+        let empty = ExperimentRegistryV1 {
+            schema: "haitaka-experiment-registry-v1".to_string(),
+            preregistrations: vec![preregistration.clone()],
+            outcomes: Vec::new(),
+        };
+        assert!(
+            validate_registry(&empty, Path::new("."))
+                .unwrap_err()
+                .to_string()
+                .contains("no outcomes")
+        );
+
+        let no_links = ExperimentRegistryV1 {
+            schema: "haitaka-experiment-registry-v1".to_string(),
+            preregistrations: vec![preregistration],
+            outcomes: vec![ExperimentOutcome {
+                preregistration_id: "r0".to_string(),
+                recorded_at: "2026-09-01T00:00:00+09:00".to_string(),
+                stage_manifests: Vec::new(),
+                trajectory_evaluator_identity: "handcrafted/depth=1".to_string(),
+                label_evaluator_identity: "handcrafted/depth=2".to_string(),
+                initialization_identity: "scratch versus diagnostic".to_string(),
+                outcome: "pass".to_string(),
+                proves: vec!["independence".to_string()],
+                does_not_prove: vec!["strength".to_string()],
+            }],
+        };
+        assert!(
+            validate_registry(&no_links, Path::new("."))
+                .unwrap_err()
+                .to_string()
+                .contains("without stage-manifest links")
         );
     }
 
@@ -559,6 +1187,7 @@ mod tests {
             supported_device_classes: vec!["x86_64".to_string()],
             clock_policy: "monotonic deadline".to_string(),
             cold_warm_protocol: "warm model".to_string(),
+            target_move_time_ms: 100,
             max_serialized_bytes: 1,
             max_peak_memory_bytes: 1,
             max_load_time_ms: 1,

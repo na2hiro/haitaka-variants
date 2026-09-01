@@ -1,0 +1,28 @@
+{
+  "schema": "haitaka-r0-independence-verification-v1",
+  "generation_config": {
+    "path": "haitaka_learn.anhoku-reboot-r0.generation.toml",
+    "bytes": 960,
+    "sha256": "e264e1874438f1749ce934b0dd96a7ce7c06fc42bf6b86546916e8bd38481dc7"
+  },
+  "test_source": {
+    "path": "haitaka_learn/src/dataset.rs",
+    "bytes": 347932,
+    "sha256": "e0d491529f49b21db43cb5fcd40df432754beead34063fe889643aa2b8828d4b"
+  },
+  "test_name": "dataset::tests::r0_generation_is_byte_identical_across_separate_training_initializations",
+  "command": "cargo test -p haitaka_learn --features anhoku r0_generation_is_byte_identical_across_separate_training_initializations",
+  "trajectory_evaluator_identity": "handcrafted/depth=1",
+  "label_evaluator_identity": "handcrafted/depth=2/root-backed-up-v1/raw-score-v1",
+  "training_initialization_identities": [
+    "scratch",
+    "quantized-import-diagnostic"
+  ],
+  "assertions": [
+    "train shard bytes are identical",
+    "validation shard bytes are identical",
+    "train generation semantic identity SHA-256 values are identical",
+    "validation generation semantic identity SHA-256 values are identical"
+  ],
+  "result": "pass"
+}
