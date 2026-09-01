@@ -6,6 +6,7 @@ mod phase11a;
 mod phase11c;
 mod r0;
 mod r1a;
+mod r1b;
 mod selection;
 mod trainer;
 mod verify;
@@ -125,6 +126,21 @@ enum Command {
         config: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1a")]
         output_dir: PathBuf,
+    },
+    /// Generate the deterministic full-precision sentinel and run the complete
+    /// Python-integer/export/Rust full-refresh/incremental R1-B parity gate.
+    R1bGate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1b-quantization-limits.json")]
+        limits: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -293,6 +309,24 @@ fn main() -> Result<()> {
                 report.transitions_checked,
             );
             ensure!(report.passed, "R1-A gate failed");
+        }
+        Command::R1bGate {
+            r1a_dir,
+            output_dir,
+            limits,
+            python,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1b::run(&r1a_dir, &output_dir, &limits, &python, &workspace_root)?;
+            println!(
+                "R1-B gate written to {}: {}",
+                output_dir.join("r1b-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-B gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

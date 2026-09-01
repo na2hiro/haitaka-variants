@@ -15,9 +15,10 @@ use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, Search
 pub use nnue::{
     DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats, NnueModel,
     NnuePositionState, R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices,
-    R1SentinelNetwork, collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
-    donor_receiver_pair_v2_quantized_rows, donor_receiver_pair_v2_stats,
-    migrate_donor_single_to_receiver_pair_v2, r1_donor_single_active_feature_indices,
+    R1InferenceTrace, R1SentinelNetwork, collapse_donor_receiver_pair_v2,
+    donor_receiver_pair_v2_active_rows, donor_receiver_pair_v2_quantized_rows,
+    donor_receiver_pair_v2_stats, migrate_donor_single_to_receiver_pair_v2,
+    r1_donor_single_active_feature_indices,
 };
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;

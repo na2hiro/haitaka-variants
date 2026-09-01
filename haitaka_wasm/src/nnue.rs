@@ -268,6 +268,28 @@ pub struct NnuePositionState {
     perspectives: [PerspectiveAccumulator; Color::NUM],
 }
 
+/// Exact integer activation trace for the R1-B checkpoint/export/runtime gate.
+///
+/// This is deliberately an audit-only surface.  It exposes the values already
+/// computed by the production kernels without changing the serialized format
+/// or the normal evaluation path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct R1InferenceTrace {
+    pub black_accumulator: [i16; TRANSFORMED_FEATURE_DIMENSIONS],
+    pub white_accumulator: [i16; TRANSFORMED_FEATURE_DIMENSIONS],
+    pub black_psqt: [i32; PSQT_BUCKETS],
+    pub white_psqt: [i32; PSQT_BUCKETS],
+    pub transformed: [u8; FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS],
+    pub hidden1: [i32; HIDDEN_LAYER_1_DIMENSIONS],
+    pub hidden1_relu: [u8; HIDDEN_LAYER_1_DIMENSIONS],
+    pub hidden2: [i32; HIDDEN_LAYER_2_DIMENSIONS],
+    pub hidden2_relu: [u8; HIDDEN_LAYER_2_DIMENSIONS],
+    pub output: i32,
+    pub psqt: i32,
+    pub score: i32,
+    pub bucket: usize,
+}
+
 /// Exact active feature rows used by the production DonorSingleEff runtime.
 ///
 /// This is an audit surface for the R1 correctness ladder.  Indices are sorted
@@ -608,6 +630,67 @@ impl NnueModel {
     pub fn evaluate_full_refresh(&self, board: &Board) -> i32 {
         let state = self.build_position_state_full(board);
         self.evaluate_from_state(board, &state)
+    }
+
+    /// Produce the exact production integer trace from an existing accumulator.
+    #[doc(hidden)]
+    pub fn r1_inference_trace_from_state(
+        &self,
+        board: &Board,
+        state: &NnuePositionState,
+    ) -> R1InferenceTrace {
+        let bucket = bucket_for_board(board);
+        let us = board.side_to_move();
+        let them = !us;
+        let our_accumulator = state.perspective(us);
+        let their_accumulator = state.perspective(them);
+
+        let mut transformed = [0u8; FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS];
+        fill_transformed_features(
+            &mut transformed[..TRANSFORMED_FEATURE_DIMENSIONS],
+            &our_accumulator.sums,
+        );
+        fill_transformed_features(
+            &mut transformed[TRANSFORMED_FEATURE_DIMENSIONS..],
+            &their_accumulator.sums,
+        );
+        let bucket_network = &self.buckets[bucket];
+        let mut hidden1 = [0i32; HIDDEN_LAYER_1_DIMENSIONS];
+        bucket_network
+            .hidden1
+            .forward_into(&transformed, &mut hidden1);
+        let hidden1_relu = clipped_relu_array(hidden1);
+        let mut hidden2 = [0i32; HIDDEN_LAYER_2_DIMENSIONS];
+        bucket_network
+            .hidden2
+            .forward_into(&hidden1_relu, &mut hidden2);
+        let hidden2_relu = clipped_relu_array(hidden2);
+        let output = bucket_network.output.forward_single(&hidden2_relu);
+        let psqt = (our_accumulator.psqt[bucket] - their_accumulator.psqt[bucket]) / 2;
+        let score = (psqt + output) / OUTPUT_SCALE;
+
+        R1InferenceTrace {
+            black_accumulator: state.perspective(Color::Black).sums,
+            white_accumulator: state.perspective(Color::White).sums,
+            black_psqt: state.perspective(Color::Black).psqt,
+            white_psqt: state.perspective(Color::White).psqt,
+            transformed,
+            hidden1,
+            hidden1_relu,
+            hidden2,
+            hidden2_relu,
+            output,
+            psqt,
+            score,
+            bucket,
+        }
+    }
+
+    /// Full-refresh form of [`NnueModel::r1_inference_trace_from_state`].
+    #[doc(hidden)]
+    pub fn r1_inference_trace_full_refresh(&self, board: &Board) -> R1InferenceTrace {
+        let state = self.build_position_state_full(board);
+        self.r1_inference_trace_from_state(board, &state)
     }
 
     #[doc(hidden)]

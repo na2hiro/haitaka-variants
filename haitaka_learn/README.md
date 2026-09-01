@@ -32,6 +32,33 @@ Strict generation and merge also fail closed on identity mismatches. The
 legacy `--ignore-identity-mismatch` escape hatch is rejected; mismatched shards
 must be regenerated from the registered config and code identity.
 
+## R1 correctness gates
+
+`r1a-gate` materializes the fixed 10,240-position board/feature/sign corpus.
+`r1b-gate` consumes that passing corpus, generates a deterministic
+full-precision PyTorch sentinel checkpoint, repeats its export, independently
+emulates the serialized integer graph in Python, and compares every activation
+with Rust full-refresh and incremental inference:
+
+```console
+cargo build --release -p haitaka_learn --features anhoku
+target/release/haitaka_learn r1a-gate \
+  --config haitaka_learn.anhoku-reboot-r1a.training.toml \
+  --output-dir out/anhoku-reboot-r1a
+target/release/haitaka_learn r1b-gate \
+  --r1a-dir out/anhoku-reboot-r1a \
+  --output-dir out/anhoku-reboot-r1b \
+  --limits r0/anhoku-reboot/r1b-quantization-limits.json \
+  --python ../engine/variant-nnue-pytorch/.venv/bin/python
+```
+
+The R1-B report includes absolute full-precision-to-quantized score and loss
+degradation by deterministic split and reference-score bucket. The limits are
+frozen in source and the gate fails on any integer score/activation mismatch,
+incremental mismatch, repeat-export byte difference, serializer weight clamp,
+or accumulator overflow. These are CPU-only correctness gates; they do not
+train a model or authorize a strength claim.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data

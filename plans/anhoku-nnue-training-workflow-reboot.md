@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 and R1-A complete with machine gates passed; R1-B is next
+- Status: Phase R0, R1-A, and R1-B complete with machine gates passed; R1-C is next
 - Created: 2026-08-31
 - Last audited: 2026-09-01
 - Last implementation update: 2026-09-01
@@ -525,6 +525,59 @@ that the difference is measured and attributable. Before opening oracle
 results, freeze absolute mean/tail score-delta and loss-degradation limits in
 runtime units. Do not define success afterward as an unstable percentage of a
 tiny full-precision gain.
+
+#### R1-B implementation record (2026-09-01)
+
+Implemented and passed on branch `reboot`:
+
+- Froze absolute quantization limits before executing the oracle in
+  `r0/anhoku-reboot/r1b-quantization-limits.json`: mean absolute runtime-score
+  delta at most 8, p99 at most 16, maximum at most 32, and positive
+  probability-MSE degradation at most 0.005 in every declared split and score
+  bucket. Serializer weight clamps and accumulator overflows must both be zero.
+- Added `r1b-gate` and a source-generated complete full-precision deployment
+  checkpoint whose tensors are evaluated by PyTorch on CPU. The construction
+  includes zero and bias-only networks, positive/negative one-hot rows,
+  perspective- and donor-asymmetric signatures, activation clamp boundaries,
+  ties-to-even cases, and `i16` transformer extrema.
+- Added an independent Python serializer/parser and exact-integer emulator. It
+  records both accumulator perspectives, PSQT, transformed input, both affine
+  pre-activations and clipped activations, output, and final score for every
+  R1-A fixture. Rust compares those traces against the production parser,
+  full-refresh accumulator, detected affine kernel, and incremental update.
+- Checkpoint regeneration, repeat export from the same checkpoint, and repeat
+  canonical export metadata are byte-identical. The two 317,797,280-byte
+  full-precision checkpoints have the same SHA-256; the two 161,206,504-byte
+  sentinel exports also have the same SHA-256.
+- Zero, bias-only, and full sentinel cases each pass 10,240 position checks and
+  10,202 move-transition checks. Across all 30,720 predictions and 30,606
+  transitions there are zero Python/Rust score mismatches, zero per-layer
+  activation mismatches, zero full/incremental accumulator or score mismatches,
+  and zero restored-parent snapshot mismatches.
+- Full-precision-to-quantized degradation is reported for the complete corpus,
+  each parity split, each reference-score bucket, and every split/bucket cross.
+  Overall mean/p99/maximum absolute score delta is
+  `2.9240 / 12.6003 / 13.7455`; the worst group mean and p99 are `7.5947` and
+  `13.1960`, and the largest positive group loss degradation is below `0.00104`.
+  Every frozen absolute gate passes. Serializer weight clamps and accumulator
+  overflows are both zero; activation clamp counts are explicit in the report.
+- The machine-readable report and SHA-256 artifact inventory are in
+  `out/anhoku-reboot-r1b/r1b-gate-report.json` and all nine named gates are
+  `true`.
+
+Final CPU-only verification completed:
+
+- `target/release/haitaka_learn r0-gate --bundle r0/anhoku-reboot`
+- `target/release/haitaka_learn r1a-gate --config haitaka_learn.anhoku-reboot-r1a.training.toml --output-dir out/anhoku-reboot-r1a`
+- `target/release/haitaka_learn r1b-gate --r1a-dir out/anhoku-reboot-r1a --output-dir out/anhoku-reboot-r1b --limits r0/anhoku-reboot/r1b-quantization-limits.json --python ../engine/variant-nnue-pytorch/.venv/bin/python`
+- `cargo test -p haitaka_learn -p haitaka_wasm --features anhoku` (130 and
+  86 tests passed)
+- `cargo check -p haitaka_learn --features anhoku`,
+  `cargo fmt --all -- --check`, and `git diff --check`
+
+No GPU, labels, training, model-strength game, or production data generation
+was run. R1-C is now authorized; R1-D, R2, and production corpus generation
+remain unauthorized by this result.
 
 ### R1-C: learnability oracles
 
