@@ -1874,7 +1874,13 @@ impl UsiSession {
             ];
         }
         if self.board.status() != haitaka::GameStatus::Ongoing {
-            return vec!["bestmove resign".to_string()];
+            return vec![
+                format!(
+                    "info string gameover no-legal-move rules {}",
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
         }
 
         match budget {
@@ -4392,6 +4398,26 @@ mod tests {
         let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
         let mv = Move::from_str(best_move).expect("bestmove should parse");
         assert!(board.is_legal(mv), "{best_move} should be legal");
+    }
+
+    #[test]
+    fn usi_session_marks_terminal_resign_as_no_legal_move() {
+        let mut session = UsiSession::default();
+        assert!(
+            session
+                .handle_line("position sfen 8k/6G2/7B1/9/9/9/9/9/K8 b R 1 moves R*1b")
+                .is_empty()
+        );
+        assert_eq!(
+            session.handle_line("go depth 1"),
+            vec![
+                format!(
+                    "info string gameover no-legal-move rules {}",
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ]
+        );
     }
 
     #[test]

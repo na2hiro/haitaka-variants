@@ -1,0 +1,124 @@
+{
+  "schema": "haitaka-r1d3-match-contract-v1",
+  "frozenAt": "2026-09-02",
+  "ruleset": "anhoku",
+  "production": {
+    "interface": "shogitter-engine-package-v1 / wasm-bindgen / usi-wasm-v1",
+    "runtime": "desktop-google-chrome-headless-dedicated-module-worker",
+    "concurrentGames": 1,
+    "workerCount": 1,
+    "clockControllerVersion": "instant-performance-now-deadline-v1",
+    "deadlinePollingNodes": 256,
+    "requestedMoveTimeMs": 100,
+    "coldWarmVersion": "fresh-worker-load-once-usinewgame-per-game-v1",
+    "coldProtocol": "create a fresh dedicated module Worker, instantiate the release WASM module, fetch and load the R1-B zero debug NNUE exactly once, and record elapsed milliseconds",
+    "warmProtocol": "reuse that Worker and loaded NNUE, send usinewgame before every game, replay the full start SFEN and move list before every search, and never reload WASM or NNUE",
+    "model": "out/anhoku-reboot-r1b/zero.nnue",
+    "wasmBuild": {
+      "profile": "release",
+      "target": "web",
+      "features": ["anhoku"],
+      "rustflags": "-C target-feature=+simd128"
+    },
+    "hostClass": "x86_64 Linux desktop CPU; Google Chrome with WebAssembly SIMD128, ES modules, dedicated Workers, and performance.now",
+    "deviceClass": "x86_64 desktop CPU with WebAssembly SIMD128",
+    "affinity": "unrestricted single-game host scheduling",
+    "memoryConfiguration": "one Worker, one UsiEngine, one loaded debug NNUE, default 8 MiB TT"
+  },
+  "schedule": {
+    "openingSuite": "r0/anhoku-reboot/r1d3-openings.tsv",
+    "openingGroups": 8,
+    "pairsPerLane": 8,
+    "gamesPerLane": 16,
+    "maximumPlies": 6,
+    "retryPolicy": "abort-and-rerun-the-entire-lane-with-the-same-indices",
+    "pairPolicy": "game 2p uses A as Black and B as White; game 2p+1 uses B as Black and A as White; both start from byte-identical SFEN",
+    "lanes": [
+      {
+        "id": "aa-null-timing",
+        "a": {"evaluator": "r1b-zero-nnue", "go": "movetime 100"},
+        "b": {"evaluator": "r1b-zero-nnue", "go": "movetime 100"},
+        "qualifyingTiming": true
+      },
+      {
+        "id": "ab-forward",
+        "a": {"evaluator": "r1b-zero-nnue", "go": "depth 2"},
+        "b": {"evaluator": "r1b-zero-nnue", "go": "depth 1"},
+        "qualifyingTiming": false
+      },
+      {
+        "id": "ab-reversed",
+        "a": {"evaluator": "r1b-zero-nnue", "go": "depth 1"},
+        "b": {"evaluator": "r1b-zero-nnue", "go": "depth 2"},
+        "qualifyingTiming": false
+      }
+    ]
+  },
+  "timingLimits": {
+    "latenessDefinition": "max(0, wall elapsed measured around UsiEngine.send(go) minus requested move time)",
+    "schedulerDelayDefinition": "performance.now at search entry minus the immediately preregistered dispatch timestamp",
+    "percentileMethod": "nearest-rank ceil(q*n), fixed after all scheduled searches",
+    "p95LatenessMs": 8.0,
+    "p99LatenessMs": 15.0,
+    "maximumLatenessMs": 25.0,
+    "engineMeanElapsedSymmetryMs": 12.0,
+    "maximumColdLoadMs": 5000.0
+  },
+  "statisticalLimits": {
+    "analysis": "fixed-cap complete-pair normal interval; no sequential peeking",
+    "aaEquivalenceMarginElo": 20.0,
+    "abOrderReversalToleranceElo": 25.0,
+    "requiredAaPairScore": 0.5,
+    "rationale": "Identical deterministic engines on an exactly color-swapped fixed schedule must produce pair score 0.5 for every opening. This yields a degenerate zero-bias paired interval; any nonzero pair score or malformed pair fails closed."
+  },
+  "qualification": {
+    "missingMoves": 0,
+    "unsearchedEmergencyFallbacks": 0,
+    "allowedPartialRootMoves": "searched only and reported per search",
+    "requiredTerminationReasons": [
+      "king-captured",
+      "no-legal-move",
+      "repetition-draw",
+      "perpetual-check-loss",
+      "jishogi-draw",
+      "maximum-ply-capped"
+    ],
+    "failClosed": [
+      "duplicate or missing game index",
+      "incomplete pair",
+      "different start SFEN within pair",
+      "colors or engine order not swapped",
+      "bin mismatch between raw games and report",
+      "missing or emergency move",
+      "unknown termination reason",
+      "timing limit violation",
+      "production/native fixed-depth mismatch"
+    ]
+  },
+  "nativeEquivalence": {
+    "positions": [
+      {"id": "start", "position": "position startpos", "go": "go depth 2"},
+      {"id": "history", "position": "position startpos moves 7g7f 3c3d 2g2f", "go": "go depth 2"}
+    ],
+    "require": "production WASM and native UsiSession must agree on bestmove and typed root-result fields; the native in-process history-bearing adapter must agree on the best move"
+  },
+  "matchIdentityFields": [
+    "contract hash",
+    "WASM and glue hashes",
+    "debug NNUE hash",
+    "native executable hash",
+    "git commit and dirty state",
+    "resolved thread and Worker counts",
+    "CPU and operating system",
+    "affinity",
+    "Rust and Chrome versions",
+    "compiler flags and WASM profile",
+    "memory configuration",
+    "concurrency",
+    "opening-suite hash",
+    "history/adjudication version",
+    "clock/controller version",
+    "search limits",
+    "cold/warm version"
+  ]
+}

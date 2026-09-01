@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 and R1-A/B/C/D1/D2 complete with machine gates passed; R1-D3 is next
+- Status: Phase R0 and aggregate R1 complete with all machine gates passed; R2 is next
 - Created: 2026-08-31
 - Last audited: 2026-09-02
 - Last implementation update: 2026-09-02
@@ -938,6 +938,81 @@ R1-D3 passes only when:
 
 Only null/equivalence qualification games are authorized. Stop after the D3
 report and R1 closeout; do not run a candidate-versus-handcrafted strength match.
+
+##### R1-D3 and aggregate R1 closeout (complete, 2026-09-02)
+
+R1-D3 and the aggregate R1 gate are complete. No candidate-versus-handcrafted
+strength match, production corpus generation, labels, or GPU training was run.
+
+- Froze `haitaka-r1d3-match-contract-v1` before launching games in
+  `r0/anhoku-reboot/r1d3-match-contract.json`, including eight independent
+  opening groups, 16 complete color-swapped games per lane, fixed-cap analysis,
+  nearest-rank timing percentiles, 8/15/25 ms p95/p99/maximum lateness limits,
+  a +/-20 Elo A=A equivalence margin, and a 25 Elo A/B order-reversal tolerance.
+- Added a production browser harness that builds the release Anhoku WASM with
+  SIMD128, instantiates the shipped `UsiEngine` in one dedicated Chrome module
+  Worker, loads the R1-B zero debug NNUE exactly once, sends `usinewgame` before
+  each game, and replays the full start SFEN and move history before every
+  search. The raw trace hashes the WASM, glue, model, openings, contract,
+  browser/host identity, and every per-search result.
+- The A=A timing/null lane completed 16/16 games and 8/8 pairs. All eight pair
+  scores were exactly 0.5, producing `0 Elo [0, 0]`. Across 96 warm 100 ms
+  searches, p95/p99/maximum lateness was
+  `0.1000 / 0.2000 / 0.2000 ms`; mean A/B elapsed-time difference was below
+  `0.023 ms`, and cold WASM plus 161,206,500-byte NNUE load was `644.6 ms`.
+- The fixed-depth A/B forward and reversed lanes each completed 16/16 games and
+  8/8 pairs. Their sign-transformed paired estimates differed by `0 Elo`, within
+  the frozen 25 Elo tolerance. The A/B lanes are deterministic order diagnostics,
+  not model-strength evidence.
+- All 48 games ended with explicit `maximum-ply-capped` qualification reasons.
+  Every scheduled pair was uniquely indexed, byte-identical at its start, and
+  color/engine-order swapped. Recomputed pentanomial bins exactly matched the
+  browser summaries. There were zero missing moves and zero unsearched emergency
+  fallbacks; 57 searched partial-root moves in the timed lane were retained and
+  reported under the frozen D1 policy.
+- The shipped WASM interface, native history-bearing `UsiSession`, and native
+  in-process incremental adapter agreed exactly on both fixed-depth fixtures,
+  including best move and typed root-result fields.
+- Native self-play now treats any nonterminal missing move as a harness error
+  that aborts the match instead of assigning a loss. The WASM USI path also
+  emits an explicit `gameover no-legal-move` reason for a genuine terminal
+  resign, so a terminal board cannot be confused with an engine failure.
+- Repaired two aggregate-rerun identity defects without changing an oracle or
+  threshold. R0 no longer treats mutable `target/release/haitaka_cli` as a
+  historical artifact; the hash-frozen historical reports remain the evidence
+  and already record their actual executable identities. Mutable R1-A/B report
+  wrapper hashes were removed from R1-C's frozen artifact set; R1-C still
+  requires both reports to pass, while its stable corpus, features, serializer,
+  quantization limits, targets, optimizer, and pass thresholds remain
+  hash-frozen and byte-identical.
+- `r1d3-gate` passes all 12 named gates in
+  `out/anhoku-reboot-r1d3/r1d3-gate-report.json`. The hash-frozen browser trace
+  is `out/anhoku-reboot-r1d3/browser-trace.json`, and detailed timing,
+  equivalence, lane, host, and pair analysis is in
+  `out/anhoku-reboot-r1d3/r1d3-analysis.json`.
+- All six R1 reports were rerun from the same release executable SHA-256
+  `d04b6ed7fb5ae0429c807464af60ba02bde2ee287577e85ea61d715b931f411f`.
+  `out/anhoku-reboot-r1d3/r1-closeout-manifest.json` hashes every report and
+  records `allReportsPassing=true`, `sourceIdentityExact=true`, and
+  `r2Authorized=true`.
+
+Final CPU/browser verification completed:
+
+- `target/release/haitaka_learn r0-gate`
+- `target/release/haitaka_learn r1a-gate`
+- `target/release/haitaka_learn r1b-gate`
+- `target/release/haitaka_learn r1c-gate`
+- `target/release/haitaka_learn r1d1-gate`
+- `target/release/haitaka_learn r1d2-gate`
+- `target/release/haitaka_learn r1d3-gate`
+- SIMD-enabled release `wasm-pack build`, followed by the dedicated-Worker
+  Chrome qualification harness
+- `cargo test --workspace --features anhoku --no-fail-fast`,
+  `cargo check --workspace --features anhoku`, `cargo fmt --all -- --check`,
+  and `git diff --check`
+
+R2 is now authorized. Later phases and production corpus generation remain
+unauthorized by this result.
 
 #### R1 aggregate completion
 

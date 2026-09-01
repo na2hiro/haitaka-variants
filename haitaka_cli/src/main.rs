@@ -679,7 +679,6 @@ enum GameTerminationReason {
     #[allow(dead_code)] // Reserved for an explicit adjudicator; no automatic declaration exists.
     JishogiDraw,
     MaximumPlyCapped,
-    EngineMissingMove,
     Unfinished,
 }
 
@@ -692,7 +691,6 @@ impl GameTerminationReason {
             Self::PerpetualCheckLoss => "perpetual-check-loss",
             Self::JishogiDraw => "jishogi-draw",
             Self::MaximumPlyCapped => "maximum-ply-capped",
-            Self::EngineMissingMove => "engine-missing-move",
             Self::Unfinished => "unfinished",
         }
     }
@@ -2141,13 +2139,18 @@ fn play_self_play_game(
             b_qsearch.add(summary.qsearch);
         }
         let Some(best_move) = summary.best_move else {
-            winner = Some(if config.label == "A" {
-                Seat::B
-            } else {
-                Seat::A
-            });
-            termination_reason = GameTerminationReason::EngineMissingMove;
-            break;
+            bail!(
+                "nonterminal engine-missing-move is a match harness error in game {} on ply {} \
+                 (engine {}, searched={}, emergency={}, interruption={}, sfen: {}, moves: {})",
+                game_index + 1,
+                ply + 1,
+                config.label,
+                summary.play_move_was_searched,
+                summary.emergency_fallback_used,
+                summary.interruption_reason,
+                current_sfen,
+                moves.join(" ")
+            );
         };
         let mv = Move::from_str(&best_move)
             .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;

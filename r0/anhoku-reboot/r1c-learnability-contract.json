@@ -7,10 +7,6 @@
   "gpu_allowed": false,
   "framework": "PyTorch CPU",
   "input_artifacts": {
-    "r1a_report": {
-      "path": "out/anhoku-reboot-r1a/r1a-gate-report.json",
-      "sha256": "97eeffb16c6dedd8dcb1c2e0ccdf0c48681fee3252d4a1c30f9d9a45367b0477"
-    },
     "r1a_corpus": {
       "path": "out/anhoku-reboot-r1a/parity-corpus.jsonl",
       "sha256": "6b958fdfc279f1c5a79c34a213321f972ea7e9ed68c998c9c53a1b4715207d6c"
@@ -18,10 +14,6 @@
     "r1a_features": {
       "path": "out/anhoku-reboot-r1a/rust-features.jsonl",
       "sha256": "4cbdad4d4021bcd6e0d753890e4924380a82d70de5ef486284578321384f3f7a"
-    },
-    "r1b_report": {
-      "path": "out/anhoku-reboot-r1b/r1b-gate-report.json",
-      "sha256": "a5d93dc62efb97f56e94498280a0430e4297dcdd5b7a4afa1d6ff5ac6786fe21"
     },
     "r1b_quantization_limits": {
       "path": "r0/anhoku-reboot/r1b-quantization-limits.json",

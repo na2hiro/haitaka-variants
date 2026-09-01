@@ -10,6 +10,7 @@ mod r1b;
 mod r1c;
 mod r1d1;
 mod r1d2;
+mod r1d3;
 mod selection;
 mod trainer;
 mod verify;
@@ -195,6 +196,37 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value = "r0/anhoku-reboot/r1d2-history-contract.json")]
         contract: PathBuf,
+    },
+    /// Validate the frozen production-WASM null, timing, complete-pair, order-
+    /// reversal, and native-equivalence qualification and write the R1 closeout.
+    R1d3Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        r1c_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        r1d1_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d2")]
+        r1d2_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d3-match-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d3-openings.tsv")]
+        openings: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/browser-trace.json")]
+        browser_trace: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/pkg/haitaka_wasm.js")]
+        wasm_js: PathBuf,
+        #[arg(
+            long,
+            default_value = "out/anhoku-reboot-r1d3/pkg/haitaka_wasm_bg.wasm"
+        )]
+        wasm: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b/zero.nnue")]
+        model: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -459,6 +491,46 @@ fn main() -> Result<()> {
                 if report.passed { "PASS" } else { "FAIL" },
             );
             ensure!(report.passed, "R1-D2 gate failed");
+        }
+        Command::R1d3Gate {
+            r1a_dir,
+            r1b_dir,
+            r1c_dir,
+            r1d1_dir,
+            r1d2_dir,
+            output_dir,
+            contract,
+            openings,
+            browser_trace,
+            wasm_js,
+            wasm,
+            model,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d3::run(r1d3::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                r1c_dir: &r1c_dir,
+                r1d1_dir: &r1d1_dir,
+                r1d2_dir: &r1d2_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                openings_path: &openings,
+                browser_trace_path: &browser_trace,
+                wasm_js_path: &wasm_js,
+                wasm_path: &wasm,
+                model_path: &model,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D3 gate written to {}: {}",
+                output_dir.join("r1d3-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D3 gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
