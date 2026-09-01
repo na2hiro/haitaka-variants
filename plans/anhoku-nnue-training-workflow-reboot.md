@@ -1,9 +1,9 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 and R1-A/B/C/D1 complete with machine gates passed; R1-D2 is next
+- Status: Phase R0 and R1-A/B/C/D1/D2 complete with machine gates passed; R1-D3 is next
 - Created: 2026-08-31
-- Last audited: 2026-09-01
-- Last implementation update: 2026-09-01
+- Last audited: 2026-09-02
+- Last implementation update: 2026-09-02
 - Primary ruleset: Anhoku
 - Final target: a production NNUE that is stronger than the handcrafted evaluator at the target fixed time
 - Historical record: `plans/anhoku-nnue-handcrafted-strength-plan.md`
@@ -824,6 +824,61 @@ R1-D2 passes only when:
 
 Stop after the D2 report and closeout. Do not run A=A games or begin match
 qualification.
+
+##### R1-D2 closeout (2026-09-02)
+
+R1-D2 is complete and all machine gates pass.
+
+- Froze `anhoku-history-adjudication-v1` before the successful golden run in
+  `r0/anhoku-reboot/r1d2-history-contract.json`. The representation is an
+  ordered inclusive sequence of `Board` positions; search pushes and pops the
+  same history through alpha-beta, qsearch, and DFPN.
+- Fourfold repetition is a draw unless exactly one side checked after every one
+  of its moves over the repetition interval, in which case that checker loses.
+  Score orientation is always side-to-move. Per the 2026-09-01 rules decision,
+  27-point declaration is not implemented and explicit 持将棋 adjudication is a
+  draw.
+- Alpha-beta and DFPN transposition identities include the ordered history and
+  checking context. The golden same-layout/different-history probe produced no
+  cross-context TT hit.
+- USI now retains every board from `position ... moves`; native handcrafted,
+  native NNUE, node-budget, timed, external-engine, and self-play adapters pass
+  the same root history. External self-play sends the original SFEN plus the
+  complete move list instead of sending only the current layout.
+- Self-play game records use schema version 3 and
+  `haitaka-self-play-termination-v1`, distinguishing wins, repetition and
+  持将棋 draws, perpetual-check adjudication, maximum-ply caps, engine-missing
+  moves, and unfinished games. A terminal result on the final allowed ply takes
+  precedence over the cap.
+- Timed root DFPN is skipped below 4 ms and otherwise receives at most one
+  quarter of the deadline (capped at 25 ms), reserving at least three quarters
+  for alpha-beta. Node-budget search assigns DFPN zero nodes. DFPN reports
+  completion, interruption reason, repetition hits, nodes, elapsed time, and
+  the reserved alpha-beta time; interrupted/unproven DFPN falls through to a
+  searched legal move.
+- `r1d2-gate` covers ordinary repetition, either perpetual checker losing,
+  root alpha-beta/qsearch agreement, TT contamination, DFPN repetition and
+  zero-millisecond deadline interruption, the sub-4-ms reservation, USI parity,
+  and terminal-on-final-max-ply precedence. All ten named gates are `true` in
+  `out/anhoku-reboot-r1d2/r1d2-gate-report.json`; raw trace and artifact hashes
+  are recorded there.
+
+Final CPU-only verification completed:
+
+- `target/release/haitaka_learn r0-gate`
+- `target/release/haitaka_learn r1a-gate`
+- `target/release/haitaka_learn r1b-gate`
+- `target/release/haitaka_learn r1c-gate`
+- `target/release/haitaka_learn r1d1-gate`
+- `target/release/haitaka_learn r1d2-gate`
+- `cargo test --workspace --features anhoku --no-fail-fast` (342 tests plus
+  doctests, zero failures)
+- `cargo check --workspace --features anhoku`, `cargo fmt --all -- --check`,
+  and `git diff --check`
+
+No A=A, match-equivalence, timing-qualification, or strength games were run.
+R1-D3 is now authorized; R2 and production corpus generation remain
+unauthorized by this result.
 
 #### R1-D3: honest match harness and production timing qualification
 

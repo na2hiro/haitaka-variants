@@ -9,6 +9,7 @@ mod r1a;
 mod r1b;
 mod r1c;
 mod r1d1;
+mod r1d2;
 mod selection;
 mod trainer;
 mod verify;
@@ -184,6 +185,16 @@ enum Command {
             default_value = "r0/anhoku-reboot/r1d1-forced-interruption-fixtures.json"
         )]
         fixtures: PathBuf,
+    },
+    /// Run the frozen history, repetition, TT, qsearch, DFPN, and adjudication gate.
+    /// This command never plays match-equivalence games.
+    R1d2Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        r1d1_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d2")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d2-history-contract.json")]
+        contract: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -426,6 +437,28 @@ fn main() -> Result<()> {
                 if report.passed { "PASS" } else { "FAIL" },
             );
             ensure!(report.passed, "R1-D1 gate failed");
+        }
+        Command::R1d2Gate {
+            r1d1_dir,
+            output_dir,
+            contract,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d2::run(r1d2::RunArgs {
+                r1d1_dir: &r1d1_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D2 gate written to {}: {}",
+                output_dir.join("r1d2-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D2 gate failed");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

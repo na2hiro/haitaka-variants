@@ -49,6 +49,7 @@ pub struct DfpnStats {
     pub tt_stores: u64,
     pub tt_collisions: u64,
     pub elapsed_ms: f64,
+    pub repetition_hits: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -56,6 +57,23 @@ pub struct DfpnResult {
     pub status: DfpnStatus,
     pub pv: Vec<Move>,
     pub stats: DfpnStats,
+    pub completed: bool,
+    pub interruption_reason: Option<DfpnInterruptionReason>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DfpnInterruptionReason {
+    NodeBudget,
+    Deadline,
+}
+
+impl DfpnInterruptionReason {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::NodeBudget => "node-budget",
+            Self::Deadline => "deadline",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +146,7 @@ struct DfpnSolver {
     options: DfpnOptions,
     started_at: Instant,
     stats: DfpnStats,
-    budget_hit: bool,
+    interruption_reason: Option<DfpnInterruptionReason>,
     generation: u8,
     tt: Vec<TtEntry>,
 }
@@ -146,16 +164,25 @@ impl DfpnSolver {
                 tt_stores: 0,
                 tt_collisions: 0,
                 elapsed_ms: 0.0,
+                repetition_hits: 0,
             },
-            budget_hit: false,
+            interruption_reason: None,
             generation: 1,
             tt: vec![TtEntry::default(); tt_size],
         }
     }
 
-    fn solve(mut self, board: &Board) -> DfpnResult {
-        let mut path = Vec::new();
-        let evaluation = self.search(board, INF_PN, INF_PN, &mut path);
+    fn solve(mut self, board: &Board, history: &PositionHistory) -> DfpnResult {
+        let mut path = history.clone();
+        let evaluation = if path.adjudication() == HistoryAdjudication::Ongoing {
+            self.search(board, INF_PN, INF_PN, &mut path)
+        } else {
+            self.stats.repetition_hits += 1;
+            NodeEvaluation {
+                numbers: ProofNumbers::NO_MATE,
+                best_move: None,
+            }
+        };
         self.stats.elapsed_ms = self.started_at.elapsed().as_secs_f64() * 1_000.0;
 
         let mut status = if evaluation.numbers.pn == 0 {
@@ -167,7 +194,7 @@ impl DfpnSolver {
         };
 
         let pv = if status == DfpnStatus::Mate {
-            let pv = self.reconstruct_pv(board);
+            let pv = self.reconstruct_pv(board, history);
             if verify_mating_line(board, self.attacker, &pv) {
                 pv
             } else {
@@ -182,6 +209,8 @@ impl DfpnSolver {
             status,
             pv,
             stats: self.stats,
+            completed: status != DfpnStatus::Unknown,
+            interruption_reason: self.interruption_reason,
         }
     }
 
@@ -190,23 +219,24 @@ impl DfpnSolver {
         board: &Board,
         phi: u32,
         delta: u32,
-        path: &mut Vec<u64>,
+        path: &mut PositionHistory,
     ) -> NodeEvaluation {
-        self.stats.nodes += 1;
         if self.over_budget() {
             return NodeEvaluation {
                 numbers: ProofNumbers::UNKNOWN,
                 best_move: None,
             };
         }
+        self.stats.nodes += 1;
 
-        let hash = board.hash();
-        if path.contains(&hash) {
+        if path.adjudication() != HistoryAdjudication::Ongoing {
+            self.stats.repetition_hits += 1;
             return NodeEvaluation {
                 numbers: repetition_numbers(),
                 best_move: None,
             };
         }
+        let hash = path.tt_key();
 
         if let Some(entry) = self.probe(hash) {
             if entry.numbers.is_resolved() || entry.numbers.pn >= phi || entry.numbers.dn >= delta {
@@ -260,7 +290,7 @@ impl DfpnSolver {
             let previous_node_numbers = evaluation.numbers;
             let previous_child_numbers = best_child.numbers;
 
-            path.push(hash);
+            path.push(best_child.board.clone());
             let child_evaluation = self.search(&best_child.board, child_phi, child_delta, path);
             path.pop();
 
@@ -292,9 +322,9 @@ impl DfpnSolver {
         if self
             .options
             .max_nodes
-            .is_some_and(|max_nodes| self.stats.nodes > max_nodes)
+            .is_some_and(|max_nodes| self.stats.nodes >= max_nodes)
         {
-            self.budget_hit = true;
+            self.interruption_reason = Some(DfpnInterruptionReason::NodeBudget);
             return true;
         }
 
@@ -303,18 +333,21 @@ impl DfpnSolver {
             .max_time_ms
             .is_some_and(|max_time_ms| self.started_at.elapsed().as_millis() >= max_time_ms as u128)
         {
-            self.budget_hit = true;
+            self.interruption_reason = Some(DfpnInterruptionReason::Deadline);
             return true;
         }
 
         false
     }
 
-    fn initial_child_numbers(&mut self, board: &Board, path: &[u64]) -> ProofNumbers {
-        let hash = board.hash();
-        if path.contains(&hash) {
+    fn initial_child_numbers(&mut self, board: &Board, path: &PositionHistory) -> ProofNumbers {
+        let mut child_path = path.clone();
+        child_path.push(board.clone());
+        if child_path.adjudication() != HistoryAdjudication::Ongoing {
+            self.stats.repetition_hits += 1;
             return repetition_numbers();
         }
+        let hash = child_path.tt_key();
         self.probe(hash)
             .map(|entry| entry.numbers)
             .unwrap_or(ProofNumbers::UNKNOWN)
@@ -346,17 +379,16 @@ impl DfpnSolver {
         self.stats.tt_stores += 1;
     }
 
-    fn reconstruct_pv(&self, root: &Board) -> Vec<Move> {
+    fn reconstruct_pv(&self, root: &Board, root_history: &PositionHistory) -> Vec<Move> {
         let mut board = root.clone();
         let mut pv = Vec::new();
-        let mut path = Vec::new();
+        let mut path = root_history.clone();
 
         while pv.len() < self.options.max_pv_moves {
-            let hash = board.hash();
-            if path.contains(&hash) {
+            if path.adjudication() != HistoryAdjudication::Ongoing {
                 break;
             }
-            path.push(hash);
+            let hash = path.tt_key();
 
             let Some(entry) = self.entry(hash) else {
                 break;
@@ -367,6 +399,7 @@ impl DfpnSolver {
 
             pv.push(mv);
             board.play_unchecked(mv);
+            path.push(board.clone());
 
             let next_kind = if board.side_to_move() == self.attacker {
                 NodeKind::Attacker
@@ -384,7 +417,19 @@ impl DfpnSolver {
 
 impl Board {
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
-        DfpnSolver::new(self.side_to_move(), *options).solve(self)
+        let history = PositionHistory::new(self.clone());
+        DfpnSolver::new(self.side_to_move(), *options).solve(self, &history)
+    }
+
+    pub fn dfpn_with_history(
+        &self,
+        options: &DfpnOptions,
+        history: &PositionHistory,
+    ) -> Result<DfpnResult, &'static str> {
+        if !history.matches_current(self) {
+            return Err("DFPN history current position does not match root");
+        }
+        Ok(DfpnSolver::new(self.side_to_move(), *options).solve(self, history))
     }
 }
 

@@ -9,7 +9,10 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
-use haitaka::{Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, Move, Piece};
+use haitaka::{
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, HistoryAdjudication, Move,
+    Piece, PositionHistory,
+};
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
@@ -214,6 +217,11 @@ pub struct DfpnSummary {
     pub tt_hits: u64,
     pub tt_stores: u64,
     pub tt_collisions: u64,
+    pub repetition_hits: u64,
+    pub completed: bool,
+    pub interrupted: bool,
+    pub interruption_reason: Option<String>,
+    pub reserved_alpha_beta_ms: u32,
 }
 
 #[doc(hidden)]
@@ -319,6 +327,7 @@ struct SearchContext<'a> {
     forced_interruption: Option<ForcedInterruption>,
     root_child_index: u32,
     artificial_eval_delay_micros: u64,
+    history: PositionHistory,
 }
 
 #[derive(Debug, Default)]
@@ -1068,6 +1077,30 @@ fn dfpn_summary_to_js_value(summary: &DfpnSummary) -> JsValue {
         "ttCollisions",
         JsValue::from_f64(summary.tt_collisions as f64),
     );
+    set_js_property(
+        &object,
+        "repetitionHits",
+        JsValue::from_f64(summary.repetition_hits as f64),
+    );
+    set_js_property(&object, "completed", JsValue::from_bool(summary.completed));
+    set_js_property(
+        &object,
+        "interrupted",
+        JsValue::from_bool(summary.interrupted),
+    );
+    set_js_property(
+        &object,
+        "interruptionReason",
+        summary
+            .interruption_reason
+            .as_deref()
+            .map_or(JsValue::NULL, JsValue::from_str),
+    );
+    set_js_property(
+        &object,
+        "reservedAlphaBetaMs",
+        JsValue::from_f64(f64::from(summary.reserved_alpha_beta_ms)),
+    );
     object.into()
 }
 
@@ -1098,6 +1131,9 @@ pub struct DfpnResult {
     tt_hits: u64,
     tt_stores: u64,
     tt_collisions: u64,
+    repetition_hits: u64,
+    completed: bool,
+    interruption_reason: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -1139,6 +1175,21 @@ impl DfpnResult {
     #[wasm_bindgen(getter, js_name = ttCollisions)]
     pub fn tt_collisions(&self) -> f64 {
         self.tt_collisions as f64
+    }
+
+    #[wasm_bindgen(getter, js_name = repetitionHits)]
+    pub fn repetition_hits(&self) -> f64 {
+        self.repetition_hits as f64
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn completed(&self) -> bool {
+        self.completed
+    }
+
+    #[wasm_bindgen(getter, js_name = interruptionReason)]
+    pub fn interruption_reason(&self) -> Option<String> {
+        self.interruption_reason.clone()
     }
 }
 
@@ -1210,6 +1261,36 @@ fn search_board_with_strategy_and_tt(
         tt,
         &mut ordering,
     )
+}
+
+fn search_board_with_strategy_and_tt_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+) -> Result<SearchSummary, SearchInterrupted> {
+    let mut ordering = SearchOrdering::default();
+    let execution = search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+        board,
+        history,
+        depth,
+        evaluation,
+        deadline,
+        tt,
+        &mut ordering,
+        qsearch_limits(),
+        None,
+        false,
+        None,
+        0,
+    );
+    if execution.iteration_completed {
+        Ok(execution.summary)
+    } else {
+        Err(SearchInterrupted(execution.interruption_reason))
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1335,6 +1416,42 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
     forced_interruption: Option<ForcedInterruption>,
     artificial_eval_delay_micros: u64,
 ) -> SearchExecutionSummary {
+    let history = PositionHistory::new(board.clone());
+    search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+        board,
+        &history,
+        depth,
+        evaluation,
+        deadline,
+        tt,
+        ordering,
+        qsearch_limits,
+        node_budget,
+        collect_training_trace,
+        forced_interruption,
+        artificial_eval_delay_micros,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+    qsearch_limits: QsearchLimits,
+    node_budget: Option<Arc<SharedNodeBudget>>,
+    collect_training_trace: bool,
+    forced_interruption: Option<ForcedInterruption>,
+    artificial_eval_delay_micros: u64,
+) -> SearchExecutionSummary {
+    assert!(
+        history.matches_current(board),
+        "search history/root mismatch"
+    );
     let started_at = Instant::now();
     tt.new_search();
     let root_state = match &evaluation {
@@ -1359,8 +1476,11 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
         forced_interruption,
         root_child_index: 0,
         artificial_eval_delay_micros,
+        history: history.clone(),
     };
-    let emergency_move = legal_root_seed(board);
+    let emergency_move = (ctx.history.adjudication() == HistoryAdjudication::Ongoing)
+        .then(|| legal_root_seed(board))
+        .flatten();
     let mut progress = RootProgress::default();
     let search_status = search_best_move(board, depth, &mut ctx, root_state, &mut progress);
     let (iteration_completed, interruption_reason) = match search_status {
@@ -1426,6 +1546,30 @@ fn search_board_with_node_budget_in_tt(
     ordering: &mut SearchOrdering,
     collect_training_trace: bool,
 ) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
+    let history = PositionHistory::new(board.clone());
+    search_board_with_node_budget_in_tt_and_history(
+        board,
+        &history,
+        max_nodes,
+        max_depth,
+        evaluation,
+        tt,
+        ordering,
+        collect_training_trace,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_board_with_node_budget_in_tt_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    max_nodes: u64,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    tt: &mut TranspositionTable,
+    ordering: &mut SearchOrdering,
+    collect_training_trace: bool,
+) -> Result<(NodeBudgetSearchSummary, Option<SearchTrainingTrace>), String> {
     if max_nodes == 0 {
         return Err("node budget must be at least 1".to_string());
     }
@@ -1451,19 +1595,21 @@ fn search_board_with_node_budget_in_tt(
             interruption_reason = SearchInterruptionReason::NodeBudget;
             break;
         }
-        let execution = search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
-            board,
-            depth,
-            evaluation.clone(),
-            None,
-            tt,
-            ordering,
-            qsearch_limits(),
-            Some(Arc::clone(&budget)),
-            collect_training_trace,
-            None,
-            0,
-        );
+        let execution =
+            search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+                board,
+                history,
+                depth,
+                evaluation.clone(),
+                None,
+                tt,
+                ordering,
+                qsearch_limits(),
+                Some(Arc::clone(&budget)),
+                collect_training_trace,
+                None,
+                0,
+            );
         qsearch_stats.add_iteration(execution.summary.qsearch_stats);
         if execution.iteration_completed {
             best_move = execution.summary.best_move;
@@ -1486,7 +1632,9 @@ fn search_board_with_node_budget_in_tt(
         } else if best_move.is_some() {
             (best_move.clone(), true, false)
         } else {
-            let emergency = legal_root_seed(board);
+            let emergency = (history.adjudication() == HistoryAdjudication::Ongoing)
+                .then(|| legal_root_seed(board))
+                .flatten();
             let used = emergency.is_some();
             (emergency, false, used)
         };
@@ -1549,6 +1697,7 @@ enum UsiSearchBudget {
 pub struct UsiSession {
     engine_name: String,
     board: Board,
+    history: PositionHistory,
     nnue_model: Option<Arc<NnueModel>>,
     movetime_max_depth: u8,
     tt: TranspositionTable,
@@ -1602,9 +1751,11 @@ fn usi_root_result_fields(result: &SearchRootResult) -> String {
 
 impl UsiSession {
     pub fn new(engine_name: impl Into<String>, movetime_max_depth: u8) -> Self {
+        let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
         Self {
             engine_name: engine_name.into(),
-            board: Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse"),
+            history: PositionHistory::new(board.clone()),
+            board,
             nnue_model: None,
             movetime_max_depth: movetime_max_depth.max(1),
             tt: TranspositionTable::default(),
@@ -1672,7 +1823,9 @@ impl UsiSession {
     }
 
     fn apply_position(&mut self, command: &str) -> Result<(), String> {
-        self.board = parse_usi_position(command)?;
+        let (board, history) = parse_usi_position_with_history(command)?;
+        self.board = board;
+        self.history = history;
         Ok(())
     }
 
@@ -1709,13 +1862,25 @@ impl UsiSession {
     }
 
     fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+        let history_result = self.history.adjudication();
+        if history_result != HistoryAdjudication::Ongoing {
+            return vec![
+                format!(
+                    "info string gameover {} rules {}",
+                    history_result.as_str(),
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
+        }
         if self.board.status() != haitaka::GameStatus::Ongoing {
             return vec!["bestmove resign".to_string()];
         }
 
         match budget {
-            UsiSearchBudget::Depth(depth) => search_board_with_strategy_and_tt(
+            UsiSearchBudget::Depth(depth) => search_board_with_strategy_and_tt_and_history(
                 &self.board,
+                &self.history,
                 depth,
                 self.evaluation_strategy(),
                 None,
@@ -1744,12 +1909,12 @@ impl UsiSession {
                 ]
             }),
             UsiSearchBudget::Movetime { max_depth, millis } => {
-                search_iterative_deepening_with_strategy_and_deadline_and_tt(
-                    &self.board.to_string(),
+                search_board_iterative_deepening_with_history(
+                    &self.board,
+                    &self.history,
                     max_depth,
                     millis,
                     self.evaluation_strategy(),
-                    IterativeSearchConfig::default(),
                     if millis == 0 {
                         None
                     } else {
@@ -1792,8 +1957,9 @@ impl UsiSession {
     fn search_outputs_for_nodes(&mut self, nodes: u64) -> Vec<String> {
         let evaluation = self.evaluation_strategy();
         let mut ordering = SearchOrdering::default();
-        let result = search_board_with_node_budget_in_tt(
+        let result = search_board_with_node_budget_in_tt_and_history(
             &self.board,
+            &self.history,
             nodes,
             SEARCH_NODE_BUDGET_MAX_DEPTH,
             evaluation,
@@ -1869,7 +2035,7 @@ impl UsiSession {
     }
 }
 
-fn parse_usi_position(command: &str) -> Result<Board, String> {
+fn parse_usi_position_with_history(command: &str) -> Result<(Board, PositionHistory), String> {
     let rest = command
         .strip_prefix("position ")
         .ok_or_else(|| "expected position command".to_string())?;
@@ -1899,6 +2065,7 @@ fn parse_usi_position(command: &str) -> Result<Board, String> {
         other => return Err(format!("unsupported position source {other}")),
     };
 
+    let mut history = PositionHistory::new(board.clone());
     if index < tokens.len() {
         if tokens[index] != "moves" {
             return Err(format!("unexpected token {}", tokens[index]));
@@ -1910,10 +2077,11 @@ fn parse_usi_position(command: &str) -> Result<Board, String> {
             board
                 .try_play(mv)
                 .map_err(|_| format!("illegal move {move_text}"))?;
+            history.push(board.clone());
         }
     }
 
-    Ok(board)
+    Ok((board, history))
 }
 
 fn parse_usi_go(command: &str, movetime_max_depth: u8) -> Result<UsiSearchBudget, String> {
@@ -2005,7 +2173,15 @@ fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
     }
 }
 
-fn to_dfpn_summary(core: CoreDfpnResult) -> DfpnSummary {
+fn dfpn_budget_allows(timeout_ms: u32) -> bool {
+    timeout_ms == 0 || timeout_ms >= 4
+}
+
+fn dfpn_reserved_alpha_beta_ms(timeout_ms: u32) -> u32 {
+    timeout_ms.saturating_sub((timeout_ms / 4).min(25))
+}
+
+fn to_dfpn_summary(core: CoreDfpnResult, reserved_alpha_beta_ms: u32) -> DfpnSummary {
     let best_move = core.pv.first().map(ToString::to_string);
     let selected = core.status == DfpnStatus::Mate && best_move.is_some();
     DfpnSummary {
@@ -2017,6 +2193,13 @@ fn to_dfpn_summary(core: CoreDfpnResult) -> DfpnSummary {
         tt_hits: core.stats.tt_hits,
         tt_stores: core.stats.tt_stores,
         tt_collisions: core.stats.tt_collisions,
+        repetition_hits: core.stats.repetition_hits,
+        completed: core.completed,
+        interrupted: core.interruption_reason.is_some(),
+        interruption_reason: core
+            .interruption_reason
+            .map(|reason| reason.as_str().to_string()),
+        reserved_alpha_beta_ms,
     }
 }
 
@@ -2093,7 +2276,7 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     let board = match Board::from_sfen(sfen) {
         Ok(board) => board,
         Err(strict_err) => {
-            if config.run_dfpn {
+            if config.run_dfpn && dfpn_budget_allows(timeout_ms) {
                 let options = root_dfpn_options(timeout_ms);
                 let root_dfpn = dfpn_impl(
                     sfen,
@@ -2102,7 +2285,8 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
                     options.tt_megabytes,
                     options.max_pv_moves,
                 )?;
-                let dfpn_summary = to_dfpn_summary(root_dfpn);
+                let dfpn_summary =
+                    to_dfpn_summary(root_dfpn, dfpn_reserved_alpha_beta_ms(timeout_ms));
                 if dfpn_summary.selected {
                     let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
                     let best_move = dfpn_summary.best_move.clone();
@@ -2136,8 +2320,11 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
         }
     };
 
-    if config.run_dfpn && has_checking_move(&board) {
-        let dfpn_summary = to_dfpn_summary(board.dfpn(&root_dfpn_options(timeout_ms)));
+    if config.run_dfpn && dfpn_budget_allows(timeout_ms) && has_checking_move(&board) {
+        let dfpn_summary = to_dfpn_summary(
+            board.dfpn(&root_dfpn_options(timeout_ms)),
+            dfpn_reserved_alpha_beta_ms(timeout_ms),
+        );
         if dfpn_summary.selected {
             let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
             let best_move = dfpn_summary.best_move.clone();
@@ -2186,6 +2373,99 @@ fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
     force_between_depth: Option<u8>,
     artificial_eval_delay_micros: u64,
 ) -> Result<IterativeSearchSummary, String> {
+    let history = PositionHistory::new(board.clone());
+    search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
+        board,
+        &history,
+        max_depth,
+        evaluation,
+        deadline,
+        tt,
+        started_at,
+        dfpn,
+        forced_interruption,
+        force_between_depth,
+        artificial_eval_delay_micros,
+    )
+}
+
+fn search_board_iterative_deepening_with_history(
+    board: &Board,
+    history: &PositionHistory,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+) -> Result<IterativeSearchSummary, String> {
+    let started_at = Instant::now();
+    let mut dfpn = None;
+    if history.adjudication() == HistoryAdjudication::Ongoing
+        && dfpn_budget_allows(timeout_ms)
+        && has_checking_move(board)
+    {
+        let core = board
+            .dfpn_with_history(&root_dfpn_options(timeout_ms), history)
+            .map_err(str::to_string)?;
+        let summary = to_dfpn_summary(core, dfpn_reserved_alpha_beta_ms(timeout_ms));
+        if summary.selected {
+            let best_move = summary.best_move.clone();
+            return Ok(IterativeSearchSummary {
+                best_move: best_move.clone(),
+                best_score: None,
+                root_result: root_result(
+                    best_move.clone(),
+                    best_move.is_some(),
+                    None,
+                    0,
+                    0,
+                    SearchInterruptionReason::None,
+                    false,
+                ),
+                completed_depth: 0,
+                timed_out: false,
+                elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+                states: 0,
+                nps: 0.0,
+                tt_stats: SearchTtStats::default(),
+                ordering_stats: SearchOrderingStats::default(),
+                qsearch_stats: SearchQsearchStats::default(),
+                iterations: Vec::new(),
+                dfpn: Some(summary),
+            });
+        }
+        dfpn = Some(summary);
+    }
+
+    search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
+        board,
+        history,
+        max_depth.max(1),
+        evaluation,
+        deadline,
+        tt,
+        started_at,
+        dfpn,
+        None,
+        None,
+        0,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    max_depth: u8,
+    evaluation: EvaluationStrategy,
+    deadline: Option<Instant>,
+    tt: &mut TranspositionTable,
+    started_at: Instant,
+    dfpn: Option<DfpnSummary>,
+    forced_interruption: Option<ForcedInterruption>,
+    force_between_depth: Option<u8>,
+    artificial_eval_delay_micros: u64,
+) -> Result<IterativeSearchSummary, String> {
     let mut iterations = Vec::with_capacity(max_depth as usize);
     let mut completed_depth = 0;
     let mut total_states = 0;
@@ -2207,19 +2487,21 @@ fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
             break;
         }
 
-        let execution = search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
-            board,
-            depth,
-            evaluation.clone(),
-            deadline,
-            tt,
-            &mut ordering,
-            qsearch_limits(),
-            None,
-            false,
-            forced_interruption,
-            artificial_eval_delay_micros,
-        );
+        let execution =
+            search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+                board,
+                history,
+                depth,
+                evaluation.clone(),
+                deadline,
+                tt,
+                &mut ordering,
+                qsearch_limits(),
+                None,
+                false,
+                forced_interruption,
+                artificial_eval_delay_micros,
+            );
         let summary = execution.summary;
         total_states += summary.states;
         tt_stats.add_iteration(summary.tt_stats);
@@ -2265,7 +2547,9 @@ fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
         } else if latest_best_move.is_some() {
             (latest_best_move.clone(), true, false)
         } else {
-            let emergency = legal_root_seed(board);
+            let emergency = (history.adjudication() == HistoryAdjudication::Ongoing)
+                .then(|| legal_root_seed(board))
+                .flatten();
             let used = emergency.is_some();
             (emergency, false, used)
         };
@@ -2368,6 +2652,29 @@ pub fn search_board_iterative_deepening_impl(
     )
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl_with_history(
+    board: &Board,
+    history: &PositionHistory,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchSummary, String> {
+    let started_at = Instant::now();
+    let deadline = (timeout_ms != 0)
+        .then(|| started_at + std::time::Duration::from_millis(u64::from(timeout_ms)));
+    let mut tt = TranspositionTable::default();
+    search_board_iterative_deepening_with_history(
+        board,
+        history,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Handcrafted,
+        deadline,
+        &mut tt,
+    )
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 fn search_iterative_deepening_impl_with_deadline(
     sfen: &str,
@@ -2448,6 +2755,31 @@ pub fn search_board_iterative_deepening_impl_with_eval_mode(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_iterative_deepening_impl_with_eval_mode_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<IterativeSearchSummary, String> {
+    let started_at = Instant::now();
+    let deadline = (timeout_ms != 0)
+        .then(|| started_at + std::time::Duration::from_millis(u64::from(timeout_ms)));
+    let mut tt = TranspositionTable::default();
+    search_board_iterative_deepening_with_history(
+        board,
+        history,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Nnue { model, mode },
+        deadline,
+        &mut tt,
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_board_impl_with_eval_mode(
     board: &Board,
     depth: u8,
@@ -2459,6 +2791,27 @@ pub fn search_board_impl_with_eval_mode(
         depth.max(1),
         EvaluationStrategy::Nnue { model, mode },
         None,
+    )
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_with_eval_mode_and_history(
+    board: &Board,
+    history: &PositionHistory,
+    depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<SearchSummary, String> {
+    let mut tt = TranspositionTable::default();
+    search_board_with_strategy_and_tt_and_history(
+        board,
+        history,
+        depth.max(1),
+        EvaluationStrategy::Nnue { model, mode },
+        None,
+        &mut tt,
     )
     .map_err(|_| "search timed out unexpectedly".to_string())
 }
@@ -2502,6 +2855,30 @@ pub fn search_board_impl_handcrafted_with_node_budget_in_workspace(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_node_budget_and_history_in_workspace(
+    board: &Board,
+    history: &PositionHistory,
+    max_nodes: u64,
+    max_depth: u8,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    search_board_with_node_budget_in_tt_and_history(
+        board,
+        history,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Handcrafted,
+        &mut workspace.tt,
+        &mut workspace.ordering,
+        false,
+    )
+    .map(|(summary, _)| summary)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_board_impl_with_eval_mode_and_node_budget_in_workspace(
     board: &Board,
     max_nodes: u64,
@@ -2516,6 +2893,33 @@ pub fn search_board_impl_with_eval_mode_and_node_budget_in_workspace(
         max_depth,
         EvaluationStrategy::Nnue { model, mode },
         workspace,
+        false,
+    )
+    .map(|(summary, _)| summary)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+#[allow(clippy::too_many_arguments)]
+pub fn search_board_impl_with_eval_mode_and_node_budget_and_history_in_workspace(
+    board: &Board,
+    history: &PositionHistory,
+    max_nodes: u64,
+    max_depth: u8,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+    workspace: &mut SearchWorkspace,
+) -> Result<NodeBudgetSearchSummary, String> {
+    workspace.tt.clear();
+    workspace.ordering = SearchOrdering::default();
+    search_board_with_node_budget_in_tt_and_history(
+        board,
+        history,
+        max_nodes,
+        max_depth,
+        EvaluationStrategy::Nnue { model, mode },
+        &mut workspace.tt,
+        &mut workspace.ordering,
         false,
     )
     .map(|(summary, _)| summary)
@@ -2692,6 +3096,94 @@ pub fn r1d1_forced_interruption_observations() -> Result<Vec<R1d1FixtureObservat
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn r1d2_qsearch_handcrafted_with_history(
+    board: &Board,
+    history: &PositionHistory,
+) -> Result<(i32, SearchQsearchStats), String> {
+    if !history.matches_current(board) {
+        return Err("qsearch history current position does not match root".to_string());
+    }
+    let mut tt = TranspositionTable::default();
+    let mut ordering = SearchOrdering::default();
+    let mut ctx = SearchContext {
+        states: 0,
+        evaluation: EvaluationStrategy::Handcrafted,
+        deadline: None,
+        tt: &mut tt,
+        tt_stats: SearchTtStats::default(),
+        ordering: &mut ordering,
+        ordering_stats: SearchOrderingStats::default(),
+        qsearch_stats: SearchQsearchStats::default(),
+        qsearch_limits: qsearch_limits(),
+        node_budget: None,
+        training_trace: None,
+        forced_interruption: None,
+        root_child_index: 0,
+        artificial_eval_delay_micros: 0,
+        history: history.clone(),
+    };
+    let score = quiescence(
+        board,
+        -INF_SCORE,
+        INF_SCORE,
+        0,
+        0,
+        qsearch_limits().check_budget,
+        &mut ctx,
+        None,
+    )
+    .map_err(|interrupted| interrupted.0.as_str().to_string())?;
+    Ok((score, ctx.qsearch_stats))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn r1d2_tt_context_probe_counts(
+    board: &Board,
+    fresh: &PositionHistory,
+    contextual: &PositionHistory,
+) -> Result<(u64, u64), String> {
+    if !fresh.matches_current(board) || !contextual.matches_current(board) {
+        return Err("TT history current position does not match root".to_string());
+    }
+    let mut tt = TranspositionTable::default();
+    let mut ordering = SearchOrdering::default();
+    let first = search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+        board,
+        fresh,
+        1,
+        EvaluationStrategy::Handcrafted,
+        None,
+        &mut tt,
+        &mut ordering,
+        qsearch_limits(),
+        None,
+        false,
+        None,
+        0,
+    );
+    let second = search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+        board,
+        contextual,
+        1,
+        EvaluationStrategy::Handcrafted,
+        None,
+        &mut tt,
+        &mut ordering,
+        qsearch_limits(),
+        None,
+        false,
+        None,
+        0,
+    );
+    Ok((
+        first.summary.tt_stats.tt_hits,
+        second.summary.tt_stats.tt_hits,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_board_impl_handcrafted_in_workspace(
     board: &Board,
     depth: u8,
@@ -2702,6 +3194,25 @@ pub fn search_board_impl_handcrafted_in_workspace(
         depth.max(1),
         EvaluationStrategy::Handcrafted,
         workspace,
+    )
+    .map_err(|_| "search timed out unexpectedly".to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_impl_handcrafted_with_history(
+    board: &Board,
+    history: &PositionHistory,
+    depth: u8,
+) -> Result<SearchSummary, String> {
+    let mut tt = TranspositionTable::default();
+    search_board_with_strategy_and_tt_and_history(
+        board,
+        history,
+        depth.max(1),
+        EvaluationStrategy::Handcrafted,
+        None,
+        &mut tt,
     )
     .map_err(|_| "search timed out unexpectedly".to_string())
 }
@@ -2950,6 +3461,11 @@ pub fn dfpn(
         tt_hits: core.stats.tt_hits,
         tt_stores: core.stats.tt_stores,
         tt_collisions: core.stats.tt_collisions,
+        repetition_hits: core.stats.repetition_hits,
+        completed: core.completed,
+        interruption_reason: core
+            .interruption_reason
+            .map(|reason| reason.as_str().to_string()),
     })
 }
 
@@ -2963,11 +3479,12 @@ fn search_best_move(
     ctx.clear_training_trace(0);
     ctx.record_state()?;
     ctx.check_deadline()?;
-    if let Some(terminal) = terminal_score_for_side_to_move(board, 0) {
+    if let Some(terminal) = search_terminal_score(board, 0, ctx) {
         ctx.set_training_leaf(board, 0, terminal, true);
+        progress.best_score = Some(terminal);
         return Ok(());
     }
-    let key = board.hash();
+    let key = ctx.history.tt_key();
     ctx.tt_stats.tt_probes += 1;
     let probe = ctx.tt.probe(key, board.side_to_move());
     let tt_move = probe.data.and_then(|data| data.best_move);
@@ -3000,12 +3517,13 @@ fn search_best_move(
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, 1) {
+        ctx.history.push(child.clone());
+        let score_result = if let Some(terminal) = search_terminal_score(&child, 1, ctx) {
             ctx.set_training_leaf(&child, 1, terminal, true);
-            -terminal
+            Ok(-terminal)
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-            -negamax(
+            negamax(
                 &child,
                 depth.saturating_sub(1),
                 -beta,
@@ -3013,8 +3531,11 @@ fn search_best_move(
                 1,
                 ctx,
                 child_state,
-            )?
+            )
+            .map(|value| -value)
         };
+        ctx.history.pop();
+        let score = score_result?;
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -3068,7 +3589,7 @@ fn negamax(
     ctx.clear_training_trace(ply);
     ctx.record_state()?;
     ctx.check_deadline()?;
-    if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+    if let Some(terminal) = search_terminal_score(board, ply, ctx) {
         ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
@@ -3085,7 +3606,7 @@ fn negamax(
         );
     }
 
-    let key = board.hash();
+    let key = ctx.history.tt_key();
     let original_alpha = alpha;
     ctx.tt_stats.tt_probes += 1;
     let probe = ctx.tt.probe(key, board.side_to_move());
@@ -3118,13 +3639,16 @@ fn negamax(
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+        ctx.history.push(child.clone());
+        let score_result = if let Some(terminal) = search_terminal_score(&child, ply + 1, ctx) {
             ctx.set_training_leaf(&child, ply + 1, terminal, true);
-            -terminal
+            Ok(-terminal)
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-            -negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state)?
+            negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state).map(|value| -value)
         };
+        ctx.history.pop();
+        let score = score_result?;
         if score > best_score {
             best_score = score;
             best_move = Some(mv);
@@ -3177,7 +3701,7 @@ fn quiescence(
 ) -> Result<i32, SearchInterrupted> {
     ctx.clear_training_trace(ply);
     ctx.check_deadline()?;
-    if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+    if let Some(terminal) = search_terminal_score(board, ply, ctx) {
         ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
     }
@@ -3225,12 +3749,13 @@ fn quiescence(
         ctx.check_deadline()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+        ctx.history.push(child.clone());
+        let score_result = if let Some(terminal) = search_terminal_score(&child, ply + 1, ctx) {
             ctx.set_training_leaf(&child, ply + 1, terminal, true);
-            -terminal
+            Ok(-terminal)
         } else {
             let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-            -quiescence(
+            quiescence(
                 &child,
                 -beta,
                 -alpha,
@@ -3239,8 +3764,11 @@ fn quiescence(
                 check_budget,
                 ctx,
                 child_state,
-            )?
+            )
+            .map(|value| -value)
         };
+        ctx.history.pop();
+        let score = score_result?;
 
         if score >= beta {
             ctx.promote_child_training_trace(ply);
@@ -3275,12 +3803,13 @@ fn quiescence(
             ctx.check_deadline()?;
             let mut child = board.clone();
             child.play_unchecked(mv);
-            let score = if let Some(terminal) = terminal_score_for_side_to_move(&child, ply + 1) {
+            ctx.history.push(child.clone());
+            let score_result = if let Some(terminal) = search_terminal_score(&child, ply + 1, ctx) {
                 ctx.set_training_leaf(&child, ply + 1, terminal, true);
-                -terminal
+                Ok(-terminal)
             } else {
                 let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
-                -quiescence(
+                quiescence(
                     &child,
                     -beta,
                     -alpha,
@@ -3289,8 +3818,11 @@ fn quiescence(
                     check_budget - 1,
                     ctx,
                     child_state,
-                )?
+                )
+                .map(|value| -value)
             };
+            ctx.history.pop();
+            let score = score_result?;
 
             if score >= beta {
                 ctx.promote_child_training_trace(ply);
@@ -3416,7 +3948,7 @@ fn evaluate_or_mate(
             std::hint::spin_loop();
         }
     }
-    if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
+    if let Some(terminal) = search_terminal_score(board, ply, ctx) {
         return terminal;
     }
     let our_mobility = count_legal_moves(board) as i32;
@@ -3452,6 +3984,21 @@ fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
         Some(MATE_SCORE - ply)
     } else {
         None
+    }
+}
+
+fn search_terminal_score(board: &Board, ply: i32, ctx: &SearchContext<'_>) -> Option<i32> {
+    if let Some(score) = terminal_score_for_side_to_move(board, ply) {
+        return Some(score);
+    }
+    match ctx.history.adjudication() {
+        HistoryAdjudication::Ongoing => None,
+        HistoryAdjudication::RepetitionDraw => Some(0),
+        HistoryAdjudication::PerpetualCheckLoss(loser) => Some(if board.side_to_move() == loser {
+            -MATE_SCORE + ply
+        } else {
+            MATE_SCORE - ply
+        }),
     }
 }
 
@@ -3647,6 +4194,7 @@ mod tests {
     }
 
     fn handcrafted_context<'a>(
+        board: &Board,
         tt: &'a mut TranspositionTable,
         ordering: &'a mut SearchOrdering,
         qsearch_limits: QsearchLimits,
@@ -3666,13 +4214,14 @@ mod tests {
             forced_interruption: None,
             root_child_index: 0,
             artificial_eval_delay_micros: 0,
+            history: PositionHistory::new(board.clone()),
         }
     }
 
     fn static_handcrafted_eval(board: &Board) -> i32 {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
-        let ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_limits());
+        let ctx = handcrafted_context(board, &mut tt, &mut ordering, qsearch_limits());
         evaluate_or_mate(board, 0, &ctx, None)
     }
 
@@ -3703,6 +4252,7 @@ mod tests {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
         let mut ctx = handcrafted_context(
+            board,
             &mut tt,
             &mut ordering,
             QsearchLimits {
@@ -3720,7 +4270,7 @@ mod tests {
     fn qsearch_handcrafted_trace(board: &Board) -> (i32, SearchTrainingTrace) {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
-        let mut ctx = handcrafted_context(&mut tt, &mut ordering, qsearch_limits());
+        let mut ctx = handcrafted_context(board, &mut tt, &mut ordering, qsearch_limits());
         ctx.training_trace = Some(TrainingTraceCollector::default());
         let score = quiescence(
             board,

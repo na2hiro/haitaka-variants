@@ -1,0 +1,133 @@
+{
+  "schema": "haitaka-r1d2-history-contract-v1",
+  "rulesVersion": "anhoku-history-adjudication-v1",
+  "frozenAt": "2026-09-01",
+  "positionHistory": {
+    "representation": "ordered-inclusive-board-sequence",
+    "description": "The sequence contains the game root and every position after each played move, including the current position. Search appends and removes line-local child positions.",
+    "positionIdentity": "Board::same_position (move number excluded; board, hands, and side to move included)",
+    "rootValidation": "the final history position must equal the search root"
+  },
+  "adjudication": {
+    "terminalPrecedence": [
+      "king-captured-or-no-legal-move",
+      "fourfold-perpetual-check-loss",
+      "fourfold-repetition-draw",
+      "explicit-jishogi-draw",
+      "maximum-ply-cap",
+      "unfinished"
+    ],
+    "fourfoldRepetition": "the fourth occurrence ends the game",
+    "perpetualCheck": "over the interval from the first through the fourth occurrence, if exactly one side gave check after every one of its moves, that checking side loses; otherwise the result is a draw",
+    "enteringKing": {
+      "declarationRule": "not-implemented",
+      "twentySevenPointDeclaration": false,
+      "jishogi": "draw-only explicit adjudication",
+      "rationale": "Shogitter currently defines no Anhoku jishogi rule; 27-point declaration may be added only in a later version"
+    },
+    "maximumPly": "a terminal result produced by the move on the final allowed ply takes precedence over maximum-ply-capped"
+  },
+  "scoreOrientation": {
+    "perspective": "side-to-move",
+    "draw": 0,
+    "perpetualCheckerLoss": "-MATE_SCORE + ply when the side to move is the loser, otherwise MATE_SCORE - ply"
+  },
+  "transpositionTable": {
+    "policy": "context-keyed",
+    "identity": "board hash mixed with the ordered inclusive history hashes, side-to-move, check-state, and history length",
+    "requirement": "identical layouts reached through different histories must not share entries"
+  },
+  "dfpnBudget": {
+    "deadlineClock": "instant-monotonic-shared-root-deadline",
+    "timedSearch": {
+      "minimumSearchMillis": 4,
+      "maximumShareNumerator": 1,
+      "maximumShareDenominator": 4,
+      "maximumMillis": 25,
+      "minimumAlphaBetaReservationNumerator": 3,
+      "minimumAlphaBetaReservationDenominator": 4
+    },
+    "nodeLimitedSearch": {
+      "dfpnNodes": 0,
+      "reason": "preserve the frozen combined alpha-beta plus qsearch node budget"
+    },
+    "selection": "only a completed mate proof may select a root move; unknown, no-mate, skipped, deadline, or node interruption falls through to searched alpha-beta",
+    "metadata": [
+      "completed",
+      "interrupted",
+      "interruptionReason",
+      "reservedAlphaBetaMillis",
+      "nodes",
+      "elapsedMs"
+    ]
+  },
+  "terminationSchema": {
+    "name": "haitaka-self-play-termination-v1",
+    "reasons": [
+      "king-captured",
+      "no-legal-move",
+      "repetition-draw",
+      "perpetual-check-loss",
+      "jishogi-draw",
+      "maximum-ply-capped",
+      "engine-missing-move",
+      "unfinished"
+    ]
+  },
+  "goldenFixtures": [
+    {
+      "id": "same-board-fresh",
+      "startSfen": "4k4/9/9/9/9/9/9/9/4K4 b - 1",
+      "moves": [],
+      "expected": "ongoing"
+    },
+    {
+      "id": "ordinary-fourfold",
+      "startSfen": "4k4/9/9/9/9/9/9/9/4K4 b - 1",
+      "moves": ["5i4i", "5a4a", "4i5i", "4a5a", "5i4i", "5a4a", "4i5i", "4a5a", "5i4i", "5a4a", "4i5i", "4a5a"],
+      "expected": "repetition-draw",
+      "score": 0,
+      "legalMove": null
+    },
+    {
+      "id": "black-perpetual-check-loss",
+      "startSfen": "4k4/9/5R3/9/9/9/9/9/K8 b - 1",
+      "moves": ["4c5c", "5a4a", "5c4c", "4a5a", "4c5c", "5a4a", "5c4c", "4a5a", "4c5c", "5a4a", "5c4c", "4a5a"],
+      "expected": "perpetual-check-loss:black",
+      "scoreSignForSideToMove": "negative",
+      "legalMove": null
+    },
+    {
+      "id": "white-perpetual-check-loss",
+      "startSfen": "k8/9/9/9/9/9/5r3/9/4K4 w - 1",
+      "moves": ["4g5g", "5i4i", "5g4g", "4i5i", "4g5g", "5i4i", "5g4g", "4i5i", "4g5g", "5i4i", "5g4g", "4i5i"],
+      "expected": "perpetual-check-loss:white",
+      "scoreSignForSideToMove": "negative",
+      "legalMove": null
+    },
+    {
+      "id": "terminal-on-final-maximum-ply",
+      "startSfen": "8k/6G2/7B1/9/9/9/9/9/K8 b R 1",
+      "moves": ["R*1b"],
+      "maximumPlies": 1,
+      "expected": "no-legal-move:black"
+    },
+    {
+      "id": "jishogi-explicit-draw",
+      "expected": "jishogi-draw",
+      "mode": "explicit-adjudication-only"
+    }
+  ],
+  "requiredCrossPathCases": [
+    "alpha-beta-root-history",
+    "alpha-beta-line-history",
+    "qsearch-line-history",
+    "tt-same-board-different-history",
+    "dfpn-root-and-line-history",
+    "dfpn-deadline-reservation",
+    "usi-position-moves-history",
+    "in-process-history",
+    "production-interface-history",
+    "self-play-termination-distinction"
+  ]
+}
