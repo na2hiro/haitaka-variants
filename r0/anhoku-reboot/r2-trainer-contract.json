@@ -1,0 +1,37 @@
+{
+  "schema": "haitaka-r2-trainer-contract-v1",
+  "device": "cpu",
+  "gpuAllowedInCpuGate": false,
+  "batchSize": 257,
+  "maximumSteps": 96,
+  "interruptStep": 37,
+  "seed": 20260902,
+  "gpuNumericTolerance": 0.0002,
+  "maxFinalToInitialLossRatio": 0.3,
+  "maxValidationTeacherLoss": 0.01,
+  "trainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+  "r1CloseoutSha256": "568e6b0ff7d5fe6f2e3048c83b662ab94cdbaacb32f4b93880ddc5a20e7738d0",
+  "corpusBinSha256": "077d2c7389033e5a3812c941bd3e324ad0d94d937d86d93d70c1a11bc94fcbf6",
+  "corpusJsonlSha256": "6b958fdfc279f1c5a79c34a213321f972ea7e9ed68c998c9c53a1b4715207d6c",
+  "exposure": {
+    "epochDefinition": "exactly one finite pass over the physical training-validation split, including its final partial batch",
+    "schedule": "finite-source-groups-sequential-v1",
+    "randomFenSkipping": 0,
+    "loaderConcurrency": 1,
+    "minimumUpdates": 16,
+    "maximumUpdates": 96,
+    "warmupUpdates": 8
+  },
+  "validationLayers": [
+    "training-validation",
+    "development-test",
+    "versioned-one-shot-stage-blocks",
+    "final-sealed-static-search",
+    "sealed-promotion-openings"
+  ],
+  "freshResumePolicy": {
+    "freshRefusesExistingCheckpoint": true,
+    "resumeIsExplicit": true,
+    "restoredState": ["model", "optimizer", "scheduler-step", "scaler-null-float32-lane", "python-rng", "numpy-rng", "torch-rng", "torch-cuda-rng-when-present", "data-cursor"]
+  }
+}

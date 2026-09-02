@@ -2252,7 +2252,7 @@ fn default_features() -> Option<String> {
 }
 
 fn default_training_resume() -> bool {
-    true
+    false
 }
 
 fn default_num_workers() -> u32 {
@@ -2268,7 +2268,7 @@ fn default_lambda() -> f32 {
 }
 
 fn default_random_fen_skipping() -> u32 {
-    3
+    0
 }
 
 fn default_epoch_size() -> u32 {

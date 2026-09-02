@@ -16,6 +16,11 @@ explicit dataset-manifest locators and hashes and declares
 quantized-import diagnostic. The `pipeline` command requires separate
 `--generation-config` and `--training-config` files.
 
+As of R2, `train` is always a fresh command and refuses an output directory
+containing a valid checkpoint. Continuing an output requires the explicit
+`resume-train --config ...` command. Training-config defaults also disable
+resume and random record skipping.
+
 Successful generation and training/export commands publish stage manifests in
 the run's `artifacts/` directory. `r0-gate` validates the experiment registry,
 historical claim quarantine, frozen artifacts, and production execution spec:
@@ -58,6 +63,34 @@ frozen in source and the gate fails on any integer score/activation mismatch,
 incremental mismatch, repeat-export byte difference, serializer weight clamp,
 or accumulator overflow. These are CPU-only correctness gates; they do not
 train a model or authorize a strength claim.
+
+## R2 deterministic trainer gate
+
+`r2-gate` runs all CPU-valid deterministic loader/trainer checks and stops
+before CUDA. It builds the production C++ loader in a disposable context from
+the pinned trainer commit, runs same-seed and explicit-resume debug training,
+checks finite validation and partial-batch accounting, and writes a
+self-contained Vast.ai bundle:
+
+```console
+cargo build -p haitaka_learn --features anhoku
+target/debug/haitaka_learn r2-gate
+```
+
+The successful pre-GPU report is
+`out/anhoku-reboot-r2/r2-pre-gpu-gate-report.json`. Its `passed` field remains
+false until the bundle's CUDA gate runs. Upload
+`out/anhoku-reboot-r2/anhoku-r2-vast-bundle.tgz`; on a CUDA PyTorch host:
+
+```console
+tar -xzf anhoku-r2-vast-bundle.tgz
+cd vast-bundle
+python3 -m pip install -r r2-gpu-requirements.txt
+bash run-r2-gpu.sh
+```
+
+The CUDA gate requires the CPU batch schedule exactly and checks every
+prediction and declared metric against the frozen cross-hardware tolerance.
 
 `haitaka_learn` is the local CLI/orchestrator for:
 

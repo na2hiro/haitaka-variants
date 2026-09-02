@@ -12,6 +12,7 @@ mod r1d1;
 mod r1d2;
 mod r1d3;
 mod r1evidence;
+mod r2;
 mod selection;
 mod trainer;
 mod verify;
@@ -253,6 +254,30 @@ enum Command {
         #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
         source_identity: PathBuf,
     },
+    /// Run every Phase R2 gate that is valid on CPU and emit a CUDA handoff.
+    /// This command deliberately leaves the aggregate R2 `passed` field false.
+    R2Gate {
+        #[arg(long, default_value = "haitaka_learn.anhoku-reboot-r2.training.toml")]
+        config: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r2-trainer-contract.json")]
+        contract: PathBuf,
+        #[arg(
+            long,
+            default_value = "out/anhoku-reboot-r1d3/r1-closeout-manifest.json"
+        )]
+        r1_closeout: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a/parity-corpus.bin")]
+        corpus_bin: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a/parity-corpus.jsonl")]
+        corpus_jsonl: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r2")]
+        output_dir: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
+    },
     ValidateOpenings {
         #[arg(long)]
         config: PathBuf,
@@ -313,8 +338,14 @@ enum Command {
     Train {
         #[arg(long)]
         config: PathBuf,
-        #[arg(long)]
+        /// Deprecated compatibility flag; fresh training is now unconditional.
+        #[arg(long, hide = true)]
         no_resume: bool,
+    },
+    /// Explicitly resume a training output from its newest valid checkpoint.
+    ResumeTrain {
+        #[arg(long)]
+        config: PathBuf,
     },
     /// Convert and validate the configured NNUE bootstrap without starting
     /// training. This is useful as a final remote GPU-host preflight.
@@ -594,6 +625,41 @@ fn main() -> Result<()> {
             );
             ensure!(report.passed, "R1-D3 gate failed");
         }
+        Command::R2Gate {
+            config,
+            contract,
+            r1_closeout,
+            corpus_bin,
+            corpus_jsonl,
+            output_dir,
+            python,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r2::run(r2::RunArgs {
+                config_path: &config,
+                contract_path: &contract,
+                r1_closeout_path: &r1_closeout,
+                corpus_bin: &corpus_bin,
+                corpus_jsonl: &corpus_jsonl,
+                output_dir: &output_dir,
+                python: &python,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R2 CPU gates written to {}: {}; GPU boundary reached (authorized={})",
+                output_dir.join("r2-pre-gpu-gate-report.json").display(),
+                if report.cpu_gates_passed {
+                    "PASS"
+                } else {
+                    "FAIL"
+                },
+                report.gpu_authorized,
+            );
+            ensure!(report.cpu_gates_passed && !report.passed);
+        }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
                 fs::read(&input).with_context(|| format!("failed to read {}", input.display()))?;
@@ -791,10 +857,18 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::Train { config, no_resume } => {
+        Command::Train {
+            config,
+            no_resume: _,
+        } => {
             let loaded = LoadedTrainingConfig::from_path(&config)?;
-            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
+            let checkpoint = trainer::train(&loaded, Some(false))?;
             println!("training finished: {}", checkpoint.display());
+        }
+        Command::ResumeTrain { config } => {
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
+            let checkpoint = trainer::train(&loaded, Some(true))?;
+            println!("resumed training finished: {}", checkpoint.display());
         }
         Command::PrepareBootstrap { config } => {
             let loaded = LoadedTrainingConfig::from_path(&config)?;
@@ -851,8 +925,8 @@ fn main() -> Result<()> {
         } => {
             let loaded = LoadedTrainingConfig::from_path(&config)?;
             let trainer_checkout = loaded.trainer_checkout()?;
-            let _guard = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
-            trainer::export_checkpoint_to(&loaded, &trainer_checkout, &checkpoint, &output)?;
+            let prepared = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
+            trainer::export_checkpoint_to(&loaded, prepared.path(), &checkpoint, &output)?;
             println!("exported NNUE: {}", output.display());
         }
         Command::EvaluateCheckpoint {
