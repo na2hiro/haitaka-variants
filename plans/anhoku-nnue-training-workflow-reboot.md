@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R1 closeout remediation is the only authorized assignment; R2 is blocked pending provenance-bound R1-D3 evidence
+- Status: Phase R1 closeout remediation passed with provenance-bound evidence; R2 is authorized and is the next assignment
 - Created: 2026-08-31
 - Last audited: 2026-09-02
 - Last implementation update: 2026-09-02
@@ -1098,6 +1098,104 @@ The remediation cost ceiling is CPU plus the existing browser null/equivalence
 qualification only. Do not generate labels or production data, rent a GPU, run
 a model-strength match, modify feature geometry, or begin R2 in this assignment.
 
+##### Provenance remediation and replacement R1 closeout (complete, 2026-09-02)
+
+The remediation was implemented in commits `6ac48ee` and `b422aaf`; the latter
+is the clean evidence-producing commit. No labels, production data, GPU work,
+feature change, or model-strength game was run.
+
+- Added `haitaka-r1-source-identity-v1` and a versioned exclusion policy. The
+  recorded workspace is clean at commit
+  `b422aaffeac9e5c2fe654d413e467cdf6de9d469`, tree
+  `32782b58b6b53589ce78d30941ff51ec45d65683`, with no relevant untracked files.
+  The three unrelated release archives are recorded individually by path,
+  byte count, SHA-256, and reason. The external trainer is clean at commit
+  `61666d9e3653e4df9881b14c23f8fdcc4bf7779b`; every `.idea/` exclusion is
+  likewise recorded individually. `Cargo.lock`, submodule status, both Git
+  diffs, generated WASM/glue, scripts, configs, policy, and producer executable
+  are all identity-bound.
+- The first remediated R1-D1 attempt failed closed because R1-B had created
+  relevant untracked Python bytecode under `scripts/__pycache__/`. The bytecode
+  was removed, all R1 Python oracle launches were changed to set
+  `PYTHONDONTWRITEBYTECODE=1`, and all evidence was regenerated from the
+  follow-up commit rather than reusing the earlier reports or trace.
+- The browser harness now reads every frozen input once, hashes those exact
+  buffers before Chrome starts, and creates envelope
+  `2180ef79b89f6406b9f06727a3602dca22fdd8f2f3a07fd0fb6b8158d4a90868`.
+  The Worker independently fetches and hashes every browser-consumed input,
+  posts a single pre-play acknowledgement, and puts the envelope ID on every
+  diagnostic and game search. The server rejects a missing, duplicate, late,
+  or mismatched acknowledgement.
+- Shared report validation now checks the exact schema/version, complete named
+  gate set, every gate value, frozen contract/config identity, executable,
+  source manifest, every recorded artifact, and exact prior-report links.
+  R1-D3 additionally rejects duplicate JSON keys and unknown provenance fields.
+  Raw trace, analysis, gate report, and aggregate closeout form an independently
+  re-hashable chain.
+- Six adversarial test functions cover mutations of all nine trace inputs,
+  same-size NNUE replacement, post-trace contract/openings/glue mutation,
+  missing/extra/false named gates, top-level-only pass flips, a report from
+  another run, relevant untracked scripts, duplicate provenance keys, and every
+  closeout link. All fail closed; the focused suites passed `4/4` and `2/2`.
+
+The successful build and qualification commands were:
+
+```text
+cargo build --release -p haitaka_learn --features anhoku
+target/release/haitaka_learn r1-source-identity --policy r0/anhoku-reboot/r1-source-identity-policy.json --external-trainer ../engine/variant-nnue-pytorch --output out/anhoku-reboot-r1d3/source-identity.json
+RUSTFLAGS='-C target-feature=+simd128' wasm-pack build --target web --release --out-dir ../out/anhoku-reboot-r1d3/pkg haitaka_wasm --features anhoku
+node scripts/r1d3-browser-harness.mjs --pkg-dir out/anhoku-reboot-r1d3/pkg --model out/anhoku-reboot-r1b/zero.nnue --contract r0/anhoku-reboot/r1d3-match-contract.json --openings r0/anhoku-reboot/r1d3-openings.tsv --worker scripts/r1d3-browser-worker.js --source-identity out/anhoku-reboot-r1d3/source-identity.json --release-executable target/release/haitaka_learn --output out/anhoku-reboot-r1d3/browser-trace.json --timeout-ms 300000
+target/release/haitaka_learn r0-gate
+target/release/haitaka_learn r1a-gate
+target/release/haitaka_learn r1b-gate
+target/release/haitaka_learn r1c-gate
+target/release/haitaka_learn r1d1-gate
+target/release/haitaka_learn r1d2-gate
+target/release/haitaka_learn r1d3-gate
+cargo test --workspace --features anhoku --no-fail-fast
+cargo check --workspace --features anhoku
+cargo fmt --all -- --check
+git diff --check
+```
+
+All seven gates exited zero. The full workspace suite passed 428 tests with 11
+ignored documentation tests and no failures. Independent read-only Node
+recomputation re-hashed every producer input, every report artifact, and every
+closeout link, and independently reproduced all pair bins and nearest-rank
+timing statistics without consulting a top-level `passed` value.
+
+Final identities:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| release `haitaka_learn` | `94dc040d460f16de6c2022a49f2a05f94f68f0def23e79f3efaedf358b673803` |
+| source identity | `824b3255f1aa43c0ef5018ce742254b36e39db8dd2321c6999590bd78f3bbe9d` |
+| WASM / glue | `35476bc49568874980f62c4746d1283fcba523ebf73ccfdb7aee4b2fabc991d2` / `e2001db5701d35c82a9e4b55a2a46771a8d72e0225d0e616cb948bbaec4e720c` |
+| browser trace | `0917aac2d89852b935ec88785d181fea555537803bbf2ee734a185b31ac9fbe0` |
+| R1-D3 analysis | `59d1e488a7e7fc5a01088ac0b9f9fa85f52c5bc902cacad5c26abda3d956ded0` |
+| R1-D3 report | `55cfc4738c46d9aaf9887ad55e8302122dab0080630bb5bb528018fd3cf75f08` |
+| aggregate closeout | `568e6b0ff7d5fe6f2e3048c83b662ab94cdbaacb32f4b93880ddc5a20e7738d0` |
+
+The six report hashes are R1-A
+`50368ee7f4664ea0adf968bcd9e261c7d9df24deffbad1cdfde15ee8ba751897`,
+R1-B `74b028234b573213a39ee61ca9c222796bdd51d003058afb5893d4e773bfe97e`,
+R1-C `72da8c4a9d356e54ab978baa76b220bcc2f9fc3267725d4b9eb39b17a18579f6`,
+R1-D1 `90cb78d7a94b9e447f0ae6de4058ddc7558ef941f514333f1bc16b3c3e8c5490`,
+R1-D2 `bba4f435387de2fdafccf96d6aea8e387cc45cdc5c84d2a47abd38ce0b3d3fbe`,
+and R1-D3
+`55cfc4738c46d9aaf9887ad55e8302122dab0080630bb5bb528018fd3cf75f08`.
+Every report records the same executable and source identity.
+
+All three lanes completed 16/16 games and 8/8 pairs with bins
+`[0, 0, 8, 0, 0]`, zero missing moves, zero emergency fallbacks, and explicit
+terminations. The A=A interval is `0 Elo [0, 0]`; the order-reversal difference
+is `0 Elo`. Across 96 timed searches, p95/p99/maximum lateness was
+`0.1000 / 0.4000 / 0.4000 ms`, mean engine elapsed-time difference was
+`0.0104 ms`, and cold load was `583.2 ms`. The aggregate closeout records
+`allReportsPassing=true`, `sourceIdentityExact=true`, and `r2Authorized=true`.
+R2 is therefore ready and authorized as the next assignment; this closeout did
+not begin R2.
+
 #### R1 aggregate completion
 
 R1 passes only after R1-A, R1-B, R1-C, R1-D1, R1-D2, and R1-D3 all have passing
@@ -1921,15 +2019,9 @@ family, or begin R2 in the same assignment.
 ## Current worker routing
 
 The status line at the top of this document is authoritative. At the current
-revision, the only authorized implementation assignment is the six-step
-**Post-closeout independent audit and remediation assignment** above. The worker
-must repair producer-time trace provenance, prior-report validation, and source
-identity; add the adversarial tests; regenerate the browser evidence; rerun the
-complete R0/R1 gate chain; publish a replacement aggregate closeout; update this
-plan; and stop.
-
-The earlier R1-D1, R1-D2, and R1-D3 implementation records remain historical
-evidence and should not be deleted or rewritten as if their runs never occurred.
-Their green reports are not sufficient authorization for R2 until the new
-provenance-bound closeout passes. R2, production data generation, GPU training,
-and model-strength games remain unauthorized during remediation.
+revision, the next authorized implementation assignment is Phase R2 only. Use
+the provenance-bound replacement closeout above as the R1 prerequisite. Do not
+rewrite the earlier R1-D1/D2/D3 records; they remain historical evidence, while
+the replacement trace/report/closeout is the authorization source. Production
+data generation, later phases, and model-strength games remain unauthorized
+until their own gates permit them.
