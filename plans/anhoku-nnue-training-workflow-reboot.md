@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R0 and aggregate R1 complete with all machine gates passed; R2 is next
+- Status: Phase R1 closeout remediation is the only authorized assignment; R2 is blocked pending provenance-bound R1-D3 evidence
 - Created: 2026-08-31
 - Last audited: 2026-09-02
 - Last implementation update: 2026-09-02
@@ -939,10 +939,11 @@ R1-D3 passes only when:
 Only null/equivalence qualification games are authorized. Stop after the D3
 report and R1 closeout; do not run a candidate-versus-handcrafted strength match.
 
-##### R1-D3 and aggregate R1 closeout (complete, 2026-09-02)
+##### R1-D3 and aggregate R1 closeout (worker-reported, 2026-09-02; authorization superseded below)
 
-R1-D3 and the aggregate R1 gate are complete. No candidate-versus-handcrafted
-strength match, production corpus generation, labels, or GPU training was run.
+The worker reported R1-D3 and the aggregate R1 gate complete. No
+candidate-versus-handcrafted strength match, production corpus generation,
+labels, or GPU training was run.
 
 - Froze `haitaka-r1d3-match-contract-v1` before launching games in
   `r0/anhoku-reboot/r1d3-match-contract.json`, including eight independent
@@ -953,8 +954,10 @@ strength match, production corpus generation, labels, or GPU training was run.
   SIMD128, instantiates the shipped `UsiEngine` in one dedicated Chrome module
   Worker, loads the R1-B zero debug NNUE exactly once, sends `usinewgame` before
   each game, and replays the full start SFEN and move history before every
-  search. The raw trace hashes the WASM, glue, model, openings, contract,
-  browser/host identity, and every per-search result.
+  search. The worker closeout claimed that the raw trace bound the WASM, glue,
+  model, openings, contract, browser/host identity, and per-search evidence.
+  The independent audit below found that this provenance claim was not actually
+  encoded or enforced and therefore retracts the resulting R2 authorization.
 - The A=A timing/null lane completed 16/16 games and 8/8 pairs. All eight pair
   scores were exactly 0.5, producing `0 Elo [0, 0]`. Across 96 warm 100 ms
   searches, p95/p99/maximum lateness was
@@ -1011,8 +1014,89 @@ Final CPU/browser verification completed:
   `cargo check --workspace --features anhoku`, `cargo fmt --all -- --check`,
   and `git diff --check`
 
-R2 is now authorized. Later phases and production corpus generation remain
-unauthorized by this result.
+The worker-reported gates exited successfully, but the post-closeout audit below
+found fail-open provenance and prior-report validation. R2 authorization is
+therefore retracted until the remediation gate passes. Later phases and
+production corpus generation remain unauthorized.
+
+##### Post-closeout independent audit and remediation assignment (required, 2026-09-02)
+
+An independent Luna/max audit reran the R0 gate, rechecked the recorded R1
+reports, and verified every artifact currently listed by the aggregate closeout
+manifest. It did not rerun the R1 gates, builds, or browser harness. Inspection
+nevertheless found that the recorded evidence chain does not yet prove that the
+qualifying browser trace was produced by those artifacts:
+
+- `out/anhoku-reboot-r1d3/browser-trace.json` records sizes and versions but not
+  the SHA-256 identities of the WASM module, JavaScript glue/worker/harness,
+  NNUE, opening suite, R1-D3 contract, source/build identity, or resolved search
+  protocol that produced the games.
+- `scripts/r1d3-browser-worker.js` does not emit those identities before play.
+  `r1d3-gate` hashes files available at analysis time and checks the model byte
+  length, which cannot prove that the browser consumed those same bytes.
+- R1-D1/D2/D3 prior-stage checks can accept a report from its top-level
+  `passed=true` value or a literal gate result without revalidating the prior
+  report schema, named gates, contract identity, executable/source identity,
+  and artifact hashes.
+- The source-cleanliness check is based on tracked diffs and can report
+  `gitDirty=false` while untracked files exist. Unrelated large archives may be
+  explicitly excluded, but all relevant untracked source, generated source,
+  configuration, scripts, and submodule/trainer state must be included or make
+  a strength-evidence gate fail closed.
+
+The next worker must implement only the following remediation:
+
+1. **Bind provenance at trace production time.** Before the first browser game,
+   compute and emit a versioned provenance envelope containing SHA-256 and byte
+   count for the exact WASM module, generated JavaScript glue, browser worker,
+   harness, NNUE, opening suite, and frozen R1-D3 contract. Also record the
+   release executable/source identity, browser and host/device class, one-game
+   concurrency, clock/deadline controller, adjudication, history/repetition,
+   DFPN, search-limit, node-accounting, cold/warm, and model-load identities.
+   Per-search records must reference that immutable envelope; the envelope is
+   finalized before any result is observed.
+2. **Verify the producer-bound envelope.** Make `r1d3-gate` reject a missing,
+   duplicate, late, unknown-version, or mismatched provenance field. Independently
+   hash every frozen input and compare it byte-for-byte with the identities
+   embedded in the trace. Bind `r1d3-analysis.json` to the complete raw-trace
+   hash and bind the gate report and aggregate closeout to both. A model byte
+   length or a hash collected only after play is not sufficient.
+3. **Make the prior-stage chain fail closed.** Replace literal prior-contract
+   gates and top-level-boolean trust in R1-D1/D2/D3 with shared validation that
+   checks the expected report schema/version, complete named-gate set, all gates
+   true, expected contract/config hash, executable and source identity, frozen
+   artifact existence/size/SHA-256, and the exact preceding-report hash. Reject
+   extra or missing stage links and a report copied from another run.
+4. **Make source identity rebuild-complete.** For qualification evidence, use a
+   clean committed tree or a versioned inclusion/exclusion manifest that hashes
+   tracked changes, relevant untracked files, generated sources, scripts,
+   configs, Cargo lockfile, submodules, and external trainer revision/diff. Do
+   not infer cleanliness from `git diff` alone. Record unrelated archive
+   exclusions explicitly rather than silently ignoring all untracked files.
+5. **Add adversarial regression tests.** At minimum, mutate each trace input
+   hash, replace the NNUE with a same-size file, alter the contract/openings/glue
+   after trace creation, remove or add a prior named gate, flip only top-level
+   `passed`, substitute a prior report from another run, modify a relevant
+   untracked script, and break each closeout link. Every case must make the
+   appropriate gate fail.
+6. **Regenerate rather than bless old evidence.** From the remediation commit,
+   build one release executable and a fresh SIMD128 WASM package, rerun the
+   dedicated-worker browser qualification to create a new producer-bound trace,
+   then rerun `r0-gate`, `r1a-gate`, `r1b-gate`, `r1c-gate`, `r1d1-gate`,
+   `r1d2-gate`, and `r1d3-gate`. Publish a new aggregate closeout manifest in
+   which all reports use the same executable/source identity and every link is
+   independently hash-verifiable.
+
+Remediation passes only when all adversarial tests fail closed, all seven gates
+exit zero on the new evidence, independent recomputation matches every embedded
+identity and pair/timing statistic, the aggregate closeout records
+`r2Authorized=true`, and a reviewer can reconstruct the evidence chain without
+trusting a top-level boolean. Update this implementation record with exact
+commands, artifact hashes, and outcomes, then stop.
+
+The remediation cost ceiling is CPU plus the existing browser null/equivalence
+qualification only. Do not generate labels or production data, rent a GPU, run
+a model-strength match, modify feature geometry, or begin R2 in this assignment.
 
 #### R1 aggregate completion
 
@@ -1837,19 +1921,15 @@ family, or begin R2 in the same assignment.
 ## Current worker routing
 
 The status line at the top of this document is authoritative. At the current
-revision, the only authorized implementation assignment is R1-D1. Its worker
-must stop after the R1-D1 gate, report, regression tests, implementation record,
-and commit.
+revision, the only authorized implementation assignment is the six-step
+**Post-closeout independent audit and remediation assignment** above. The worker
+must repair producer-time trace provenance, prior-report validation, and source
+identity; add the adversarial tests; regenerate the browser evidence; rerun the
+complete R0/R1 gate chain; publish a replacement aggregate closeout; update this
+plan; and stop.
 
-After the explicit R1-C pass, issue three fresh assignments in this order:
-
-1. R1-D1 only: interrupted root-result contract and node accounting;
-2. R1-D2 only: history, repetition, TT, qsearch, DFPN, and adjudication;
-3. R1-D3 only: match integrity, production timing, and null qualification.
-
-Each assignment begins from the prior passing commit, freezes its contract
-before opening gate results, implements only its declared scope, reruns every
-required earlier gate, publishes a machine-readable report, updates this plan's
-implementation record/status, and stops. Do not batch D1-D3 into one commit or
-silently begin the next step. R2, production data generation, GPU training, and
-model-strength games remain unauthorized until the aggregate R1 closeout passes.
+The earlier R1-D1, R1-D2, and R1-D3 implementation records remain historical
+evidence and should not be deleted or rewritten as if their runs never occurred.
+Their green reports are not sufficient authorization for R2 until the new
+provenance-bound closeout passes. R2, production data generation, GPU training,
+and model-strength games remain unauthorized during remediation.
