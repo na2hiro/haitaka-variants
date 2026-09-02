@@ -172,6 +172,7 @@ pub(crate) fn run(
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
     let helper = workspace_root.join("scripts/r1b-parity-oracle.py");
     let status = Command::new(python)
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .arg(&helper)
         .arg("--corpus")
         .arg(&corpus_path)

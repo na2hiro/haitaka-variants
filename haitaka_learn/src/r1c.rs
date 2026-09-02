@@ -130,6 +130,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1cReport> {
         .workspace_root
         .join("scripts/r1c-learnability-oracle.py");
     let status = Command::new(args.python)
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .arg(&helper)
         .arg("--workspace-root")
         .arg(args.workspace_root)

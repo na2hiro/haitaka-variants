@@ -316,6 +316,7 @@ pub(crate) fn run(
     let loader_library = find_loader_library(&trainer_checkout)?;
     let helper = workspace_root.join("scripts/r1a-cpp-feature-oracle.py");
     let status = Command::new(&loaded.config.paths.python)
+        .env("PYTHONDONTWRITEBYTECODE", "1")
         .arg(&helper)
         .arg("--library")
         .arg(&loader_library)
