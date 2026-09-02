@@ -14,6 +14,8 @@ use haitaka_wasm::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::r1evidence::{self, R1A, R1B, R1C};
+
 #[derive(Debug, Deserialize)]
 struct Contract {
     schema: String,
@@ -195,6 +197,7 @@ pub(crate) struct RunArgs<'a> {
     pub output_dir: &'a Path,
     pub contract_path: &'a Path,
     pub fixtures_path: &'a Path,
+    pub source_identity_path: &'a Path,
     pub workspace_root: &'a Path,
 }
 
@@ -202,13 +205,18 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d1Report> {
     let contract: Contract = read_json(args.contract_path)?;
     let fixtures: Fixtures = read_json(args.fixtures_path)?;
     validate_contract(&contract, &fixtures)?;
-    for (path, phase) in [
-        (args.r1a_dir.join("r1a-gate-report.json"), "R1-A"),
-        (args.r1b_dir.join("r1b-gate-report.json"), "R1-B"),
-        (args.r1c_dir.join("r1c-gate-report.json"), "R1-C"),
-    ] {
-        ensure_passing_report(&path, phase)?;
-    }
+    let reports = BTreeMap::from([
+        ("r1a", args.r1a_dir.join("r1a-gate-report.json")),
+        ("r1b", args.r1b_dir.join("r1b-gate-report.json")),
+        ("r1c", args.r1c_dir.join("r1c-gate-report.json")),
+    ]);
+    r1evidence::validate_report_chain(
+        &reports,
+        &[R1A, R1B, R1C],
+        args.workspace_root,
+        &std::env::current_exe()?,
+        args.source_identity_path,
+    )?;
 
     fs::create_dir_all(args.output_dir)
         .with_context(|| format!("failed to create {}", args.output_dir.display()))?;
@@ -326,6 +334,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d1Report> {
             args.workspace_root.join("haitaka_cli/src/main.rs"),
         ),
         ("gateExecutable", std::env::current_exe()?),
+        ("sourceIdentity", args.source_identity_path.to_path_buf()),
     ] {
         artifacts.insert(name.to_string(), artifact_identity(&path)?);
     }
@@ -600,16 +609,6 @@ fn legal_move_strings(board: &Board) -> BTreeSet<String> {
         false
     });
     moves
-}
-
-fn ensure_passing_report(path: &Path, phase: &str) -> Result<()> {
-    let report: serde_json::Value = read_json(path)?;
-    ensure!(
-        report.get("passed").and_then(serde_json::Value::as_bool) == Some(true),
-        "R1-D1 requires a passing {phase} report: {}",
-        path.display()
-    );
-    Ok(())
 }
 
 fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {

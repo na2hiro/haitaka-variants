@@ -50,6 +50,7 @@ function parseSearch(outputs, requestedMs, dispatchAt, begunAt, endedAt) {
     missingMove: boolAfter(tokens, "missingMove") || (!gameover && bestMove === "resign"),
     alphaBetaNodes: numberAfter(tokens, "alphaBetaNodes") ?? numberAfter(tokens, "nodes") ?? 0,
     qnodes: numberAfter(tokens, "qnodes") ?? 0,
+    provenanceEnvelopeId: self.r1d3ProvenanceEnvelopeId,
   };
 }
 
@@ -173,6 +174,38 @@ function summarizeGames(games) {
 self.onmessage = async (event) => {
   try {
     const config = event.data;
+    const envelope = config.provenanceEnvelope;
+    if (!envelope || envelope.schema !== config.provenance.envelopeSchema || envelope.schemaVersion !== 1 || !envelope.finalizedBeforeBrowserLaunch) {
+      throw new Error("missing or unsupported provenance envelope");
+    }
+    self.r1d3ProvenanceEnvelopeId = envelope.envelopeId;
+    const routes = {
+      browserWorker: "/worker.js",
+      contract: "/contract.json",
+      debugModel: "/model.nnue",
+      openings: "/openings.tsv",
+      sourceIdentity: "/source-identity.json",
+      wasm: "/pkg/haitaka_wasm_bg.wasm",
+      wasmGlue: "/pkg/haitaka_wasm.js",
+    };
+    const verifiedFiles = {};
+    for (const [name, route] of Object.entries(routes)) {
+      const response = await fetch(route, { cache: "no-store" });
+      if (!response.ok) throw new Error(`provenance fetch failed for ${name}: ${response.status}`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), (value) => value.toString(16).padStart(2, "0")).join("");
+      const expected = envelope.files[name];
+      if (!expected || expected.bytes !== bytes.byteLength || expected.sha256 !== digest) throw new Error(`provenance mismatch for ${name}`);
+      verifiedFiles[name] = { bytes: bytes.byteLength, sha256: digest };
+    }
+    const acknowledgement = {
+      schema: config.provenance.acknowledgementSchema,
+      envelopeId: envelope.envelopeId,
+      verifiedBeforePlay: true,
+      verifiedFiles,
+    };
+    const ackResponse = await fetch("/provenance", { method: "POST", body: JSON.stringify(acknowledgement) });
+    if (!ackResponse.ok) throw new Error(`provenance acknowledgement rejected: ${ackResponse.status}`);
     const coldStarted = performance.now();
     await init("/pkg/haitaka_wasm_bg.wasm");
     const modelResponse = await fetch("/model.nnue");
@@ -202,7 +235,8 @@ self.onmessage = async (event) => {
     self.postMessage({
       type: "result",
       result: {
-        schema: "haitaka-r1d3-browser-trace-v1",
+        schema: "haitaka-r1d3-browser-trace-v2",
+        provenanceEnvelope: envelope,
         clockControllerVersion: config.production.clockControllerVersion,
         coldWarmVersion: config.production.coldWarmVersion,
         workerCount: 1,

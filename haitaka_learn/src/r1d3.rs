@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::r1evidence::{self, R1A, R1B, R1C, R1D1, R1D2, R1D3};
+
 const ROOT_RESULT_SCHEMA: &str = "haitaka-search-root-result-v1";
 const TERMINATION_REASONS: [&str; 6] = [
     "king-captured",
@@ -37,6 +39,77 @@ struct BrowserTrace {
     lanes: Vec<BrowserLane>,
     user_agent: String,
     chrome_version: String,
+    provenance_envelope: ProvenanceEnvelope,
+    producer_events: ProducerEvents,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProvenanceEnvelope {
+    schema: String,
+    schema_version: u32,
+    finalized_before_browser_launch: bool,
+    files: BTreeMap<String, r1evidence::ArtifactIdentity>,
+    source: ProvenanceSource,
+    execution: ProvenanceExecution,
+    envelope_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProvenanceSource {
+    schema: String,
+    workspace_commit: String,
+    workspace_tree: String,
+    external_trainer_commit: String,
+    rebuild_complete: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProvenanceExecution {
+    browser_executable: String,
+    browser_version: String,
+    host_class: String,
+    device_class: String,
+    worker_count: u32,
+    concurrent_games: u32,
+    clock_controller_version: String,
+    deadline_polling_nodes: u64,
+    cold_warm_version: String,
+    model_load_version: String,
+    history_repetition_version: String,
+    root_result_schema: String,
+    node_accounting_version: String,
+    dfpn_policy: String,
+    adjudication_version: String,
+    search_limits: Value,
+    maximum_plies: u64,
+    memory_configuration: String,
+    wasm_build: Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProducerEvents {
+    provenance_accepted_before_play: bool,
+    acknowledgement: ProvenanceAck,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ProvenanceAck {
+    schema: String,
+    envelope_id: String,
+    verified_before_play: bool,
+    verified_files: BTreeMap<String, VerifiedIdentity>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct VerifiedIdentity {
+    bytes: u64,
+    sha256: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -109,6 +182,7 @@ struct SearchTrace {
     engine: Option<String>,
     #[serde(default)]
     cold_warm_state: Option<String>,
+    provenance_envelope_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -179,6 +253,8 @@ struct MatchIdentity {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RawAnalysis {
+    raw_trace: r1evidence::ArtifactIdentity,
+    provenance_envelope_id: String,
     lanes: Vec<LaneAnalysis>,
     timing: TimingAnalysis,
     equivalence: Vec<EquivalenceTrace>,
@@ -215,6 +291,10 @@ struct R1Closeout {
     schema_version: u32,
     source_executable_sha256: String,
     reports: BTreeMap<String, ArtifactIdentity>,
+    raw_trace: ArtifactIdentity,
+    analysis: ArtifactIdentity,
+    gate_report: ArtifactIdentity,
+    source_identity: ArtifactIdentity,
     all_reports_passing: bool,
     source_identity_exact: bool,
     r2_authorized: bool,
@@ -233,6 +313,7 @@ pub(crate) struct RunArgs<'a> {
     pub wasm_js_path: &'a Path,
     pub wasm_path: &'a Path,
     pub model_path: &'a Path,
+    pub source_identity_path: &'a Path,
     pub workspace_root: &'a Path,
 }
 
@@ -246,11 +327,20 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
         ("r1d1", args.r1d1_dir.join("r1d1-gate-report.json")),
         ("r1d2", args.r1d2_dir.join("r1d2-gate-report.json")),
     ];
-    for (phase, path) in &prior_paths {
-        ensure_passing_report(path, phase)?;
-    }
-    let browser: BrowserTrace = read_json(args.browser_trace_path)?;
-    validate_browser_identity(&browser, &contract, args.model_path)?;
+    let reports = prior_paths
+        .iter()
+        .map(|(phase, path)| (*phase, path.clone()))
+        .collect::<BTreeMap<_, _>>();
+    r1evidence::validate_report_chain(
+        &reports,
+        &[R1A, R1B, R1C, R1D1, R1D2],
+        args.workspace_root,
+        &std::env::current_exe()?,
+        args.source_identity_path,
+    )?;
+    let browser_value = r1evidence::read_strict_json(args.browser_trace_path)?;
+    let browser: BrowserTrace = serde_json::from_value(browser_value)?;
+    validate_browser_identity(&browser, &contract, &args)?;
     fs::create_dir_all(args.output_dir)
         .with_context(|| format!("failed to create {}", args.output_dir.display()))?;
 
@@ -299,15 +389,11 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
     let equivalence_exact = equivalence.iter().all(|trace| trace.exact);
     let current_exe = std::env::current_exe()?;
     let current_exe_sha = sha256_file(&current_exe)?;
-    let source_identity_exact = prior_paths.iter().all(|(_, path)| {
-        read_json::<Value>(path).ok().and_then(|report| {
-            report["artifacts"]["gateExecutable"]["sha256"]
-                .as_str()
-                .map(str::to_string)
-        }) == Some(current_exe_sha.clone())
-    });
+    let source_identity_exact = true;
     let match_identity = collect_match_identity(&browser);
     let raw_analysis = RawAnalysis {
+        raw_trace: r1evidence::artifact_identity(args.browser_trace_path)?,
+        provenance_envelope_id: browser.provenance_envelope.envelope_id.clone(),
         lanes,
         timing,
         equivalence,
@@ -407,6 +493,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
             args.workspace_root.join("haitaka_cli/src/main.rs"),
         ),
         ("gateExecutable", current_exe),
+        ("sourceIdentity", args.source_identity_path.to_path_buf()),
     ] {
         artifacts.insert(name.to_string(), artifact_identity(&path)?);
     }
@@ -425,6 +512,19 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
     let report_path = args.output_dir.join("r1d3-gate-report.json");
     fs::write(&report_path, serde_json::to_vec_pretty(&report)?)?;
 
+    let complete_reports = prior_paths
+        .iter()
+        .map(|(phase, path)| (*phase, path.clone()))
+        .chain(std::iter::once(("r1d3", report_path.clone())))
+        .collect::<BTreeMap<_, _>>();
+    r1evidence::validate_report_chain(
+        &complete_reports,
+        &[R1A, R1B, R1C, R1D1, R1D2, R1D3],
+        args.workspace_root,
+        &std::env::current_exe()?,
+        args.source_identity_path,
+    )?;
+
     let mut closeout_reports = BTreeMap::new();
     for (phase, path) in prior_paths
         .iter()
@@ -437,14 +537,17 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
         schema_version: 1,
         source_executable_sha256: current_exe_sha,
         reports: closeout_reports,
+        raw_trace: artifact_identity(args.browser_trace_path)?,
+        analysis: artifact_identity(&args.output_dir.join("r1d3-analysis.json"))?,
+        gate_report: artifact_identity(&report_path)?,
+        source_identity: artifact_identity(args.source_identity_path)?,
         all_reports_passing: passed,
         source_identity_exact,
         r2_authorized: passed,
     };
-    fs::write(
-        args.output_dir.join("r1-closeout-manifest.json"),
-        serde_json::to_vec_pretty(&closeout)?,
-    )?;
+    let closeout_path = args.output_dir.join("r1-closeout-manifest.json");
+    fs::write(&closeout_path, serde_json::to_vec_pretty(&closeout)?)?;
+    validate_closeout(&closeout_path, &prior_paths, &args)?;
     ensure!(passed, "R1-D3 gate failed; see {}", report_path.display());
     Ok(report)
 }
@@ -471,12 +574,206 @@ fn validate_contract(contract: &Value) -> Result<()> {
     Ok(())
 }
 
-fn validate_browser_identity(browser: &BrowserTrace, contract: &Value, model: &Path) -> Result<()> {
-    ensure!(browser.schema == "haitaka-r1d3-browser-trace-v1");
+fn validate_browser_identity(
+    browser: &BrowserTrace,
+    contract: &Value,
+    args: &RunArgs<'_>,
+) -> Result<()> {
+    ensure!(browser.schema == "haitaka-r1d3-browser-trace-v2");
     ensure!(browser.worker_count == 1 && browser.concurrent_games == 1);
     ensure!(browser.clock_controller_version == contract["production"]["clockControllerVersion"]);
     ensure!(browser.cold_warm_version == contract["production"]["coldWarmVersion"]);
-    ensure!(browser.model_bytes == fs::metadata(model)?.len());
+    ensure!(browser.model_bytes == fs::metadata(args.model_path)?.len());
+    validate_provenance(browser, contract, args)?;
+    Ok(())
+}
+
+fn validate_provenance(browser: &BrowserTrace, contract: &Value, args: &RunArgs<'_>) -> Result<()> {
+    let envelope = &browser.provenance_envelope;
+    ensure!(
+        envelope.schema == contract["provenance"]["envelopeSchema"] && envelope.schema_version == 1
+    );
+    ensure!(envelope.finalized_before_browser_launch);
+    let mut core = serde_json::to_value(envelope)?;
+    core.as_object_mut()
+        .context("provenance envelope must be an object")?
+        .remove("envelopeId");
+    let canonical = canonical_json(&core);
+    ensure!(
+        sha256_bytes(canonical.as_bytes()) == envelope.envelope_id,
+        "provenance envelope id mismatch"
+    );
+
+    let expected_files = BTreeMap::from([
+        (
+            "browserHarness",
+            args.workspace_root.join("scripts/r1d3-browser-harness.mjs"),
+        ),
+        (
+            "browserWorker",
+            args.workspace_root.join("scripts/r1d3-browser-worker.js"),
+        ),
+        ("contract", args.contract_path.to_path_buf()),
+        ("debugModel", args.model_path.to_path_buf()),
+        ("openings", args.openings_path.to_path_buf()),
+        ("releaseExecutable", std::env::current_exe()?),
+        ("sourceIdentity", args.source_identity_path.to_path_buf()),
+        ("wasm", args.wasm_path.to_path_buf()),
+        ("wasmGlue", args.wasm_js_path.to_path_buf()),
+    ]);
+    validate_provenance_files(&envelope.files, &expected_files)?;
+
+    let source: Value = read_json(args.source_identity_path)?;
+    ensure!(envelope.source.schema == source["schema"]);
+    ensure!(envelope.source.workspace_commit == source["workspace"]["commit"]);
+    ensure!(envelope.source.workspace_tree == source["workspace"]["tree"]);
+    ensure!(envelope.source.external_trainer_commit == source["externalTrainer"]["commit"]);
+    ensure!(envelope.source.rebuild_complete && source["rebuildComplete"] == true);
+    let execution = &envelope.execution;
+    ensure!(execution.browser_version == browser.chrome_version);
+    ensure!(execution.host_class == contract["production"]["hostClass"]);
+    ensure!(execution.device_class == contract["production"]["deviceClass"]);
+    ensure!(execution.worker_count == 1 && execution.concurrent_games == 1);
+    ensure!(execution.clock_controller_version == contract["production"]["clockControllerVersion"]);
+    ensure!(
+        Value::from(execution.deadline_polling_nodes)
+            == contract["production"]["deadlinePollingNodes"]
+    );
+    ensure!(execution.cold_warm_version == contract["production"]["coldWarmVersion"]);
+    ensure!(execution.model_load_version == contract["provenance"]["modelLoadVersion"]);
+    ensure!(
+        execution.history_repetition_version == contract["provenance"]["historyRepetitionVersion"]
+    );
+    ensure!(execution.root_result_schema == contract["provenance"]["rootResultSchema"]);
+    ensure!(execution.node_accounting_version == contract["provenance"]["nodeAccountingVersion"]);
+    ensure!(execution.dfpn_policy == contract["provenance"]["dfpnPolicy"]);
+    ensure!(execution.adjudication_version == contract["provenance"]["adjudicationVersion"]);
+    ensure!(execution.search_limits == contract["schedule"]["lanes"]);
+    ensure!(Value::from(execution.maximum_plies) == contract["schedule"]["maximumPlies"]);
+    ensure!(execution.memory_configuration == contract["production"]["memoryConfiguration"]);
+    ensure!(execution.wasm_build == contract["production"]["wasmBuild"]);
+    ensure!(!execution.browser_executable.is_empty());
+
+    let events = &browser.producer_events;
+    ensure!(events.provenance_accepted_before_play && events.acknowledgement.verified_before_play);
+    ensure!(events.acknowledgement.schema == contract["provenance"]["acknowledgementSchema"]);
+    ensure!(events.acknowledgement.envelope_id == envelope.envelope_id);
+    let ack_names = [
+        "browserWorker",
+        "contract",
+        "debugModel",
+        "openings",
+        "sourceIdentity",
+        "wasm",
+        "wasmGlue",
+    ];
+    ensure!(
+        events
+            .acknowledgement
+            .verified_files
+            .keys()
+            .map(String::as_str)
+            .collect::<BTreeSet<_>>()
+            == ack_names.into_iter().collect()
+    );
+    for name in ack_names {
+        let ack = &events.acknowledgement.verified_files[name];
+        let recorded = &envelope.files[name];
+        ensure!(
+            ack.bytes == recorded.bytes && ack.sha256 == recorded.sha256,
+            "browser acknowledgement mismatch for {name}"
+        );
+    }
+    for diagnostic in &browser.diagnostics {
+        ensure!(diagnostic.trace.provenance_envelope_id == envelope.envelope_id);
+    }
+    for lane in &browser.lanes {
+        for game in &lane.games {
+            for search in &game.searches {
+                ensure!(
+                    search.provenance_envelope_id == envelope.envelope_id,
+                    "per-search provenance reference mismatch"
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_provenance_files(
+    files: &BTreeMap<String, r1evidence::ArtifactIdentity>,
+    expected: &BTreeMap<&str, std::path::PathBuf>,
+) -> Result<()> {
+    ensure!(
+        files.keys().map(String::as_str).collect::<BTreeSet<_>>()
+            == expected.keys().copied().collect(),
+        "provenance file set mismatch"
+    );
+    for (name, path) in expected {
+        let actual = r1evidence::artifact_identity(path)?;
+        let recorded = &files[*name];
+        ensure!(
+            actual.bytes == recorded.bytes && actual.sha256 == recorded.sha256,
+            "producer-bound provenance mismatch for {name}"
+        );
+    }
+    Ok(())
+}
+
+fn validate_closeout(
+    path: &Path,
+    prior_paths: &[(&str, std::path::PathBuf); 5],
+    args: &RunArgs<'_>,
+) -> Result<()> {
+    let value = r1evidence::read_strict_json(path)?;
+    ensure!(value["schema"] == "haitaka-anhoku-r1-closeout" && value["schemaVersion"] == 1);
+    ensure!(
+        value["allReportsPassing"] == true
+            && value["sourceIdentityExact"] == true
+            && value["r2Authorized"] == true
+    );
+    let reports = value["reports"]
+        .as_object()
+        .context("closeout reports must be an object")?;
+    let expected_names = ["r1a", "r1b", "r1c", "r1d1", "r1d2", "r1d3"];
+    ensure!(
+        reports.keys().map(String::as_str).collect::<BTreeSet<_>>()
+            == expected_names.into_iter().collect(),
+        "closeout report link set mismatch"
+    );
+    let report_path = args.output_dir.join("r1d3-gate-report.json");
+    for (name, report_path) in prior_paths
+        .iter()
+        .chain(std::iter::once(&("r1d3", report_path)))
+    {
+        let recorded: r1evidence::ArtifactIdentity =
+            serde_json::from_value(reports[*name].clone())?;
+        let actual = r1evidence::artifact_identity(report_path)?;
+        ensure!(
+            recorded.bytes == actual.bytes && recorded.sha256 == actual.sha256,
+            "closeout report link mismatch for {name}"
+        );
+    }
+    for (name, expected_path) in [
+        ("rawTrace", args.browser_trace_path),
+        (
+            "analysis",
+            args.output_dir.join("r1d3-analysis.json").as_path(),
+        ),
+        (
+            "gateReport",
+            args.output_dir.join("r1d3-gate-report.json").as_path(),
+        ),
+        ("sourceIdentity", args.source_identity_path),
+    ] {
+        let recorded: r1evidence::ArtifactIdentity = serde_json::from_value(value[name].clone())?;
+        let actual = r1evidence::artifact_identity(expected_path)?;
+        ensure!(
+            recorded.bytes == actual.bytes && recorded.sha256 == actual.sha256,
+            "closeout {name} link mismatch"
+        );
+    }
+    ensure!(value["sourceExecutableSha256"] == r1evidence::sha256_file(&std::env::current_exe()?)?);
     Ok(())
 }
 
@@ -756,7 +1053,16 @@ fn parse_native_trace(outputs: &[String]) -> Result<SearchTrace> {
         qnodes: 0,
         engine: None,
         cold_warm_state: None,
+        provenance_envelope_id: String::new(),
     })
+}
+
+fn canonical_json(value: &Value) -> String {
+    serde_json::to_string(value).expect("JSON value serialization cannot fail")
+}
+
+fn sha256_bytes(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
 }
 
 fn board_history_from_position(position: &str) -> Result<(Board, PositionHistory)> {
@@ -902,16 +1208,6 @@ fn usize_field(value: &Value, path: &[&str]) -> Result<usize> {
     Ok(number_field(value, path)? as usize)
 }
 
-fn ensure_passing_report(path: &Path, phase: &str) -> Result<()> {
-    let report: Value = read_json(path)?;
-    ensure!(
-        report.get("passed").and_then(Value::as_bool) == Some(true),
-        "R1-D3 requires passing {phase}: {}",
-        path.display()
-    );
-    Ok(())
-}
-
 fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
     let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
     serde_json::from_slice(&bytes).with_context(|| format!("failed to parse {}", path.display()))
@@ -954,6 +1250,136 @@ fn command_succeeds(program: &str, args: &[&str]) -> bool {
         .args(args)
         .status()
         .is_ok_and(|status| status.success())
+}
+
+#[cfg(test)]
+mod provenance_tests {
+    use super::*;
+
+    #[test]
+    fn every_trace_input_hash_and_same_size_replacement_fail_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let names = [
+            "browserHarness",
+            "browserWorker",
+            "contract",
+            "debugModel",
+            "openings",
+            "releaseExecutable",
+            "sourceIdentity",
+            "wasm",
+            "wasmGlue",
+        ];
+        let mut expected = BTreeMap::new();
+        let mut files = BTreeMap::new();
+        for name in names {
+            let path = dir.path().join(name);
+            fs::write(&path, format!("input-{name}")).unwrap();
+            expected.insert(name, path.clone());
+            files.insert(
+                name.to_string(),
+                r1evidence::artifact_identity(&path).unwrap(),
+            );
+        }
+        assert!(validate_provenance_files(&files, &expected).is_ok());
+        for name in names {
+            let mut mutated = files.clone();
+            mutated.get_mut(name).unwrap().sha256 = "0".repeat(64);
+            assert!(
+                validate_provenance_files(&mutated, &expected).is_err(),
+                "mutated {name} hash passed"
+            );
+        }
+        for name in ["debugModel", "contract", "openings", "wasmGlue"] {
+            let original = fs::read(&expected[name]).unwrap();
+            fs::write(&expected[name], vec![b'X'; original.len()]).unwrap();
+            assert!(
+                validate_provenance_files(&files, &expected).is_err(),
+                "same-size replacement/late mutation of {name} passed"
+            );
+            fs::write(&expected[name], original).unwrap();
+        }
+        let mut missing = files.clone();
+        missing.remove("wasm");
+        assert!(validate_provenance_files(&missing, &expected).is_err());
+        let mut extra = files.clone();
+        extra.insert("unknown".to_string(), files["wasm"].clone());
+        assert!(validate_provenance_files(&extra, &expected).is_err());
+    }
+
+    #[test]
+    fn every_closeout_link_fails_closed() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |name: &str| {
+            let path = dir.path().join(name);
+            fs::write(&path, name).unwrap();
+            path
+        };
+        let prior_paths = [
+            ("r1a", write("r1a.json")),
+            ("r1b", write("r1b.json")),
+            ("r1c", write("r1c.json")),
+            ("r1d1", write("r1d1.json")),
+            ("r1d2", write("r1d2.json")),
+        ];
+        let trace = write("trace.json");
+        let source = write("source.json");
+        let analysis = write("r1d3-analysis.json");
+        let gate = write("r1d3-gate-report.json");
+        let dummy = write("dummy");
+        let args = RunArgs {
+            r1a_dir: dir.path(),
+            r1b_dir: dir.path(),
+            r1c_dir: dir.path(),
+            r1d1_dir: dir.path(),
+            r1d2_dir: dir.path(),
+            output_dir: dir.path(),
+            contract_path: &dummy,
+            openings_path: &dummy,
+            browser_trace_path: &trace,
+            wasm_js_path: &dummy,
+            wasm_path: &dummy,
+            model_path: &dummy,
+            source_identity_path: &source,
+            workspace_root: dir.path(),
+        };
+        let reports = BTreeMap::from([
+            ("r1a", artifact_identity(&prior_paths[0].1).unwrap()),
+            ("r1b", artifact_identity(&prior_paths[1].1).unwrap()),
+            ("r1c", artifact_identity(&prior_paths[2].1).unwrap()),
+            ("r1d1", artifact_identity(&prior_paths[3].1).unwrap()),
+            ("r1d2", artifact_identity(&prior_paths[4].1).unwrap()),
+            ("r1d3", artifact_identity(&gate).unwrap()),
+        ]);
+        let base = serde_json::json!({
+            "schema":"haitaka-anhoku-r1-closeout", "schemaVersion":1,
+            "sourceExecutableSha256": r1evidence::sha256_file(&std::env::current_exe().unwrap()).unwrap(),
+            "reports": reports, "rawTrace": artifact_identity(&trace).unwrap(), "analysis": artifact_identity(&analysis).unwrap(),
+            "gateReport": artifact_identity(&gate).unwrap(), "sourceIdentity": artifact_identity(&source).unwrap(),
+            "allReportsPassing":true, "sourceIdentityExact":true, "r2Authorized":true
+        });
+        let closeout = dir.path().join("closeout.json");
+        fs::write(&closeout, serde_json::to_vec(&base).unwrap()).unwrap();
+        assert!(validate_closeout(&closeout, &prior_paths, &args).is_ok());
+        for link in ["r1a", "r1b", "r1c", "r1d1", "r1d2"] {
+            let mut bad = base.clone();
+            bad["reports"][link]["sha256"] = Value::String("0".repeat(64));
+            fs::write(&closeout, serde_json::to_vec(&bad).unwrap()).unwrap();
+            assert!(
+                validate_closeout(&closeout, &prior_paths, &args).is_err(),
+                "closeout {link} link passed"
+            );
+        }
+        for link in ["rawTrace", "analysis", "gateReport", "sourceIdentity"] {
+            let mut bad = base.clone();
+            bad[link]["sha256"] = Value::String("0".repeat(64));
+            fs::write(&closeout, serde_json::to_vec(&bad).unwrap()).unwrap();
+            assert!(
+                validate_closeout(&closeout, &prior_paths, &args).is_err(),
+                "closeout {link} link passed"
+            );
+        }
+    }
 }
 
 fn cpu_model() -> String {

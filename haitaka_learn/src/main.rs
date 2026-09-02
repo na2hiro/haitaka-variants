@@ -11,6 +11,7 @@ mod r1c;
 mod r1d1;
 mod r1d2;
 mod r1d3;
+mod r1evidence;
 mod selection;
 mod trainer;
 mod verify;
@@ -33,6 +34,18 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)] // Phase11cAudit intentionally exposes every frozen input.
 enum Command {
+    /// Freeze the committed, rebuild-complete source and external-trainer identity used by R1.
+    R1SourceIdentity {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1-source-identity-policy.json"
+        )]
+        policy: PathBuf,
+        #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
+        external_trainer: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
     /// Expand an Anhoku DonorSingleEff network into the functionally identical
     /// DonorReceiverPairV2 initialization without training.
     MigrateDonorReceiverPairV2 {
@@ -130,6 +143,8 @@ enum Command {
         config: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1a")]
         output_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     /// Generate the deterministic full-precision sentinel and run the complete
     /// Python-integer/export/Rust full-refresh/incremental R1-B parity gate.
@@ -145,6 +160,8 @@ enum Command {
             default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
         )]
         python: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     /// Train the frozen CPU-only exactly-representable and 8,192-position
     /// deployment learnability oracles, then verify serialized Rust parity.
@@ -167,6 +184,8 @@ enum Command {
             default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
         )]
         python: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     /// Run the frozen deterministic interrupted-root-result and combined-node
     /// accounting gate. This command never plays games or changes adjudication.
@@ -186,6 +205,8 @@ enum Command {
             default_value = "r0/anhoku-reboot/r1d1-forced-interruption-fixtures.json"
         )]
         fixtures: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     /// Run the frozen history, repetition, TT, qsearch, DFPN, and adjudication gate.
     /// This command never plays match-equivalence games.
@@ -196,6 +217,8 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value = "r0/anhoku-reboot/r1d2-history-contract.json")]
         contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     /// Validate the frozen production-WASM null, timing, complete-pair, order-
     /// reversal, and native-equivalence qualification and write the R1 closeout.
@@ -227,6 +250,8 @@ enum Command {
         wasm: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1b/zero.nnue")]
         model: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -373,6 +398,23 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::R1SourceIdentity {
+            policy,
+            external_trainer,
+            output,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .to_path_buf();
+            r1evidence::write_source_identity(
+                &workspace_root,
+                &external_trainer,
+                &policy,
+                &output,
+            )?;
+            println!("R1 source identity written to {}", output.display());
+        }
         Command::R0Gate { bundle } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -381,12 +423,16 @@ fn main() -> Result<()> {
             r0::validate_bundle(&bundle, &workspace_root)?;
             println!("R0 gate passed: {}", bundle.display());
         }
-        Command::R1aGate { config, output_dir } => {
+        Command::R1aGate {
+            config,
+            output_dir,
+            source_identity,
+        } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
                 .expect("haitaka_learn is a workspace member")
                 .to_path_buf();
-            let report = r1a::run(&config, &output_dir, &workspace_root)?;
+            let report = r1a::run(&config, &output_dir, &source_identity, &workspace_root)?;
             println!(
                 "R1-A gate written to {}: {} ({} positions, {} transitions)",
                 output_dir.join("r1a-gate-report.json").display(),
@@ -401,12 +447,20 @@ fn main() -> Result<()> {
             output_dir,
             limits,
             python,
+            source_identity,
         } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
                 .expect("haitaka_learn is a workspace member")
                 .to_path_buf();
-            let report = r1b::run(&r1a_dir, &output_dir, &limits, &python, &workspace_root)?;
+            let report = r1b::run(
+                &r1a_dir,
+                &output_dir,
+                &limits,
+                &python,
+                &source_identity,
+                &workspace_root,
+            )?;
             println!(
                 "R1-B gate written to {}: {}",
                 output_dir.join("r1b-gate-report.json").display(),
@@ -421,6 +475,7 @@ fn main() -> Result<()> {
             contract,
             limits,
             python,
+            source_identity,
         } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -433,6 +488,7 @@ fn main() -> Result<()> {
                 contract_path: &contract,
                 limits_path: &limits,
                 python: &python,
+                source_identity_path: &source_identity,
                 workspace_root: &workspace_root,
             })?;
             println!(
@@ -449,6 +505,7 @@ fn main() -> Result<()> {
             output_dir,
             contract,
             fixtures,
+            source_identity,
         } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -461,6 +518,7 @@ fn main() -> Result<()> {
                 output_dir: &output_dir,
                 contract_path: &contract,
                 fixtures_path: &fixtures,
+                source_identity_path: &source_identity,
                 workspace_root: &workspace_root,
             })?;
             println!(
@@ -474,6 +532,7 @@ fn main() -> Result<()> {
             r1d1_dir,
             output_dir,
             contract,
+            source_identity,
         } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -483,6 +542,7 @@ fn main() -> Result<()> {
                 r1d1_dir: &r1d1_dir,
                 output_dir: &output_dir,
                 contract_path: &contract,
+                source_identity_path: &source_identity,
                 workspace_root: &workspace_root,
             })?;
             println!(
@@ -505,6 +565,7 @@ fn main() -> Result<()> {
             wasm_js,
             wasm,
             model,
+            source_identity,
         } => {
             let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -523,6 +584,7 @@ fn main() -> Result<()> {
                 wasm_js_path: &wasm_js,
                 wasm_path: &wasm,
                 model_path: &model,
+                source_identity_path: &source_identity,
                 workspace_root: &workspace_root,
             })?;
             println!(

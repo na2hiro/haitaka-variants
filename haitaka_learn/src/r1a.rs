@@ -119,6 +119,7 @@ pub(crate) struct R1aReport {
 pub(crate) fn run(
     config_path: &Path,
     output_dir: &Path,
+    source_identity_path: &Path,
     workspace_root: &Path,
 ) -> Result<R1aReport> {
     let loaded = LoadedTrainingConfig::from_path(config_path)?;
@@ -377,6 +378,7 @@ pub(crate) fn run(
     let loader_overlay_source =
         workspace_root.join("haitaka_learn/trainer_overlay/training_data_loader.cpp");
     for (name, path) in [
+        ("config", config_path),
         ("corpus", corpus_path.as_path()),
         ("packedDataset", dataset_path.as_path()),
         ("fixtureLabels", ids_path.as_path()),
@@ -388,6 +390,7 @@ pub(crate) fn run(
         ("cppOracleSource", helper.as_path()),
         ("cppLoaderOverlaySource", loader_overlay_source.as_path()),
         ("cppLoader", loader_library.as_path()),
+        ("sourceIdentity", source_identity_path),
     ] {
         artifacts.insert(name.to_string(), artifact_identity(path)?);
     }

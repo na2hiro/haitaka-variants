@@ -2,6 +2,16 @@
   "schema": "haitaka-r1d3-match-contract-v1",
   "frozenAt": "2026-09-02",
   "ruleset": "anhoku",
+  "provenance": {
+    "envelopeSchema": "haitaka-r1d3-provenance-envelope-v1",
+    "acknowledgementSchema": "haitaka-r1d3-provenance-ack-v1",
+    "historyRepetitionVersion": "anhoku-history-adjudication-v1",
+    "rootResultSchema": "haitaka-search-root-result-v1",
+    "nodeAccountingVersion": "alpha-beta-plus-qsearch-v2",
+    "dfpnPolicy": "timed-reservation-max-one-quarter; node-limited-search-disabled",
+    "adjudicationVersion": "haitaka-self-play-termination-v1",
+    "modelLoadVersion": "usi-engine-load-nnue-once-v1"
+  },
   "production": {
     "interface": "shogitter-engine-package-v1 / wasm-bindgen / usi-wasm-v1",
     "runtime": "desktop-google-chrome-headless-dedicated-module-worker",

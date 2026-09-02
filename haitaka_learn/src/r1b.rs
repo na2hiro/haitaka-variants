@@ -134,6 +134,7 @@ pub(crate) fn run(
     output_dir: &Path,
     limits_path: &Path,
     python: &Path,
+    source_identity_path: &Path,
     workspace_root: &Path,
 ) -> Result<R1bReport> {
     let r1a_report_path = r1a_dir.join("r1a-gate-report.json");
@@ -375,6 +376,10 @@ pub(crate) fn run(
     artifacts.insert(
         "runtimeSource".to_string(),
         artifact_identity(&workspace_root.join("haitaka_wasm/src/nnue.rs"))?,
+    );
+    artifacts.insert(
+        "sourceIdentity".to_string(),
+        artifact_identity(source_identity_path)?,
     );
 
     let report = R1bReport {

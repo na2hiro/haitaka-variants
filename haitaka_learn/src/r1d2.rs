@@ -17,6 +17,8 @@ use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::r1evidence::{self, R1A, R1B, R1C, R1D1};
+
 const MATE_SCORE: i32 = 30_000;
 
 #[derive(Debug, Serialize)]
@@ -110,13 +112,36 @@ pub(crate) struct RunArgs<'a> {
     pub r1d1_dir: &'a Path,
     pub output_dir: &'a Path,
     pub contract_path: &'a Path,
+    pub source_identity_path: &'a Path,
     pub workspace_root: &'a Path,
 }
 
 pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d2Report> {
     let contract: Value = read_json(args.contract_path)?;
     validate_contract(&contract)?;
-    ensure_passing_report(&args.r1d1_dir.join("r1d1-gate-report.json"), "R1-D1")?;
+    let r1d1_path = args.r1d1_dir.join("r1d1-gate-report.json");
+    let reports = BTreeMap::from([
+        (
+            "r1a",
+            r1evidence::linked_report_path(&r1d1_path, "r1aReport", args.workspace_root)?,
+        ),
+        (
+            "r1b",
+            r1evidence::linked_report_path(&r1d1_path, "r1bReport", args.workspace_root)?,
+        ),
+        (
+            "r1c",
+            r1evidence::linked_report_path(&r1d1_path, "r1cReport", args.workspace_root)?,
+        ),
+        ("r1d1", r1d1_path),
+    ]);
+    r1evidence::validate_report_chain(
+        &reports,
+        &[R1A, R1B, R1C, R1D1],
+        args.workspace_root,
+        &std::env::current_exe()?,
+        args.source_identity_path,
+    )?;
     fs::create_dir_all(args.output_dir)
         .with_context(|| format!("failed to create {}", args.output_dir.display()))?;
 
@@ -341,6 +366,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d2Report> {
             args.workspace_root.join("haitaka_learn/src/r1d2.rs"),
         ),
         ("gateExecutable", std::env::current_exe()?),
+        ("sourceIdentity", args.source_identity_path.to_path_buf()),
     ] {
         artifacts.insert(name.to_string(), artifact_identity(&path)?);
     }
@@ -402,16 +428,6 @@ fn validate_contract(contract: &Value) -> Result<()> {
         contract["goldenFixtures"]
             .as_array()
             .is_some_and(|cases| cases.len() >= 6)
-    );
-    Ok(())
-}
-
-fn ensure_passing_report(path: &Path, phase: &str) -> Result<()> {
-    let report: Value = read_json(path)?;
-    ensure!(
-        report.get("passed").and_then(Value::as_bool) == Some(true),
-        "R1-D2 requires a passing {phase} report: {}",
-        path.display()
     );
     Ok(())
 }

@@ -1,0 +1,29 @@
+{
+  "schema": "haitaka-r1-source-identity-policy-v1",
+  "workspaceUntrackedExclusions": [
+    {
+      "path": "anhoku-8b.tgz",
+      "bytes": 10989216,
+      "sha256": "bedf4ff45e132cbdc96e0251a26bde76712e353b4bca8076366ec0821b46f3e6",
+      "reason": "unrelated historical release archive; never read by R0/R1 qualification"
+    },
+    {
+      "path": "anhoku-v0.6-78.tgz",
+      "bytes": 13836706,
+      "sha256": "3a66f9a297c0e1723e7176b428e5bbaa4c0f0a60298528952b652c4e1a8f8f77",
+      "reason": "unrelated historical release archive; never read by R0/R1 qualification"
+    },
+    {
+      "path": "anhoku-v0.6-mac.tgz",
+      "bytes": 24249136,
+      "sha256": "03c0a9dd6fb384453f5286b98433b05e15525cf61418ed1a8d33bc96d800684f",
+      "reason": "unrelated historical release archive; never read by R0/R1 qualification"
+    }
+  ],
+  "externalTrainerUntrackedExclusionPrefixes": [
+    {
+      "pathPrefix": ".idea/",
+      "reason": "IDE project metadata; not imported, executed, or read by the trainer or qualification gates"
+    }
+  ]
+}

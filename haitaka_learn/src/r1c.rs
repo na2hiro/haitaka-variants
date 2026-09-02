@@ -105,6 +105,7 @@ pub(crate) struct RunArgs<'a> {
     pub contract_path: &'a Path,
     pub limits_path: &'a Path,
     pub python: &'a Path,
+    pub source_identity_path: &'a Path,
     pub workspace_root: &'a Path,
 }
 
@@ -213,6 +214,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1cReport> {
             args.output_dir.join("overfit-repeat.nnue"),
         ),
         ("runtimeExpectations", expectations_path),
+        ("sourceIdentity", args.source_identity_path.to_path_buf()),
         (
             "gateSource",
             args.workspace_root.join("haitaka_learn/src/r1c.rs"),
