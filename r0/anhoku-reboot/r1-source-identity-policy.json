@@ -1,5 +1,8 @@
 {
-  "schema": "haitaka-r1-source-identity-policy-v1",
+  "schema": "haitaka-r1-source-identity-policy-v2",
+  "authorizationAllowedPaths": [
+    "plans/anhoku-nnue-training-workflow-reboot.md"
+  ],
   "workspaceUntrackedExclusions": [
     {
       "path": "anhoku-8b.tgz",

@@ -295,6 +295,7 @@ struct R1Closeout {
     analysis: ArtifactIdentity,
     gate_report: ArtifactIdentity,
     source_identity: ArtifactIdentity,
+    source_authorization: r1evidence::AuthorizationTransition,
     all_reports_passing: bool,
     source_identity_exact: bool,
     r2_authorized: bool,
@@ -390,6 +391,13 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
     let current_exe = std::env::current_exe()?;
     let current_exe_sha = sha256_file(&current_exe)?;
     let source_identity_exact = true;
+    let source_identity = r1evidence::validate_source_identity(
+        args.source_identity_path,
+        args.workspace_root,
+        &current_exe,
+    )?;
+    let source_authorization =
+        r1evidence::current_authorization_transition(&source_identity, args.workspace_root)?;
     let match_identity = collect_match_identity(&browser);
     let raw_analysis = RawAnalysis {
         raw_trace: r1evidence::artifact_identity(args.browser_trace_path)?,
@@ -541,6 +549,7 @@ pub(crate) fn run(args: RunArgs<'_>) -> Result<R1d3Report> {
         analysis: artifact_identity(&args.output_dir.join("r1d3-analysis.json"))?,
         gate_report: artifact_identity(&report_path)?,
         source_identity: artifact_identity(args.source_identity_path)?,
+        source_authorization,
         all_reports_passing: passed,
         source_identity_exact,
         r2_authorized: passed,
@@ -726,6 +735,24 @@ fn validate_closeout(
     args: &RunArgs<'_>,
 ) -> Result<()> {
     let value = r1evidence::read_strict_json(path)?;
+    validate_closeout_links(&value, prior_paths, args)?;
+    let source = r1evidence::validate_source_identity(
+        args.source_identity_path,
+        args.workspace_root,
+        &std::env::current_exe()?,
+    )?;
+    let transition: r1evidence::AuthorizationTransition =
+        serde_json::from_value(value["sourceAuthorization"].clone())
+            .context("closeout sourceAuthorization is missing or malformed")?;
+    r1evidence::validate_authorization_transition(&source, &transition, args.workspace_root)?;
+    Ok(())
+}
+
+fn validate_closeout_links(
+    value: &Value,
+    prior_paths: &[(&str, std::path::PathBuf); 5],
+    args: &RunArgs<'_>,
+) -> Result<()> {
     ensure!(value["schema"] == "haitaka-anhoku-r1-closeout" && value["schemaVersion"] == 1);
     ensure!(
         value["allReportsPassing"] == true
@@ -1360,13 +1387,19 @@ mod provenance_tests {
         });
         let closeout = dir.path().join("closeout.json");
         fs::write(&closeout, serde_json::to_vec(&base).unwrap()).unwrap();
-        assert!(validate_closeout(&closeout, &prior_paths, &args).is_ok());
+        let closeout_value = r1evidence::read_strict_json(&closeout).unwrap();
+        assert!(validate_closeout_links(&closeout_value, &prior_paths, &args).is_ok());
         for link in ["r1a", "r1b", "r1c", "r1d1", "r1d2"] {
             let mut bad = base.clone();
             bad["reports"][link]["sha256"] = Value::String("0".repeat(64));
             fs::write(&closeout, serde_json::to_vec(&bad).unwrap()).unwrap();
             assert!(
-                validate_closeout(&closeout, &prior_paths, &args).is_err(),
+                validate_closeout_links(
+                    &r1evidence::read_strict_json(&closeout).unwrap(),
+                    &prior_paths,
+                    &args,
+                )
+                .is_err(),
                 "closeout {link} link passed"
             );
         }
@@ -1375,7 +1408,12 @@ mod provenance_tests {
             bad[link]["sha256"] = Value::String("0".repeat(64));
             fs::write(&closeout, serde_json::to_vec(&bad).unwrap()).unwrap();
             assert!(
-                validate_closeout(&closeout, &prior_paths, &args).is_err(),
+                validate_closeout_links(
+                    &r1evidence::read_strict_json(&closeout).unwrap(),
+                    &prior_paths,
+                    &args,
+                )
+                .is_err(),
                 "closeout {link} link passed"
             );
         }

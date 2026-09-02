@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-pub(crate) const SOURCE_SCHEMA: &str = "haitaka-r1-source-identity-v1";
+pub(crate) const SOURCE_SCHEMA: &str = "haitaka-r1-source-identity-v2";
+const SOURCE_POLICY_SCHEMA: &str = "haitaka-r1-source-identity-policy-v2";
+const AUTHORIZATION_ALLOWED_PATHS: &[&str] = &["plans/anhoku-nnue-training-workflow-reboot.md"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -41,6 +43,7 @@ struct SourcePolicy {
     schema: String,
     workspace_untracked_exclusions: Vec<Exclusion>,
     external_trainer_untracked_exclusion_prefixes: Vec<PrefixExclusion>,
+    authorization_allowed_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -61,6 +64,18 @@ struct RepositoryIdentity {
 pub(crate) struct SourceIdentity {
     schema: String,
     schema_version: u32,
+    /// Immutable build/evidence anchor. The eventual authorization commit is
+    /// deliberately stored in the closeout, not in this artifact, so writing
+    /// the closeout cannot create a hash/commit cycle.
+    evidence_source_commit: String,
+    evidence_source_tree: String,
+    /// The source snapshot's authorization parent. This is equal to the
+    /// evidence anchor at production time; a later plan-only commit is
+    /// represented by `AuthorizationTransition` in the closeout.
+    authorization_commit: String,
+    authorization_tree: String,
+    build_relevant_manifest_sha256: String,
+    authorization_allowed_paths: Vec<String>,
     workspace: RepositoryIdentity,
     cargo_lock: ArtifactIdentity,
     submodule_status: String,
@@ -69,6 +84,21 @@ pub(crate) struct SourceIdentity {
     policy: ArtifactIdentity,
     producer_executable: ArtifactIdentity,
     rebuild_complete: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AuthorizationTransition {
+    pub schema: String,
+    pub schema_version: u32,
+    pub evidence_source_commit: String,
+    pub evidence_source_tree: String,
+    pub authorization_commit: String,
+    pub authorization_tree: String,
+    pub authorization_parent_commit: String,
+    pub authorization_parent_tree: String,
+    pub build_relevant_manifest_sha256: String,
+    pub allowed_workflow_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -292,7 +322,7 @@ pub(crate) fn validate_source_identity(
 ) -> Result<SourceIdentity> {
     let bytes = fs::read(source_path)?;
     let recorded: SourceIdentity = serde_json::from_slice(&bytes)?;
-    ensure!(recorded.schema == SOURCE_SCHEMA && recorded.schema_version == 1);
+    ensure!(recorded.schema == SOURCE_SCHEMA && recorded.schema_version == 2);
     let external = PathBuf::from(&recorded.external_trainer.path);
     let policy = PathBuf::from(&recorded.policy.path);
     let policy = if policy.is_absolute() {
@@ -301,9 +331,35 @@ pub(crate) fn validate_source_identity(
         workspace_root.join(policy)
     };
     let current = collect_source_identity(workspace_root, &external, &policy)?;
+
+    // The evidence source is immutable, but the repository may receive the
+    // eventual closeout commit. Only the exact workflow document is allowed
+    // between those commits. All build-relevant state remains compared by
+    // identity below; a source/config/script/model change cannot hide behind a
+    // different Git commit.
+    validate_source_transition(&recorded, &current, workspace_root)?;
+
+    ensure!(recorded.workspace.path == current.workspace.path);
     ensure!(
-        recorded == current,
-        "source identity no longer matches the recorded rebuild context"
+        recorded.workspace.excluded_untracked == current.workspace.excluded_untracked
+            && recorded.workspace.tracked_diff_sha256 == current.workspace.tracked_diff_sha256
+            && recorded.workspace.staged_diff_sha256 == current.workspace.staged_diff_sha256,
+        "workspace exclusion or diff identity changed"
+    );
+    ensure!(recorded.external_trainer == current.external_trainer);
+    ensure!(recorded.cargo_lock == current.cargo_lock);
+    ensure!(recorded.submodule_status == current.submodule_status);
+    ensure!(recorded.submodule_status_sha256 == current.submodule_status_sha256);
+    ensure!(recorded.policy == current.policy);
+    ensure!(recorded.producer_executable == current.producer_executable);
+    ensure!(recorded.authorization_allowed_paths == current.authorization_allowed_paths);
+    ensure!(current.rebuild_complete);
+    ensure!(
+        recorded.workspace.tracked_changes.is_empty()
+            && recorded.workspace.relevant_untracked.is_empty()
+            && current.workspace.tracked_changes.is_empty()
+            && current.workspace.relevant_untracked.is_empty(),
+        "source identity requires a clean workspace"
     );
     let expected = artifact_identity(expected_executable)?;
     ensure!(
@@ -313,6 +369,178 @@ pub(crate) fn validate_source_identity(
     );
     ensure!(recorded.rebuild_complete);
     Ok(recorded)
+}
+
+fn validate_source_transition(
+    recorded: &SourceIdentity,
+    current: &SourceIdentity,
+    workspace_root: &Path,
+) -> Result<()> {
+    ensure!(
+        current.workspace.tracked_changes.is_empty()
+            && current.workspace.relevant_untracked.is_empty()
+            && current.workspace.tracked_diff_sha256 == sha256_bytes(b"")
+            && current.workspace.staged_diff_sha256 == sha256_bytes(b""),
+        "authorization transition requires a clean workspace"
+    );
+    ensure!(
+        recorded.evidence_source_commit == recorded.workspace.commit
+            && recorded.evidence_source_tree == recorded.workspace.tree
+            && recorded.authorization_commit == recorded.evidence_source_commit
+            && recorded.authorization_tree == recorded.evidence_source_tree,
+        "source identity anchor fields are inconsistent"
+    );
+    ensure!(
+        current.evidence_source_commit == current.workspace.commit
+            && current.evidence_source_tree == current.workspace.tree
+            && current.authorization_commit == current.evidence_source_commit
+            && current.authorization_tree == current.evidence_source_tree,
+        "current authorization identity anchor fields are inconsistent"
+    );
+    ensure!(
+        recorded.authorization_allowed_paths
+            == AUTHORIZATION_ALLOWED_PATHS
+                .iter()
+                .map(|path| (*path).to_string())
+                .collect::<Vec<_>>(),
+        "source identity authorization allowlist is not the frozen exact list"
+    );
+    ensure!(
+        current.build_relevant_manifest_sha256 == recorded.build_relevant_manifest_sha256,
+        "build-relevant inclusion manifest changed"
+    );
+    let current_commit = &current.workspace.commit;
+    ensure!(
+        current.workspace.tree == git_rev_parse(workspace_root, "HEAD^{tree}")?,
+        "current workspace tree could not be resolved"
+    );
+    ensure!(
+        git_is_ancestor(
+            workspace_root,
+            &recorded.evidence_source_commit,
+            current_commit
+        )?,
+        "authorization commit is not a descendant of the evidence source"
+    );
+    let changed = authorization_diff_paths(
+        workspace_root,
+        &recorded.evidence_source_commit,
+        current_commit,
+    )?;
+    let allowed = recorded
+        .authorization_allowed_paths
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        changed.iter().all(|path| allowed.contains(path.as_str())),
+        "authorization transition changed a non-allowlisted path: {:?}",
+        changed
+    );
+    Ok(())
+}
+
+pub(crate) fn current_authorization_transition(
+    source: &SourceIdentity,
+    workspace_root: &Path,
+) -> Result<AuthorizationTransition> {
+    let current_commit = git_rev_parse(workspace_root, "HEAD")?;
+    let current_tree = git_rev_parse(workspace_root, "HEAD^{tree}")?;
+    let parent = git_rev_parse(workspace_root, "HEAD^")?;
+    let parent_tree = git_rev_parse(workspace_root, &format!("{parent}^{{tree}}"))?;
+    let current_manifest = build_relevant_manifest(workspace_root, &current_commit)?;
+    ensure!(
+        current_manifest == source.build_relevant_manifest_sha256,
+        "authorization build-relevant inclusion manifest changed"
+    );
+    ensure!(
+        git_is_ancestor(
+            workspace_root,
+            &source.evidence_source_commit,
+            &current_commit
+        )?,
+        "authorization commit is not a descendant of the evidence source"
+    );
+    let changed = authorization_diff_paths(
+        workspace_root,
+        &source.evidence_source_commit,
+        &current_commit,
+    )?;
+    let allowed = source
+        .authorization_allowed_paths
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        changed.iter().all(|path| allowed.contains(path.as_str())),
+        "authorization transition changed a non-allowlisted path: {:?}",
+        changed
+    );
+    Ok(AuthorizationTransition {
+        schema: "haitaka-r1-authorization-transition-v1".to_string(),
+        schema_version: 1,
+        evidence_source_commit: source.evidence_source_commit.clone(),
+        evidence_source_tree: source.evidence_source_tree.clone(),
+        authorization_commit: current_commit,
+        authorization_tree: current_tree,
+        authorization_parent_commit: parent,
+        authorization_parent_tree: parent_tree,
+        build_relevant_manifest_sha256: current_manifest,
+        allowed_workflow_paths: source.authorization_allowed_paths.clone(),
+    })
+}
+
+pub(crate) fn validate_authorization_transition(
+    source: &SourceIdentity,
+    transition: &AuthorizationTransition,
+    workspace_root: &Path,
+) -> Result<()> {
+    ensure!(
+        transition.schema == "haitaka-r1-authorization-transition-v1"
+            && transition.schema_version == 1,
+        "authorization transition schema/version mismatch"
+    );
+    ensure!(
+        transition.evidence_source_commit == source.evidence_source_commit
+            && transition.evidence_source_tree == source.evidence_source_tree
+            && transition.build_relevant_manifest_sha256 == source.build_relevant_manifest_sha256
+            && transition.allowed_workflow_paths == source.authorization_allowed_paths,
+        "authorization transition does not bind to source identity"
+    );
+    let current_commit = git_rev_parse(workspace_root, "HEAD")?;
+    let current_tree = git_rev_parse(workspace_root, "HEAD^{tree}")?;
+    ensure!(transition.authorization_commit == current_commit);
+    ensure!(transition.authorization_tree == current_tree);
+    let current_parent = git_rev_parse(workspace_root, "HEAD^")?;
+    let current_parent_tree = git_rev_parse(workspace_root, &format!("{current_parent}^{{tree}}"))?;
+    ensure!(transition.authorization_parent_commit == current_parent);
+    ensure!(transition.authorization_parent_tree == current_parent_tree);
+    let current_manifest = build_relevant_manifest(workspace_root, &current_commit)?;
+    ensure!(current_manifest == source.build_relevant_manifest_sha256);
+    ensure!(
+        git_is_ancestor(
+            workspace_root,
+            &source.evidence_source_commit,
+            &current_commit
+        )?,
+        "authorization commit is not a descendant of the evidence source"
+    );
+    let changed = authorization_diff_paths(
+        workspace_root,
+        &source.evidence_source_commit,
+        &current_commit,
+    )?;
+    let allowed = transition
+        .allowed_workflow_paths
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    ensure!(
+        changed.iter().all(|path| allowed.contains(path.as_str())),
+        "authorization transition changed a non-allowlisted path: {:?}",
+        changed
+    );
+    Ok(())
 }
 
 fn collect_source_identity(
@@ -326,7 +554,12 @@ fn collect_source_identity(
         workspace_root.join(policy_path)
     };
     let policy: SourcePolicy = serde_json::from_slice(&fs::read(&policy_path)?)?;
-    ensure!(policy.schema == "haitaka-r1-source-identity-policy-v1");
+    ensure!(policy.schema == SOURCE_POLICY_SCHEMA);
+    let expected_allowed_paths = AUTHORIZATION_ALLOWED_PATHS
+        .iter()
+        .map(|path| (*path).to_string())
+        .collect::<Vec<_>>();
+    ensure!(policy.authorization_allowed_paths == expected_allowed_paths);
     let workspace =
         repository_identity(workspace_root, &policy.workspace_untracked_exclusions, &[])?;
     let external = repository_identity(
@@ -337,6 +570,10 @@ fn collect_source_identity(
     let submodule_status = git_output(workspace_root, &["submodule", "status", "--recursive"])?;
     let cargo_lock = artifact_identity(&workspace_root.join("Cargo.lock"))?;
     let producer_executable = artifact_identity(&std::env::current_exe()?)?;
+    let evidence_source_commit = workspace.commit.clone();
+    let evidence_source_tree = workspace.tree.clone();
+    let build_relevant_manifest_sha256 =
+        build_relevant_manifest(workspace_root, &evidence_source_commit)?;
     let rebuild_complete = workspace.tracked_changes.is_empty()
         && workspace.relevant_untracked.is_empty()
         && external.tracked_changes.is_empty()
@@ -347,7 +584,13 @@ fn collect_source_identity(
         && external.staged_diff_sha256 == sha256_bytes(b"");
     Ok(SourceIdentity {
         schema: SOURCE_SCHEMA.to_string(),
-        schema_version: 1,
+        schema_version: 2,
+        evidence_source_commit: evidence_source_commit.clone(),
+        evidence_source_tree: evidence_source_tree.clone(),
+        authorization_commit: evidence_source_commit,
+        authorization_tree: evidence_source_tree,
+        build_relevant_manifest_sha256,
+        authorization_allowed_paths: expected_allowed_paths,
         workspace,
         cargo_lock,
         submodule_status_sha256: sha256_bytes(submodule_status.as_bytes()),
@@ -357,6 +600,75 @@ fn collect_source_identity(
         producer_executable,
         rebuild_complete,
     })
+}
+
+fn git_rev_parse(repo: &Path, revision: &str) -> Result<String> {
+    Ok(git_output(repo, &["rev-parse", revision])?
+        .trim()
+        .to_string())
+}
+
+fn git_is_ancestor(repo: &Path, ancestor: &str, descendant: &str) -> Result<bool> {
+    let status = Command::new("git")
+        .args(["merge-base", "--is-ancestor", ancestor, descendant])
+        .current_dir(repo)
+        .status()?;
+    Ok(status.success())
+}
+
+fn authorization_diff_paths(
+    repo: &Path,
+    evidence: &str,
+    authorization: &str,
+) -> Result<Vec<String>> {
+    let range = format!("{evidence}..{authorization}");
+    let diff = git_output(repo, &["diff", "--name-status", "--no-renames", &range])?;
+    diff.lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let mut fields = line.split('\t');
+            let status = fields
+                .next()
+                .ok_or_else(|| anyhow!("malformed authorization diff line: {line}"))?;
+            ensure!(
+                status == "M",
+                "authorization transition contains non-modification status {status}"
+            );
+            let path = fields
+                .next()
+                .ok_or_else(|| anyhow!("authorization diff line lacks path: {line}"))?;
+            ensure!(
+                fields.next().is_none(),
+                "authorization diff line has extra path fields"
+            );
+            Ok(path.to_string())
+        })
+        .collect()
+}
+
+fn build_relevant_manifest(repo: &Path, revision: &str) -> Result<String> {
+    let entries = git_bytes(repo, &["ls-tree", "-r", "-z", revision])?;
+    let allowed = AUTHORIZATION_ALLOWED_PATHS
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let mut hasher = Sha256::new();
+    for entry in entries
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+    {
+        let tab = entry
+            .iter()
+            .position(|byte| *byte == b'\t')
+            .ok_or_else(|| anyhow!("malformed git tree entry"))?;
+        let path = &entry[tab + 1..];
+        if allowed.contains(std::str::from_utf8(path)?) {
+            continue;
+        }
+        hasher.update(entry);
+        hasher.update([0]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn repository_identity(
@@ -858,5 +1170,225 @@ mod tests {
         extra.get_mut("stage").unwrap()["artifacts"]["otherReport"] =
             serde_json::to_value(artifact_identity(&paths["prior"]).unwrap()).unwrap();
         assert!(validate_fixture(&extra, &paths, dir.path(), &exe, &source).is_err());
+    }
+
+    fn git_test(repo: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .status()
+            .unwrap();
+        assert!(status.success(), "git {:?} failed", args);
+    }
+
+    fn transition_fixture() -> (tempfile::TempDir, SourceIdentity, SourceIdentity) {
+        let dir = tempfile::tempdir().unwrap();
+        git_test(dir.path(), &["init", "-q"]);
+        git_test(
+            dir.path(),
+            &["config", "user.email", "r1-transition@test.invalid"],
+        );
+        git_test(dir.path(), &["config", "user.name", "R1 transition"]);
+        fs::create_dir_all(dir.path().join("plans")).unwrap();
+        fs::write(dir.path().join("engine.rs"), "source\n").unwrap();
+        fs::write(
+            dir.path()
+                .join("plans/anhoku-nnue-training-workflow-reboot.md"),
+            "status\n",
+        )
+        .unwrap();
+        git_test(dir.path(), &["add", "."]);
+        git_test(dir.path(), &["commit", "-qm", "evidence"]);
+        let evidence_commit = git_rev_parse(dir.path(), "HEAD").unwrap();
+        let evidence_tree = git_rev_parse(dir.path(), "HEAD^{tree}").unwrap();
+        let workspace = repository_identity(dir.path(), &[], &[]).unwrap();
+        let manifest = build_relevant_manifest(dir.path(), &evidence_commit).unwrap();
+        let mut source = SourceIdentity {
+            schema: SOURCE_SCHEMA.to_string(),
+            schema_version: 2,
+            evidence_source_commit: evidence_commit.clone(),
+            evidence_source_tree: evidence_tree.clone(),
+            authorization_commit: evidence_commit,
+            authorization_tree: evidence_tree,
+            build_relevant_manifest_sha256: manifest.clone(),
+            authorization_allowed_paths: AUTHORIZATION_ALLOWED_PATHS
+                .iter()
+                .map(|path| (*path).to_string())
+                .collect(),
+            workspace,
+            cargo_lock: ArtifactIdentity {
+                path: "unused".to_string(),
+                bytes: 0,
+                sha256: String::new(),
+            },
+            submodule_status: String::new(),
+            submodule_status_sha256: sha256_bytes(b""),
+            external_trainer: RepositoryIdentity {
+                path: "unused".to_string(),
+                commit: String::new(),
+                tree: String::new(),
+                tracked_diff_sha256: sha256_bytes(b""),
+                staged_diff_sha256: sha256_bytes(b""),
+                tracked_changes: Vec::new(),
+                relevant_untracked: Vec::new(),
+                excluded_untracked: Vec::new(),
+            },
+            policy: ArtifactIdentity {
+                path: "unused".to_string(),
+                bytes: 0,
+                sha256: String::new(),
+            },
+            producer_executable: ArtifactIdentity {
+                path: "unused".to_string(),
+                bytes: 0,
+                sha256: String::new(),
+            },
+            rebuild_complete: true,
+        };
+        git_test(
+            dir.path(),
+            &["commit", "--allow-empty", "-qm", "authorization-parent"],
+        );
+        // The evidence anchor intentionally remains the first commit; this
+        // empty parent is useful for testing that a real authorization commit
+        // is checked by ancestry rather than by an editable string.
+        source.workspace.commit = source.evidence_source_commit.clone();
+        let current = source.clone();
+        (dir, source, current)
+    }
+
+    #[test]
+    fn plan_only_authorization_transition_is_the_only_allowed_change() {
+        let (dir, source, _) = transition_fixture();
+        fs::write(
+            dir.path()
+                .join("plans/anhoku-nnue-training-workflow-reboot.md"),
+            "authorized\n",
+        )
+        .unwrap();
+        git_test(
+            dir.path(),
+            &["add", "plans/anhoku-nnue-training-workflow-reboot.md"],
+        );
+        git_test(dir.path(), &["commit", "-qm", "closeout"]);
+        let current_workspace = repository_identity(dir.path(), &[], &[]).unwrap();
+        let current_commit = current_workspace.commit.clone();
+        let current_tree = current_workspace.tree.clone();
+        let current = SourceIdentity {
+            workspace: current_workspace,
+            evidence_source_commit: current_commit.clone(),
+            evidence_source_tree: current_tree.clone(),
+            authorization_commit: current_commit,
+            authorization_tree: current_tree,
+            build_relevant_manifest_sha256: build_relevant_manifest(
+                dir.path(),
+                &git_rev_parse(dir.path(), "HEAD").unwrap(),
+            )
+            .unwrap(),
+            ..source.clone()
+        };
+        assert!(validate_source_transition(&source, &current, dir.path()).is_ok());
+    }
+
+    #[test]
+    fn build_relevant_or_untracked_changes_fail_closed() {
+        for path in [
+            "engine.rs",
+            "engine.js",
+            "config.toml",
+            "scripts/run.sh",
+            "model.nnue",
+            "contract.json",
+            "openings.tsv",
+            "Cargo.lock",
+            "plans/another-closeout.md",
+        ] {
+            let (dir, source, _) = transition_fixture();
+            if let Some(parent) = dir.path().join(path).parent() {
+                fs::create_dir_all(parent).unwrap();
+            }
+            fs::write(dir.path().join(path), "mutated\n").unwrap();
+            git_test(dir.path(), &["add", path]);
+            git_test(dir.path(), &["commit", "-qm", "forbidden"]);
+            let current_workspace = repository_identity(dir.path(), &[], &[]).unwrap();
+            let current_commit = current_workspace.commit.clone();
+            let current_tree = current_workspace.tree.clone();
+            let current = SourceIdentity {
+                workspace: current_workspace,
+                evidence_source_commit: current_commit.clone(),
+                evidence_source_tree: current_tree.clone(),
+                authorization_commit: current_commit,
+                authorization_tree: current_tree,
+                build_relevant_manifest_sha256: build_relevant_manifest(
+                    dir.path(),
+                    &git_rev_parse(dir.path(), "HEAD").unwrap(),
+                )
+                .unwrap(),
+                ..source.clone()
+            };
+            assert!(
+                validate_source_transition(&source, &current, dir.path()).is_err(),
+                "forbidden authorization path passed: {path}"
+            );
+        }
+
+        let (dir, source, _) = transition_fixture();
+        fs::write(dir.path().join("relevant.js"), "untracked\n").unwrap();
+        let current_workspace = repository_identity(dir.path(), &[], &[]).unwrap();
+        let current_commit = current_workspace.commit.clone();
+        let current_tree = current_workspace.tree.clone();
+        let current = SourceIdentity {
+            workspace: current_workspace,
+            evidence_source_commit: current_commit.clone(),
+            evidence_source_tree: current_tree.clone(),
+            authorization_commit: current_commit,
+            authorization_tree: current_tree,
+            ..source.clone()
+        };
+        assert!(validate_source_transition(&source, &current, dir.path()).is_err());
+    }
+
+    #[test]
+    fn substituted_or_non_descendant_authorization_fails_closed() {
+        let (dir, source, _) = transition_fixture();
+        git_test(
+            dir.path(),
+            &["commit", "--allow-empty", "-qm", "authorized-parent"],
+        );
+        let current_workspace = repository_identity(dir.path(), &[], &[]).unwrap();
+        let current_commit = current_workspace.commit.clone();
+        let current_tree = current_workspace.tree.clone();
+        let mut current = SourceIdentity {
+            workspace: current_workspace,
+            evidence_source_commit: current_commit.clone(),
+            evidence_source_tree: current_tree.clone(),
+            authorization_commit: current_commit,
+            authorization_tree: current_tree,
+            ..source.clone()
+        };
+        current.evidence_source_commit = git_rev_parse(dir.path(), "HEAD^").unwrap();
+        assert!(validate_source_transition(&source, &current, dir.path()).is_err());
+
+        let other = tempfile::tempdir().unwrap();
+        git_test(other.path(), &["init", "-q"]);
+        git_test(
+            other.path(),
+            &["config", "user.email", "other@test.invalid"],
+        );
+        git_test(other.path(), &["config", "user.name", "Other"]);
+        fs::write(other.path().join("engine.rs"), "other\n").unwrap();
+        git_test(other.path(), &["add", "."]);
+        git_test(other.path(), &["commit", "-qm", "substituted"]);
+        let other_workspace = repository_identity(other.path(), &[], &[]).unwrap();
+        let other_current = SourceIdentity {
+            workspace: other_workspace,
+            build_relevant_manifest_sha256: build_relevant_manifest(
+                other.path(),
+                &git_rev_parse(other.path(), "HEAD").unwrap(),
+            )
+            .unwrap(),
+            ..source
+        };
+        assert!(validate_source_transition(&other_current, &other_current, dir.path()).is_err());
     }
 }
