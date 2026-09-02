@@ -92,6 +92,24 @@ bash run-r2-gpu.sh
 The CUDA gate requires the CPU batch schedule exactly and checks every
 prediction and declared metric against the frozen cross-hardware tolerance.
 
+## R3 teacher and target calibration
+
+`r3-gate` consumes the hash-frozen R1-A corpus and the passing R2 CUDA report,
+then opens a 48-board stratified teacher probe exactly once. It compares
+geometric handcrafted budgets to a five-times-deeper independent handcrafted
+reference, records C/16 only as a diagnostic control, compares root/leaf/mate
+target semantics, audits the inherited score transform, and publishes the R4
+label-cost forecast:
+
+```console
+cargo build --release -p haitaka_learn --features anhoku
+target/release/haitaka_learn r3-gate
+```
+
+The command refuses a non-empty `out/anhoku-reboot-r3` so the one-shot decision
+block cannot be silently reopened. It generates no production corpus and plays
+no strength games.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data

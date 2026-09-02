@@ -13,6 +13,7 @@ mod r1d2;
 mod r1d3;
 mod r1evidence;
 mod r2;
+mod r3;
 mod selection;
 mod trainer;
 mod verify;
@@ -277,6 +278,17 @@ enum Command {
             default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
         )]
         python: PathBuf,
+    },
+    /// Run the preregistered R3 teacher, target-semantics, and score-calibration probe.
+    /// This command opens the one-shot decision block and therefore refuses reuse.
+    R3Gate {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r3-teacher-probe-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r3")]
+        output_dir: PathBuf,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -659,6 +671,31 @@ fn main() -> Result<()> {
                 report.gpu_authorized,
             );
             ensure!(report.cpu_gates_passed && !report.passed);
+        }
+        Command::R3Gate {
+            contract,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let report = r3::run(r3::RunArgs {
+                contract_path: &contract,
+                output_dir: &output_dir,
+                executable_path: &executable,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R3 gate written to {}: {} (teacher={} nodes={} R4-authorized={})",
+                output_dir.join("r3-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+                report.selected_teacher,
+                report.selected_node_budget,
+                report.r4_authorized,
+            );
+            ensure!(report.passed, "R3 gate failed; R4 remains unauthorized");
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

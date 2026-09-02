@@ -1,0 +1,99 @@
+{
+  "schema": "haitaka-r3-teacher-probe-contract-v1",
+  "frozenAt": "2026-09-02T23:30:00+09:00",
+  "ruleset": "anhoku",
+  "authorization": {
+    "r2GpuGate": "out/anhoku-reboot-r2/gpu-rerun3/r2-gpu-gate-report.json",
+    "r2GpuGateSha256": "7ae6b8142908d2d3fd1d9a70aa2b8b54b843186d8d8d7492455873d079b35d67",
+    "requirePassed": true
+  },
+  "probe": {
+    "schema": "teacher-probe-v1",
+    "source": "out/anhoku-reboot-r1a/parity-corpus.jsonl",
+    "sourceSha256": "6b958fdfc279f1c5a79c34a213321f972ea7e9ed68c998c9c53a1b4715207d6c",
+    "sourceIdentity": "haitaka-anhoku-r1a-corpus-v1",
+    "supplementalSource": "out/anhoku-v0.6-phase8d-b-root-262k/datasets/train.json",
+    "supplementalSourceSha256": "0bc3d8459f0adb379ab182f589a7495aa96b94ad42f28724a43eebadae4961ee",
+    "supplementalSourceIdentity": "anhoku-v3-historical-opening-roots-only-v1",
+    "selectionVersion": "r3-stratified-greedy-sha256-v1",
+    "selectedIdScheduleSha256": "34fb090b7e2ed985e061110220daa401ff09e67c6b56bc41d9c8dde47da15c70",
+    "splitSeed": 20260903,
+    "tuningPositions": 24,
+    "decisionPositions": 24,
+    "maximumUniqueBoards": 50000,
+    "minimumPerRequiredStratumPerSubset": 1,
+    "requiredStrata": {
+      "source": ["anhoku-v3-suite", "curated-fixture", "startpos-tree"],
+      "phase": ["early", "middle", "late", "terminal-adjacent"],
+      "material": ["balanced", "imbalanced", "extreme"],
+      "proxyScore": ["near-zero", "moderate", "large"],
+      "positionType": ["quiet", "tactical", "in-check", "promotion", "drop", "donor-sensitive"]
+    },
+    "oneShotPolicy": "selection and all thresholds are frozen here; tuning chooses the smallest passing budget; the decision block is then opened once and cannot change this contract"
+  },
+  "teachers": {
+    "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+    "nodeCountingVersion": "alpha-beta-plus-qsearch-v2",
+    "maximumDepth": 64,
+    "candidateNodeBudgets": [2000, 10000, 50000],
+    "deepReferenceNodes": 250000,
+    "minimumDeepToCandidateRatio": 5.0,
+    "moveRankingTotalNodes": 75000,
+    "diagnosticControl": {
+      "name": "c16-50k",
+      "model": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+      "modelSha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0",
+      "nodes": 50000,
+      "eligibleForSelection": false
+    },
+    "externalTeacher": null
+  },
+  "targetComparison": {
+    "semantics": [
+      "root-backed-up-value",
+      "qsearch-pv-leaf-value-reoriented-to-root",
+      "bounded-nonmate-root-plus-explicit-mate-class-distance"
+    ],
+    "mateScoreThreshold": 29000,
+    "nearZeroScore": 100,
+    "semanticSelectionRule": "prefer bounded nonmate plus explicit mate when its tuning robust error is within one percent of root-backed-up and mate classification agrees; otherwise choose the lowest-error semantics, requiring a five-percent improvement to choose the qsearch leaf"
+  },
+  "scoreCalibration": {
+    "legacyLogisticScale": 410.0,
+    "calibratedLogisticQuantile": 0.95,
+    "calibratedLogisticQuantileProbability": 0.99,
+    "minimumLogisticScale": 410.0,
+    "maximumLogisticScale": 10000.0,
+    "robustClipQuantile": 0.95,
+    "minimumRobustClip": 1000.0,
+    "maximumRobustClip": 12000.0,
+    "huberDeltaNormalized": 0.10,
+    "saturationLow": 0.01,
+    "saturationHigh": 0.99,
+    "maximumCalibratedSaturationFraction": 0.02,
+    "objectiveSelectionRule": "use calibrated-logistic-mse when its tuning saturation is bounded and the selected teacher meets the probability boundary; otherwise use robust-clipped-huber",
+    "strengthTrainingLambda": 1.0,
+    "resultLossEnabled": false
+  },
+  "decisionBoundaries": {
+    "minimumStratumCountForWorstCase": 2,
+    "maximumOverallProbabilityRmse": 0.15,
+    "maximumWorstStratumProbabilityRmse": 0.25,
+    "maximumOverallRobustNormalizedMae": 0.20,
+    "minimumTop3Agreement": 0.50,
+    "maximumOverallRegretToClipRatio": 0.20,
+    "maximumWorstStratumRegretToClipRatio": 0.50,
+    "maximumSignDisagreementRate": 0.30,
+    "maximumIncompleteLabelRate": 0.0,
+    "requiredNodeAccountingRate": 1.0,
+    "minimumC16HandcraftedDisagreements": 4,
+    "decisionUsesSameBoundaries": true
+  },
+  "costModel": {
+    "workerCount": 1,
+    "cpuCoreHourUsd": 0.20,
+    "forecastCorpusSizes": [1000000, 10000000, 50000000, 100000000],
+    "productionCorpusAuthorized": false,
+    "strengthGamesAuthorized": false
+  }
+}
