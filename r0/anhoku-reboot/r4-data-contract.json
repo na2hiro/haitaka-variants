@@ -1,0 +1,88 @@
+{
+  "schema": "haitaka-anhoku-r4-data-contract-v1",
+  "ruleset": "anhoku",
+  "authorization": {
+    "r3Gate": "out/anhoku-reboot-r3/r3-gate-report.json",
+    "r3GateSha256": "7e97b3a215f2c6e6f03b30a56ce29bb3ac8b23630ea506d9d5445c09f9d7b5cb",
+    "requirePassed": true,
+    "requireR4Authorized": true
+  },
+  "openingSuite": {
+    "path": "haitaka_learn/openings/anhoku-v3.tsv",
+    "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f",
+    "developmentOpeningIds": ["anhoku-v3-049", "anhoku-v3-050", "anhoku-v3-051", "anhoku-v3-052"],
+    "validationOpeningIds": ["anhoku-v3-046", "anhoku-v3-047", "anhoku-v3-048"],
+    "sealedOpeningIds": ["anhoku-v3-053", "anhoku-v3-054", "anhoku-v3-055", "anhoku-v3-056", "anhoku-v3-057", "anhoku-v3-058", "anhoku-v3-059", "anhoku-v3-060", "anhoku-v3-061", "anhoku-v3-062", "anhoku-v3-063", "anhoku-v3-064"]
+  },
+  "generation": {
+    "schema": "haitaka-r4-position-generation-v1",
+    "gameCount": 16000,
+    "maximumPly": 180,
+    "shardCount": 160,
+    "seed": 2026090304,
+    "trajectoryEvaluator": "haitaka-native-handcrafted-search-v1",
+    "candidateLimit": 8,
+    "nearBestChildNodes": 128,
+    "nearBestScoreMargin": 100,
+    "selfplayPerturbationPeriod": 8,
+    "policyCycle": [
+      "searched-near-best-uniform-candidates-v1",
+      "searched-near-best-uniform-candidates-v1",
+      "searched-near-best-uniform-candidates-v1",
+      "searched-near-best-uniform-candidates-v1",
+      "uniform-legal-perturbation-v1",
+      "uniform-legal-perturbation-v1",
+      "handcrafted-selfplay-256-nodes-v1",
+      "handcrafted-selfplay-256-nodes-v1",
+      "handcrafted-selfplay-1024-nodes-v1",
+      "handcrafted-selfplay-1024-nodes-v1"
+    ]
+  },
+  "assembly": {
+    "schema": "haitaka-r4-immutable-split-v1",
+    "deduplicationKey": "minimum-packed-board-color-swap-sha256-v1",
+    "selectionSeed": 2026090305,
+    "labelShardCount": 160,
+    "pilotSplitCounts": {
+      "training": 880000,
+      "validation": 60000,
+      "development": 60000
+    },
+    "phaseFractions": {
+      "early": 0.15,
+      "middle": 0.50,
+      "late": 0.30,
+      "terminal-adjacent": 0.05
+    },
+    "staticClonePositions": 64000,
+    "deepCorePositions": 4096,
+    "deepCoreShardCount": 16,
+    "minimumFeatureRowUpdates": 8,
+    "maximumDuplicateWeight": 1
+  },
+  "labeling": {
+    "schema": "haitaka-r4-label-v1",
+    "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+    "nodeBudget": 10000,
+    "maximumDepth": 64,
+    "nodeCountingVersion": "alpha-beta-plus-qsearch-v2",
+    "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+    "nonmateClip": 12000,
+    "mateThreshold": 29000,
+    "mateBase": 30000,
+    "matePolicy": "explicit-class-win-loss-none-plus-distance-from-30000-v1",
+    "scoreTransform": "identity-with-robust-clip-v1",
+    "loss": "robust-clipped-huber-v1",
+    "huberDeltaNormalized": 0.10,
+    "strengthTrainingLambda": 1.0,
+    "resultLossEnabled": false,
+    "deepReferenceNodeBudget": 250000
+  },
+  "cost": {
+    "cpuCoreHourUsd": 0.20,
+    "forecastCorpusSizes": [1000000, 10000000, 50000000, 100000000],
+    "maximumPilotLabels": 1000000,
+    "largerGenerationAuthorized": false,
+    "strengthGamesAuthorized": false
+  }
+}

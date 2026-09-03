@@ -14,6 +14,7 @@ mod r1d3;
 mod r1evidence;
 mod r2;
 mod r3;
+mod r4;
 mod selection;
 mod trainer;
 mod verify;
@@ -289,6 +290,55 @@ enum Command {
         contract: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r3")]
         output_dir: PathBuf,
+    },
+    /// Generate one deterministic R4 position-only shard. No label search is run.
+    R4GeneratePositions {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long)]
+        shard_index: u32,
+    },
+    /// Globally canonicalize, color-swap-deduplicate, split, and shard R4 positions.
+    R4AssemblePositions {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+    },
+    /// Label one immutable R4 pilot or deep-core input shard.
+    R4LabelShard {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Regenerate one position shard and prove byte-identical board/metadata hashes.
+    R4VerifyRegeneration {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Assemble trainer payloads, full sidecars, audits, cost forecasts, and the R4 gate.
+    R4Finalize {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long, required = true)]
+        regeneration_proof: Vec<PathBuf>,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -696,6 +746,104 @@ fn main() -> Result<()> {
                 report.r4_authorized,
             );
             ensure!(report.passed, "R3 gate failed; R4 remains unauthorized");
+        }
+        Command::R4GeneratePositions {
+            contract,
+            output_dir,
+            shard_index,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::generate_positions(r4::GenerateArgs {
+                contract_path: &contract,
+                output_dir: &output_dir,
+                shard_index,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 position shard written to {}", path.display());
+        }
+        Command::R4AssemblePositions {
+            contract,
+            input,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4::assemble_positions(r4::AssembleArgs {
+                contract_path: &contract,
+                inputs: &input,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R4 immutable label inputs written; assembly report: {}",
+                path.display()
+            );
+        }
+        Command::R4LabelShard {
+            contract,
+            input,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::label_shard(r4::LabelArgs {
+                contract_path: &contract,
+                input: &input,
+                output_dir: &output_dir,
+                jobs,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 labeled shard written to {}", path.display());
+        }
+        Command::R4VerifyRegeneration {
+            contract,
+            manifest,
+            output,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::verify_regeneration(r4::RegenerationArgs {
+                contract_path: &contract,
+                manifest_path: &manifest,
+                output: &output,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 regeneration proof written to {}", path.display());
+        }
+        Command::R4Finalize {
+            contract,
+            input,
+            output_dir,
+            regeneration_proof,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4::finalize(r4::FinalizeArgs {
+                contract_path: &contract,
+                inputs: &input,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                regeneration_proofs: &regeneration_proof,
+            })?;
+            println!("R4 gate passed: {}", path.display());
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
