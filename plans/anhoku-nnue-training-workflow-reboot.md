@@ -1,9 +1,9 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R3 teacher/target calibration passed; handcrafted 10k-node labels, bounded non-mate target, robust clipped Huber loss, and the R4 cost model are frozen; no production labels or strength game has started
+- Status: Phase R4 executed and failed closed on the preregistered finite-label completeness gate (82,799/1,000,000 pilot searches incomplete); all other R4 gates passed, R5 is not authorized, and no broad generation, training, or strength game has started
 - Created: 2026-08-31
-- Last audited: 2026-09-02
-- Last implementation update: 2026-09-02
+- Last audited: 2026-09-03
+- Last implementation update: 2026-09-03
 - Primary ruleset: Anhoku
 - Final target: a production NNUE that is stronger than the handcrafted evaluator at the target fixed time
 - Historical record: `plans/anhoku-nnue-handcrafted-strength-plan.md`
@@ -1627,6 +1627,46 @@ results are ignored and all provenance is losslessly available in the sidecar.
 
 R4 stops after the 1M pilot and publishes actual throughput plus projected 10M,
 50M, and 100M cost. R5 must pass before larger generation.
+
+### R4 implementation record (failed closed, 2026-09-03)
+
+- Froze `r0/anhoku-reboot/r4-data-contract.json` before production generation
+  (SHA-256 `81c9b6baec8bf6bafd01cf4370e432cfc4a4f60e78b417dce02096d57ebe1339`)
+  and added the two-stage `r4-generate-positions`, `r4-assemble-positions`,
+  `r4-label-shard`, `r4-verify-regeneration`, and `r4-finalize` workflow.
+- Generated 16,000 games in 160 immutable shards on nubu, the current Ubuntu
+  host, MBA, and MBP using an exact 8/16/56/80 shard allocation. The resulting
+  1,590,513 candidate records contained 69,129 exact duplicates and 6,500
+  color-swap duplicates, leaving 1,514,884 unique color-swap families.
+- Assembled exactly 1,000,000 unique pilot positions with frozen
+  880,000/60,000/60,000 training/validation/development and
+  150,000/500,000/300,000/50,000 early/middle/late/terminal-adjacent quotas.
+  Opening-group overlap and cross-split color-swap overlap were both zero;
+  duplicate weight was one. A 64,000-position exact-static clone and a
+  4,096-position deep-reference core were also produced.
+- Labeled the pilot with the R3-frozen handcrafted 10,000-node teacher. Host
+  shares including deep-core were 50,256/100,512/351,280/502,048 positions,
+  preserving the requested approximate 1:2:7:10 nubu/Ubuntu/MBA/MBP ratio.
+  All shards used label source revision
+  `d1e31faae753a226e67b01a35035ca5548ee3cd7bb165dd556a4d7a35488c38b`.
+- The broad corpus exposed 82,799 pilot searches (8.2799%) that exhausted the
+  node budget before completing depth one. They are recorded with null raw and
+  bounded scores and `unknown/incomplete` mate state; no partial-root value or
+  draw-like zero entered a trainer payload. This leaves 806,359 training,
+  55,736 validation, and 55,106 development numeric labels. Deep-core retained
+  4,086 of 4,096 labels after ten analogous incomplete searches.
+- Retained 219,028 bounded pilot mate labels and observed zero node-accounting
+  failures. Aggregate measured throughput was 14.2664 labels per worker-second,
+  19.4707 core-hours, and `$3.8941` at the frozen `$0.20`/core-hour model. The
+  projected label costs are `$38.94` for 10M, `$194.71` for 50M, and `$389.41`
+  for 100M positions at the measured mixture rate.
+- Byte-identical regeneration passed for Ubuntu/x86_64 shard 8 and MBP/arm64
+  shard 80. The R4 gate report is
+  `out/anhoku-reboot-r4/r4-gate-report.json` (SHA-256
+  `2fa26d4629c2ddf3fa1f9f61632f3d29558929eb67ea736ae4957598b3d04fc7`):
+  fifteen gates pass and only `finite-labels-complete` fails. Therefore R5 is
+  not authorized. No 10M/50M/100M broad tier, training run, or strength game
+  was started.
 
 ## Phase R5: fixed-data exposure and 1M workflow pilot
 

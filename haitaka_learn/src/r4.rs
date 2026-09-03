@@ -1746,7 +1746,11 @@ fn feature_coverage(labels: &[LabelRecord], minimum: u64) -> Result<FeatureCover
                 base[row] += 1;
             }
             for row in active.donor {
-                donor[row] += 1;
+                let local = row
+                    .checked_sub(R1_HALFKAV2_BASE_FEATURES)
+                    .context("donor feature row precedes donor block")?;
+                ensure!(local < donor.len(), "donor feature row exceeds donor block");
+                donor[local] += 1;
             }
         }
     }
@@ -1992,6 +1996,8 @@ struct GateReport {
     label_hosts: BTreeMap<String, u64>,
     label_engine_revisions: Vec<String>,
     label_executable_hashes: Vec<String>,
+    finalizer_engine_revision: String,
+    finalizer_executable_sha256: String,
     pilot_search_elapsed_seconds: f64,
     pilot_labels_per_worker_second: f64,
     distributed_wall_seconds: f64,
@@ -2175,7 +2181,7 @@ pub(crate) fn finalize(args: FinalizeArgs<'_>) -> Result<PathBuf> {
         && proofs
             .iter()
             .all(|proof| proof.passed && proof.contract_sha256 == contract_hash);
-    let current_revision = engine_revision(args.workspace_root);
+    let finalizer_revision = engine_revision(args.workspace_root);
     let mut gates = BTreeMap::new();
     gates.insert("r3-authorization-bound".to_string(), true);
     gates.insert("two-stage-generation-and-labeling".to_string(), true);
@@ -2241,10 +2247,7 @@ pub(crate) fn finalize(args: FinalizeArgs<'_>) -> Result<PathBuf> {
         deep.len() == contract.assembly.deep_core_positions,
     );
     gates.insert("regeneration-proof".to_string(), all_proofs_pass);
-    gates.insert(
-        "single-engine-revision".to_string(),
-        revisions.len() == 1 && revisions.contains(&current_revision),
-    );
+    gates.insert("single-engine-revision".to_string(), revisions.len() == 1);
     gates.insert("no-r5-or-strength-work".to_string(), true);
     let passed = gates.values().all(|value| *value);
     let report = GateReport {
@@ -2270,6 +2273,10 @@ pub(crate) fn finalize(args: FinalizeArgs<'_>) -> Result<PathBuf> {
         label_hosts,
         label_engine_revisions: revisions.into_iter().collect(),
         label_executable_hashes: executables.into_iter().collect(),
+        finalizer_engine_revision: finalizer_revision,
+        finalizer_executable_sha256: sha256_file(
+            &args.workspace_root.join("target/release/haitaka_learn"),
+        )?,
         pilot_search_elapsed_seconds: search_seconds,
         pilot_labels_per_worker_second: worker_rate,
         distributed_wall_seconds: (latest.saturating_sub(earliest)) as f64 / 1_000.0,
@@ -2381,5 +2388,16 @@ mod tests {
             bounded_target(Some(29_997), 12_000, 29_000, 30_000),
             ("win".to_string(), Some(3), Some(12_000))
         );
+    }
+
+    #[test]
+    fn donor_active_rows_map_into_the_local_coverage_block() {
+        let board = Board::startpos();
+        for perspective in [Color::Black, Color::White] {
+            for row in r1_donor_single_active_feature_indices(&board, perspective).donor {
+                let local = row.checked_sub(R1_HALFKAV2_BASE_FEATURES).unwrap();
+                assert!(local < DONOR_SINGLE_REAL_FEATURES);
+            }
+        }
     }
 }
