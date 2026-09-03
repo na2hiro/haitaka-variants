@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R4 executed and failed closed on the preregistered finite-label completeness gate (82,799/1,000,000 pilot searches incomplete); all other R4 gates passed, R5 is not authorized, and no broad generation, training, or strength game has started
+- Status: Phase R4 executed and failed closed on the preregistered finite-label completeness gate (82,799/1,000,000 pilot searches incomplete); the bounded R4-F finite-label remediation below is the only authorized next work, R5 is not authorized, and no broad generation, training, or strength game has started
 - Created: 2026-08-31
 - Last audited: 2026-09-03
 - Last implementation update: 2026-09-03
@@ -1626,7 +1626,9 @@ results are ignored and all provenance is losslessly available in the sidecar.
 ### Cost ceiling
 
 R4 stops after the 1M pilot and publishes actual throughput plus projected 10M,
-50M, and 100M cost. R5 must pass before larger generation.
+50M, and 100M cost. A failed pilot does not authorize scaling or an automatic
+rerun; only the separately bounded R4-F route below may authorize more work.
+R5 must pass before larger generation.
 
 ### R4 implementation record (failed closed, 2026-09-03)
 
@@ -1649,24 +1651,189 @@ R4 stops after the 1M pilot and publishes actual throughput plus projected 10M,
   preserving the requested approximate 1:2:7:10 nubu/Ubuntu/MBA/MBP ratio.
   All shards used label source revision
   `d1e31faae753a226e67b01a35035ca5548ee3cd7bb165dd556a4d7a35488c38b`.
-- The broad corpus exposed 82,799 pilot searches (8.2799%) that exhausted the
+- The pilot corpus exposed 82,799 searches (8.2799%) that exhausted the
   node budget before completing depth one. They are recorded with null raw and
   bounded scores and `unknown/incomplete` mate state; no partial-root value or
   draw-like zero entered a trainer payload. This leaves 806,359 training,
   55,736 validation, and 55,106 development numeric labels. Deep-core retained
   4,086 of 4,096 labels after ten analogous incomplete searches.
-- Retained 219,028 bounded pilot mate labels and observed zero node-accounting
-  failures. Aggregate measured throughput was 14.2664 labels per worker-second,
-  19.4707 core-hours, and `$3.8941` at the frozen `$0.20`/core-hour model. The
-  projected label costs are `$38.94` for 10M, `$194.71` for 50M, and `$389.41`
-  for 100M positions at the measured mixture rate.
-- Byte-identical regeneration passed for Ubuntu/x86_64 shard 8 and MBP/arm64
-  shard 80. The R4 gate report is
+- The gate report records `mateLabels=219,028`, but the current reporter counts
+  all 82,799 `unknown/incomplete` rows as mate labels because their mate class
+  is not `none`. The raw labels contain 136,229 actual bounded win/loss mate
+  labels. It also computes feature-row coverage over all 1,000,000 attempts,
+  whereas trainer payloads contain only completed labels, and calls
+  `deep-core-complete` true from 4,096 attempts even though only 4,086 finite
+  deep-core records were written. R4-F must correct these telemetry and gate
+  semantics and recompute retained-record coverage; none of the reporting
+  defects supplied a target for an incomplete row.
+- For the 1M pilot tier, measured throughput was 14.2664 attempts per
+  worker-second, 19.4707 core-hours, and `$3.8941` at the frozen
+  `$0.20`/core-hour model. The 4,096 deep-core attempts add 1.2322 core-hours
+  and `$0.2464`, making total pilot-plus-deep-core search 20.7029 core-hours and
+  `$4.1406`. The projected costs of `$38.94` for 10M, `$194.71` for 50M, and
+  `$389.41` for 100M are per attempted pilot-tier position. At the observed
+  91.7201% finite-label yield, the corresponding mechanical estimates per
+  10M/50M/100M finite trainer records would be
+  `$42.46`/`$212.28`/`$424.57`; these are diagnostics, not authorization to
+  scale. Zero node-accounting failures were observed.
+- Byte-identical position regeneration passed for Ubuntu/x86_64 shard 8 and
+  MBP/arm64 shard 80. The implemented proof does not replay their labels and
+  therefore does not yet satisfy the prose requirement to reproduce both board
+  and label hashes. The R4 gate report is
   `out/anhoku-reboot-r4/r4-gate-report.json` (SHA-256
   `2fa26d4629c2ddf3fa1f9f61632f3d29558929eb67ea736ae4957598b3d04fc7`):
-  fifteen gates pass and only `finite-labels-complete` fails. Therefore R5 is
-  not authorized. No 10M/50M/100M broad tier, training run, or strength game
-  was started.
+  sixteen of seventeen named gates report true and only
+  `finite-labels-complete` is false. Therefore R5 is not authorized. No
+  10M/50M/100M broad tier, training run, or strength game was started.
+
+### R4-F finite-label remediation and next authorized assignment (required, 2026-09-03)
+
+The R4 v1 contract, position corpus, label attempts, datasets, and failed gate
+report are immutable failed history. They may be used as diagnostic/tuning
+evidence, but the 917,201-row filtered payload is not a passing 1M pilot and is
+not eligible for R5. Do not overwrite the report, reinterpret the failed gate,
+or substitute a partial score, artificial draw, or static value for an
+incomplete search.
+
+The failure is not missing completely at random. A read-only audit of all pilot
+labels found incomplete rates of 0.0193%/2.8982%/18.664%/24.574% for
+early/middle/late/terminal-adjacent positions and 9.4091% versus 0.2727% for
+tactical versus non-tactical positions. Source rates ranged from 4.7878% to
+12.9014%, while arm64 and x86_64 rates were 8.2782% and 8.2893%. The incomplete
+records had exact node accounting, depth zero, a partial iteration, and almost
+all of their 10,000 nodes in qsearch. Consequently, silently accepting the
+filtered payload or backfilling without a prospective bias gate would change
+the intended data mixture.
+
+The next worker must implement only the following bounded R4-F assignment, in
+order:
+
+1. **Publish the failure analysis.** Bind a machine-readable
+   `out/anhoku-reboot-r4f/incomplete-analysis.json` to the original R4 contract,
+   all 160 position-shard manifests and data hashes, assembly report, label
+   manifests and data hashes, dataset manifests, and gate report. Report
+   attempted, completed, and incomplete counts and rates by split,
+   source/opening group, phase/ply, side, material, check/tactical state, result
+   status, donor state, output bucket, active-row strata, host, and architecture.
+   Include completed-depth, alpha-beta-node, qsearch-node, and total-node
+   distributions; compare attempted with retained distributions; correct mate
+   accounting; distinguish attempted from finite deep-core counts; and
+   recompute feature-row coverage using only finite trainer records.
+2. **Preregister before any new search.** Freeze
+   `r0/anhoku-reboot/r4f-label-completeness-contract.json`. Existing R4 labels,
+   including all known failures, are tuning evidence only. Select a
+   hash-determined confirmation set from previously unlabeled members of the
+   frozen 1,514,884-family pool, without consulting labels or sealed R5/R9
+   evidence. Before selection, publish and bind a canonical unused-pool
+   manifest/hash derived from all frozen position shards; the assembly count
+   alone is not a pool identity. Freeze the candidate fixed budgets and any
+   label-specific bounded qsearch policy, reference budget, sample and strata,
+   RNG seeds, completion and target-quality metrics, missingness and
+   retained-distribution limits, feature-coverage limits, selection rule, and
+   board-policy-evaluation/node/core-hour/dollar ceilings. Across all replay,
+   candidate, and reference lanes, the probe may use at most 50,000 total
+   board-policy search evaluations and no more than 50,000 distinct previously
+   unlabeled boards. A policy is not selected merely because it finishes more
+   searches; it must also pass the frozen deep-reference, determinism,
+   node-accounting, distribution, and cost boundaries.
+3. **Run the bounded probe, close out R4-F, and stop.** Publish hash-frozen raw
+   results plus `out/anhoku-reboot-r4f/r4f-gate-report.json`, bound to the
+   contract and analysis. Reproduce the current 10,000-node results on the
+   declared replay subset, independently recompute every metric, and select
+   exactly one route by the frozen rule. Use a versioned exact schema and the
+   complete named-gate set `original-evidence-bound`, `analysis-recomputed`,
+   `contract-frozen-before-search`, `fresh-confirmation-isolated`,
+   `replay-deterministic`, `node-accounting-exact`, `target-quality`,
+   `missingness-bias`, `retained-coverage`, `cost-ceiling`, `single-route`,
+   `route-rule-recomputed`, and `no-downstream-work`; reject a missing, extra,
+   or non-Boolean gate. The required `selectedRoute` enum is exactly one of
+   `r1-d1`, `r1-d2`, `r3`, `replacement-r4`, or `stop`.
+
+   Set `closeoutValid=true` if and only if
+   `original-evidence-bound`, `analysis-recomputed`,
+   `contract-frozen-before-search`, `fresh-confirmation-isolated`,
+   `cost-ceiling`, `single-route`, `route-rule-recomputed`, and
+   `no-downstream-work` are all true. Set `routeAuthorized=true` if and only if
+   `closeoutValid=true` and the selected route exactly matches independent
+   recomputation of the frozen rule. A report with `closeoutValid=false` has no
+   authoritative route, even if `selectedRoute` is populated. Set top-level
+   `passed=true` if and only if all named gates are true, and set
+   `replacementR4Authorized=true` if and only if `passed=true`,
+   `routeAuthorized=true`, and `selectedRoute=replacement-r4`.
+
+   That direct route requires the complete R3 label-policy identity to remain
+   unchanged: teacher/source identity, 10,000-node pilot budget, 250,000-node
+   deep-reference/deep-core budget, search/qsearch and node-counting semantics,
+   target semantics, score transform, and loss. The report never records
+   `r5Authorized=true`.
+
+Only an R4-F report with `closeoutValid=true` and `routeAuthorized=true`
+determines a separate assignment. Otherwise repair or rerun R4-F without
+starting any routed work. A valid closeout routes as follows:
+
+- A search-semantic, determinism, interruption, or accounting defect invalidates
+  the affected evidence and routes to R1-D1, or to R1-D2 when qsearch/history
+  correctness is implicated. R1 must pass again before returning through R3.
+- Any code or semantic change to teacher search or qsearch first requalifies the
+  affected R1-D1/R1-D2 gates. A required change to label budget, teacher search,
+  qsearch policy, target semantics, or score transform then routes to R3. Pass
+  a new preregistered teacher decision gate before replacement R4 labeling;
+  R4-F itself cannot authorize that labeling.
+- Only if the unchanged R3 teacher passes fresh R4-F confirmation may the
+  R4-F report authorize a replacement R4 contract with deterministic,
+  label-value-blind rejection and replenishment from the frozen unused
+  candidate pool. That contract must predeclare the ordering,
+  split/phase/source quotas, attempt ceiling, maximum incomplete rate, and
+  retained-versus-attempted bias bounds.
+- If no affordable route passes, remain stopped in R3/R4-F rather than weakening
+  a gate.
+
+Any subsequently authorized replacement R4 assignment must produce new
+evidence rather than bless the failed run: write a versioned contract, registry
+entry, output directory, manifests, datasets, regeneration proofs, cost
+forecast, and gate report. The replacement contract and report must bind and
+fully validate the original failed R4 evidence, the authorizing R4-F contract
+and report, and every intervening replacement R1/R3 report. The direct route is
+valid only when R4-F selected `replacement-r4`; an R1/R3 route instead requires
+the affected replacement R1 gates and a new passing R3 report with
+`r4Authorized=true`. Do not trust only a top-level authorization Boolean or
+accept a missing/mismatched link.
+
+Existing completed labels may be imported only when the replacement manifest
+binds their original manifest/data hashes and the teacher, budget, target, and
+label-policy identity is byte-for-byte unchanged; do not rewrite them as if the
+replacement contract produced them. New labels on the direct unchanged-teacher
+route must use the archived original labeling source/executables on their
+declared architectures, or pass a preregistered bit-exact label-replay
+equivalence gate for a replacement executable. A matching evaluator name is
+not sufficient. Otherwise relabel under the newly R3-qualified identity. Never
+relabel only the known failures at a larger budget while retaining the old
+10,000-node labels, because that creates a difficulty-conditioned mixed
+teacher.
+
+The replacement schema must keep an immutable ledger of every attempt separate
+from its accepted finite cohort. It must contain exactly
+880,000/60,000/60,000 finite training/validation/development records and 4,096
+finite deep-core records, preserve grouped and color-swap split isolation and
+the declared mixtures, report every incomplete attempt with null targets,
+recompute coverage on retained records, and state costs both per attempt and
+per finite record. Use separate, honestly named gates for accepted finite-cohort
+completeness, finite deep-core completeness, and the preregistered maximum
+incomplete-attempt rate; never reuse the failed v1 `finite-labels-complete` name
+with weaker semantics. Regeneration evidence must reproduce both position and
+label hashes for imported and newly produced paths under the declared
+cross-architecture scope, not only regenerate positions.
+
+R5 becomes authorized only when the new report validates the complete
+authorization chain above, has every named replacement gate true, records
+`passed=true` and `r5Authorized=true`, and identifies the sole eligible 1M
+dataset manifest. Stop after that replacement closeout; R5 is a separate
+assignment.
+
+At this revision R4-F authorizes only analysis, implementation/tests needed for
+its reporter and gate, and the bounded probe above. It does not yet authorize a
+replacement 1M labeling run, the 10M/50M/100M broad tier, R5 training, GPU
+rental, feature or architecture changes, or any strength game.
 
 ## Phase R5: fixed-data exposure and 1M workflow pilot
 
@@ -1678,9 +1845,11 @@ point?
 
 ### R5-A: exposure and learning-rate curve
 
-Use the same 1M pilot data and a small number of predeclared schedules. Training
-must run through multiple passes and checkpoints until development loss
-plateaus; one pass at batch 16,384 is only about 61 optimizer updates.
+Use only the 1M finite-record pilot identified by a passing replacement R4 gate
+report, and a small number of predeclared schedules. The failed R4 v1 filtered
+payload is ineligible. Training must run through multiple passes and checkpoints
+until development loss plateaus; one pass at batch 16,384 is only about 61
+optimizer updates.
 
 Freeze:
 
@@ -2155,6 +2324,7 @@ is never allowed for a strength claim.
 | Train improves but finite validation does not | Overfit, coverage, or split distribution | Improve independent positions/regularization |
 | IID improves but independent-policy OOD does not | Data-policy collapse | Return to R4 source mixture |
 | Candidate teacher disagrees with deep reference | Label quality/target | Return to R3; do not scale |
+| Fixed-budget pilot labels cannot complete depth one | Label-completion/teacher feasibility unless correctness telemetry fails | Keep targets null; run preregistered R4-F, returning to R1 for a defect or R3 for a new teacher policy; do not train |
 | Offline deep-teacher regret improves but equal-node play does not | Objective/search mismatch | Mine search errors and revisit target semantics |
 | Equal-node improves but fixed-time does not | Model width or runtime tax | Compact diagnostic and R8 profiling |
 | Full-precision and quantized curves improve with data size | Healthy scale response | Continue the staged R6 ladder |
@@ -2213,9 +2383,13 @@ family, or begin R2 in the same assignment.
 ## Current worker routing
 
 The status line at the top of this document is authoritative. At the current
-revision, the next authorized implementation assignment is Phase R2 only. Use
-the provenance-bound replacement closeout above as the R1 prerequisite. Do not
-rewrite the earlier R1-D1/D2/D3 records; they remain historical evidence, while
-the replacement trace/report/closeout is the authorization source. Production
-data generation, later phases, and model-strength games remain unauthorized
-until their own gates permit them.
+revision, the only authorized assignment is the bounded R4-F finite-label
+remediation above. Preserve the failed R4 v1 evidence and do not use its 917,201
+finite rows as a passing 1M pilot. Stop after the R4-F closeout; a later
+assignment may execute only the route that closeout authorizes. R5, including
+its bounded GPU training, remains unauthorized until a replacement
+machine-readable R4 gate report has every named gate true and explicitly
+records `passed=true` and `r5Authorized=true`. That replacement R4 assignment
+must also stop after closeout and must not begin R5. The 10M/50M/100M broad tier
+and strength work remain subject to their later phase gates; a replacement R4
+report alone does not authorize them.
