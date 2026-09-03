@@ -206,8 +206,8 @@ struct LabelRecord {
     total_nodes: u64,
     root_move: Option<String>,
     pv: Option<Vec<String>>,
-    raw_score: i32,
-    bounded_score: i16,
+    raw_score: Option<i32>,
+    bounded_score: Option<i16>,
     target_transform_version: String,
     mate_class: String,
     mate_distance: Option<i32>,
@@ -1102,8 +1102,8 @@ fn static_label(record: PositionRecord, ordinal: u64) -> Result<LabelRecord> {
         total_nodes: 0,
         root_move: None,
         pv: None,
-        raw_score: score,
-        bounded_score: score as i16,
+        raw_score: Some(score),
+        bounded_score: Some(score as i16),
         target_transform_version: "exact-static-identity-v1".to_string(),
         mate_class: "none".to_string(),
         mate_distance: None,
@@ -1130,7 +1130,13 @@ fn write_static_clone(output_dir: &Path, selected: &[PositionRecord], count: usi
     let mut sidecar = BufWriter::new(File::create(datasets.join("static-clone.jsonl"))?);
     for (ordinal, record) in ordered.into_iter().take(count).enumerate() {
         let labeled = static_label(record, ordinal as u64)?;
-        write_training_entry(&mut binary, &labeled.position, labeled.bounded_score)?;
+        write_training_entry(
+            &mut binary,
+            &labeled.position,
+            labeled
+                .bounded_score
+                .context("completed static label is missing its score")?,
+        )?;
         serde_json::to_writer(&mut sidecar, &labeled)?;
         sidecar.write_all(b"\n")?;
     }
@@ -1375,28 +1381,16 @@ fn label_position(
     let node_accounting_exact = summary.alpha_beta_nodes.checked_add(summary.qsearch_nodes)
         == Some(summary.total_nodes)
         && summary.total_nodes <= summary.node_limit;
-    let raw_score = summary
-        .best_score
-        .context("R4 label search returned no backed-up root score")?;
-    let (mate_class, mate_distance, bounded_score) =
-        if raw_score.abs() >= contract.labeling.mate_threshold {
-            let class = if raw_score > 0 { "win" } else { "loss" };
-            let distance = (contract.labeling.mate_base - raw_score.abs()).max(0);
-            (
-                class.to_string(),
-                Some(distance),
-                raw_score.signum() * contract.labeling.nonmate_clip,
-            )
-        } else {
-            (
-                "none".to_string(),
-                None,
-                raw_score.clamp(
-                    -contract.labeling.nonmate_clip,
-                    contract.labeling.nonmate_clip,
-                ),
-            )
-        };
+    // An exhausted search before depth one has no trustworthy training value.
+    // Preserve it as an explicit rejected/incomplete observation: R1-D1 forbids
+    // substituting the order-dependent partial-root score or a draw-like zero.
+    let raw_score = summary.best_score;
+    let (mate_class, mate_distance, bounded_score) = bounded_target(
+        raw_score,
+        contract.labeling.nonmate_clip,
+        contract.labeling.mate_threshold,
+        contract.labeling.mate_base,
+    );
     let identity = serde_json::json!({
         "packedBoardSha256": &envelope.position.packed_board_sha256,
         "labelEvaluator": &contract.labeling.label_evaluator,
@@ -1429,13 +1423,38 @@ fn label_position(
         root_move: summary.best_move,
         pv: None,
         raw_score,
-        bounded_score: bounded_score as i16,
+        bounded_score: bounded_score.map(|score| score as i16),
         target_transform_version: contract.labeling.score_transform.clone(),
         mate_class,
         mate_distance,
         elapsed_ms: summary.elapsed_ms,
         label_sha256: hash_bytes(&serde_json::to_vec(&identity)?),
     })
+}
+
+fn bounded_target(
+    raw_score: Option<i32>,
+    nonmate_clip: i32,
+    mate_threshold: i32,
+    mate_base: i32,
+) -> (String, Option<i32>, Option<i32>) {
+    match raw_score {
+        Some(score) if score.abs() >= mate_threshold => {
+            let class = if score > 0 { "win" } else { "loss" };
+            let distance = (mate_base - score.abs()).max(0);
+            (
+                class.to_string(),
+                Some(distance),
+                Some(score.signum() * nonmate_clip),
+            )
+        }
+        Some(score) => (
+            "none".to_string(),
+            None,
+            Some(score.clamp(-nonmate_clip, nonmate_clip)),
+        ),
+        None => ("unknown/incomplete".to_string(), None, None),
+    }
 }
 
 pub(crate) fn label_shard(args: LabelArgs<'_>) -> Result<PathBuf> {
@@ -1820,11 +1839,12 @@ fn distributions(labels: &[LabelRecord]) -> DistributionReport {
         increment(
             &mut report.score_bucket,
             match label.bounded_score {
-                i16::MIN..=-4001 => "<-4000",
-                -4000..=-401 => "-4000..-401",
-                -400..=400 => "-400..400",
-                401..=4000 => "401..4000",
-                _ => ">4000",
+                Some(i16::MIN..=-4001) => "<-4000",
+                Some(-4000..=-401) => "-4000..-401",
+                Some(-400..=400) => "-400..400",
+                Some(401..=4000) => "401..4000",
+                Some(_) => ">4000",
+                None => "unknown/incomplete",
             },
         );
         increment(&mut report.material, position.material_bucket.clone());
@@ -1883,7 +1903,13 @@ fn write_dataset(
     let mut sidecar = BufWriter::new(File::create(&sidecar_path)?);
     let mut groups = BTreeSet::new();
     for label in labels {
-        write_training_entry(&mut binary, &label.position, label.bounded_score)?;
+        write_training_entry(
+            &mut binary,
+            &label.position,
+            label
+                .bounded_score
+                .context("completed R4 dataset label is missing its score")?,
+        )?;
         serde_json::to_writer(&mut sidecar, label)?;
         sidecar.write_all(b"\n")?;
         groups.insert(label.position.opening_group.clone());
@@ -2027,22 +2053,37 @@ pub(crate) fn finalize(args: FinalizeArgs<'_>) -> Result<PathBuf> {
         "pilot labels are not unique"
     );
 
-    let train = pilot
+    let train_attempts = pilot
         .iter()
         .filter(|item| item.position.split == "training")
         .collect::<Vec<_>>();
-    let validation = pilot
+    let validation_attempts = pilot
         .iter()
         .filter(|item| item.position.split == "validation")
         .collect::<Vec<_>>();
-    let development = pilot
+    let development_attempts = pilot
         .iter()
         .filter(|item| item.position.split == "development")
         .collect::<Vec<_>>();
-    ensure!(train.len() == contract.assembly.pilot_split_counts["training"]);
-    ensure!(validation.len() == contract.assembly.pilot_split_counts["validation"]);
-    ensure!(development.len() == contract.assembly.pilot_split_counts["development"]);
-    let deep_refs = deep.iter().collect::<Vec<_>>();
+    ensure!(train_attempts.len() == contract.assembly.pilot_split_counts["training"]);
+    ensure!(validation_attempts.len() == contract.assembly.pilot_split_counts["validation"]);
+    ensure!(development_attempts.len() == contract.assembly.pilot_split_counts["development"]);
+    let train = train_attempts
+        .into_iter()
+        .filter(|item| item.completed)
+        .collect::<Vec<_>>();
+    let validation = validation_attempts
+        .into_iter()
+        .filter(|item| item.completed)
+        .collect::<Vec<_>>();
+    let development = development_attempts
+        .into_iter()
+        .filter(|item| item.completed)
+        .collect::<Vec<_>>();
+    let deep_refs = deep
+        .iter()
+        .filter(|item| item.completed)
+        .collect::<Vec<_>>();
     let mut datasets = BTreeMap::new();
     datasets.insert(
         "train".to_string(),
@@ -2170,9 +2211,11 @@ pub(crate) fn finalize(args: FinalizeArgs<'_>) -> Result<PathBuf> {
         mate_labels > 0
             && pilot
                 .iter()
-                .filter(|item| item.mate_class != "none")
+                .filter(|item| item.mate_class == "win" || item.mate_class == "loss")
                 .all(|item| {
-                    item.bounded_score.unsigned_abs() == contract.labeling.nonmate_clip as u16
+                    item.bounded_score.is_some_and(|score| {
+                        score.unsigned_abs() == contract.labeling.nonmate_clip as u16
+                    })
                 }),
     );
     gates.insert(
@@ -2326,5 +2369,17 @@ mod tests {
         // Per king bucket: 18 impossible piece-on-own-king rows and 248
         // impossible/reserved hand-copy rows.
         assert_eq!(unreachable, 81 * (18 + 248));
+    }
+
+    #[test]
+    fn incomplete_search_never_becomes_a_numeric_or_draw_like_target() {
+        assert_eq!(
+            bounded_target(None, 12_000, 29_000, 30_000),
+            ("unknown/incomplete".to_string(), None, None)
+        );
+        assert_eq!(
+            bounded_target(Some(29_997), 12_000, 29_000, 30_000),
+            ("win".to_string(), Some(3), Some(12_000))
+        );
     }
 }
