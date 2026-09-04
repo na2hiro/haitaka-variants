@@ -201,7 +201,42 @@ The remaining route is a new reviewed R5 contract/evidence revision that
 extends the convergence horizon and supplies the required per-legal-move
 deep-teacher artifact before additional replication or stage data generation.
 
-## R5 repair / R6-unblock worker assignment (planned; no GPU authorized)
+### First R5 repair preflight closeout (failed closed; 2026-09-04)
+
+The first execution of this assignment stopped correctly at R5R-00. Independent
+review found two specification blockers rather than an experimental result:
+
+- requiring the reusable 256-position diagnostic to use the existing
+  replacement-R4 deep core while also requiring it to be disjoint from every
+  prior R4 artifact was unsatisfiable;
+- the exact seed-17 and seed-29 full-precision checkpoints named in the failed-R5
+  reports were no longer retained, although the hash-bound decision reports and
+  both immutable exported networks remain available.
+
+R5R-01 through R5R-04 were therefore skipped, R5R-05(false) completed, and no
+labels, search nodes, training, games, holdout access, GPU rental, or new spend
+occurred. The failed attempt remains immutable under
+`out/anhoku-reboot-r5-repair/`; its final gate has SHA-256
+`910ec0b47a47057996e82bf8c8b08376adba0badf4869c8ac1675f9467ee364b`.
+It must not be overwritten or reclassified after this amendment.
+
+The recovery decisions adopted by this amendment are:
+
+1. replace the prior-R4 deep-core source with a fresh, reusable development
+   diagnostic that is strictly disjoint from all prior R4/R5 data and matches
+   and from the later stage and game suites; and
+2. accept the hash-bound failed-R5 reports plus the two hash-verified immutable
+   exports as sufficient negative-history evidence. The missing PT payloads are
+   explicit retention gaps, not required repair inputs. They may not be
+   reconstructed, substituted, used for initialization/resume, or treated as
+   available full-precision models; the retained seed-29 derivative is not the
+   missing reported checkpoint.
+
+Execution restarts at R5R-00 under the versioned paths below. This amendment
+changes only provenance/diagnostic data construction, not the training
+hypothesis, recipe, thresholds, or one-shot holdout rules.
+
+## R5 repair / R6-unblock worker assignment (amended; no GPU authorized)
 
 This is the sole detailed specification for new R5 repair work. The first R5
 attempt was fully executed and failed closed; the R5 objective remains
@@ -225,25 +260,25 @@ node-accounting change.
 ### Contract boundary
 
 R5R-02 must copy exact inherited values and hashes into
-r0/anhoku-reboot/r5-repair-contract-v1.json; same recipe is not a sufficient
+r0/anhoku-reboot/r5-repair-contract-v2.json; same recipe is not a sufficient
 specification.
 
 | Area | Requirement |
 | --- | --- |
-| Inputs | Commit a867d89; passing replacement-R4 contract/report and sole 880k/60k/60k pilot split; C/16; existing deep-core; complete failed-R5 evidence. Failed R4 payloads and old checkpoints are ineligible. |
+| Inputs | Commit a867d89; passing replacement-R4 contract/report and sole 880k/60k/60k pilot split; C/16; hash-bound failed-R5 contract, preflights, decision reports, run reports, and the hash-verified seed-17/29 exports. Failed R4 payloads and all old checkpoints are ineligible. The absent reported PT files are recorded as unavailable tombstones and are not required inputs; the seed-29 derivative is not a substitute. |
 | Seeds | New from-scratch runs in strict order 41, 53, 65 after R5R-00 verifies they are unused. Never resume or initialize from seed 17/29. Seed 41 is the predeclared game model. |
 | Exposure | Checkpoint/evaluate every 64 updates; minimum 1,024; hard maximum 2,048; no extension. |
 | Convergence | At u at least 1,024, use the five checkpoints from u-256 through u. For both validation and development loss, max(window) - min(window) must be at most 0.00002. Require two consecutive qualifying checkpoints. |
 | Selection | Lowest finite development loss through convergence, then validation loss, development MAE, earlier optimizer update, and lane ID. No convergence by 2,048 is failure. |
 | Metric signs | Improvement is C/16 loss minus candidate loss; quantization degradation is exported loss minus full-precision loss; regret improvement is C/16 regret minus candidate regret. |
 | Offline gates | Each seed's fresh-stage full/export point improvement must be positive. For the arithmetic mean across three fixed seeds, multiplicity-adjusted one-sided 95% simultaneous bounds require full-precision improvement above 0.005, exported improvement above zero, exported-10k-search regret improvement above zero, and quantization degradation below 0.02. Apply the 95% retained-gain gate only when the full-precision improvement lower bound is at least the original 0.01 denominator floor. |
-| Reusable regret | Deterministically select 256 existing deep-core positions; label every legal child in canonical USI order at 250,000 nodes with root-oriented score and mate class/distance. The gated endpoint uses the move returned by frozen zero-fallback 10k search with the exported model. Full-static and exported-static choices are diagnostic only. |
+| Reusable regret | Before training, generate a fresh development-only candidate pool with the replacement-R4 position-generation policy and a new domain-separated seed. Deterministically accept exactly 64 new `reusable_opening_group_id` values with four positions each (256 parents total), subject to the frozen quotas and replenishment ceiling. Label every legal child in canonical USI order at 250,000 nodes with root-oriented score and mate class/distance. The gated endpoint uses the move returned by frozen zero-fallback 10k search with the exported model. Historical seed-17/29 exports and C/16 may be compared on it for diagnostics; new repair exports use it only for the preregistered sequential screen. Full-static choices are allowed only for newly trained checkpoints and remain diagnostic. |
 | Fresh stage | 64 new opening_group_id values times 500 completed 10k-node root labels = 32,000 positions; four of those positions per group receive all-legal-move labels. Freeze exact group meaning and source/phase marginal quotas. |
 | Fresh games | 128 new game_opening_group_id values times four color-swapped pairs = 512 pairs/1,024 games; 10k nodes/move, one thread, concurrency one, no random plies or sequential peeking. The grouped paired 95% Elo lower bound must exceed -20. |
-| Statistics | Within each seed aggregate legal moves to position and positions to opening_group_id, then average the three fixed-seed group effects. Bootstrap opening_group_id jointly across seeds; do not resample seeds. The game unit is game_opening_group_id. source_game_id and canonical_board_id are leakage keys, not resampling units. Freeze the 100,000-draw bootstrap, PRNG seed, quantile convention, simultaneous family/correction, and grouped Elo estimator. |
+| Statistics | For reusable regret, aggregate legal moves to position and positions to `reusable_opening_group_id`; for the fresh stage, aggregate positions to `opening_group_id`. Then average the three fixed-seed group effects and bootstrap the applicable group IDs jointly across seeds; do not resample seeds. The game unit is `game_opening_group_id`. `source_game_id` and `canonical_board_id` are leakage keys, not resampling units. Freeze the 100,000-draw bootstrap, PRNG seed, quantile convention, simultaneous family/correction, and grouped Elo estimator. |
 | Completion | A complete usable label has a target from at least one completed depth and reconciled actual nodes. A later interrupted iteration with partialIteration=true remains valid. Depth-zero/null-target attempts are incomplete and may not become partial scores or artificial draws. Consume candidates in frozen order until the exact quota or a frozen replenishment ceiling; record all rejects and fail if the quota is not filled. |
 | Holdout order | Freeze stage/game generator code, seeds, quotas, and overlap rules before training. Generate and hash both suites only after all six new model hashes are frozen and before stage evaluation. Keep the game suite unopened until the stage passes. No model changes or reruns after generation. |
-| Independence | Stage, game, and reusable artifacts must be mutually disjoint and disjoint from prior R4/R5 data and matches by group, source_game_id, and canonical_board_id. |
+| Independence | Reusable, stage, and game artifacts must be mutually disjoint and each must be disjoint from prior R4/R5 data and matches separately by semantic group identity, source_game_id, and canonical_board_id. The reusable artifact uses its own group namespace but renaming alone never establishes independence. Freeze the complete prior-history exclusion set before reusable generation; after the reusable set is frozen, add its identities to the exclusions for stage/game generation. |
 | Runtime | Native full-refresh/incremental and WASM integer parity, legal moves, loading, OOM, and crashes are gates. Browser latency is diagnostic unless an existing numeric production ceiling is bound before training. |
 | Cost/retention | R5R-01 publishes a repair-specific CPU/GPU/cash/storage ceiling. Retain selected, adjacent, and last-resumable checkpoints, not every checkpoint. Every paid GPU rental requires explicit user permission. CPU labeling should use mbp:mba:ubuntu:nubu in the 10:7:2:1 capacity ratio where available. |
 
@@ -266,7 +301,10 @@ rules-defined draws count; unknown or capped outcomes fail the game artifact.
     pass: R5R-00 -> R5R-01 -> R5R-02 -> R5R-03 -> R5R-04 -> R5R-05
     fail: any R5R-00 through R5R-04 -------------------------> R5R-05(false)
 
-R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
+R5R-00 through R5R-04 advance only on pass. R5R-05 always runs. All amended-run
+outputs go under `out/anhoku-reboot-r5-repair-v2/`. The prior failed receipts
+under `out/anhoku-reboot-r5-repair/` are read-only inputs and must never be
+replaced in place.
 
 ### Worker assignments
 
@@ -274,28 +312,35 @@ R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
 
 - Owner/deps: provenance/experiment worker plus gate reviewer; none.
 - Work/output: inventory the contract inputs and verify seeds 41/53/65 are
-  unused. Freeze legal-move schema, orientation/mate rules, candidate order,
-  replenishment ceiling, stage/game group definitions, quotas, estimands,
-  power methods, and CPU diagnostic ceiling. Write
-  out/anhoku-reboot-r5-repair/preflight/negative-history-inventory.json and
-  out/anhoku-reboot-r5-repair/preflight/diagnostic-contract.json.
-- Pass/stop: every identity resolves and the old failure, ineligible weights,
-  absent stage, unused seeds, completion rules, design, and finite cost are
-  explicit. Otherwise stop before generation.
+  unused. Freeze the prior-history exclusion-set manifest; the fresh reusable
+  generator policy, domain-separated seed `2026090405`, semantic group
+  definition, quotas, candidate order, and replenishment ceiling; and the
+  legal-move schema, orientation/mate rules, stage/game group definitions,
+  estimands, power methods, and CPU diagnostic ceiling. Write
+  `out/anhoku-reboot-r5-repair-v2/preflight/negative-history-inventory.json` and
+  `out/anhoku-reboot-r5-repair-v2/preflight/diagnostic-contract.json`.
+- Pass/stop: every required executable input and every claimed historical
+  report/export resolves and hash-checks. The old failure, absent PT payloads,
+  ineligible weights, absent stage, unused seeds, exclusion sets, completion
+  rules, design, and finite pre-GPU cost must be explicit. The reports may
+  establish historical decisions but may not stand in for remeasurement of a
+  missing full-precision model. Otherwise stop before generation.
 
 #### R5R-01 — CPU-only diagnosis, power, and cost
 
 - Owner/deps: evaluation/CPU workers plus independent auditor; R5R-00 pass.
   Core-code changes require gate review.
-- Work/output: verify orientation, mate, replay, and node accounting; build and
-  audit the reusable 256-position artifact; compare immutable seed-17 export,
-  seed-29 export, and C/16 on exported-10k-search regret; run existing-model
-  native/WASM correctness; and publish diagnostic, power, throughput, repair
-  cost, peak-storage, and retention reports under
-  out/anhoku-reboot-r5-repair/diagnostic/, with
-  out/anhoku-reboot-r5-repair/diagnostic/diagnostic-gate.json as the index.
-  Keep historical full-precision and static-choice results separate from the
-  required search-regret measurement.
+- Work/output: verify orientation, mate, replay, and node accounting; generate,
+  label, and audit the fresh reusable 64-group/256-position artifact against the
+  frozen exclusion set; then freeze its identities as exclusions for all later
+  holdouts. Compare immutable seed-17 export, seed-29 export, and C/16 on
+  exported-10k-search regret; run existing-export native/WASM correctness; and
+  publish diagnostic, power, throughput, repair cost, peak-storage, and
+  retention reports under `out/anhoku-reboot-r5-repair-v2/diagnostic/`, with
+  `out/anhoku-reboot-r5-repair-v2/diagnostic/diagnostic-gate.json` as the index.
+  Do not report historical full-precision remeasurement or use the seed-29
+  derivative PT. Static-choice results for the historical exports are
+  diagnostic and identified as exported-integer, never full precision.
 - Pass/stop: require complete labels and reconciled nodes, zero correctness
   faults, both specified 80% power results, reproducible secondary sensitivity,
   and a finite affordable envelope. Historical model outcomes are diagnostic,
@@ -309,7 +354,7 @@ R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
   revising it after R5R-01; bind every group, completion, estimator,
   termination, cost, output, and retention detail; test deterministic
   stop/no-stop/resume fixtures; finish C/16 native/WASM preflight; and write
-  out/anhoku-reboot-r5-repair/preflight/successor-contract-audit.json. Freeze
+  `out/anhoku-reboot-r5-repair-v2/preflight/successor-contract-audit.json`. Freeze
   holdout policies but generate no holdout data.
 - Pass/stop: no provisional field, exact runner/contract agreement, passing
   correctness, adequate power/cost, and trainingAuthorized=false pending user
@@ -324,9 +369,9 @@ R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
   passes. Run development, exported-10k-search regret, quantization,
   native/incremental/WASM, and browser-correctness screens after each seed.
   Never run seeds concurrently or rerun a completed result for favorability.
-  Emit one immutable out/anhoku-reboot-r5-repair/runs/seed-{41,53,65}/ tree per
-  executed seed and
-  out/anhoku-reboot-r5-repair/evaluation/sequential-screen.json with checkpoint
+  Emit one immutable `out/anhoku-reboot-r5-repair-v2/runs/seed-{41,53,65}/` tree
+  per executed seed and
+  `out/anhoku-reboot-r5-repair-v2/evaluation/sequential-screen.json` with checkpoint
   metrics, full/export hashes, commands/environment, parity, and spend.
 - Pass/stop: each seed converges by 2,048; has positive full and exported point
   improvement on validation and development; has positive exported-10k-search
@@ -344,14 +389,14 @@ R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
   root/deep stage quotas with frozen replenishment, evaluate C/16 and all three
   full/export models once, and write raw group results plus generation,
   completion, leakage, and access audits under
-  out/anhoku-reboot-r5-repair/stage/, including stage-gate.json.
+  `out/anhoku-reboot-r5-repair-v2/stage/`, including `stage-gate.json`.
 - Stage pass/stop: every count, hash, quota, label, node, identity,
   independence, per-seed direction, and Contract boundary offline gate passes.
   Failure forbids replacement data, re-bootstrap, retraining, and games.
 - Game/output: only after stage pass, open the hashed game suite once and run
   seed 41 versus C/16 for all 1,024 games. Preserve every game, termination
   reason, node total, and pair bin under
-  out/anhoku-reboot-r5-repair/games/, including equal-node-gate.json.
+  `out/anhoku-reboot-r5-repair-v2/games/`, including `equal-node-gate.json`.
 - Game pass/stop: all 512 pairs, zero unknown/capped outcomes, zero
   identity/node/move/fallback faults, and grouped 95% Elo lower bound above
   -20. A harness defect invalidates and routes to reviewed repair; a clean
@@ -363,9 +408,9 @@ R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
   from R5R-00 through R5R-04.
 - Work/output: record pass/fail/skipped tasks; reconcile CPU/GPU/node hours,
   cash, storage, invoices, and remote-instance state; verify local hash-checked
-  raw evidence; preserve old R5 evidence; and write
-  out/anhoku-reboot-r5-repair/closeout/cost-retention-audit.json and
-  out/anhoku-reboot-r5-repair/closeout/r5-repair-final-gate.json.
+  raw evidence; preserve old R5 and first-repair evidence; and write
+  `out/anhoku-reboot-r5-repair-v2/closeout/cost-retention-audit.json` and
+  `out/anhoku-reboot-r5-repair-v2/closeout/r5-repair-final-gate.json`.
 - Pass/stop: r6Authorized=true only if R5R-00 through R5R-04 all passed. This
   permits only a separate R6-10M contract, subject to labeling at most $75,
   first-rung generation plus GPU at most $100, and retained artifacts at most

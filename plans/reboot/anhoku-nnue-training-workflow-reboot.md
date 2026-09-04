@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: replacement R4 passed and its sole 1M pilot remains eligible; the first R5 attempt is closed failed and the R5 objective remains incomplete; C/16 is incumbent, the R5 repair assignment is next, and R6/broad generation remain closed
+- Status: replacement R4 passed and its sole 1M pilot remains eligible; the first R5 attempt and first repair preflight are closed failed, the R5 objective remains incomplete, C/16 is incumbent, amended R5R-00 is next, and R6/broad generation remain closed
 - Created: 2026-08-31
 - Last audited: 2026-09-04
 - Last implementation update: 2026-09-04
@@ -421,7 +421,7 @@ The passing replacement report explicitly records `r5Authorized=true`; this
 closeout did not begin R5. The 10M/50M/100M broad tier and strength work remain
 subject to their later phase gates and are not authorized by replacement R4.
 
-## Current worker routing supersession: R5 repair / R6 unblock (2026-09-04)
+## Current worker routing supersession: amended R5 repair / R6 unblock (2026-09-04)
 
 The preceding routing block is pre-R5 history. The first R5 attempt failed
 closed: it did not converge, missed the frozen 0.005 materiality margin, and
@@ -430,6 +430,14 @@ opened, and R6/10M/50M/100M remain closed.
 
 The sole authoritative next-work specification is the [R5 repair / R6-unblock
 worker assignment](reboot-5-fixed-data-exposure-and-1m-workflow-pilot.md).
-Start at R5R-00 and follow its fail-closed chain. No GPU rental or training is
-authorized until its pre-GPU gates pass and the user explicitly approves the
-rental.
+The first repair preflight failed independent review because its required
+prior-R4 deep-core source contradicted its prior-data disjointness rule, and
+because the exact historical seed-17/29 PT payloads were unavailable. Its
+R5R-05(false) closeout is immutable and R6 remains unauthorized.
+
+The amended assignment uses a fresh, strictly disjoint reusable diagnostic and
+treats hash-bound failed-R5 reports plus immutable exports as sufficient
+negative-history evidence while explicitly recording the missing PT payloads.
+Restart at R5R-00 using the versioned v2 paths and follow the fail-closed chain.
+No GPU rental or training is authorized until its pre-GPU gates pass and the
+user explicitly approves the rental.
