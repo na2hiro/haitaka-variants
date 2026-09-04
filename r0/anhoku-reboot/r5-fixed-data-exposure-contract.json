@@ -1,0 +1,300 @@
+{
+  "schema": "haitaka-anhoku-r5-fixed-data-exposure-contract-v1",
+  "phase": "R5",
+  "ruleset": "anhoku",
+  "frozenAt": "2026-09-04",
+  "status": "frozen-for-preflight",
+  "question": "Can DonorSingleEff learn a reproducible handcrafted-search signal after finite-data training to convergence, and is the current width a sensible deployment point?",
+  "authorization": {
+    "replacementR4Contract": {
+      "path": "r0/anhoku-reboot/r4-replacement-contract.json",
+      "bytes": 7183,
+      "sha256": "bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b"
+    },
+    "replacementR4Gate": {
+      "path": "out/anhoku-reboot-r4-replacement/r4-gate-report.json",
+      "bytes": 13693,
+      "sha256": "2b3b56a7f8ffc0a5d45902667b1b7299aa01f80e5692b0c7dcb2aa8399c64359"
+    },
+    "pilotManifest": {
+      "path": "out/anhoku-reboot-r4-replacement/datasets/pilot-1m.json",
+      "bytes": 637,
+      "sha256": "1f52e6301c84931bec1ed43939f685da051d3647bb11478ebd53c71311025c5b"
+    }
+  },
+  "pilot": {
+    "manifestSchema": "haitaka-r4-replacement-eligible-pilot-v1",
+    "records": 1000000,
+    "entryBytes": 72,
+    "labelContractSha256": "bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b",
+    "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+    "labelBudget": 10000,
+    "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+    "scoreTransform": "identity-with-robust-clip-v1",
+    "resultLossEnabled": false,
+    "unknownResultsIgnored": true,
+    "splits": {
+      "training": {
+        "records": 880000,
+        "manifest": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/training.json",
+          "bytes": 959,
+          "sha256": "9684f34a8c5eb9dc8edc91140466990b347fbc9a8da866bcfece902c799ec5da"
+        },
+        "binary": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/training.bin",
+          "bytes": 63360000,
+          "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+        },
+        "sidecar": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/training.jsonl",
+          "bytes": 1552979382,
+          "sha256": "f3928363815244a79eb06e83fd2b0da397fe32b34d7d380c761b47670bf081d8"
+        }
+      },
+      "validation": {
+        "records": 60000,
+        "manifest": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/validation.json",
+          "bytes": 962,
+          "sha256": "51bcc2ea425858ba849ab0690747644d186161512db2a46b14c019d1d09331f5"
+        },
+        "binary": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/validation.bin",
+          "bytes": 4320000,
+          "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+        },
+        "sidecar": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/validation.jsonl",
+          "bytes": 105984150,
+          "sha256": "10ffbcb690a0fcb4781fdd7e8d4efaf079dc3875d6577d77409617b52ff35a4a"
+        }
+      },
+      "development": {
+        "records": 60000,
+        "manifest": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/development.json",
+          "bytes": 965,
+          "sha256": "cb86e467a914729d343b67f211b727aa33b24625de21d25e40052b8c079c3c33"
+        },
+        "binary": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/development.bin",
+          "bytes": 4320000,
+          "sha256": "21e7f9ca0cbd4b6b8256816f770f5dc6e66939aab7591cf3a3bc55072288cd00"
+        },
+        "sidecar": {
+          "path": "out/anhoku-reboot-r4-replacement/datasets/development.jsonl",
+          "bytes": 105923034,
+          "sha256": "121a65844092d5e399b3db1f427c22bd2d41339012083d3290348c5ac8b60388"
+        }
+      }
+    }
+  },
+  "disallowedInputs": [
+    "out/anhoku-reboot-r4-replacement-v1-failed",
+    "out/anhoku-reboot-r4-replacement-v2-failed",
+    "out/anhoku-reboot-r4-replacement-v3-failed",
+    "out/anhoku-reboot-r4-replacement-v4-failed",
+    "out/anhoku-reboot-r4-replacement-v5-failed",
+    "out/anhoku-reboot-r4-replacement-v6-failed",
+    "out/anhoku-reboot-r4-replacement-v7-failed"
+  ],
+  "initialization": {
+    "selectionSeed": 17,
+    "replicationSeeds": [29, 41],
+    "maximumRecipeLanes": 6,
+    "lanes": [
+      {
+        "id": "scratch",
+        "kind": "scratch",
+        "optimizerState": "new"
+      },
+      {
+        "id": "static-clone-search-finetune",
+        "kind": "static-clone-full-precision",
+        "optimizerState": "new-after-pretraining",
+        "staticClone": {
+          "records": 64000,
+          "entryBytes": 72,
+          "binary": {
+            "path": "out/anhoku-reboot-r4/datasets/static-clone.bin",
+            "bytes": 4608000,
+            "sha256": "7ef440d00a1adf6d8b24f1350c3627c7a8e3bfe137716778523975d85e232f37"
+          },
+          "sidecar": {
+            "path": "out/anhoku-reboot-r4/datasets/static-clone.jsonl",
+            "bytes": 110788417,
+            "sha256": "c42a73b47014dacd1d1fb14cd89289b1792737c0c6f2354cae11308a4d235ff8"
+          },
+          "target": "handcrafted-static-evaluation-v1",
+          "pretrainingUpdates": 64
+        }
+      }
+    ],
+    "quantizedDiagnostic": {
+      "auditOnly": true,
+      "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+      "bytes": 161206531,
+      "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0"
+    },
+    "c16Baseline": {
+      "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+      "bytes": 161206531,
+      "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0"
+    }
+  },
+  "optimization": {
+    "featureFamily": "HalfKAv2^+DonorSingleEff",
+    "objective": {
+      "lambda": 1.0,
+      "loss": "robust-clipped-huber-v1",
+      "targetScoreClip": 12000,
+      "normalizedScoreScale": 12000,
+      "modelOutputToRuntimeScore": 600,
+      "huberDeltaNormalized": 0.1,
+      "resultLossEnabled": false,
+      "teacherOnly": true
+    },
+    "batchSize": 16384,
+    "trainRecordsPerPass": 880000,
+    "validationRecords": 60000,
+    "developmentRecords": 60000,
+    "randomFenSkipping": 0,
+    "filtered": false,
+    "numWorkers": 1,
+    "warmupUpdates": 16,
+    "initialLearningRateCandidates": [0.0015, 0.00075],
+    "decay": {
+      "kind": "step-by-optimizer-update",
+      "stepUpdates": 128,
+      "gamma": 0.5,
+      "minimumLearningRate": 0.00005
+    },
+    "minimumUpdates": 256,
+    "maximumUpdates": 768,
+    "plateau": {
+      "metric": "development.teacher_only_loss",
+      "patienceValidations": 3,
+      "minimumDelta": 0.00001,
+      "minimumUpdatesBeforeStop": 256
+    },
+    "checkpointEveryUpdates": 64,
+    "validateEveryUpdates": 64,
+    "checkpointRetention": "overwrite-last-resumable-state-plus-final-selected-neighbors",
+    "selectionHorizonIsNotOnePass": true
+  },
+  "architecture": {
+    "featureGeometryFrozen": true,
+    "currentWidth": {
+      "l1": 512,
+      "l2": 16,
+      "l3": 32
+    },
+    "compactWidth": {
+      "l1": 256,
+      "l2": 16,
+      "l3": 32
+    },
+    "debugWidth": {
+      "l1": 64,
+      "l2": 8,
+      "l3": 8
+    },
+    "compactDiagnosticRuns": 1
+  },
+  "offlineSelection": {
+    "primaryMetric": "development.teacher_only_loss",
+    "secondaryMetrics": [
+      "validation.teacher_only_loss",
+      "development.teacher_only_mae",
+      "validation.teacher_only_mae"
+    ],
+    "tieBreakOrder": [
+      "primaryMetric",
+      "secondaryMetrics[0]",
+      "secondaryMetrics[1]",
+      "optimizerUpdates",
+      "laneId"
+    ],
+    "groupingUnit": "source-opening-group",
+    "interval": "95-percentile-bootstrap-with-multiplicity-adjustment",
+    "quantizationDenominatorFloor": 0.01,
+    "c16ComparisonRequired": true,
+    "oneShotStageBlock": {
+      "status": "closed",
+      "lifecycle": "open-only-after-recipe-width-selection-and-two-replication-seeds",
+      "dataMayNotBeGeneratedBeforeOpen": true,
+      "sourceGroups": "r5-stage-only-and-disjoint-from-training-validation-development",
+      "moveRegretProtocol": "same-frozen-legal-move-candidate-set-with-precomputed-deep-teacher-values"
+    }
+  },
+  "metrics": {
+    "checkpointFields": [
+      "examplesSeen",
+      "optimizerUpdates",
+      "train.teacher_only_loss",
+      "validation.teacher_only_loss",
+      "development.teacher_only_loss",
+      "train.teacher_only_mae",
+      "validation.teacher_only_mae",
+      "development.teacher_only_mae",
+      "activeRowCoverage",
+      "parameterCount",
+      "serializedBytes",
+      "fullRefreshLatency",
+      "incrementalLatency"
+    ],
+    "predictionVariants": [
+      "full-precision",
+      "exported-integer",
+      "c16",
+      "untrained-initialization",
+      "handcrafted-static-evaluation"
+    ],
+    "deepTeacher": {
+      "dataset": "out/anhoku-reboot-r4-replacement/datasets/deep-core.json",
+      "moveRegret": "full-precision-and-exported-integer-separately"
+    }
+  },
+  "game": {
+    "harness": "r1-qualified-zero-fallback",
+    "mode": "equal-node",
+    "nodesPerMove": 10000,
+    "threads": 1,
+    "concurrency": 1,
+    "pairs": 32,
+    "handcraftedDiagnosticPairs": 8,
+    "fixedTimeCampaign": false,
+    "eloIsVetoOnly": true,
+    "maxMaterialRegressionElo": -20,
+    "missingMovesAllowed": 0,
+    "emergencyFallbacksAllowed": 0
+  },
+  "gates": {
+    "fullPrecisionImprovementMargin": 0.005,
+    "quantizationDegradationUpperMargin": 0.02,
+    "retainedGainLowerBound": 0.95,
+    "exportedIntegerImprovementMargin": 0.0,
+    "deepTeacherRegretImprovementMargin": 0.0,
+    "materialEqualNodeRegressionElo": -20,
+    "requiredReplicates": 2,
+    "nextScale": "10M"
+  },
+  "trainer": {
+    "pinnedRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+    "phase7Patch": {
+      "path": "trainer-patches/variant-nnue-pytorch-phase7.1.patch",
+      "bytes": 7132,
+      "sha256": "79603cc66250e335ba242477137366f0aa8a2e530ffa36f3abfb582fafaf802f"
+    },
+    "r5Patch": {
+      "path": "trainer-patches/variant-nnue-pytorch-r5.patch",
+      "bytes": 840,
+      "sha256": "33f791674fc61a62b8f1667074a086c7ca52c59630e8b5d16ce3153581040f7f"
+    },
+    "finiteExposureRequired": true,
+    "validationMustNotCycle": true,
+    "randomSamplingMustBeZero": true,
+    "productionTrainingRequiresGpuApproval": true
+  }
+}

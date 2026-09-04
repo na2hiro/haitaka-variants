@@ -4,8 +4,8 @@ use std::sync::Arc;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use haitaka::{Board, Move};
 use haitaka_wasm::{
-    NnueModel, SearchEvalMode, nnue_kernels::AffineKernel, search_impl_handcrafted,
-    search_impl_with_eval_mode, search_iterative_deepening_impl,
+    NNUE_TRANSFORMER_OUTPUT_WIDTH, NnueModel, SearchEvalMode, nnue_kernels::AffineKernel,
+    search_impl_handcrafted, search_impl_with_eval_mode, search_iterative_deepening_impl,
     search_iterative_deepening_impl_with_dfpn_mode,
 };
 
@@ -45,7 +45,12 @@ fn criterion_benchmark(criterion: &mut Criterion) {
     let optimized_kernel = AffineKernel::detected();
     let mut affine_group = criterion.benchmark_group("nnue_affine");
     for &(name, input_dimensions, padded_input_dimensions, output_dimensions) in &[
-        ("hidden1", 1_024, 1_024, 16),
+        (
+            "hidden1",
+            NNUE_TRANSFORMER_OUTPUT_WIDTH,
+            NNUE_TRANSFORMER_OUTPUT_WIDTH,
+            16,
+        ),
         ("hidden2", 16, 32, 32),
         ("output", 32, 32, 1),
     ] {

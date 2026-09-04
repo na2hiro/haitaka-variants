@@ -16,7 +16,8 @@ use haitaka::{
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
-    DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats, NnueModel,
+    DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats,
+    NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH, NNUE_TRANSFORMER_WIDTH, NnueModel,
     NnuePositionState, R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices,
     R1InferenceTrace, R1SentinelNetwork, collapse_donor_receiver_pair_v2,
     donor_receiver_pair_v2_active_rows, donor_receiver_pair_v2_quantized_rows,

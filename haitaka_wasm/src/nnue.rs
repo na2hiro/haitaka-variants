@@ -44,8 +44,21 @@ const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 #[cfg(feature = "anki")]
 const DONOR_KNIGHT8_ANKI_BLOCK_HASH: u32 = DONOR_KNIGHT8_BLOCK_HASH ^ 0x6a09_e667;
-const TRANSFORMED_FEATURE_DIMENSIONS: usize = 512;
-const FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS: usize = TRANSFORMED_FEATURE_DIMENSIONS * 2;
+/// Number of values in each perspective's feature-transformer accumulator.
+///
+/// NNUE files must be serialized for the same width as the runtime. The width
+/// participates in the network and section hashes, so profiles fail closed
+/// rather than interpreting weights with the wrong shape.
+#[cfg(feature = "nnue-l1-256")]
+pub const NNUE_TRANSFORMER_WIDTH: usize = 256;
+/// Number of values in each perspective's feature-transformer accumulator.
+#[cfg(not(feature = "nnue-l1-256"))]
+pub const NNUE_TRANSFORMER_WIDTH: usize = 512;
+/// Input width of the first affine layer after both perspectives are joined.
+pub const NNUE_TRANSFORMER_OUTPUT_WIDTH: usize = NNUE_TRANSFORMER_WIDTH * 2;
+
+const TRANSFORMED_FEATURE_DIMENSIONS: usize = NNUE_TRANSFORMER_WIDTH;
+const FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS: usize = NNUE_TRANSFORMER_OUTPUT_WIDTH;
 const PSQT_BUCKETS: usize = 8;
 const LAYER_STACKS: usize = 8;
 const HIDDEN_LAYER_1_DIMENSIONS: usize = 16;
@@ -100,14 +113,21 @@ const fn clipped_relu_hash(previous_hash: u32) -> u32 {
     0x538D24C7u32.wrapping_add(previous_hash)
 }
 
-const INPUT_LAYER_HASH: u32 = input_slice_hash(FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS as u32, 0);
-const HIDDEN_LAYER_1_AFFINE_HASH: u32 =
-    affine_hash(INPUT_LAYER_HASH, HIDDEN_LAYER_1_DIMENSIONS as u32);
-const HIDDEN_LAYER_1_HASH: u32 = clipped_relu_hash(HIDDEN_LAYER_1_AFFINE_HASH);
-const HIDDEN_LAYER_2_AFFINE_HASH: u32 =
-    affine_hash(HIDDEN_LAYER_1_HASH, HIDDEN_LAYER_2_DIMENSIONS as u32);
-const HIDDEN_LAYER_2_HASH: u32 = clipped_relu_hash(HIDDEN_LAYER_2_AFFINE_HASH);
-const OUTPUT_LAYER_HASH: u32 = affine_hash(HIDDEN_LAYER_2_HASH, OUTPUT_LAYER_DIMENSIONS as u32);
+const fn output_layer_hash_for_transformer_width(transformer_width: usize) -> u32 {
+    let input_layer_hash = input_slice_hash((transformer_width * 2) as u32, 0);
+    let hidden_layer_1_affine_hash =
+        affine_hash(input_layer_hash, HIDDEN_LAYER_1_DIMENSIONS as u32);
+    let hidden_layer_1_hash = clipped_relu_hash(hidden_layer_1_affine_hash);
+    let hidden_layer_2_affine_hash =
+        affine_hash(hidden_layer_1_hash, HIDDEN_LAYER_2_DIMENSIONS as u32);
+    let hidden_layer_2_hash = clipped_relu_hash(hidden_layer_2_affine_hash);
+    affine_hash(hidden_layer_2_hash, OUTPUT_LAYER_DIMENSIONS as u32)
+}
+
+/// Serialized section hash for the affine network in the selected width profile.
+pub const NNUE_OUTPUT_LAYER_HASH: u32 =
+    output_layer_hash_for_transformer_width(NNUE_TRANSFORMER_WIDTH);
+const OUTPUT_LAYER_HASH: u32 = NNUE_OUTPUT_LAYER_HASH;
 
 const fn feature_transformer_hash(feature_set_hash: u32) -> u32 {
     feature_set_hash ^ FEATURE_TRANSFORMER_OUTPUT_DIMENSIONS as u32
@@ -119,6 +139,16 @@ const fn composite_feature_set_hash(head: u32, tail: u32) -> u32 {
 
 const fn network_hash(feature_set_hash: u32) -> u32 {
     feature_transformer_hash(feature_set_hash) ^ OUTPUT_LAYER_HASH
+}
+
+#[cfg(test)]
+const fn network_hash_for_transformer_width(
+    feature_set_hash: u32,
+    transformer_width: usize,
+) -> u32 {
+    feature_set_hash
+        ^ (transformer_width * 2) as u32
+        ^ output_layer_hash_for_transformer_width(transformer_width)
 }
 
 const HALFKAV2_NETWORK_HASH: u32 = network_hash(HALFKAV2_FEATURE_SET_HASH);
@@ -2470,16 +2500,48 @@ mod tests {
 
     #[test]
     fn computes_expected_piece_constants() {
+        let profile_hash_delta = if cfg!(feature = "nnue-l1-256") {
+            0x0000_00c0
+        } else {
+            0
+        };
+
+        assert_eq!(
+            NNUE_TRANSFORMER_WIDTH,
+            if cfg!(feature = "nnue-l1-256") {
+                256
+            } else {
+                512
+            }
+        );
+        assert_eq!(NNUE_TRANSFORMER_OUTPUT_WIDTH, NNUE_TRANSFORMER_WIDTH * 2);
+        assert_eq!(
+            NNUE_OUTPUT_LAYER_HASH,
+            if cfg!(feature = "nnue-l1-256") {
+                0x6333_700a
+            } else {
+                0x6333_76ca
+            }
+        );
         assert_eq!(PIECE_INDICES, 1_863);
         assert_eq!(HALFKAV2_REAL_FEATURES, 150_903);
-        assert_eq!(HALFKAV2_NETWORK_HASH, 0x3c103e72);
+        assert_eq!(HALFKAV2_NETWORK_HASH, 0x3c103e72 ^ profile_hash_delta);
         #[cfg(feature = "annan")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1810b26d);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x1810b26d ^ profile_hash_delta
+        );
         #[cfg(feature = "anhoku")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x0d8f62a2);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x0d8f62a2 ^ profile_hash_delta
+        );
         assert_eq!(DONOR_SINGLE_REAL_FEATURES, 1_620);
         assert_eq!(DONOR_RECEIVER_PAIR_V2_REAL_FEATURES, 16_200);
-        assert_eq!(HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH, 0xd0bd8e2b);
+        assert_eq!(
+            HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH,
+            0xd0bd8e2b ^ profile_hash_delta
+        );
         assert_eq!(donor_receiver_pair_v2_stats().v1_real_features, 152_523);
         assert_eq!(donor_receiver_pair_v2_stats().v2_real_features, 167_103);
         assert_eq!(
@@ -2487,21 +2549,45 @@ mod tests {
             955
         );
         #[cfg(feature = "taimen")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x22478c02);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x22478c02 ^ profile_hash_delta
+        );
         #[cfg(feature = "haimen")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x8f59f6b3);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x8f59f6b3 ^ profile_hash_delta
+        );
         #[cfg(feature = "neko")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x37265e1e);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x37265e1e ^ profile_hash_delta
+        );
         #[cfg(feature = "nekoneko")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x4ce2016d);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x4ce2016d ^ profile_hash_delta
+        );
         #[cfg(feature = "yokoneko")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xea6e7592);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0xea6e7592 ^ profile_hash_delta
+        );
         #[cfg(feature = "yokonekoneko")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0xaea1f4cd);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0xaea1f4cd ^ profile_hash_delta
+        );
         #[cfg(feature = "tenkyo")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x7ed77717);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x7ed77717 ^ profile_hash_delta
+        );
         #[cfg(feature = "tenjiku")]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x1bd8cb2f);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x1bd8cb2f ^ profile_hash_delta
+        );
         #[cfg(not(any(
             feature = "annan",
             feature = "anhoku",
@@ -2514,12 +2600,41 @@ mod tests {
             feature = "tenkyo",
             feature = "tenjiku"
         )))]
-        assert_eq!(HALFKAV2_DONOR_SINGLE_NETWORK_HASH, 0x6b65fdd7);
-        assert_eq!(HALFKAV2_DONOR_PAIR_NETWORK_HASH, 0x93d7ef28);
+        assert_eq!(
+            HALFKAV2_DONOR_SINGLE_NETWORK_HASH,
+            0x6b65fdd7 ^ profile_hash_delta
+        );
+        assert_eq!(
+            HALFKAV2_DONOR_PAIR_NETWORK_HASH,
+            0x93d7ef28 ^ profile_hash_delta
+        );
         #[cfg(feature = "anki")]
-        assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0xbae05a59);
+        assert_eq!(
+            HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH,
+            0xbae05a59 ^ profile_hash_delta
+        );
         #[cfg(not(feature = "anki"))]
-        assert_eq!(HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH, 0x5bf765a4);
+        assert_eq!(
+            HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH,
+            0x5bf765a4 ^ profile_hash_delta
+        );
+    }
+
+    #[test]
+    fn rejects_the_other_transformer_width_profile() {
+        let other_width = if NNUE_TRANSFORMER_WIDTH == 256 {
+            512
+        } else {
+            256
+        };
+        let other_hash = network_hash_for_transformer_width(HALFKAV2_FEATURE_SET_HASH, other_width);
+        assert_ne!(other_hash, HALFKAV2_NETWORK_HASH);
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&VERSION.to_le_bytes());
+        bytes.extend_from_slice(&other_hash.to_le_bytes());
+        let error = NnueModel::from_bytes(&bytes).unwrap_err().to_string();
+        assert!(error.contains("unexpected NNUE hash"), "{error}");
     }
 
     #[test]

@@ -114,3 +114,89 @@ If full precision succeeds and serialization fails, route to quantization. If
 training loss will not fall, route to R1/R2 or capacity. If IID improves but
 independent-policy data does not, route to R4 rather than architecture.
 
+### CPU/pre-GPU execution closeout (2026-09-04)
+
+The fixed-data execution surface is prepared and has not started ML training.
+
+- Frozen contract: `r0/anhoku-reboot/r5-fixed-data-exposure-contract.json`,
+  SHA-256 `de0fabb790b7c212e4ee1db0da05632d9b66f6cfa023614dfd8287ca1b25880a`.
+  It binds the passing replacement-R4 report and its sole eligible 1M pilot,
+  denies every failed replacement payload, compares only scratch with the
+  immutable 64k static-clone lane, and retains C/16 as an audit-only baseline.
+  No historical full-precision checkpoint was admitted as a warm start because
+  the available checkpoints do not have defensible matching objective/data
+  provenance.
+- The preflight report is
+  `out/anhoku-reboot-r5-preflight-v2/r5-preflight-report.json`, SHA-256
+  `fd18474d1822eb3b48e17275ee67e2a246ce9b35a7b542c953a91010113ef103`.
+  It independently hashes the training, validation, development, and
+  static-clone payloads; confirms exact finite physical exposure; and records
+  four recipes (two learning rates × two initialization lanes). Training,
+  stage-block opening, and strength games are all false/closed in the report.
+- `scripts/r5_trainer.py` is a dedicated CUDA-only runner. It uses the pinned
+  disposable trainer context, no filtering/skipping, one loader worker,
+  non-cyclic streams with final partial batches, the frozen normalized robust
+  Huber objective, step warmup/decay, plateau stopping, checkpoint metrics, and
+  separate full-precision/export artifacts. The legacy `train` command is not
+  used because its manifest and objective are incompatible with replacement R4.
+- `sol` added the separate `haitaka_wasm` `nnue-l1-256` compile-time profile for
+  R5-C. The compact profile passed 90 `cargo test -p haitaka_wasm --features
+  anhoku,nnue-l1-256` tests; the current-width profile remains the default.
+
+The next action requires explicit permission to rent a Vast.ai GPU instance.
+Until that permission is granted, no R5 training process will be launched.
+
+### GPU execution closeout (2026-09-04)
+
+The user approved the GPU pilot. Vast.ai offer `40819313` was rented as
+instance `49809117` on an RTX 4080 SUPER at `$0.219259/hour`; the instance is
+now stopped (`exited`) after the evidence was copied and hash-checked. The
+contract and local preflight remain the binding data surface:
+
+- Contract: `r0/anhoku-reboot/r5-fixed-data-exposure-contract.json`, SHA-256
+  `de0fabb790b7c212e4ee1db0da05632d9b66f6cfa023614dfd8287ca1b25880a`.
+- GPU preflight: `out/anhoku-reboot-r5-gpu/r5-preflight-report.json`, SHA-256
+  `30cbce756aa26db374ec2b1298ba44645101f7407527522ae66146e3642d970e`.
+- Consolidated status: `out/anhoku-reboot-r5-gpu/r5-phase-status.json`.
+
+The four frozen current-width recipes completed 768 optimizer updates. None
+met the three-validation plateau rule; all stopped at the frozen maximum
+updates. The scratch `0.0015`, seed 17 recipe ranked first by the frozen
+development metric (`0.015179697477072268`) and is the selected candidate. The
+single compact diagnostic also completed at 768 updates; its development loss
+was `0.01582142168659308`, with 40,858,024 parameters and 83,048,665 exported
+bytes versus 80,475,560 parameters and 161,206,489 bytes for current width.
+
+The selected current-width candidate improved the held-out development loss
+over C/16 by `0.0008258709844737571`, below the preregistered `0.005` full-
+precision materiality margin. Python full-precision and exported-network
+reports are preserved separately. The point estimate for exported-vs-full
+development degradation is `6.311560359437834e-7`, but the required grouped
+stage interval cannot be formed before opening the disjoint stage block.
+Native Rust search parity assertions passed, and the CPU/native latency
+diagnostic is in `out/anhoku-reboot-r5-gpu/r5-runtime-diagnostic.json`;
+browser-WASM latency remains a separate pending measurement.
+
+The selected recipe was replicated with seed 29 at 768 updates (development
+loss `0.015556901777924065`, validation loss `0.013678847513593738`). Seed 41
+was not started: the frozen run had already reached its update ceiling without
+convergence, and the deep-core sidecar has root scores but no per-legal-move
+values, so the required move-regret metric is not computable without a new
+explicitly frozen artifact.
+
+The predeclared equal-node diagnostics were completed with the R1 zero-fallback
+harness, 10,000 nodes per move, one thread, 32 color-swapped pairs for C/16,
+and 8 color-swapped pairs for handcrafted. The complete C/16 result was 20–44
+with no draws, approximate candidate-minus-C/16 Elo `-136.969`, paired 95%
+interval `[-205.870, -68.069]`, and zero missing moves/fallbacks. This is a
+clear material regression against the contract's `-20` veto threshold, so the
+R5 game gate vetoes the candidate. The handcrafted diagnostic was 7–9,
+approximate Elo `-43.658`, with zero missing moves/fallbacks; it remains
+low-sample diagnostic evidence only. Exact hashes and recovery provenance are
+in `out/anhoku-reboot-r5-gpu/r5-game-audit.json`.
+
+Therefore R5 execution is complete but R5 does not pass and R6 must not open.
+The one-shot R5 stage block stayed closed and no stage data was generated.
+The remaining route is a new reviewed R5 contract/evidence revision that
+extends the convergence horizon and supplies the required per-legal-move
+deep-teacher artifact before additional replication or stage data generation.
