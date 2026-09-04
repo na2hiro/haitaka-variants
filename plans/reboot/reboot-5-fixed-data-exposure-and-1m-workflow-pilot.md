@@ -200,3 +200,192 @@ The one-shot R5 stage block stayed closed and no stage data was generated.
 The remaining route is a new reviewed R5 contract/evidence revision that
 extends the convergence horizon and supplies the required per-legal-move
 deep-teacher artifact before additional replication or stage data generation.
+
+## R5 repair / R6-unblock worker assignment (planned; no GPU authorized)
+
+This is the sole detailed specification for new R5 repair work. The first R5
+attempt was fully executed and failed closed; the R5 objective remains
+incomplete. Seeds 17/29 and their weights are diagnostic history only, C/16
+remains incumbent, the original stage was never generated, and R6 remains
+closed.
+
+The repair tests one narrow hypothesis: the selected scratch, LR 0.0015,
+512x16x32 recipe may need more than 768 optimizer updates. It keeps the sole
+eligible replacement-R4 1M payload and every other recipe, objective, teacher,
+score, serializer, search, and data-order field from the original R5 contract.
+It does not authorize an architecture, objective, data-mixture, teacher,
+score-scale, or 10M change, or deployment of a rejected model.
+
+Routine inventory, fixtures, orchestration, and report assembly may go to a
+Luna/max worker. Gate reviewer below means an independent Sol/high-quality
+reviewer. Gate review is mandatory for statistical decisions, final
+authorization, and any engine, trainer, search, serializer, WASM, or
+node-accounting change.
+
+### Contract boundary
+
+R5R-02 must copy exact inherited values and hashes into
+r0/anhoku-reboot/r5-repair-contract-v1.json; same recipe is not a sufficient
+specification.
+
+| Area | Requirement |
+| --- | --- |
+| Inputs | Commit a867d89; passing replacement-R4 contract/report and sole 880k/60k/60k pilot split; C/16; existing deep-core; complete failed-R5 evidence. Failed R4 payloads and old checkpoints are ineligible. |
+| Seeds | New from-scratch runs in strict order 41, 53, 65 after R5R-00 verifies they are unused. Never resume or initialize from seed 17/29. Seed 41 is the predeclared game model. |
+| Exposure | Checkpoint/evaluate every 64 updates; minimum 1,024; hard maximum 2,048; no extension. |
+| Convergence | At u at least 1,024, use the five checkpoints from u-256 through u. For both validation and development loss, max(window) - min(window) must be at most 0.00002. Require two consecutive qualifying checkpoints. |
+| Selection | Lowest finite development loss through convergence, then validation loss, development MAE, earlier optimizer update, and lane ID. No convergence by 2,048 is failure. |
+| Metric signs | Improvement is C/16 loss minus candidate loss; quantization degradation is exported loss minus full-precision loss; regret improvement is C/16 regret minus candidate regret. |
+| Offline gates | Each seed's fresh-stage full/export point improvement must be positive. For the arithmetic mean across three fixed seeds, multiplicity-adjusted one-sided 95% simultaneous bounds require full-precision improvement above 0.005, exported improvement above zero, exported-10k-search regret improvement above zero, and quantization degradation below 0.02. Apply the 95% retained-gain gate only when the full-precision improvement lower bound is at least the original 0.01 denominator floor. |
+| Reusable regret | Deterministically select 256 existing deep-core positions; label every legal child in canonical USI order at 250,000 nodes with root-oriented score and mate class/distance. The gated endpoint uses the move returned by frozen zero-fallback 10k search with the exported model. Full-static and exported-static choices are diagnostic only. |
+| Fresh stage | 64 new opening_group_id values times 500 completed 10k-node root labels = 32,000 positions; four of those positions per group receive all-legal-move labels. Freeze exact group meaning and source/phase marginal quotas. |
+| Fresh games | 128 new game_opening_group_id values times four color-swapped pairs = 512 pairs/1,024 games; 10k nodes/move, one thread, concurrency one, no random plies or sequential peeking. The grouped paired 95% Elo lower bound must exceed -20. |
+| Statistics | Within each seed aggregate legal moves to position and positions to opening_group_id, then average the three fixed-seed group effects. Bootstrap opening_group_id jointly across seeds; do not resample seeds. The game unit is game_opening_group_id. source_game_id and canonical_board_id are leakage keys, not resampling units. Freeze the 100,000-draw bootstrap, PRNG seed, quantile convention, simultaneous family/correction, and grouped Elo estimator. |
+| Completion | A complete usable label has a target from at least one completed depth and reconciled actual nodes. A later interrupted iteration with partialIteration=true remains valid. Depth-zero/null-target attempts are incomplete and may not become partial scores or artificial draws. Consume candidates in frozen order until the exact quota or a frozen replenishment ceiling; record all rejects and fail if the quota is not filled. |
+| Holdout order | Freeze stage/game generator code, seeds, quotas, and overlap rules before training. Generate and hash both suites only after all six new model hashes are frozen and before stage evaluation. Keep the game suite unopened until the stage passes. No model changes or reruns after generation. |
+| Independence | Stage, game, and reusable artifacts must be mutually disjoint and disjoint from prior R4/R5 data and matches by group, source_game_id, and canonical_board_id. |
+| Runtime | Native full-refresh/incremental and WASM integer parity, legal moves, loading, OOM, and crashes are gates. Browser latency is diagnostic unless an existing numeric production ceiling is bound before training. |
+| Cost/retention | R5R-01 publishes a repair-specific CPU/GPU/cash/storage ceiling. Retain selected, adjacent, and last-resumable checkpoints, not every checkpoint. Every paid GPU rental requires explicit user permission. CPU labeling should use mbp:mba:ubuntu:nubu in the 10:7:2:1 capacity ratio where available. |
+
+The original 0.005 gate remains failed and unchanged. R5R-00 freezes the power
+method before diagnostic results. R5R-01 must show at least 80% power for the
+simultaneous primary full-precision stage bound to clear 0.005 when true
+improvement is 0.01, using historical opening-group variance, and at least 80%
+power for the grouped game lower bound to clear -20 Elo when true Elo is zero,
+using clean paired-game variance. It also reports 80%-power minimum detectable
+effects for the exported, quantization, retained-gain, and regret endpoints.
+If a calculation is not reproducible or the designs are unsuitable, stop for a
+separately reviewed design. No threshold or sample size changes after training.
+
+The successor contract also freezes maximum ply, repetition/adjudication,
+unknown/cap handling, valid-game inclusion, and all termination reasons. Only
+rules-defined draws count; unknown or capped outcomes fail the game artifact.
+
+### Dependency and failure flow
+
+    pass: R5R-00 -> R5R-01 -> R5R-02 -> R5R-03 -> R5R-04 -> R5R-05
+    fail: any R5R-00 through R5R-04 -------------------------> R5R-05(false)
+
+R5R-00 through R5R-04 advance only on pass. R5R-05 always runs.
+
+### Worker assignments
+
+#### R5R-00 — Bind history and diagnostic design
+
+- Owner/deps: provenance/experiment worker plus gate reviewer; none.
+- Work/output: inventory the contract inputs and verify seeds 41/53/65 are
+  unused. Freeze legal-move schema, orientation/mate rules, candidate order,
+  replenishment ceiling, stage/game group definitions, quotas, estimands,
+  power methods, and CPU diagnostic ceiling. Write
+  out/anhoku-reboot-r5-repair/preflight/negative-history-inventory.json and
+  out/anhoku-reboot-r5-repair/preflight/diagnostic-contract.json.
+- Pass/stop: every identity resolves and the old failure, ineligible weights,
+  absent stage, unused seeds, completion rules, design, and finite cost are
+  explicit. Otherwise stop before generation.
+
+#### R5R-01 — CPU-only diagnosis, power, and cost
+
+- Owner/deps: evaluation/CPU workers plus independent auditor; R5R-00 pass.
+  Core-code changes require gate review.
+- Work/output: verify orientation, mate, replay, and node accounting; build and
+  audit the reusable 256-position artifact; compare immutable seed-17 export,
+  seed-29 export, and C/16 on exported-10k-search regret; run existing-model
+  native/WASM correctness; and publish diagnostic, power, throughput, repair
+  cost, peak-storage, and retention reports under
+  out/anhoku-reboot-r5-repair/diagnostic/, with
+  out/anhoku-reboot-r5-repair/diagnostic/diagnostic-gate.json as the index.
+  Keep historical full-precision and static-choice results separate from the
+  required search-regret measurement.
+- Pass/stop: require complete labels and reconciled nodes, zero correctness
+  faults, both specified 80% power results, reproducible secondary sensitivity,
+  and a finite affordable envelope. Historical model outcomes are diagnostic,
+  not promotion gates. Otherwise route to objective/label, runtime, R4-mixture,
+  or capacity review as the evidence indicates.
+
+#### R5R-02 — Freeze the successor contract and runner
+
+- Owner/deps: experiment/statistics lead plus gate reviewer; R5R-01 pass.
+- Work/output: create the machine contract from the frozen design above without
+  revising it after R5R-01; bind every group, completion, estimator,
+  termination, cost, output, and retention detail; test deterministic
+  stop/no-stop/resume fixtures; finish C/16 native/WASM preflight; and write
+  out/anhoku-reboot-r5-repair/preflight/successor-contract-audit.json. Freeze
+  holdout policies but generate no holdout data.
+- Pass/stop: no provisional field, exact runner/contract agreement, passing
+  correctness, adequate power/cost, and trainingAuthorized=false pending user
+  approval. Ambiguity or an unplanned recipe/data/code change fails closed.
+
+#### R5R-03 — Train and screen unused seeds sequentially
+
+- Owner/deps: approved GPU worker plus evaluation/runtime reviewer; R5R-02 pass
+  and explicit user permission for the paid GPU rental.
+- Work/output: train seed 41 from scratch and copy/hash its evidence locally.
+  Start seed 53 only after seed 41 passes, and seed 65 only after seed 53
+  passes. Run development, exported-10k-search regret, quantization,
+  native/incremental/WASM, and browser-correctness screens after each seed.
+  Never run seeds concurrently or rerun a completed result for favorability.
+  Emit one immutable out/anhoku-reboot-r5-repair/runs/seed-{41,53,65}/ tree per
+  executed seed and
+  out/anhoku-reboot-r5-repair/evaluation/sequential-screen.json with checkpoint
+  metrics, full/export hashes, commands/environment, parity, and spend.
+- Pass/stop: each seed converges by 2,048; has positive full and exported point
+  improvement on validation and development; has positive exported-10k-search
+  regret improvement; keeps quantization degradation below 0.02; and passes
+  correctness. This same-direction screen is an early stop; only the fresh
+  stage decides the 0.005 materiality bound. The first failure stops later
+  seeds and all holdout work. Three passes freeze all six model hashes.
+
+#### R5R-04 — One-shot fresh stage and game veto
+
+- Owner/deps: data/label/evaluation workers with independent leakage,
+  statistics, and game-result auditors; R5R-03 pass and immutable model hashes.
+- Stage/output: instantiate and mutually audit both precommitted holdout suites
+  before evaluation; hash and withhold the game manifest. Generate the exact
+  root/deep stage quotas with frozen replenishment, evaluate C/16 and all three
+  full/export models once, and write raw group results plus generation,
+  completion, leakage, and access audits under
+  out/anhoku-reboot-r5-repair/stage/, including stage-gate.json.
+- Stage pass/stop: every count, hash, quota, label, node, identity,
+  independence, per-seed direction, and Contract boundary offline gate passes.
+  Failure forbids replacement data, re-bootstrap, retraining, and games.
+- Game/output: only after stage pass, open the hashed game suite once and run
+  seed 41 versus C/16 for all 1,024 games. Preserve every game, termination
+  reason, node total, and pair bin under
+  out/anhoku-reboot-r5-repair/games/, including equal-node-gate.json.
+- Game pass/stop: all 512 pairs, zero unknown/capped outcomes, zero
+  identity/node/move/fallback faults, and grouped 95% Elo lower bound above
+  -20. A harness defect invalidates and routes to reviewed repair; a clean
+  failure rejects the candidate without a larger or repeated match.
+
+#### R5R-05 — Unconditional closeout and R6 decision
+
+- Owner/deps: provenance/cost auditor plus gate reviewer; any terminal result
+  from R5R-00 through R5R-04.
+- Work/output: record pass/fail/skipped tasks; reconcile CPU/GPU/node hours,
+  cash, storage, invoices, and remote-instance state; verify local hash-checked
+  raw evidence; preserve old R5 evidence; and write
+  out/anhoku-reboot-r5-repair/closeout/cost-retention-audit.json and
+  out/anhoku-reboot-r5-repair/closeout/r5-repair-final-gate.json.
+- Pass/stop: r6Authorized=true only if R5R-00 through R5R-04 all passed. This
+  permits only a separate R6-10M contract, subject to labeling at most $75,
+  first-rung generation plus GPU at most $100, and retained artifacts at most
+  25 GiB. It starts no work and never authorizes 50M/100M. Every other outcome
+  records r6Authorized=false and the exact diagnostic route.
+
+### Common handoff
+
+Every receipt names task, worker/reviewer, status/timestamps, repository commit
+and dirty-tree inclusion manifest, contract and dependency/input hashes,
+run/seed/model role, exact commands, tool/build/environment/hardware identity,
+output paths/counts/bytes/hashes, evidence for every gate, completion/anomaly
+records, actual and forecast CPU/GPU/node/wall time, cash/storage, GPU-approval
+receipt, provider instance ID/start-stop times/state, holdout manifest/access
+state, and exact next task. Not applicable needs a reason; missing evidence and
+silence fail closed.
+
+Failure routing stays narrow: no convergence goes to optimization/capacity;
+scalar gain with regret failure to objective/label alignment; independent-stage
+failure to R4 mixture; full-only gain to quantization/serialization; regret
+gain with game failure to score/search calibration; browser correctness failure
+to runtime/R8. Architecture work remains unauthorized until these causes are
+excluded.

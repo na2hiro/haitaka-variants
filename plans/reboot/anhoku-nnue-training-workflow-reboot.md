@@ -1,6 +1,6 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: R4-F, the routed R3 requalification, and replacement R4 are complete; the replacement report passed all 23 gates, records `r5Authorized=true`, and makes its sole 1M pilot manifest eligible for R5, which is the next authorized assignment; no R5 training, broad generation, or strength game has started
+- Status: replacement R4 passed and its sole 1M pilot remains eligible; the first R5 attempt is closed failed and the R5 objective remains incomplete; C/16 is incumbent, the R5 repair assignment is next, and R6/broad generation remain closed
 - Created: 2026-08-31
 - Last audited: 2026-09-04
 - Last implementation update: 2026-09-04
@@ -420,3 +420,16 @@ using only
 The passing replacement report explicitly records `r5Authorized=true`; this
 closeout did not begin R5. The 10M/50M/100M broad tier and strength work remain
 subject to their later phase gates and are not authorized by replacement R4.
+
+## Current worker routing supersession: R5 repair / R6 unblock (2026-09-04)
+
+The preceding routing block is pre-R5 history. The first R5 attempt failed
+closed: it did not converge, missed the frozen 0.005 materiality margin, and
+lost the clean C/16 match 20–44. C/16 remains incumbent, the stage was not
+opened, and R6/10M/50M/100M remain closed.
+
+The sole authoritative next-work specification is the [R5 repair / R6-unblock
+worker assignment](reboot-5-fixed-data-exposure-and-1m-workflow-pilot.md).
+Start at R5R-00 and follow its fail-closed chain. No GPU rental or training is
+authorized until its pre-GPU gates pass and the user explicitly approves the
+rental.
