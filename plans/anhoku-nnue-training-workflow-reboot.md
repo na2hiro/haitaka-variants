@@ -1,9 +1,9 @@
 # Anhoku NNUE Training Workflow Reboot
 
-- Status: Phase R4 executed and failed closed on the preregistered finite-label completeness gate (82,799/1,000,000 pilot searches incomplete); the bounded R4-F finite-label remediation below is the only authorized next work, R5 is not authorized, and no broad generation, training, or strength game has started
+- Status: R4-F, the routed R3 requalification, and replacement R4 are complete; the replacement report passed all 23 gates, records `r5Authorized=true`, and makes its sole 1M pilot manifest eligible for R5, which is the next authorized assignment; no R5 training, broad generation, or strength game has started
 - Created: 2026-08-31
-- Last audited: 2026-09-03
-- Last implementation update: 2026-09-03
+- Last audited: 2026-09-04
+- Last implementation update: 2026-09-04
 - Primary ruleset: Anhoku
 - Final target: a production NNUE that is stronger than the handcrafted evaluator at the target fixed time
 - Historical record: `plans/anhoku-nnue-handcrafted-strength-plan.md`
@@ -1830,10 +1830,63 @@ authorization chain above, has every named replacement gate true, records
 dataset manifest. Stop after that replacement closeout; R5 is a separate
 assignment.
 
-At this revision R4-F authorizes only analysis, implementation/tests needed for
-its reporter and gate, and the bounded probe above. It does not yet authorize a
-replacement 1M labeling run, the 10M/50M/100M broad tier, R5 training, GPU
-rental, feature or architecture changes, or any strength game.
+Before execution, this R4-F assignment authorized only analysis,
+implementation/tests needed for its reporter and gate, and the bounded probe
+above. It did not itself authorize a replacement 1M labeling run, the
+10M/50M/100M broad tier, R5 training, GPU rental, feature or architecture
+changes, or any strength game.
+
+### R4-F and replacement R4 implementation record (complete, 2026-09-04)
+
+R4-F was executed fail-closed. The bound analysis is
+`out/anhoku-reboot-r4f/incomplete-analysis.json` (SHA-256
+`e72f5a8011560d0f744b486ee33f2d4c7d5b7af458cf59c54d8a3c167a307be3`),
+and the canonical unused-pool manifest is
+`out/anhoku-reboot-r4f/unused-pool-manifest.json` (SHA-256
+`3729938a89aaf6b98f7ce10a77ae5bb433c0c8c969aecfe8af01e8a6518e0e81`).
+The R4-F report (SHA-256
+`3fb6b1bc5644243200e833c3c59831b97415f8ef644044b2620be3f3b5731e7c`)
+had a valid closeout and authoritative `r3` route, but remained failed overall
+because the direct-route retained-coverage gate was false. It did not authorize
+R5 or replacement labeling by itself.
+
+The separately preregistered R3 requalification then passed all ten gates with
+the original teacher, 10,000/250,000-node budgets, search semantics, target,
+transform, and loss unchanged. Its report is
+`out/anhoku-reboot-r4f-r3/r3-gate-report.json` (SHA-256
+`31152a5a3e6a002dee1c6b034721350a0d5b825ba7b47476ea6e14e5bdb9e053`)
+and records `r4Authorized=true`.
+
+Replacement R4 was subsequently executed under the frozen v8 contract
+`r0/anhoku-reboot/r4-replacement-contract.json` (SHA-256
+`bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b`).
+Versions 1 through 7 remain preserved in separately named failed-evidence
+directories. The v8 coverage comparison uses the finite-trainer baseline
+published by R4-F rather than the original attempted-position telemetry: the
+replacement reduced never-observed reachable rows from 36,935 to 36,065 and
+below-minimum reachable rows from 19,764 to 17,397, while donor-row measures
+did not regress (236 never-observed and 6 below-minimum in both).
+
+The replacement attempted 131,261 new pilot labels, of which 28,713 were
+incomplete, and 16 new deep labels. Across imported and new pilot attempts the
+incomplete rate was 111,512/1,131,261 = 9.8573%, within the frozen 15% ceiling;
+the conditional new-attempt rate is separately reported as 21.8747%. The
+immutable ledger contains 1,135,373 attempts. The accepted finite cohort has
+exactly 880,000 training, 60,000 validation, and 60,000 development records,
+plus 4,096 finite deep-core records. Search accounting records 1,318,250,000
+nodes, 3.672 core-hours, and $0.7344 estimated cost, with 10M/50M/100M
+forecasts of $71.61/$358.07/$716.15.
+
+The final report is
+`out/anhoku-reboot-r4-replacement/r4-gate-report.json` (SHA-256
+`2b3b56a7f8ffc0a5d45902667b1b7299aa01f80e5692b0c7dcb2aa8399c64359`).
+All 23 exact named gates are true; it records `passed=true`,
+`r5Authorized=true`, and no training, strength game, or broad generation. The
+sole R5-eligible dataset manifest is
+`out/anhoku-reboot-r4-replacement/datasets/pilot-1m.json` (SHA-256
+`1f52e6301c84931bec1ed43939f685da051d3647bb11478ebd53c71311025c5b`).
+This closes R4-F and replacement R4. R5 is now unblocked but remains a separate
+assignment.
 
 ## Phase R5: fixed-data exposure and 1M workflow pilot
 
@@ -2383,13 +2436,12 @@ family, or begin R2 in the same assignment.
 ## Current worker routing
 
 The status line at the top of this document is authoritative. At the current
-revision, the only authorized assignment is the bounded R4-F finite-label
-remediation above. Preserve the failed R4 v1 evidence and do not use its 917,201
-finite rows as a passing 1M pilot. Stop after the R4-F closeout; a later
-assignment may execute only the route that closeout authorizes. R5, including
-its bounded GPU training, remains unauthorized until a replacement
-machine-readable R4 gate report has every named gate true and explicitly
-records `passed=true` and `r5Authorized=true`. That replacement R4 assignment
-must also stop after closeout and must not begin R5. The 10M/50M/100M broad tier
-and strength work remain subject to their later phase gates; a replacement R4
-report alone does not authorize them.
+revision, R4-F and its routed R3 and replacement-R4 assignments are complete.
+Preserve the original failed R4 evidence and the seven replacement tuning
+failures; none is an eligible pilot. The next authorized assignment is R5,
+using only
+`out/anhoku-reboot-r4-replacement/datasets/pilot-1m.json` with SHA-256
+`1f52e6301c84931bec1ed43939f685da051d3647bb11478ebd53c71311025c5b`.
+The passing replacement report explicitly records `r5Authorized=true`; this
+closeout did not begin R5. The 10M/50M/100M broad tier and strength work remain
+subject to their later phase gates and are not authorized by replacement R4.

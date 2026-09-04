@@ -15,6 +15,8 @@ mod r1evidence;
 mod r2;
 mod r3;
 mod r4;
+mod r4f;
+mod r4replacement;
 mod selection;
 mod trainer;
 mod verify;
@@ -339,6 +341,54 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, required = true)]
         regeneration_proof: Vec<PathBuf>,
+    },
+    /// Recompute the failed R4 label evidence and publish the canonical unused pool.
+    R4fAnalyze {
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        output_dir: PathBuf,
+    },
+    /// Run the preregistered bounded R4-F replay/confirmation/reference probe.
+    R4fProbe {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r4f-label-completeness-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Run the fresh R3 requalification selected by a valid R4-F closeout.
+    R4fR3Requalify {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r4f-r3-requalification-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        r4f_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f-r3")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Execute and close the separately authorized replacement R4 finite cohort.
+    R4Replacement {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-replacement-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        r4f_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4-replacement")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -844,6 +894,86 @@ fn main() -> Result<()> {
                 regeneration_proofs: &regeneration_proof,
             })?;
             println!("R4 gate passed: {}", path.display());
+        }
+        Command::R4fAnalyze {
+            original_dir,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4f::analyze(r4f::AnalyzeArgs {
+                original_dir: &original_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+            })?;
+            println!("R4-F analysis written to {}", path.display());
+        }
+        Command::R4fProbe {
+            contract,
+            original_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4f::probe(r4f::ProbeArgs {
+                contract_path: &contract,
+                original_dir: &original_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("R4-F gate report written to {}", path.display());
+        }
+        Command::R4fR3Requalify {
+            contract,
+            r4f_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4f::r3_requalify(r4f::R3RequalifyArgs {
+                contract_path: &contract,
+                r4f_dir: &r4f_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("Replacement R3 gate report written to {}", path.display());
+        }
+        Command::R4Replacement {
+            contract,
+            original_dir,
+            r4f_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4replacement::replacement_r4(r4replacement::ReplacementArgs {
+                contract_path: &contract,
+                original_dir: &original_dir,
+                r4f_dir: &r4f_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("Replacement R4 gate report written to {}", path.display());
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

@@ -1,0 +1,114 @@
+{
+  "schema": "haitaka-anhoku-r4f-label-completeness-contract-v1",
+  "frozenAt": "2026-09-03T19:20:00+09:00",
+  "originalContractSha256": "81c9b6baec8bf6bafd01cf4370e432cfc4a4f60e78b417dce02096d57ebe1339",
+  "originalFailedGateSha256": "2fa26d4629c2ddf3fa1f9f61632f3d29558929eb67ea736ae4957598b3d04fc7",
+  "r3Contract": {
+    "path": "r0/anhoku-reboot/r3-teacher-probe-contract.json",
+    "sha256": "25cd5eacb9cd45fe4110dd796c0536b1822e2c5b0d85db6e65b6a26ecfde79ba"
+  },
+  "r3Gate": {
+    "path": "out/anhoku-reboot-r3/r3-gate-report.json",
+    "sha256": "7e97b3a215f2c6e6f03b30a56ce29bb3ac8b23630ea506d9d5445c09f9d7b5cb"
+  },
+  "labelSourceRevision": "d1e31faae753a226e67b01a35035ca5548ee3cd7bb165dd556a4d7a35488c38b",
+  "archivedLabelExecutableSha256": [
+    "663c3e2b407ce8a0737f843b66368660d55a786da475345fa223c9174af8a266",
+    "af89820c7b1e32e4bc7d1c8f34f2173d14c809cdb502ece9d09ca9e2ba199017",
+    "c8d049a2a46cbe29e0698f57a9422b61d9a661cbbd3c6db1c4f5d21e4f8feabd",
+    "fe3e6011bbe02ff4db1ed86403666d526cc601b9967093d161f1421f2958971a"
+  ],
+  "analysis": {
+    "path": "out/anhoku-reboot-r4f/incomplete-analysis.json",
+    "sha256": "e72f5a8011560d0f744b486ee33f2d4c7d5b7af458cf59c54d8a3c167a307be3"
+  },
+  "unusedPool": {
+    "path": "out/anhoku-reboot-r4f/unused-pool-manifest.json",
+    "sha256": "3729938a89aaf6b98f7ce10a77ae5bb433c0c8c969aecfe8af01e8a6518e0e81"
+  },
+  "probe": {
+    "selectionVersion": "sha256-phase-stratified-unused-pool-v1",
+    "selectionSeed": 2026090306,
+    "candidateFixedBudgets": [10000],
+    "requiredPhaseCounts": {
+      "early": 614,
+      "middle": 2048,
+      "late": 1229,
+      "terminal-adjacent": 205
+    },
+    "replayPositions": 256,
+    "freshConfirmationPositions": 4096,
+    "deepReferencePositions": 256,
+    "maximumDistinctFreshBoards": 4096,
+    "maximumTotalSearchEvaluations": 4608
+  },
+  "labelPolicy": {
+    "evaluator": "haitaka-native-handcrafted-search-v1",
+    "nodeBudget": 10000,
+    "deepReferenceNodeBudget": 250000,
+    "maximumDepth": 64,
+    "nodeCountingVersion": "alpha-beta-plus-qsearch-v2",
+    "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+    "scoreTransform": "identity-with-robust-clip-v1",
+    "loss": "robust-clipped-huber-v1",
+    "nonmateClip": 12000,
+    "mateThreshold": 29000,
+    "mateBase": 30000,
+    "qsearchPolicy": "default-qsearch-limits-v1",
+    "searchSemantics": "r1d1-qualified-root-backed-up-v1"
+  },
+  "limits": {
+    "maximumConfirmationIncompleteRate": 0.11,
+    "maximumPhaseIncompleteRates": {
+      "early": 0.01,
+      "middle": 0.06,
+      "late": 0.25,
+      "terminal-adjacent": 0.33
+    },
+    "maximumMissingnessRateDeltaFromOriginal": 0.03,
+    "maximumRobustNormalizedMae": 0.20,
+    "maximumSignDisagreementRate": 0.30,
+    "maximumMateClassDisagreementRate": 0.20,
+    "minimumComparableReferencePositions": 220,
+    "requiredNodeAccountingRate": 1.0,
+    "maximumDistributionTotalVariation": {
+      "split": 0.06,
+      "source": 0.06,
+      "phase": 0.06,
+      "ply": 0.08,
+      "side": 0.04,
+      "material": 0.06,
+      "check": 0.04,
+      "tactical": 0.04,
+      "resultStatus": 0.06,
+      "donorState": 0.04,
+      "outputBucket": 0.06
+    },
+    "maximumStratumIncompleteRate": {
+      "split": 0.15,
+      "source": 0.22,
+      "phase": 0.35,
+      "ply": 0.42,
+      "side": 0.15,
+      "material": 0.18,
+      "check": 0.15,
+      "tactical": 0.16,
+      "resultStatus": 0.20,
+      "donorState": 0.20,
+      "outputBucket": 0.25
+    },
+    "minimumStratumAttempts": 32,
+    "minimumFiniteFeatureCoverageRate": 0.98,
+    "maximumTotalNodes": 107520000,
+    "maximumCoreHours": 1.0,
+    "maximumDollars": 0.20,
+    "cpuCoreHourUsd": 0.20
+  },
+  "routeRule": {
+    "accountingOrReplayFailure": "r1-d1",
+    "qsearchOrHistoryFailure": "r1-d2",
+    "targetOrMissingnessFailure": "r3",
+    "unchangedPolicySuccess": "replacement-r4",
+    "fallback": "stop"
+  }
+}

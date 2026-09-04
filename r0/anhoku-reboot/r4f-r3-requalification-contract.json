@@ -1,0 +1,56 @@
+{
+  "schema": "haitaka-anhoku-r4f-r3-requalification-contract-v1",
+  "frozenAt": "2026-09-03T19:50:00+09:00",
+  "r4fContract": {
+    "path": "r0/anhoku-reboot/r4f-label-completeness-contract.json",
+    "sha256": "fec55b5ce4907ee6f706bd8646462fc27d416fd71821cdb7cb58f4bfcc2640e9"
+  },
+  "r4fReport": {
+    "path": "out/anhoku-reboot-r4f/r4f-gate-report.json",
+    "sha256": "3fb6b1bc5644243200e833c3c59831b97415f8ef644044b2620be3f3b5731e7c"
+  },
+  "r4fRawResults": {
+    "path": "out/anhoku-reboot-r4f/probe-results.jsonl",
+    "sha256": "a994e61dba075439ea36a4f791baaa74e8d78af9d810c8632027578cf1fe8cb4"
+  },
+  "unusedPool": {
+    "path": "out/anhoku-reboot-r4f/unused-pool-manifest.json",
+    "sha256": "3729938a89aaf6b98f7ce10a77ae5bb433c0c8c969aecfe8af01e8a6518e0e81"
+  },
+  "selectionSeed": 2026090307,
+  "requiredPhaseCounts": {
+    "early": 154,
+    "middle": 512,
+    "late": 307,
+    "terminal-adjacent": 51
+  },
+  "decisionPositions": 1024,
+  "referencePositions": 128,
+  "replayPositions": 64,
+  "maximumSearchEvaluations": 1216,
+  "maximumTotalNodes": 42880000,
+  "maximumCoreHours": 0.5,
+  "maximumDollars": 0.1,
+  "cpuCoreHourUsd": 0.2,
+  "maximumIncompleteRate": 0.12,
+  "minimumComparableReferences": 108,
+  "maximumRobustNormalizedMae": 0.20,
+  "maximumSignDisagreementRate": 0.30,
+  "maximumMateClassDisagreementRate": 0.20,
+  "replacementSelectionPolicy": "deficit-cell-rarest-feature-first-v1",
+  "labelPolicy": {
+    "evaluator": "haitaka-native-handcrafted-search-v1",
+    "nodeBudget": 10000,
+    "deepReferenceNodeBudget": 250000,
+    "maximumDepth": 64,
+    "nodeCountingVersion": "alpha-beta-plus-qsearch-v2",
+    "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+    "scoreTransform": "identity-with-robust-clip-v1",
+    "loss": "robust-clipped-huber-v1",
+    "nonmateClip": 12000,
+    "mateThreshold": 29000,
+    "mateBase": 30000,
+    "qsearchPolicy": "default-qsearch-limits-v1",
+    "searchSemantics": "r1d1-qualified-root-backed-up-v1"
+  }
+}

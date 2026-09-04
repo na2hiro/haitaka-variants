@@ -23,6 +23,33 @@
         "decision_rule": "PASS iff mismatch count equals zero and generation semantic hashes are equal",
         "cost_ceiling": "CPU tests only; no production data, GPU, or strength match"
       }
+    },
+    {
+      "id": "r4f-label-completeness-v1",
+      "registered_at": "2026-09-03T19:20:00+09:00",
+      "hypothesis": "The unchanged R3 teacher remains deterministic and accurate enough for label-blind finite-cohort replenishment.",
+      "changed_variable": "fresh unlabeled confirmation positions",
+      "controls": ["teacher", "10k/250k budgets", "qsearch", "target", "transform", "loss"],
+      "config_stage": "r4f-probe",
+      "config": {"path":"r0/anhoku-reboot/r4f-label-completeness-contract.json","sha256":"fec55b5ce4907ee6f706bd8646462fc27d416fd71821cdb7cb58f4bfcc2640e9"}
+    },
+    {
+      "id": "r4f-r3-requalification-v1",
+      "registered_at": "2026-09-03T19:50:00+09:00",
+      "hypothesis": "A fresh isolated decision block confirms the unchanged teacher and authorizes a feature-aware, label-blind replacement selection policy.",
+      "changed_variable": "replacement selection policy",
+      "controls": ["teacher", "10k/250k budgets", "qsearch", "target", "transform", "loss"],
+      "config_stage": "r3-requalification",
+      "config": {"path":"r0/anhoku-reboot/r4f-r3-requalification-contract.json","sha256":"951aa9442373cb547a58d4afdc985698fd139650281110704bd805806d8327ab"}
+    },
+    {
+      "id": "r4-replacement-finite-cohort-v1",
+      "registered_at": "2026-09-03T20:20:00+09:00",
+      "hypothesis": "Deterministic label-blind replenishment can produce the exact finite 1M pilot and 4096 deep-core while preserving declared mixtures and coverage.",
+      "changed_variable": "finite-cohort rejection and replenishment",
+      "controls": ["frozen position pool", "teacher", "10k/250k budgets", "target", "split/source/phase quotas"],
+      "config_stage": "replacement-r4",
+      "config": {"path":"r0/anhoku-reboot/r4-replacement-contract.json","sha256":"bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b"}
     }
   ],
   "outcomes": [
@@ -45,6 +72,41 @@
       ],
       "does_not_prove": [
         "Teacher strength, training quality, production runtime correctness, or Elo."
+      ]
+    },
+    {
+      "preregistration_id": "r4f-label-completeness-v1",
+      "recorded_at": "2026-09-03T19:45:00+09:00",
+      "stage_manifests": [{"stage":"closeout","path":"out/anhoku-reboot-r4f/r4f-gate-report.json","sha256":"3fb6b1bc5644243200e833c3c59831b97415f8ef644044b2620be3f3b5731e7c"}],
+      "outcome": "valid closeout selected r3 because retained feature coverage missed the frozen direct-route bound"
+    },
+    {
+      "preregistration_id": "r4f-r3-requalification-v1",
+      "recorded_at": "2026-09-03T20:10:00+09:00",
+      "stage_manifests": [{"stage":"closeout","path":"out/anhoku-reboot-r4f-r3/r3-gate-report.json","sha256":"31152a5a3e6a002dee1c6b034721350a0d5b825ba7b47476ea6e14e5bdb9e053"}],
+      "outcome": "pass: unchanged teacher requalified and replacement R4 authorized"
+    },
+    {
+      "preregistration_id": "r4-replacement-finite-cohort-v1",
+      "recorded_at": "2026-09-04T08:53:51+09:00",
+      "stage_manifests": [
+        {
+          "stage": "closeout",
+          "path": "out/anhoku-reboot-r4-replacement/r4-gate-report.json",
+          "sha256": "2b3b56a7f8ffc0a5d45902667b1b7299aa01f80e5692b0c7dcb2aa8399c64359"
+        },
+        {
+          "stage": "r5-eligible-pilot",
+          "path": "out/anhoku-reboot-r4-replacement/datasets/pilot-1m.json",
+          "sha256": "1f52e6301c84931bec1ed43939f685da051d3647bb11478ebd53c71311025c5b"
+        }
+      ],
+      "outcome": "pass: all 23 replacement R4 gates true; exact finite 1M pilot and 4,096-record deep core produced; R5 authorized",
+      "proves": [
+        "The frozen replacement policy produced the exact finite datasets while passing authorization-chain, identity, isolation, coverage, missingness, cost, regeneration, and no-downstream-work gates."
+      ],
+      "does_not_prove": [
+        "R5 learning quality, checkpoint parity, production strength, or authorization for broad-tier generation."
       ]
     }
   ]
