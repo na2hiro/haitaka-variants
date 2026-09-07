@@ -434,3 +434,339 @@ failure to R4 mixture; full-only gain to quantization/serialization; regret
 gain with game failure to score/search calibration; browser correctness failure
 to runtime/R8. Architecture work remains unauthorized until these causes are
 excluded.
+
+## Second R5 repair amendment — reviewed v3 path (2026-09-05)
+
+The v2 R5R-01 failure is retained as immutable negative evidence. A separate
+Sol/high-quality review found that the failure is actionable before any repair
+seed or holdout was opened: the reusable worker mishandled root no-legal-move
+terminal positions, 43 qsearch-only labels had no completed target, the
+implementation silently allowed a missing exported-model move to fall back to
+the first legal move, the original source-game identity was renamed, and the
+fixed 128-group game-power calculation was underpowered. This amendment does
+not reclassify v2 and does not change the training hypothesis, recipe, seeds,
+convergence limits, 0.005 stage materiality margin, -20 Elo game veto, or 80%
+power requirement.
+
+The v3 execution surface is versioned under
+`out/anhoku-reboot-r5-repair-v3/`. It must bind the v2 diagnostic gate and
+closeout hashes, the complete v2 generated/attempted/labeled/matched identity
+set, and SHA-256 hashes of the actual worker/orchestration sources plus the
+dirty-tree inclusion manifest. A git commit is preferred but not required when
+the source hashes and manifest are explicit and immutable. No v2 artifact may
+be overwritten.
+
+### v3 R5R-01 corrections
+
+- The shared root no-legal-move branch returns the same rules-defined terminal
+  mate score and orientation already used below the root. It is never encoded
+  as a static score or draw; mate-distance convention is frozen and fixture
+  tested.
+- Qsearch-only/depth-zero/null-target attempts remain incomplete. A candidate
+  parent is accepted atomically only after every legal child has a completed
+  target and reconciled actual nodes. Failed parents are recorded and the
+  frozen rank order advances within the same phase/source quota; if necessary
+  the whole source group is rejected and replenished. The exact 64 groups and
+  256 parents are finalized only after this completion test.
+- Label attempts are content-addressed by source identity, canonical board,
+  legal move, and worker revision. Shards can stop and resume only by verifying
+  the frozen input and code hashes; a partial shard is never treated as a
+  completed receipt. Rejected identities are added to the later holdout
+  exclusion set.
+- Any missing, illegal, or emergency exported-model move is a correctness
+  failure; no first-legal-move fallback is admissible. Original generated
+  `source_game_id` values remain visible and are audited directly; namespace
+  renaming is not an independence proof.
+- Native/WASM parity is exercised with C/16, seed-17 export, and seed-29
+  export, separately from the generic crate test suite.
+
+### v3 game-power design
+
+Before any training, replace the unsuitable 128-group historical-power
+calculation with a frozen design of 2,048 independent semantic
+`game_opening_group_id` values, one color-swapped pair per group, and 4,096
+total 10k-node games. The match remains one thread, concurrency one, with the
+same termination and zero-fallback rules. The primary is the one-sided 95%
+group-level score-rate bound transformed monotonically to Elo; the 100,000-draw
+PCG64-DXSM sensitivity bootstrap uses the frozen seed and quantile convention.
+Both results must have power at least 0.80 and differ by at most 0.05. Include
+a bounded-variance stress result using variance 0.25; at 2,048 groups the
+stress result must also clear 0.80. No threshold is weakened.
+
+The v3 stage-power calculation must additionally report a conservative
+variance-bound sensitivity because v2's stage estimate used only four historical
+groups. If the bound fails, stop for another reviewed design; do not proceed to
+training on the optimistic four-group estimate.
+
+### v3 dependency flow
+
+`R5R-00-v3` freezes the amendment, source/code hashes, expanded exclusions,
+terminal/completion semantics, resumable worker protocol, and corrected power
+methods with `trainingAuthorized=false`. `R5R-01-v3` must pass all engine,
+label, identity, runtime, power, and cost gates. `R5R-02-v3` must ship the
+successor contract plus deterministic holdout generators and stop/resume
+fixtures before training authorization is considered. Only then may R5R-03
+request a new explicit GPU-rental approval and train seeds 41, 53, and 65
+sequentially. R5R-04 remains one-shot and opens games only after the fresh stage
+passes. R6 remains closed unless every substantive R5 task passes.
+
+The v2 receipts and the Sol review are required inputs to the v3 audit; they
+are not promotion evidence. The v3 closeout must record the independent review
+identity and may not mark R5 or R6 passed from diagnostic results alone.
+
+## Third R5 repair amendment — v3b typed identity correction (2026-09-05)
+
+`R5R-01-v3` failed closed before any label or model result was produced. Its
+candidate selector incorrectly treated the twelve sealed source-opening strata
+used by v2 as hard exclusions, leaving zero eligible candidates. This is
+immutable structural-negative evidence; it does not reclassify v2 and must not
+be overwritten. Sol/high adjudicated that a new opening suite is unnecessary
+for this development-only diagnostic, provided the identity namespaces below
+are enforced in code and in the receipts.
+
+The corrective execution surface is
+`out/anhoku-reboot-r5-repair-v3b/`. It may import the hash-checked v3
+candidate shard without regeneration:
+
+- positions SHA-256:
+  `4272ef63bfd324002483dfaa5c0542e9d3de5d7b5d0a016764983d8e1abcc717`;
+- generation-contract SHA-256:
+  `f9e52e577f232f5c5104d3a165525b9ad230f3db0d1755ce9b97e6f98d7239e5`.
+
+The v3b selector uses typed identities:
+
+- `sourceOpeningGroupId` is the exact blocked-factor set
+  `anhoku-v3-053` through `anhoku-v3-064`; overlap is expected, it is not a
+  leakage key or resampling unit, and conditional independence is claimed only
+  given this frozen set;
+- raw `sourceGameId` is a hard provenance/leakage key and every prior value is
+  excluded;
+- `canonicalBoardId` is a hard provenance/leakage key and every prior value is
+  excluded before candidate ranking/selection;
+- `reusableOpeningGroupId` is the semantic resampling unit, deterministically
+  bound to the raw source game and generation-contract hash; prior semantic
+  group IDs remain hard exclusions.
+
+Legacy opening-group values are classified by schema: raw generator opening
+values are source-opening strata, while reusable/stage/game analysis-group
+values remain hard semantic exclusions. A candidate from an unrecorded source
+opening stratum fails closed. The v3b audit must report the exact allowed
+stratum set and opening-SFEN hashes, expected/actual blocked-factor overlap,
+hard overlap before and after filtering, within-v3b uniqueness, semantic-group
+construction/contract binding, and
+`conditionalIndependenceGivenSourceOpeningStratum=true`.
+
+Before selection, freeze stratum allocation using the domain-separated
+`haitaka-r5r-stratum-allocation-v1` hash: four of the twelve strata receive six
+semantic groups and the remaining eight receive five, for 64 groups total.
+Retain the existing four source-policy quotas and early/middle/late phase
+quotas. Aggregate legal-child labels to parent, parents to
+`reusableOpeningGroupId`, then aggregate groups within stratum and give each
+stratum weight 1/12. Any inability to fill the frozen phase × policy × stratum
+quotas within the 4,096-parent ceiling fails closed. The sensitivity bootstrap
+resamples groups within each source-opening stratum and never resamples models
+or seeds.
+
+The v3b dependency flow is `R5R-00-v3b` → `R5R-01-v3b` → `R5R-02-v3b`, with
+the same trainingAuthorized=false, holdoutAuthorized=false, r6Authorized=false,
+and no GPU rental. Only a passing v3b diagnostic gate permits successor
+contract/runner work; a fresh explicit GPU approval is still required after
+R5R-02-v3b and before any training.
+
+## Fourth R5 repair amendment — v3c quota-feasible selector (2026-09-05)
+
+`R5R-01-v3b` also failed closed before labeling: the typed selector’s greedy
+rank admission reached 248/256 parents because it exhausted the
+policy-by-stratum intersections in an unfavorable order. Its preflight and
+failure evidence are immutable. A temporary verification showed that the
+hash-ranked candidate pool has a feasible allocation, so the selector is
+repaired with a deterministic max-flow matrix over phase-feasible source-game
+groups, four source-policy row quotas of 16, and the frozen source-opening
+stratum column quotas of four sixes and eight fives. Rank order is then applied
+within each allocated policy × stratum cell. An infeasible matrix still fails
+closed.
+
+The source-bound execution root is
+`out/anhoku-reboot-r5-repair-v3c/`. It may import the same v3 candidate shard
+only after verifying the two hashes recorded in the v3b amendment. It must
+create fresh v3c preflight receipts binding the max-flow helper, orchestration
+script, plan, dirty-tree manifest, and imported-shard provenance. The v3 and
+v3b roots remain immutable and are not rerun or overwritten. The semantic
+stratum allocation audit reports group counts (not parent-row counts), exact
+policy/phase quotas, 64 unique contract-bound semantic groups, and 256 unique
+canonical boards.
+
+The v3c dependency flow is `R5R-00-v3c` → `R5R-01-v3c` → `R5R-02-v3c`. All
+training, holdout, GPU-rental, and R6 authorizations remain false until the
+corresponding gates pass; a fresh explicit GPU approval is still required
+after R5R-02-v3c and before any training.
+
+## Fifth R5 repair amendment — v3d exact phase feasibility (2026-09-05)
+
+The v3c diagnostic was interrupted during partial labeling after review found
+that its max-flow feasibility predicate required phase presence but did not
+enforce the frozen parent minimums. Its partial shards are preserved as
+non-promotion evidence; no v3c gate was emitted and no model, holdout, GPU, or
+training work occurred. The selector is tightened to require exactly the
+available minimums for every source-game group: early ≥ 1, middle ≥ 2, and
+late ≥ 1. The same predicate is used by the allocation graph and by final
+selection, so an infeasible phase × policy × stratum matrix fails closed.
+
+The new source-bound root is `out/anhoku-reboot-r5-repair-v3d/`. It may import
+the already hash-verified v3 candidate shard, manifest, generation contract,
+and typed exclusions, but must rerun selection and labeling under fresh v3d
+receipts. The v3, v3b, and partial v3c roots remain immutable. The v3d gate
+names are `R5R-00-v3d`, `R5R-01-v3d`, and `R5R-02-v3d`; all authorizations
+remain closed, with fresh GPU approval required only after R5R-02-v3d.
+
+## Sixth R5 repair amendment — v3e parent-atomic resume protocol (2026-09-05)
+
+The v3d diagnostic failed closed during labeling after 2,812 child rows exposed
+one depth-zero, qsearch-only incomplete target. The stop also proved that the
+v3d shard runner was not actually resumable at its claimed granularity: it
+published only mutable whole-shard streams, so a replenishment attempt or
+process restart would relabel unaffected parents. The ten partial shard trees,
+the incomplete row, and the absence of shard summaries or a diagnostic gate
+are immutable non-promotion evidence. No v3d label may seed the corrected
+cache, and no training, holdout, GPU, or game work occurred.
+
+The corrected source-bound root is
+`out/anhoku-reboot-r5-repair-v3e/`. It may import only the hash-verified v3
+candidate shard and manifest, generation contract, and typed exclusions. Its
+preflight freezes a separate source-binding manifest. A post-build worker
+binding derives `workerRevision` from that manifest and verifies the exact
+release executable, build profile/features, candidate shard and manifest,
+generation contract, base exclusion set, canonically sorted model hashes, and
+all search modes and constants. The current helper source must still hash to
+the frozen revision immediately before build, while creating the worker
+binding, and at worker startup when the source tree is available.
+
+Each selected parent has a canonical complete-record hash covering every
+provenance and selection field. A parent-cache ID binds that record hash to the
+worker binding, executable, models, and search contract, but deliberately does
+not bind the whole selection file so a still-selected parent can be reused
+across replenishment attempts. Child label hashes are domain-separated over
+the parent-cache ID, move, child SFEN, and complete result payload; child and
+regret rows carry the parent-cache ID.
+
+Parent objects are written below a same-filesystem append-only partial tree.
+Files and the partial directory are flushed before an atomic rename into the
+objects tree. A final object is reusable only when its manifest has verified
+file hashes, byte lengths, row counts, exact legal-move count and digest,
+exactly one complete label per legal move, one regret/runtime row per bound
+model, reconciled nodes, zero runtime/model faults, and `passed=true`. Strict
+reuse validation reconstructs every child board and label hash, recomputes
+teacher-best and selected scores and both regret values, enforces positive
+completed depths and search-node ceilings, and requires each runtime check to
+have actually executed exactly once per model. An
+invalid object at a completed ID fails closed and is never overwritten.
+Concurrent writers validate the winner after a rename collision; losing and
+interrupted partials remain operational evidence and count toward cost and
+storage.
+
+Replenishment uses deterministic parent-index waves of exactly ten, except the
+final six-parent wave. Every
+parent in the active wave finishes, all incomplete parents in that wave are
+recorded in selection-index order, and no later wave starts after any such
+marker. Abort state is scoped by the current selection hash, prior reject set,
+worker binding, and wave number, so stale or timing-dependent markers cannot
+change a later attempt. A restart completes missing members of the active wave
+and reuses only validated final parent objects. Final success requires exactly
+256 distinct validated cache objects matching the current selection, with no
+rejected, stale, duplicate, missing-child, incomplete, or foreign-parent
+object admitted.
+
+Every command publishes an immutable start receipt before execution and a
+terminal receipt after wait completion. Any unmatched start is conservatively
+charged two core-hours/two wall-hours and, for a parent-label command, the
+maximum 148,280,000 search nodes (593 legal children × 250,000 plus three
+10,000-node model searches). Partial directories without summaries are thus
+retained and costed rather than silently omitted. Completed nonzero
+parent-worker commands are also charged that maximum search-node amount if
+they did not yield a usable summarized object; this may double-count partial
+summaries but may never undercount failed work.
+
+Before promotion, crash/resume, concurrent-writer, corrupt/partial exclusion,
+and cold-versus-resumed equivalence fixtures must pass. `R5R-01-v3e` adds the
+subgates `workerAndCacheProtocolBound`, `cacheKeyCoverageVerified`,
+`atomicCommitAndConcurrentWriterSafe`, `partialAndCorruptObjectsExcluded`,
+`deterministicAbortAndReplenishment`, `resumeEquivalentToColdRun`,
+`currentSelectionCacheCoverage256`, `allLegalChildrenCompleteExactlyOnce`,
+`noRejectedOrStaleCacheReuse`, and `allAttemptedWorkCosted`.
+
+The preflight and diagnostic gate bind an immutable independent-review
+receipt to the exact source, plan, and passing fixture hashes. The receipt
+records the separately configured reviewer agent and requested model/effort,
+but does not represent a requested configuration as a reviewer-attested model
+identity.
+
+The dependency flow is `R5R-00-v3e` → `R5R-01-v3e` → `R5R-02-v3e`. Earlier
+roots remain immutable. Training, holdout, GPU-rental, game, and R6
+authorizations remain false; the plan still requires a fresh explicit GPU
+approval only after R5R-02-v3e passes.
+
+## Seventh R5 repair amendment — v3f group-atomic replenishment (2026-09-05)
+
+`R5R-01-v3e` terminated without a diagnostic gate after all sixteen selection
+attempts exhausted the existing attempt ceiling. Its immutable evidence has 17
+ordered incomplete-parent markers across five semantic groups, 52 committed
+parent-cache objects, and 17 partial objects. Thirteen markers are distinct
+boards from the same `reusableOpeningGroupId`; board-only replacement therefore
+kept the same computationally infeasible resampling unit selected. No training,
+holdout, GPU, game, or R6 work was authorized or started. A terminal-root
+manifest must hash-bind every v3e file, including all attempts, markers, cache
+objects, partials, and command receipts. Every later cost report and terminal
+closeout carries cumulative v3e plus v3f CPU, wall, node, cash, and storage
+costs.
+
+The corrected source-bound execution root is
+`out/anhoku-reboot-r5-repair-v3f/`; v3e remains read-only negative evidence.
+Replenishment is atomic at `reusableOpeningGroupId`, the declared statistical
+resampling unit. Any parent incomplete for any legal child or bound model at
+the frozen budgets permanently rejects its whole semantic group. Rejection is
+based only on the predeclared completion predicate, never on teacher scores,
+regrets, or model favorability. The source game for every rejected group is
+removed before rerunning the unchanged hash-ranked selector. Selection must
+still produce exactly 64 groups × four parents, each group with one early, two
+middle, and one late parent, while preserving all four policy quotas and all
+twelve frozen source-opening-stratum quotas.
+
+The replenishment ledger binds the initial five groups and 17 boards learned
+from terminal v3e, every later group and board transition, every filtered-pool
+hash, exact selection delta, wave marker, cache decision, contiguous wave
+domain, and absence of post-abort work. The unique-candidate-parent charge is
+the selector's current candidate-parent ceiling plus four for every previously
+rejected semantic group and may never exceed 4,096. Ceiling exhaustion or any
+stale, foreign, reordered, or tampered state writes a failure ledger and
+terminal closeout before failing closed.
+
+Only complete accepted groups enter analysis. Cache objects belonging to any
+rejected group, including complete siblings of its incomplete parent, are
+ineligible. Report completion attrition by reason, policy, phase, and source
+opening stratum. The estimand is explicitly conditioned on computational
+completion at the frozen budgets: the mean model effect over the final 64
+quota-stratified semantic groups complete for every legal child and bound
+model. Recompute the stratified group bootstrap, observed regret variance, and
+conservative power gate from that final set; do not reuse a v3e analysis result.
+
+The Rust worker, models, candidate shard, generation contract, base exclusion
+set, search constants, and parent records remain byte-identical to the frozen
+v3e worker binding. The v3f orchestration and review are bound separately.
+Exactly validated v3e cache objects outside every rejected group may be copied
+into the new v3f cache and reused only under that byte-identical binding; no
+v3f process may write under v3e or rewrite a cache identity. A different
+binding, executable, model, input, search contract, or parent record forbids
+reuse.
+
+Before `R5R-00-v3f`, fixtures must bind the already passing v3e cache protocol
+and additionally pass multi-group failure, quota-preserving group refill,
+rejected-sibling exclusion, unaffected-cache reuse, stale/tampered-state
+rejection, resume/cold equivalence, worker-binding mismatch, and ceiling-
+exhaustion checks. A fresh independent Sol/max review must bind the exact final
+plan, orchestration, shared replenishment code, fixtures, unchanged worker and
+WASM sources, both passing fixture gates, and the v3e terminal manifest.
+
+The dependency flow is `R5R-00-v3f` → `R5R-01-v3f` → `R5R-02-v3f`. Training,
+holdout, GPU-rental, game, and R6 authorizations remain false. A new explicit
+GPU approval is still required only after `R5R-02-v3f` passes and before any
+training.
