@@ -1,0 +1,242 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step3-result-v1",
+  "experimentId": "strength-first-step3-compact-scratch-seed-20260906-v1",
+  "generatedAt": "2026-09-07T12:36:39+09:00",
+  "status": "complete-valid-development-evidence",
+  "claimScope": {
+    "developmentEvidence": true,
+    "confirmatoryClaimAllowed": false,
+    "promotionAuthorized": false,
+    "deploymentAuthorized": false,
+    "reason": "The frozen openings were reused for scheduled screening, checkpoint selection, and the selected-only fixed-time screen."
+  },
+  "configuration": {
+    "path": "r0/anhoku-strength-first/step3-experiment-v1.json",
+    "sha256": "5d6881e5cb50ae07a4f381690118388e41aa02515bb2ddc317ca5fcdfa5cec87",
+    "frozenPreExecutionStatusRetained": true
+  },
+  "training": {
+    "run": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/run.json",
+      "sha256": "40e3f0393bc1d240f511c7c7025d2394a2845cbcc5727d2b54bca8a30280b447"
+    },
+    "metricsJournal": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/metrics.jsonl",
+      "sha256": "29b52db72d6fea2f40bcad053c14782cb9cfc79f9b78c5934911b4180d1ee5d5"
+    },
+    "complete": true,
+    "stopReason": "maximum-updates",
+    "optimizerUpdates": 4096,
+    "examplesSeen": 66753664,
+    "equivalentPasses": 75.85643636363636,
+    "bestValidation": {
+      "update": 1920,
+      "teacherOnlyLoss": 0.01250062993367513,
+      "checkpoint": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/checkpoints/best-validation-u00001920.pt",
+        "sha256": "4f042c673b2875641e778fe3b15c0935452df32552bdd64ddbdc782166b14af7"
+      }
+    },
+    "throughputProbe": {
+      "updatesPerGpuHour": 5832.911392405063,
+      "elapsedGpuHoursThroughUpdate128": 0.021944444444444444,
+      "forecastFirstRunGpuHours": 3.0,
+      "forecastFirstRunCostUsd": 2.25
+    }
+  },
+  "scheduledScreens": [
+    {
+      "update": 256,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 52,
+      "draws": 0,
+      "losses": 76,
+      "score": 0.40625,
+      "lower95": 0.32335835930516665,
+      "upper95": 0.48914164069483335,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/screen-u00000256/strength-screen-u00000256.json",
+        "sha256": "859518c4597ab48bc74734ac004a40a0cbfe3956fd6f1e617ab3806d4ddeecec"
+      }
+    },
+    {
+      "update": 1024,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 71,
+      "draws": 0,
+      "losses": 57,
+      "score": 0.5546875,
+      "lower95": 0.46534895624055705,
+      "upper95": 0.644026043759443,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/screen-u00001024/strength-screen-u00001024.json",
+        "sha256": "43c94e516858599b6c8d2f8d598f303523936e6cf68678e3bd38f830ec2f7a79"
+      }
+    },
+    {
+      "update": 2048,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 87,
+      "draws": 0,
+      "losses": 41,
+      "score": 0.6796875,
+      "lower95": 0.5953384647407052,
+      "upper95": 0.7640365352592948,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/screen-u00002048/strength-screen-u00002048.json",
+        "sha256": "c52b466b263222f6ee6069e82b5e1cf849502f85259ef20ef2c85630d6bf43c4"
+      }
+    }
+  ],
+  "exploratoryUnscheduledScreen": {
+    "update": 4096,
+    "formalScheduledScreen": false,
+    "budget": {"mode": "nodes", "value": 10000},
+    "pairs": 64,
+    "games": 128,
+    "wins": 73,
+    "draws": 0,
+    "losses": 55,
+    "score": 0.5703125,
+    "nativeReport": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/screen-u00004096/native-raw/self-play-report.json"
+  },
+  "finalCandidates": [
+    {
+      "update": 1920,
+      "role": "lowest-validation-loss",
+      "teacherOnlyLoss": 0.01250062993367513,
+      "equalNode": {
+        "pairs": 128,
+        "games": 256,
+        "wins": 178,
+        "draws": 0,
+        "losses": 78,
+        "score": 0.6953125,
+        "lower95": 0.6194643942006075,
+        "upper95": 0.7711606057993925,
+        "correctnessPassed": true,
+        "rawMatchSha256": "fc251c6e829ddee8398e1edf312a3080e4b5de50979b53861ff01a8a4ef44a30"
+      },
+      "comparisonReceipt": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00001920/comparison-receipt-u00001920.json",
+        "sha256": "ed98ebde97cdba80175fe6e92431c3509d219b778efc06c41fdf89dbb5a5a847"
+      }
+    },
+    {
+      "update": 2048,
+      "role": "highest-scheduled-screen-score",
+      "teacherOnlyLoss": 0.01250228271484375,
+      "equalNode": {
+        "pairs": 128,
+        "games": 256,
+        "wins": 174,
+        "draws": 0,
+        "losses": 82,
+        "score": 0.6796875,
+        "lower95": 0.5953384647407052,
+        "upper95": 0.7640365352592948,
+        "correctnessPassed": true,
+        "rawMatchSha256": "d8514b8fb359a3299a367ee1ea14dab8f64ea9dc75c08523bc0c83e8df8b1763"
+      },
+      "comparisonReceipt": {
+        "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00002048/comparison-receipt-u00002048.json",
+        "sha256": "8e79f4690906af9c0f7ad31d87a2921a531d1c5623857f95b9d4bb7629a3a2ca"
+      }
+    }
+  ],
+  "selection": {
+    "decision": "selected-by-frozen-ranking",
+    "selectedUpdate": 1920,
+    "rankingUsedFixedTime": false,
+    "reason": "Neither candidate had a fixed-time result before selection, so the frozen ranking used equal-node score first. u1920 scored 0.6953125 versus 0.6796875 for u2048.",
+    "history": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/selection-history-v2.json",
+      "sha256": "ef807855d7aae34eb9d22562924cb82a55424ae69560a211ba393f365e562e3f"
+    }
+  },
+  "selectedExport": {
+    "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+    "bytes": 83048702,
+    "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896",
+    "byteIdenticalToValidatedCandidateExport": true,
+    "validatedCandidateExport": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/candidates/candidate-u00001920.nnue"
+  },
+  "selectedParity": {
+    "positions": 1024,
+    "integerVsNativeMismatches": 0,
+    "integerVsWasmMismatches": 0,
+    "nativeVsWasmMismatches": 0,
+    "nativeFullRefreshEqualsIncremental": true,
+    "quantization": {
+      "meanAbsoluteScoreDelta": 155.2866664067842,
+      "p95AbsoluteScoreDelta": 656.7433776855469,
+      "p99AbsoluteScoreDelta": 683.6668090820312,
+      "maximumAbsoluteScoreDelta": 1080.13134765625
+    },
+    "receipt": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00001920/parity-receipt-u00001920.json",
+      "sha256": "3555f877edd722b895b9df2329c9b87f95276adb443a2d7c4f6a1e87d4e20018"
+    }
+  },
+  "selectedFixedTime": {
+    "budget": {"mode": "movetime", "value": 100},
+    "pairs": 128,
+    "games": 256,
+    "wins": 172,
+    "draws": 0,
+    "losses": 84,
+    "score": 0.671875,
+    "lower95": 0.5948877799715592,
+    "upper95": 0.7488622200284408,
+    "correctnessPassed": true,
+    "rawMatch": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/final-fixed-time-u00001920/raw-match-final-fixed-time-u00001920.json",
+      "sha256": "52621b57116c7bf9e3da7bf9ca62bee921c9851844887ebad8a05092e4a24362"
+    },
+    "nativeSourceAudit": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/final-fixed-time-u00001920/native-final-fixed-time-source-audit-u00001920.json",
+      "sha256": "76bc8d313f764c06bdae45d3f26e38365f99f56c647eec6381f25177614f5ae0"
+    }
+  },
+  "integrityAudit": {
+    "status": "passed",
+    "selectionGraphValidatorPassed": true,
+    "selectedFixedTimeValidatorPassed": true,
+    "selectionGraphFiles": 74,
+    "allFormalMatchesCorrectnessPassed": true,
+    "allFormalMatchesMissingMoves": 0,
+    "allFormalMatchesIllegalMoves": 0,
+    "allFormalMatchesEmergencyFallbacks": 0,
+    "allFormalMatchesUnsearchedMoves": 0,
+    "activeTrainingOrMatchProcesses": 0
+  },
+  "rentalCloseout": {
+    "provider": "Vast.ai",
+    "instanceId": 50101026,
+    "actualStatus": "exited",
+    "intendedStatus": "stopped",
+    "combinedHourlyRateUsd": 0.4625925925925926,
+    "observedChargeUsd": 1.213,
+    "chargeObservationWindow": ["2026-09-06", "2026-09-08"],
+    "withinApprovedFiveDollarEnvelope": true
+  },
+  "decision": {
+    "productionRecommendation": "retain-handcrafted",
+    "developmentNominee": "u1920-width256-seed20260906",
+    "nextExperiment": "matched-width512-capacity-comparator",
+    "nextExperimentAuthorized": false,
+    "rationale": "The compact scratch model produced a strong development gain at equal nodes and fixed time, while validation bottomed at update 1920 and the exploratory update-4096 screen regressed. A matched width-512 run directly tests whether capacity is the next useful variable."
+  }
+}

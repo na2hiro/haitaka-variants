@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, HistoryAdjudication, Move,
-    Piece, PositionHistory,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
+    HistoryAdjudication, Move, Piece, PositionHistory,
 };
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
@@ -87,6 +87,32 @@ fn qsearch_limits() -> QsearchLimits {
     } else {
         DEFAULT_QSEARCH_LIMITS
     }
+}
+
+fn node_budget_qsearch_limits(max_nodes: u64, depth: u8) -> QsearchLimits {
+    let mut limits = qsearch_limits();
+    // The first completed iteration is the legal interrupted-search result.
+    // Do not let one pathological quiescence subtree consume the whole shared
+    // budget before its first root child completes.  Three reserved nodes are
+    // sufficient for the root, its first child, and the qnode that observes
+    // this local ceiling.  This leaves ordinary searches unchanged until the
+    // only point where they would otherwise return an emergency move.
+    if depth == 1 {
+        limits.node_limit = limits.node_limit.min(max_nodes.saturating_sub(3));
+    }
+    limits
+}
+
+fn deadline_qsearch_limits(depth: u8) -> QsearchLimits {
+    let mut limits = qsearch_limits();
+    // Timed searches must always finish at least one root child so an
+    // interrupted iteration can return a searched legal move.  A bounded
+    // first-depth qsearch preserves that progress on tactical positions;
+    // deeper iterations retain the normal variant-specific ceiling.
+    if depth == 1 {
+        limits.node_limit = limits.node_limit.min(1_024);
+    }
+    limits
 }
 
 #[doc(hidden)]
@@ -323,6 +349,7 @@ struct SearchContext<'a> {
     ordering_stats: SearchOrderingStats,
     qsearch_stats: SearchQsearchStats,
     qsearch_limits: QsearchLimits,
+    qsearch_soft_cap_reached: bool,
     node_budget: Option<Arc<SharedNodeBudget>>,
     training_trace: Option<TrainingTraceCollector>,
     forced_interruption: Option<ForcedInterruption>,
@@ -527,6 +554,7 @@ impl SearchContext<'_> {
         }
         if self.qsearch_stats.qnodes > self.qsearch_limits.node_limit {
             self.qsearch_stats.qsearch_cap_hits += 1;
+            self.qsearch_soft_cap_reached = true;
             return Ok(false);
         }
         Ok(true)
@@ -1472,6 +1500,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits,
+        qsearch_soft_cap_reached: false,
         node_budget,
         training_trace: collect_training_trace.then(TrainingTraceCollector::default),
         forced_interruption,
@@ -1591,6 +1620,42 @@ fn search_board_with_node_budget_in_tt_and_history(
     let mut completed_root_moves = 0;
     let mut partial_play_move = None;
 
+    // A root position with no legal move is a completed rules-defined terminal
+    // result.  Previously the iterative root loop returned no score and the
+    // caller could mistake it for a depth-zero/incomplete search.  Keep the
+    // same side-to-move mate orientation used by the recursive search below
+    // the root, while consuming no artificial search nodes.
+    if board.status() == GameStatus::Won {
+        let terminal = terminal_score_for_side_to_move(board, 0).unwrap_or(-MATE_SCORE);
+        let node_root_result = root_result(
+            None,
+            false,
+            Some(terminal),
+            1,
+            0,
+            SearchInterruptionReason::None,
+            false,
+        );
+        return Ok((
+            NodeBudgetSearchSummary {
+                best_move: None,
+                best_score: Some(terminal),
+                root_result: node_root_result,
+                completed_depth: 1,
+                exhausted: false,
+                elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+                node_limit: max_nodes,
+                alpha_beta_nodes: 0,
+                qsearch_nodes: 0,
+                total_nodes: 0,
+                cap_hits: 0,
+                incomplete_iterations: 0,
+                qsearch_stats,
+            },
+            None,
+        ));
+    }
+
     for depth in 1..=max_depth {
         if budget.counts().2 == max_nodes {
             interruption_reason = SearchInterruptionReason::NodeBudget;
@@ -1605,7 +1670,7 @@ fn search_board_with_node_budget_in_tt_and_history(
                 None,
                 tt,
                 ordering,
-                qsearch_limits(),
+                node_budget_qsearch_limits(max_nodes, depth),
                 Some(Arc::clone(&budget)),
                 collect_training_trace,
                 None,
@@ -2527,7 +2592,7 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
                 deadline,
                 tt,
                 &mut ordering,
-                qsearch_limits(),
+                deadline_qsearch_limits(depth),
                 None,
                 false,
                 forced_interruption,
@@ -3146,6 +3211,7 @@ pub fn r1d2_qsearch_handcrafted_with_history(
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits: qsearch_limits(),
+        qsearch_soft_cap_reached: false,
         node_budget: None,
         training_trace: None,
         forced_interruption: None,
@@ -3369,6 +3435,19 @@ pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
 #[wasm_bindgen(js_name = load_nnue)]
 pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
+}
+
+/// Evaluate one position with the currently loaded integer NNUE.
+///
+/// This deliberately exposes the same full-refresh production evaluator used
+/// by search so release-candidate parity can be checked in the actual WASM
+/// artifact before any strength games are played.
+#[wasm_bindgen(js_name = evaluate_nnue)]
+pub fn evaluate_nnue(sfen: &str) -> Result<i32, JsValue> {
+    let board = Board::from_sfen(sfen)
+        .map_err(|err| JsValue::from_str(&format!("failed to parse SFEN: {err}")))?;
+    let model = current_nnue_model().ok_or_else(|| JsValue::from_str("NNUE is not loaded"))?;
+    Ok(model.evaluate_full_refresh(&board))
 }
 
 #[wasm_bindgen(js_name = set_hash_size_mb)]
@@ -3770,7 +3849,7 @@ fn quiescence(
     } else {
         QsearchMovePicker::new_tactical(board)
     };
-    let mut in_check_best_score = None;
+    let mut in_check_best_score: Option<i32> = None;
 
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
@@ -3809,6 +3888,14 @@ fn quiescence(
         };
         ctx.history.pop();
         let score = score_result?;
+
+        if ctx.qsearch_soft_cap_reached {
+            return Ok(if in_check {
+                in_check_best_score.map_or(score, |best| best.max(score))
+            } else {
+                alpha.max(score)
+            });
+        }
 
         if score >= beta {
             ctx.promote_child_training_trace(ply);
@@ -3863,6 +3950,10 @@ fn quiescence(
             };
             ctx.history.pop();
             let score = score_result?;
+
+            if ctx.qsearch_soft_cap_reached {
+                return Ok(alpha.max(score));
+            }
 
             if score >= beta {
                 ctx.promote_child_training_trace(ply);
@@ -4249,6 +4340,7 @@ mod tests {
             ordering_stats: SearchOrderingStats::default(),
             qsearch_stats: SearchQsearchStats::default(),
             qsearch_limits,
+            qsearch_soft_cap_reached: false,
             node_budget: None,
             training_trace: None,
             forced_interruption: None,
@@ -4707,6 +4799,33 @@ mod tests {
     }
 
     #[test]
+    fn fixed_node_search_scores_root_no_legal_move_as_completed_terminal() {
+        let board = Board::from_sfen(
+            "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26",
+        )
+        .unwrap();
+        assert_eq!(board.status(), GameStatus::Won);
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            250_000,
+            64,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.best_move, None);
+        assert_eq!(summary.best_score, Some(-MATE_SCORE));
+        assert_eq!(summary.completed_depth, 1);
+        assert_eq!(summary.incomplete_iterations, 0);
+        assert_eq!(summary.total_nodes, 0);
+        assert_eq!(
+            summary.root_result.last_completed_iteration_value,
+            Some(-MATE_SCORE)
+        );
+    }
+
+    #[test]
     fn fixed_node_search_reports_a_marked_emergency_move_before_any_child_finishes() {
         let board = Board::startpos();
         let mut workspace = SearchWorkspace::default();
@@ -4728,6 +4847,50 @@ mod tests {
         assert!(summary.root_result.emergency_fallback_used);
         assert!(!summary.root_result.missing_move);
         assert_eq!(summary.root_result.last_completed_iteration_value, None);
+    }
+
+    #[test]
+    fn ten_thousand_node_search_completes_a_root_child_before_pathological_qsearch() {
+        let mut board = Board::from_sfen(
+            "l1n1k1snl/1r2gg1b1/ppsp1pp1p/2p1p2p1/8P/P5P2/1PPPPP1P1/LBGS1K1R1/1N3GSNL b - 17",
+        )
+        .unwrap();
+        let moves = [
+            "7g7f", "3c3d", "4g4f", "2b8h+", "7h8h", "B*7g", "B*9e", "7g5e+", "6g6f", "5e4f",
+            "4h3h", "8c8d", "7f7e", "4f2h", "3i2h", "7d7e", "9f6c+", "7a6c", "B*7a", "R*6d",
+            "P*9f", "8b7b", "9f6c+", "7b6c", "9h9f", "8d8e", "N*7b", "6d6f", "7b6c+", "5b6c",
+            "9f8e", "6f3f", "3h4g", "3f9f", "9e7g", "N*5e", "4g3g", "7e7f", "7g8f", "9f9g+",
+            "8e8c+", "9g8h", "7a2f+", "2d2e", "R*8a", "G*6a", "8c7c", "P*6b", "S*5b", "5a5b",
+            "8f5c+", "5b4a", "7c6c", "S*4f", "3g3f", "2e2f", "8a6a+", "4a3b", "P*3c", "3b2b",
+            "G*7i", "B*4g", "3f2f", "8h8g", "P*8h", "P*2e", "2f1f", "6b6c", "8h8g", "P*8a",
+            "3c3b+", "2b3b",
+        ];
+        for usi in moves {
+            let mv = Move::from_str(usi).unwrap();
+            assert!(board.is_legal(mv), "illegal replay move {usi}");
+            board.play_unchecked(mv);
+        }
+
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            10_000,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert!(summary.root_result.play_move_was_searched);
+        assert!(!summary.root_result.emergency_fallback_used);
+        assert_eq!(summary.completed_depth, 0);
+        assert_eq!(
+            summary
+                .root_result
+                .completed_root_moves_in_interrupted_iteration,
+            1
+        );
+        assert!(summary.root_result.partial_root_state);
+        assert_eq!(summary.total_nodes, 10_000);
     }
 
     #[test]
