@@ -1,0 +1,220 @@
+{
+  "schema": "haitaka-strength-first-corrected-checkpoint-rescreen-v1",
+  "status": "frozen-before-challenger-games",
+  "createdAt": "2026-09-10T06:51:43.669864+00:00",
+  "commit": "54d8b368ec0901f69b8673cc5dde5f6d855fd4c1",
+  "scope": "CPU-only reused-development checkpoint selection; no promotion or deployment",
+  "cpuOnly": true,
+  "gpuAllowed": false,
+  "productionChanged": false,
+  "roles": {
+    "incumbent": "u1920 lowest validation loss and prior selected checkpoint",
+    "challenger": "u2048 highest predeclared scheduled game-screen checkpoint"
+  },
+  "incumbent": {
+    "id": "u1920",
+    "model": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+      "bytes": 83048702,
+      "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896"
+    },
+    "browserContract": {
+      "path": "r0/anhoku-strength-first/step6-browser-export-v2.json",
+      "bytes": 9513,
+      "sha256": "1d5f0e01c2fb9e2241f9350b6b4964dbdb76d69d488684602befed78cce9dd4c"
+    },
+    "browserReport": {
+      "path": "out/anhoku-strength-first/step6-browser-export-retry-20260910-v2/browser-primary-1000ms.json",
+      "bytes": 28551483,
+      "sha256": "c0ac9d73ce1be0f13efeb4ccab5e40fb1f1a5c3999f48a330dbc86dc20f7bce7"
+    },
+    "priorScore": {
+      "wins": 67,
+      "losses": 61,
+      "draws": 0,
+      "rate": 0.5234375
+    }
+  },
+  "challenger": {
+    "id": "u2048",
+    "model": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/candidates/candidate-u00002048.nnue",
+      "bytes": 83048702,
+      "sha256": "883ecc5b63c90eae75d963650435737cd23b72ddb4e2d2d5cde4db1ceb8df866"
+    },
+    "checkpoint": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/checkpoints/scheduled-u00002048.pt",
+      "bytes": 163438925,
+      "sha256": "40617aefc530c2fcf4733e5af3f269a6543b3bb7c8e9fad112348824ad178b30"
+    },
+    "parity": {
+      "positions": 1024,
+      "reference": {
+        "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/reference-u00002048.json",
+        "bytes": 182090,
+        "sha256": "7fd6c5df3a75e822ac21ff3e491adc763ea1aab8db6cf34c26b4b5c9f31aa3ae"
+      },
+      "native": {
+        "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/native-u00002048.json",
+        "bytes": 125369,
+        "sha256": "c8e51305120c4ad14ce1c94b2606039c70f29ff9d4cc5a57b01093406bdfa04c"
+      },
+      "wasm": {
+        "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/wasm-u00002048.json",
+        "bytes": 125328,
+        "sha256": "d499025bdf90e69321e22213686c347631491f38aa5fb7827dea2dc9e6119a5c"
+      }
+    }
+  },
+  "openings": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/openings.tsv",
+    "bytes": 6148,
+    "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+  },
+  "wasm": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm_bg.wasm",
+    "bytes": 18413169,
+    "sha256": "112f2e5f0af71938ef671128185e3212d63243b381ed802333601b76bce8e163"
+  },
+  "wasmGlue": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm.js",
+    "bytes": 36924,
+    "sha256": "d8eaf8ad3bcf842588f4fc2d3a83d6cb7f2d29637a5097396db3b0877036a724"
+  },
+  "wasmPackageDirectory": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256",
+  "harness": {
+    "path": "scripts/strength_first_browser_harness.mjs",
+    "bytes": 25168,
+    "sha256": "a2d9ebe29ad4fc5757b86de84028aece21fbd77a2ab622ef0b6e3e42dc798cd3"
+  },
+  "worker": {
+    "path": "scripts/strength_first_browser_worker.js",
+    "bytes": 18987,
+    "sha256": "0bd0c2f95fd513a34f03d227170bf6647dcaec3f6f6c71ca29c262d2c440ba6a"
+  },
+  "node": {
+    "path": "/home/na2hiro/.nvm/versions/node/v26.8.1/bin/node",
+    "bytes": 150425704,
+    "sha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3",
+    "version": "v26.8.1"
+  },
+  "browser": {
+    "host": "localhost Ubuntu Chrome",
+    "pairs": 64,
+    "games": 128,
+    "movetimeMs": 1000,
+    "maxPlies": 200,
+    "maxDepth": 64,
+    "workerCount": 1,
+    "concurrentGames": 1,
+    "timeoutMs": 28800000,
+    "comparison": "u2048 corrected width256 versus handcrafted at equal time and color-swapped openings"
+  },
+  "selectionRule": {
+    "metric": "cap-as-loss candidate score against handcrafted on the common 64 opening groups at 1000 ms",
+    "decision": "Select u2048 only if its conservative point estimate is strictly greater than u1920; otherwise retain u1920.",
+    "tieBreak": "u1920 because it had higher prior equal-node score and lower validation loss",
+    "uncertainty": "Report a 20000-replicate opening-paired bootstrap interval for each score and u2048-minus-u1920 using seed 20260910.",
+    "extension": "No interim inspection, optional stopping, or sample extension."
+  },
+  "capPolicy": "Preserve capped games and score every capped challenger game as a loss in the selection metric; report ordinary and conservative scores.",
+  "historyDisclosure": "Both checkpoints, training history, and openings are reused development evidence. This is not independent confirmation.",
+  "frozenArtifacts": [
+    {
+      "path": "r0/anhoku-strength-first/step3-result-report.json",
+      "bytes": 9359,
+      "sha256": "4ba816345960c3ea3bebbe812ed007bfc71ca434e6b5f4eedb38d524318f8ea8"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step6-result-report.json",
+      "bytes": 27698,
+      "sha256": "4b8ca01195f6aaa2dd8680d0e2e80765b25095462b3c6bfced767afce1d11583"
+    },
+    {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+      "bytes": 83048702,
+      "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step6-browser-export-v2.json",
+      "bytes": 9513,
+      "sha256": "1d5f0e01c2fb9e2241f9350b6b4964dbdb76d69d488684602befed78cce9dd4c"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-retry-20260910-v2/browser-primary-1000ms.json",
+      "bytes": 28551483,
+      "sha256": "c0ac9d73ce1be0f13efeb4ccab5e40fb1f1a5c3999f48a330dbc86dc20f7bce7"
+    },
+    {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/candidates/candidate-u00002048.nnue",
+      "bytes": 83048702,
+      "sha256": "883ecc5b63c90eae75d963650435737cd23b72ddb4e2d2d5cde4db1ceb8df866"
+    },
+    {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/checkpoints/scheduled-u00002048.pt",
+      "bytes": 163438925,
+      "sha256": "40617aefc530c2fcf4733e5af3f269a6543b3bb7c8e9fad112348824ad178b30"
+    },
+    {
+      "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/reference-u00002048.json",
+      "bytes": 182090,
+      "sha256": "7fd6c5df3a75e822ac21ff3e491adc763ea1aab8db6cf34c26b4b5c9f31aa3ae"
+    },
+    {
+      "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/native-u00002048.json",
+      "bytes": 125369,
+      "sha256": "c8e51305120c4ad14ce1c94b2606039c70f29ff9d4cc5a57b01093406bdfa04c"
+    },
+    {
+      "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/parity/wasm-u00002048.json",
+      "bytes": 125328,
+      "sha256": "d499025bdf90e69321e22213686c347631491f38aa5fb7827dea2dc9e6119a5c"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/openings.tsv",
+      "bytes": 6148,
+      "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm_bg.wasm",
+      "bytes": 18413169,
+      "sha256": "112f2e5f0af71938ef671128185e3212d63243b381ed802333601b76bce8e163"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm.js",
+      "bytes": 36924,
+      "sha256": "d8eaf8ad3bcf842588f4fc2d3a83d6cb7f2d29637a5097396db3b0877036a724"
+    },
+    {
+      "path": "scripts/strength_first_browser_harness.mjs",
+      "bytes": 25168,
+      "sha256": "a2d9ebe29ad4fc5757b86de84028aece21fbd77a2ab622ef0b6e3e42dc798cd3"
+    },
+    {
+      "path": "scripts/strength_first_browser_worker.js",
+      "bytes": 18987,
+      "sha256": "0bd0c2f95fd513a34f03d227170bf6647dcaec3f6f6c71ca29c262d2c440ba6a"
+    },
+    {
+      "path": "scripts/strength_first_checkpoint_rescreen.py",
+      "bytes": 17184,
+      "sha256": "a835dbc59cf7219a216b70094fd80844616c58380b6807fb13b4097e30111903"
+    },
+    {
+      "path": "haitaka_wasm/src/nnue.rs",
+      "bytes": 120977,
+      "sha256": "fda47bf5b80d76288e81bd9c6321eee6beb97710bc5ddb37c9cf92e29277b131"
+    },
+    {
+      "path": "haitaka_wasm/src/lib.rs",
+      "bytes": 192732,
+      "sha256": "955e63f26f39a3e081b2509fcb3003c5fbfd04e314fbd92aa5e7509150f80628"
+    },
+    {
+      "path": "/home/na2hiro/.nvm/versions/node/v26.8.1/bin/node",
+      "bytes": 150425704,
+      "sha256": "19235a9b678f84729464c52623f92de130a165452747c6826d3fdc13df3abcc3",
+      "version": "v26.8.1"
+    }
+  ]
+}
