@@ -1,6 +1,6 @@
 # Anhoku NNUE: strength-first plan
 
-Created: 2026-09-06. Updated: 2026-09-10. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, and two-checkpoint rescreen completed. No deployment authorized.
+Created: 2026-09-06. Updated: 2026-09-10. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, and two-checkpoint rescreen completed; independent-seed preflight awaits GPU-rental permission. No deployment authorized.
 
 ## Objective and scope
 
@@ -47,6 +47,12 @@ The predeclared two-checkpoint rescreen is complete. Update 2,048 scored 76–52
 The frozen conservative point-estimate rule therefore selects **update 2,048** as the development checkpoint. All 5,912 challenger searches qualified, with no missing, fallback, unsearched, or capped games. P95 and p99 elapsed time were 1,000.1 ms and maximum elapsed time was 1,003.2 ms. Its full-precision/integer/native/WASM qualification passed on 1,024 positions with zero mismatches; corrected export quantization MAE was 18.44 score units.
 
 This selection uses checkpoints, openings, and matches already exposed during development. The result nominates update 2,048 for the next bounded experiment; it is not independent confirmation and does not authorize production use. Stop retained-checkpoint screening here. Any next training treatment that needs a GPU requires a concrete cost envelope and explicit Vast.ai rental permission. The complete report is [step7-result-report.md](../r0/anhoku-strength-first/step7-result-report.md).
+
+## Independent-seed preflight — 2026-09-10
+
+The next bounded lane is the third and final full training run in the initial tournament: a fresh width-256 scratch seed on the unchanged audited 880k training and 60k validation records. It keeps the features, objective, optimizer, schedule, 4,096-update exposure, and development openings fixed. This isolates initialization variance. Because it reuses the corpus, it is not the independent-data model B required for final confirmation.
+
+The config validator, deterministic runner self-test, and real CPU resume/export fixture pass. Execution starts with a mandatory 128-update throughput boundary; later legs require hash-bound evidence and the existing stopping rule. The current public Vast.ai quote is a verified RTX 4090 at $0.2742/hour before any 60 GiB storage adjustment. The requested hard ceiling is one RTX 4090, 60 GiB, at most $0.75/hour, four rented hours, and $5 total. No GPU has been rented. The [Step 8 preflight](../r0/anhoku-strength-first/step8-seed-replication-preflight.md) is ready for explicit permission.
 
 ## Next execution sequence
 
