@@ -90,6 +90,9 @@ struct PlayArgs {
 
 #[derive(Debug, Parser)]
 struct UsiArgs {
+    /// Diagnostic NNUE score multiplier (1 or 2).
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(i32).range(1..=2))]
+    nnue_multiplier: i32,
     /// Evaluator used by the USI engine.
     #[arg(long = "eval", value_enum, default_value = "handcrafted")]
     eval: EngineEvalKind,
@@ -3052,7 +3055,7 @@ fn usi(args: UsiArgs) -> Result<()> {
         let bytes =
             fs::read(path).with_context(|| format!("failed to read NNUE {}", path.display()))?;
         session
-            .load_nnue(&bytes)
+            .load_nnue_with_multiplier(&bytes, args.nnue_multiplier)
             .map_err(|err| anyhow!("failed to load NNUE {}: {err}", path.display()))?;
     }
     let stdin = io::stdin();

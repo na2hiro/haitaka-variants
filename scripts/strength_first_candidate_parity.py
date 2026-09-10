@@ -152,8 +152,8 @@ def integer_score(network, position: dict, black_rows: list[int], white_rows: li
     our = 0 if position["sfen"].split()[1] == "b" else 1
     their = 1 - our
     transformed = np.concatenate([
-        np.clip(accumulators[our].astype(np.int32) >> 6, 0, 127),
-        np.clip(accumulators[their].astype(np.int32) >> 6, 0, 127),
+        np.clip(accumulators[our].astype(np.int32), 0, 127),
+        np.clip(accumulators[their].astype(np.int32), 0, 127),
     ]).astype("u1")
     bucket = int(position["outputBucket"])
     (h1b, h1w), (h2b, h2w), (outb, outw) = buckets[bucket]

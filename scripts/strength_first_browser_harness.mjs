@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
@@ -227,7 +227,9 @@ function contentType(path) {
 
 function writeReport(path, report) {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
+  const temporaryPath = `${path}.tmp-${process.pid}`;
+  writeFileSync(temporaryPath, `${JSON.stringify(report, null, 2)}\n`);
+  renameSync(temporaryPath, path);
 }
 
 function waitForChromeClose(chrome, timeoutMs) {
@@ -398,7 +400,7 @@ function summarizeChromeMemory(processGroupId, samples) {
     peakResidentSetBytes: peak("residentSetBytes"),
     peakHighWaterMarkBytes: peak("highWaterMarkBytes"),
     firstSample: samples[0],
-    lastSample: samples.at(-1),
+    lastSample: samples[samples.length - 1],
   };
 }
 
@@ -570,26 +572,36 @@ worker.postMessage(config);
     result.chromeStderrTail = chromeStderr.slice(-4000);
     result.hostTelemetry = {
       schema: "haitaka-anhoku-strength-first-browser-host-telemetry-v1",
-      memory: chromeMemorySampler?.stop() ?? null,
+      memory: { status: "pending", method: "optional-post-result-sampling" },
     };
     result.producerEvents = {
       provenanceAcceptedBeforePlay: true,
       acknowledgement: provenanceAck,
       progressObserved: playEventObserved,
     };
+    // Persist the qualified game result before collecting optional host
+    // telemetry. A telemetry or cleanup fault must not discard completed
+    // games or replace the report with a failure record.
     writeReport(setup.outputPath, result);
-    // Commit the successful result before any process/profile cleanup.  A
-    // cleanup race must never cause the outer error handler to replace this
-    // complete report with a failure report.
     reportCommitted = true;
+    try {
+      result.hostTelemetry.memory = chromeMemorySampler?.stop() ?? null;
+      chromeMemorySampler = null;
+      writeReport(setup.outputPath, result);
+    } catch (error) {
+      chromeMemorySampler = null;
+      process.stderr.write(`strength-first browser telemetry warning: ${error?.message ?? String(error)}\n`);
+    }
     process.stdout.write(`strength-first browser report written to ${setup.outputPath}\n`);
   } catch (error) {
     runError = error;
     throw error;
   } finally {
     if (timeout) clearTimeout(timeout);
-    if (chromeMemorySampler) chromeMemorySampler.stop();
     const cleanupErrors = [];
+    if (chromeMemorySampler) {
+      try { chromeMemorySampler.stop(); } catch (error) { cleanupErrors.push(error); }
+    }
     try { await closeChrome(chrome); } catch (error) { cleanupErrors.push(error); }
     try { await closeServer(server); } catch (error) { cleanupErrors.push(error); }
     try { await removeProfile(profile); } catch (error) { cleanupErrors.push(error); }

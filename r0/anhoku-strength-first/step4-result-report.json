@@ -1,0 +1,190 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step4-result-report-v1",
+  "experimentId": "strength-first-step4-objective-search-diagnostic-20260907-v1",
+  "generatedAt": "2026-09-08T09:10:00+09:00",
+  "status": "complete-valid-development-diagnostic",
+  "claimScope": {
+    "developmentEvidence": true,
+    "confirmatoryClaimAllowed": false,
+    "promotionAuthorized": false,
+    "deploymentAuthorized": false,
+    "reason": "The diagnostic intentionally reused previously viewed Step 3 development games and the same 64-opening suite."
+  },
+  "configuration": {
+    "path": "r0/anhoku-strength-first/step4-diagnostic-v1.json",
+    "bytes": 7823,
+    "sha256": "65966edcfc2f700323316084ec8f8ab41af1d922fadc71c505b9b44c2077d418",
+    "frozenPreExecutionStatusRetained": true
+  },
+  "execution": {
+    "cpuHostLabel": "mbp",
+    "cpuHost": "192.168.0.12",
+    "hostname": "ITSO-WX6303",
+    "architecture": "arm64",
+    "logicalCpus": 18,
+    "gpuUsed": false,
+    "paidComputeUsed": false,
+    "buildReceipt": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/remote/build/build-receipt.json",
+      "bytes": 891,
+      "sha256": "09ebd1ad7176c196c8114de8a2fed51b8018b8cb5a23cd79b66ea32205a8a0a9"
+    }
+  },
+  "coverage": {
+    "parentPool": 384,
+    "parentPoolPhaseCounts": {"early": 128, "middle": 128, "late": 128},
+    "sourceOpeningGroups": 64,
+    "commonCompleteInitialProbeParents": 372,
+    "initialIncompleteRows": {
+      "handcrafted-10000": 7,
+      "c16-10000": 12,
+      "candidate-10000": 0
+    },
+    "selectedParents": 128,
+    "selectedByClass": {"control": 64, "disagreement": 64},
+    "selectedByPhase": {"early": 32, "middle": 64, "late": 32},
+    "selectionQuotaShortfalls": {},
+    "deepHandcraftedIncompleteRows": 0,
+    "candidateSensitivityIncompleteRows": {"2500": 1, "40000": 0},
+    "restrictedUnionMoves": 249,
+    "restrictedUnionSizeCounts": {"1": 55, "2": 36, "3": 26, "4": 11},
+    "completeRestrictedLabels": 249,
+    "incompleteRestrictedLabels": 0,
+    "terminalRestrictedLabels": 4,
+    "noQuotaRefill": true
+  },
+  "primaryFinding": {
+    "metric": "restricted-candidate regret normalized by the 12000 score clip",
+    "handcrafted10000Mean": 0.04386848958333334,
+    "c16Mean": 0.03808854166666667,
+    "candidateMean": 0.04644401041666667,
+    "candidateMinusC16": {
+      "normalizedMean": 0.00835546875,
+      "scoreUnitMean": 100.265625,
+      "normalizedLower95": -0.01471597772449263,
+      "normalizedUpper95": 0.03154334207459204,
+      "scoreUnitLower95": -176.59173269391158,
+      "scoreUnitUpper95": 378.5201048951045,
+      "openingGroups": 54,
+      "interpretation": "The candidate point estimate has more restricted regret than C/16, but the opening-group interval includes zero. This development diagnostic does not establish either evaluator as better on restricted teacher preference."
+    }
+  },
+  "scoreCalibration": {
+    "c16Integer": {
+      "pairs": 245,
+      "slopeTeacherOnModel": 2.3454016731998655,
+      "interceptTeacherOnModel": -984.6249263175708,
+      "pearson": 0.49610868886010395,
+      "meanAbsoluteError": 2882.2367346938777,
+      "signDisagreementRate": 0.15918367346938775,
+      "calibratedSoftScoreBrier": 0.01575039888262714
+    },
+    "candidateInteger": {
+      "pairs": 245,
+      "slopeTeacherOnModel": 1.9725727016220693,
+      "interceptTeacherOnModel": -725.0214113485662,
+      "pearson": 0.5219823195586984,
+      "meanAbsoluteError": 2834.1510204081633,
+      "signDisagreementRate": 0.2163265306122449,
+      "calibratedSoftScoreBrier": 0.013964101816089059
+    },
+    "candidateFullPrecision": {
+      "pairs": 245,
+      "slopeTeacherOnModel": 2.011835666603972,
+      "interceptTeacherOnModel": -57.20404481981859,
+      "pearson": 0.5483722792739554,
+      "meanAbsoluteError": 2678.60097081126,
+      "signDisagreementRate": 0.16326530612244897,
+      "calibratedSoftScoreBrier": 0.012894782489807655
+    },
+    "interpretation": "The full-precision candidate is the best of these three static score fits, while its integer export loses calibration and sign agreement. All fitted slopes are near or above 2, so the runtime scores are compressed relative to the deeper restricted teacher."
+  },
+  "searchAndExportInteraction": {
+    "candidateChoiceStableAt2500_10000_40000Nodes": 75,
+    "candidateSensitivityEligibleParents": 127,
+    "candidateChoiceStabilityRate": 0.5905511811023622,
+    "fullPrecisionVsIntegerRestrictedStaticChoiceAgreement": 102,
+    "fullPrecisionVsIntegerRestrictedStaticChoiceEligibleParents": 128,
+    "fullPrecisionVsIntegerRestrictedStaticChoiceAgreementRate": 0.796875,
+    "candidateFullPrecisionStaticVsCandidate10000SearchAgreement": 94,
+    "candidateFullPrecisionStaticVsCandidate10000SearchAgreementRate": 0.734375,
+    "quantizationMeanAbsoluteScoreDelta": 517.196488227389,
+    "quantizationP95AbsoluteScoreDelta": 1078.099609375,
+    "quantizationMaximumAbsoluteScoreDelta": 1081.95068359375,
+    "interpretation": "Move choice is materially sensitive to node budget, and export quantization changes the restricted static choice on 26 of 128 parents. Search/export interaction is therefore a stronger next target than another capacity increase."
+  },
+  "nearEqualAndMate": {
+    "nearEqualParents": 42,
+    "nearEqualMeanRegret": {
+      "handcrafted-10000": 0.03011111111111111,
+      "c16-10000": 0.008785714285714286,
+      "candidate-10000": 0.032563492063492065
+    },
+    "parentsWhoseBestRestrictedLabelIsMate": 17,
+    "exactBestMateMove": {
+      "handcrafted-10000": 12,
+      "c16-10000": 13,
+      "candidate-10000": 14
+    },
+    "interpretation": "The candidate has no obvious restricted mate-choice deficit in this small subset, while its near-equal restricted regret is higher than C/16."
+  },
+  "computeAudit": {
+    "officialRootSearchNodes": 48960000,
+    "retainedFailedClosedPrepolicyRootNodes": 3840000,
+    "totalRootSearchNodes": 52800000,
+    "finalRestrictedLabelNodes": 61250000,
+    "supersededSerializationFixLabelNodes": 61250000,
+    "totalChildSearchNodes": 122500000,
+    "totalSearchNodes": 175300000,
+    "configuredMaximumSearchNodes": 180800000,
+    "remainingNodeHeadroom": 5500000,
+    "withinNodeCeiling": true,
+    "within48HourWallCeiling": true
+  },
+  "retainedDeviations": [
+    "The user corrected the MBP endpoint from 192.168.0.2 to 192.168.0.12 before heavy execution.",
+    "The first remote build failed before search because the minimal source bundle omitted workspace path dependencies; the bundle was completed and the build passed.",
+    "A failed-closed 3.84M-node handcrafted launch found seven depth-incomplete roots. All artifacts were retained, the common-complete exclusion policy was frozen, and no quota refill was used.",
+    "The first complete downstream pass omitted legalBestMove from reduced sensitivity observations, producing an invalid 0-parent sensitivity denominator. Those artifacts were retained, the serialization was fixed, and union, labels, features, full-precision scores, and analysis were regenerated within the original child-node ceiling."
+  ],
+  "decision": {
+    "diagnosis": "score-export-search-interaction-supported-as-next-development-target",
+    "capacityIncreaseSupported": false,
+    "pairwiseMoveSupervisionSupportedAsImmediateNextStep": false,
+    "candidatePromotionAuthorized": false,
+    "recommendedNextExperiment": "On the same development evidence, run a bounded CPU-only candidate score-multiplier ablation with 1.0 as control and 2.0 as the single treatment, applied consistently to every evaluation-dependent search path. Recheck restricted regret, pruning sensitivity, and direct development games before considering new GPU training.",
+    "gpuAction": "None. Any later alternative-objective or quantization-aware training requires separate user permission under AGENTS.md."
+  },
+  "artifacts": {
+    "parentPoolSummary": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/parent-pool/summary.json",
+      "bytes": 859,
+      "sha256": "47e48e1ab31b4da42081991f734c285e23b37c96cc71307b3e37feff24b4e77b"
+    },
+    "selectionSummary": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/selection/summary.json",
+      "bytes": 7776,
+      "sha256": "ae04163d59a6f155337f7183f7847886f796bdd35da72beb4ce0e1970998b583"
+    },
+    "unionSummary": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/union/summary.json",
+      "bytes": 1089,
+      "sha256": "6fd0a7f63b71a0f78aee6604acfdfa55ce81301e6c2139eef325bd4d46fd296d"
+    },
+    "fullPrecisionSummary": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/full-precision/summary.json",
+      "bytes": 1438,
+      "sha256": "e1ba0ae34c7beaf896b462092bf376e6118c9b7e1b4eac45ea6b9c30bc8dfd28"
+    },
+    "analysisJson": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/analysis/result.json",
+      "bytes": 87784,
+      "sha256": "9a9f497cd66d974aa0e4691122c1bc9193cb759794b2aefe3c9d3deea94d892f"
+    },
+    "analysisMarkdown": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/analysis/result.md",
+      "bytes": 1034,
+      "sha256": "fbcbdd3487790062f013e94b1669d29bd938b04f9bd986c8414fe5e2a972d27e"
+    }
+  }
+}

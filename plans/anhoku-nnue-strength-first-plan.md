@@ -1,14 +1,51 @@
 # Anhoku NNUE: strength-first plan
 
-Date: 2026-09-06. Status: proposed execution plan; no training, rental, or deployment started.
+Created: 2026-09-06. Updated: 2026-09-10. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, and corrected-runtime baseline completed. No deployment authorized.
 
 ## Objective and scope
 
-Build a standalone NNUE evaluator that beats handcrafted evaluation in the actual Anhoku production search at 100 ms/move, then improve it through measured teacher, data, and runtime iterations. A hybrid evaluator may be an explicitly named diagnostic, but does not satisfy the standalone NNUE objective.
+Build a standalone NNUE evaluator that beats handcrafted evaluation in the actual Anhoku production search at **1,000 ms/move (1 second)**, then improve it through measured teacher, data, and runtime iterations. A hybrid evaluator may be an explicitly named diagnostic, but does not satisfy the standalone NNUE objective.
 
 This is a new experimental program, not another R5 repair amendment. On adoption, it replaces future execution routing in the original strength plan, workflow reboot, and R5 repair assignment. Their failures remain failures; their artifacts and useful implementations remain available. It does not set any historical R5/R6 authorization flag to true. Existing processes and paid resources must be inventoried before execution; this document does not authorize stopping them or renting a GPU.
 
 The immediate deliverable is a short, working loop: train a model, retain it, export it, play trustworthy development games against handcrafted, and choose the next experiment from the result. Final independent confirmation remains strict. Development experiments need not satisfy promotion-level statistical requirements before another hypothesis can be tested.
+
+## Current decision and timing policy — 2026-09-08
+
+Use **1,000 ms per move as the primary fixed-time budget** for future development selection and final confirmation. Give both opponents the same budget. Keep 100 ms as a secondary responsiveness/short-budget regression check; it is not a second promotion endpoint. Equal-node games remain supporting diagnostics. One second is a search budget, not a required artificial delay when a terminal result or completed search returns earlier.
+
+This policy applies prospectively. Completed 100 ms experiments and their frozen contracts remain unchanged and retain their original interpretation. Future contracts must explicitly set `movetimeMs: 1000`, specify the search depth cap, and budget the longer run before launch. Reserve up to ten times the 100 ms search time for the same paired schedule until a measured throughput forecast is available; reduce optional secondary work rather than silently changing a frozen primary sample size.
+
+The completed [scale/time experiment](../r0/anhoku-strength-first/step5-result-report.md) ran 384 development games on the MBP at `192.168.0.12`. The original-scale candidate scored 67.2% against handcrafted at 100 ms and 65.6% at 1 second; doubled scale scored 60.9% and 57.8%. Doubled scale scored 30–34 against the original at both budgets and did not improve restricted teacher regret. Retain the selected width-256 candidate at **scale 1×**. These are reused development openings with eight concurrent native games, not controlled production-path confirmation. The paired intervals do not establish a relative strength benefit from the longer budget.
+
+A separate 16-search-per-budget browser smoke test using the archived compatible WASM runtime peaked at 103.1 ms and 1,002.8 ms, without missing moves or emergency fallbacks. This supports testing 1 second but does not qualify the current production artifact, all target devices, or model load time. Production configuration is unchanged by this plan update.
+
+The artifact name “Step 5 scale/time” refers to the completed follow-up to the Step 4 diagnosis; it does **not** mean the corpus-growth stage below has been completed or authorized.
+
+## Runtime correction discovered during execution
+
+The 2026-09-08 export audit found a serializer/runtime mismatch: the feature transformer is serialized in activation units at scale 127, but the runtime and historical integer oracles applied an extra six-bit right shift before clipping. The working runtime and oracles now remove that FT-only shift; hidden affine-layer shifts remain unchanged. The model bytes and 1× output scale are unchanged. Historical result files remain intact and describe the legacy implementation.
+
+On 128 development parents excluding the previously labeled 128 canonical boards, the corrected independent integer reference, native full/incremental evaluation, native traces, and WASM agreed exactly on 8,278 positions. Nonterminal full-precision MAE fell from 550.3 to 44.8 score units, and static move agreement rose from 71/127 to 119/127. The separate 64-game native comparison was 27–37 for corrected versus legacy, with a 95% opening-group score interval of 31.2%–53.1%; a game-strength improvement is not established. The controlled browser baseline remains the next strength measurement.
+
+Execution is tracked by the [correction and browser contract](../r0/anhoku-strength-first/step6-browser-export-v1.json) and its [reporter-recovery contract](../r0/anhoku-strength-first/step6-browser-export-v2.json). Its “Step 6” artifact name is an experiment sequence number, not completion of the independent-confirmation stage below. This correction does not authorize deployment, invalidate retained raw historical measurements, or establish that the training recipe is now optimal.
+
+## Corrected-runtime result and decision — 2026-09-10
+
+The controlled browser/WASM primary completed 64 color-swapped opening pairs at 1,000 ms per move, one concurrent game. The corrected width-256 candidate scored 67–61 against handcrafted, or 52.34%, with a 95% opening-paired bootstrap interval of 43.75%–60.94%. All 5,987 search records qualified: every nonterminal move was searched, and each terminal record explicitly reported no legal move. There were no missing moves, emergency fallbacks, capped games, or unsearched moves. P95 and p99 elapsed time were 1,000.1 ms, maximum elapsed time was 1,003.2 ms, and measured peak Chrome process-group RSS was 1,849.7 MiB on this Ubuntu host.
+
+The matched 16-pair secondary check at 100 ms scored 17–15, or 53.12%, with a 34.38%–71.88% interval. Across the 16 openings shared by both schedules, the 1,000 ms minus 100 ms relative score difference was −6.25 percentage points with a −34.38 to +21.88 point interval. This does not demonstrate a relative benefit from the longer budget; it does establish that the 1-second browser path meets the measured timing behavior on this host.
+
+The export diagnosis favored the serializer-consistent correction but remained development evidence. On 8,277 nonterminal positions, full-precision MAE fell from 550.3 to 44.8 score units, and integer reference, native full/incremental/trace, and WASM evaluation agreed exactly on all 8,278 audited positions. Mean restricted teacher regret fell from 0.035458 to 0.012169; the corrected-minus-legacy opening-cluster interval was −0.054589 to +0.000993. The separate native corrected-versus-legacy match scored 27–37, with a 31.25%–53.12% interval, so a game-strength improvement from the correction is not established.
+
+Keep the serializer-consistent correction in the working runtime. The 1-second browser score interval crosses 50%, uses reused development openings, and does not authorize NNUE promotion or a production timing change. Before any new training, the next CPU-only selection step is to re-screen at most two retained checkpoints under the corrected runtime, because their earlier selection used the legacy implementation. New GPU work still requires an explicit Vast.ai rental request with a concrete cost envelope. The complete report is [step6-result-report.md](../r0/anhoku-strength-first/step6-result-report.md).
+
+## Next execution sequence
+
+1. **Establish the controlled 1-second production-path baseline (CPU only).** Freeze a new development contract for the selected width-256 checkpoint/export at scale 1× versus handcrafted, using the same declared openings for both sides with colors swapped. Start with 64 development pairs at 1,000 ms per move on the current matching WASM build, one concurrent game on a quiescent target host. Record model/build hashes, legal searched moves, paired score uncertainty, depth/nodes, p95/p99/max elapsed and deadline overshoot, memory, and load time. Freeze a smaller matched 100 ms secondary schedule and total wall-time cap before launch. Keep the completed eight-worker native screen separate. Verify the actual target-device timing before proposing a production setting change.
+2. **Diagnose integer-export versus full-precision disagreement (CPU only).** Keep the checkpoint, features, search implementation, and 1× scale fixed. Freeze at most 128 new development parents, with disagreement cases and representative controls; audit source overlap and reserve all sealed confirmation groups. Compare full-precision, integer-reference, and native/WASM scores and restricted move rankings, including phase, score range, clipping/saturation, and terminal handling. Reuse the bounded union-label approach only where needed, with explicit node and wall-time caps. Distinguish export approximation error from an implementation-parity defect or an objective/search mismatch. Do not add capacity or data by default.
+3. **Choose one evidence-backed treatment.** Fix any demonstrated parity defect first. If quantization error explains the move-quality gap, freeze one export or quantization-aware treatment; if it does not, consider one calibrated-objective treatment against the current objective on the same corpus. Validate parity and compare against both the unchanged candidate and handcrafted, with 1 second as the primary development endpoint and 100 ms secondary. New training that needs a GPU requires a concrete cost envelope and explicit Vast.ai rental permission before execution.
+4. **Scale or confirm only after a credible gain.** Route a successful recipe to the conditional data-growth stage below, or nominate it for independent confirmation when ready. Final confirmation uses 1 second on the shipped path, unseen opening-source groups, and the unchanged statistical success criterion. The current development wins and timing smoke test do not authorize promotion.
 
 ## Evidence behind the reset
 
@@ -52,7 +89,7 @@ Time box: one focused engineering day, followed by the measured CPU match time. 
 1. Snapshot the commit and relevant dirty files without changing the user's work. Inventory the 1M splits, C/16, R5 seed-17/29 exports, and compact export; hash required inputs and verify their manifests. Separate unavailable files from invalid files. Check active local/remote jobs before scheduling work.
 2. Reuse R1 feature/sign/export/interruption/history tests and the existing paired harness. Run focused tests against the actual build and model hashes. Verify aggregation from raw games and an identical-engine null/replay fixture. Width 256 must use its matching runtime build.
 3. Freeze one reusable development schedule of 128 color-swapped opening pairs. Run C/16, R5 current seed 17, and R5 compact directly against handcrafted at 10k nodes/move. Use the same openings across comparisons. Include seed 29 only if needed to diagnose seed sensitivity.
-4. Run 64 development pairs at 100 ms/move for C/16 and compact against handcrafted on one quiescent production-class host. Use the production browser/WASM path where available; a native measurement is labeled native and cannot stand in for the shipped path.
+4. For a new baseline, run 64 development pairs at 1,000 ms/move for C/16 and compact against handcrafted on one quiescent production-class host. Use the production browser/WASM path where available; a native measurement is labeled native and cannot stand in for the shipped path.
 5. Record score rate and paired uncertainty, fallback/missing-move counts, termination reasons, combined alpha-beta/qsearch nodes, completed depth, p95/p99 lateness, memory, and model load time. Keep comparisons on different execution environments separate.
 
 Do not wait for every baseline game before preparing the trainer. These are finite development screens, not promotion proofs. Exit with valid baseline artifacts and one command sequence that takes a retained checkpoint through export, parity, and a small paired match. If an existing export already looks competitive, confirm that result before training an elaborate replacement.
@@ -79,7 +116,7 @@ First train one scratch compact model with the existing robust Huber target, bat
 
 Evaluate offline every 128 updates; retain exports at 256, 1,024, 2,048, and 4,096, and the best-validation checkpoint. At the first three scheduled checkpoints run 64 development pairs versus handcrafted at 10k nodes. These reused games guide development only. Stop further training if two successive screens have a paired upper 95% score bound below 0.45, or on numerical/correctness failure. A single small losing screen is not proof of failure. Record a budget stop as such, not as convergence.
 
-At completion, compare at most two checkpoints: best validation and best scheduled game screen. Evaluate both on the fixed 128-pair development suite, then give the better one a 128-pair 100 ms screen. Prefer fixed-time score, then equal-node score, then lower runtime cost; offline loss breaks remaining ties. Retain all selection history and make no confirmatory significance claim on these reused openings.
+At completion, compare at most two checkpoints: best validation and best scheduled game screen. Evaluate both on the fixed 128-pair development suite, then give the better one a 128-pair 1,000 ms primary screen and a separately frozen smaller 100 ms secondary check. Prefer fixed-time score, then equal-node score, then lower runtime cost; offline loss breaks remaining ties. Retain all selection history and make no confirmatory significance claim on these reused openings.
 
 Choose at most two follow-up training lanes from the evidence:
 
@@ -129,7 +166,7 @@ Before either final suite is opened:
 - Choose a fixed sample size from development pair/group variance for 80% power at a proposed +20 Elo effect and one-sided 5% error. Validate interval coverage and grouping with fixtures/simulation. If the resulting campaign is unaffordable, defer confirmation; do not lower its success threshold after seeing games.
 - Freeze adjudication, including a maximum-ply policy. If capped games occur, preserve their status and require a conservative scoring sensitivity bound to remain positive; never turn them into genuine draw labels for training. Missing/illegal moves and emergency fallbacks invalidate the run.
 
-For each model separately, require the lower one-sided 95% bound on paired score versus handcrafted to exceed 0.5 at 100 ms/move, equivalently a lower Elo bound above zero. Use the highest independent opening-source group, complete scheduled pairs, and no interim selection or sample extension. Requiring both independent models to pass is the conjunction criterion; freeze the statistical implementation before opening either suite. Report equal-node results as supporting evidence, not the promotion endpoint.
+For each model separately, require the lower one-sided 95% bound on paired score versus handcrafted to exceed 0.5 at 1,000 ms/move, equivalently a lower Elo bound above zero. Use the highest independent opening-source group, complete scheduled pairs, and no interim selection or sample extension. Requiring both independent models to pass is the conjunction criterion; freeze the statistical implementation before opening either suite. Report equal-node results as supporting evidence, not the promotion endpoint.
 
 Also require parity, tactical, portability, memory, loading, and timing checks to pass, including a second supported host. Ship the predesignated A only after both confirmations pass. A failed or inconclusive confirmation leaves handcrafted as the production recommendation and that opening block becomes development history. C/16 remains the historical NNUE control until replaced by an explicitly designated incumbent.
 
@@ -137,11 +174,11 @@ Also require parity, tactical, portability, memory, loading, and timing checks t
 
 The first cycle should produce a valid direct baseline and a new model-strength curve within roughly one engineering week, conditional on hardware availability and approval. This is a planning target, not a performance guarantee. Report measured duration after the initial probe.
 
-Use mbp, mba, local Ubuntu, and nubu for suitable independent CPU work according to availability and the recorded approximate 10:7:2:1 capacities. Fixed-time strength evidence uses one concurrent game on a controlled host; do not pool those results with loaded multi-game workers. Paid GPU rental always requires the explicit permission recorded in `AGENT.md`.
+Use mbp, mba, local Ubuntu, and nubu for suitable independent CPU work according to availability and the recorded approximate 10:7:2:1 capacities. Fixed-time strength evidence uses one concurrent game on a controlled host; do not pool those results with loaded multi-game workers. Paid GPU rental always requires explicit permission under `AGENTS.md`. The user-designated MBP endpoint is currently `192.168.0.12`.
 
 After two engineering days without an executable experiment, cut optional infrastructure scope and identify the precise correctness blocker. After the initial three training runs, end with a candidate or a supported next hypothesis; do not launch another schedule extension automatically. Retain about 25 GiB for the initial new cycle, with a checkpoint-size forecast before execution; historical artifacts are outside this cap and must not be deleted to meet it.
 
-The first implementation assignment is Steps 1–2 plus the fully resolved configuration and cost forecast for Step 3. It explicitly excludes R5R completion, exhaustive child-label generation, broad new data generation, GPU rental without approval, and deployment.
+The original Steps 1–2 implementation assignment is complete. The active assignment follows the next execution sequence above: controlled 1-second production-path development measurement, then bounded CPU export diagnosis. It excludes exhaustive child-label generation, broad new data generation, GPU rental without approval, and deployment.
 
 ## Reference anchors
 

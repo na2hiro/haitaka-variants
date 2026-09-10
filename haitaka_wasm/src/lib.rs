@@ -1842,8 +1842,17 @@ impl UsiSession {
     }
 
     pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, String> {
+        self.load_nnue_with_multiplier(bytes, 1)
+    }
+
+    pub fn load_nnue_with_multiplier(
+        &mut self,
+        bytes: &[u8],
+        multiplier: i32,
+    ) -> Result<String, String> {
         let model =
             NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
+        let model = model.with_evaluation_multiplier(multiplier)?;
         let description = model.description().to_string();
         self.nnue_model = Some(Arc::new(model));
         self.tt.clear();
