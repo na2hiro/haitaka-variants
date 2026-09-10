@@ -1,5 +1,6 @@
 {
   "createdAt": "2026-09-10T19:15:00+09:00",
+  "refreshedAt": "2026-09-11T05:09:16+09:00",
   "execution": {
     "afterApproval": [
       "Recheck a verified, rentable one-RTX-4090 offer within the frozen rate/cost envelope.",
@@ -19,9 +20,9 @@
       "sha256": "c75e7691f1b105afdf0bd1f7d6b9f7eab42c715de3e1fbc29779fad109a4d44d"
     },
     "config": {
-      "bytes": 18166,
+      "bytes": 18167,
       "path": "r0/anhoku-strength-first/step8-seed-replication-experiment-v1.json",
-      "sha256": "591aa543c2d6e03564b258aada7cb482ba8c9fe952d1994cb775864797e783a0"
+      "sha256": "5fb0a11817a0484b5779d4e917b8812a17ab02ea30f9a32704875ed7dce00ea8"
     },
     "data": {
       "independentDataSeed": false,
@@ -85,8 +86,8 @@
     }
   },
   "rental": {
-    "currentFourHourComputeAndListedStorageUsd": 1.0968888888888888,
-    "currentQuotedCombinedHourlyRateUsd": 0.2742222222222222,
+    "currentFourHourComputeAndListedStorageUsd": 1.3718518518518519,
+    "currentQuotedCombinedHourlyRateUsd": 0.34296296296296297,
     "equivalentOfferWithinEnvelopeAllowedAfterApproval": true,
     "maximumCombinedHourlyRateUsd": 0.75,
     "maximumRentedUptimeHours": 4.0,
@@ -94,37 +95,39 @@
     "offerMustBeRecheckedBeforeCreate": true,
     "provider": "Vast.ai",
     "publicQuote": {
-      "bytes": 1590,
-      "path": "out/anhoku-strength-first/step8-seed-replication-preflight-20260910-v1/vast-offer-quote.json",
-      "sha256": "cfc34f06b766e958e2b5dce4c2b1dcfaa7e40d1d1e95ce98d382f5c6999eba56"
+      "bytes": 1651,
+      "observedAt": "2026-09-10T20:09:16.116865+00:00",
+      "path": "out/anhoku-strength-first/step8-seed-replication-preflight-20260910-v1/vast-offer-quote-20260911.json",
+      "sha256": "1276b28b5494becff68a4234f929ffa58869bec951d3f04616a175121d419a22",
+      "validUntil": "2026-09-11T00:09:16.116865+00:00"
     },
     "quotedOffer": {
       "cpu_cores_effective": 16.0,
-      "cpu_ram": 64476,
-      "cuda_max_good": 12.8,
-      "direct_port_count": 124,
-      "disk_bw": 6287.0,
-      "disk_space": 614.625,
-      "dlperf": 98.41656318662893,
-      "dph_base": 0.27199999999999996,
-      "dph_total": 0.2742222222222222,
-      "driver_version": "570.172.08",
-      "geolocation": "Hong Kong, HK",
+      "cpu_ram": 32219,
+      "cuda_max_good": 13.0,
+      "direct_port_count": 12,
+      "disk_bw": 2003.0,
+      "disk_space": 117.13437499999999,
+      "dlperf": 96.7261580627302,
+      "dph_base": 0.3333333333333333,
+      "dph_total": 0.34296296296296297,
+      "driver_version": "580.159.03",
+      "geolocation": ", US",
       "gpu_name": "RTX 4090",
       "gpu_ram": 24564,
-      "id": 39184690,
-      "inet_down": 431.3,
-      "inet_down_cost": 0.0390625,
-      "inet_up": 315.2,
-      "inet_up_cost": 0.0390625,
+      "id": 40912227,
+      "inet_down": 300.9,
+      "inet_down_cost": 0.015625,
+      "inet_up": 423.5,
+      "inet_up_cost": 0.016927083333333332,
       "num_gpus": 1,
-      "pcie_bw": 19.9,
-      "reliability": 0.9987517,
+      "pcie_bw": 21.9,
+      "reliability": 0.9981046,
       "rentable": true,
       "rented": false,
-      "static_ip": true,
-      "storage_cost": 0.19999999999999998,
-      "storage_total_cost": 0.0022222222222222222,
+      "static_ip": false,
+      "storage_cost": 0.8666666666666666,
+      "storage_total_cost": 0.009629629629629629,
       "verification": "verified"
     },
     "requestedDiskGigabytes": 60,

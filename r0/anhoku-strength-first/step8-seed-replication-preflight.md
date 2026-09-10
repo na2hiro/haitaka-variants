@@ -4,6 +4,6 @@ Step 7 selected corrected-runtime update 2,048 after it scored 76–52 against h
 
 The closed-world config validator and deterministic runner self-test pass. The real CPU fixture also passes: resumed and uninterrupted weights, optimizer state, predictions, cursors, and serialized exports are exact. Training is gated at update 128; continuation requires measured throughput and hash-bound evidence.
 
-The current public Vast.ai quote is one verified RTX 4090 at $0.2742/hour before any 60 GiB adjustment. The requested ceiling is one RTX 4090, 60 GiB, at most $0.75/hour, four rented hours, and $5 total. The offer will be rechecked before creation. The prior matching width-256 run recorded 263.54 seconds across shuffle, training, validation, checkpoints, and export, so this envelope is conservative.
+The refreshed public Vast.ai quote, observed at 05:09 JST on September 11, is one verified RTX 4090 at a listed combined rate of $0.3430/hour before any 60 GiB adjustment. The requested ceiling is one RTX 4090, 60 GiB, at most $0.75/hour, four rented hours, and $5 total. The public offer snapshot is valid until 09:09 JST and will be rechecked before creation. The prior matching width-256 run recorded 263.54 seconds across shuffle, training, validation, checkpoints, and export, so this envelope is conservative.
 
 No GPU has been rented or used. The paid instance will be stopped before long CPU strength games whenever export and transfer are complete. Production remains unchanged.

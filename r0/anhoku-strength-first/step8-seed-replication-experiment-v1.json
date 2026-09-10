@@ -468,12 +468,12 @@
     },
     "liveQuote": {
       "provider": "Vast.ai",
-      "offerId": 39184690,
+      "offerId": 40912227,
       "gpu": "RTX 4090",
       "diskGigabytes": 60,
-      "combinedHourlyRateUsd": 0.2742222222222222,
-      "observedAt": "2026-09-10T10:13:17.823427+00:00",
-      "validUntil": "2026-09-10T14:13:17.823427+00:00",
+      "combinedHourlyRateUsd": 0.34296296296296297,
+      "observedAt": "2026-09-10T20:09:16.116865+00:00",
+      "validUntil": "2026-09-11T00:09:16.116865+00:00",
       "binding": false,
       "use": "approval-target-recheck-same-offer-and-maximum-rate-before-rental"
     },
