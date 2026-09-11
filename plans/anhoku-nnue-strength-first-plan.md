@@ -1,6 +1,6 @@
 # Anhoku NNUE: strength-first plan
 
-Created: 2026-09-06. Updated: 2026-09-11. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, checkpoint rescreen, and independent-seed development replication completed. Update 2,688 is nominated as model A; independent-data preparation is next. No deployment authorized.
+Created: 2026-09-06. Updated: 2026-09-11. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, checkpoint rescreen, and independent-seed development replication completed. Update 2,688 is nominated as model A. Independent-data preparation is running on the MBP under the frozen Step 9 v2 contract; independent confirmation suites are frozen but unopened. No deployment authorized.
 
 ## Objective and scope
 
@@ -53,6 +53,12 @@ This selection uses checkpoints, openings, and matches already exposed during de
 The third and final initial-tournament run completed from a fresh width-256 scratch seed on the unchanged audited 880k training and 60k validation records. It kept the features, objective, optimizer, schedule, 4,096-update exposure, and development openings fixed. The lowest validation loss was 0.012594 at update 2,688. The frozen equal-node comparison selected update 2,688 over update 2,048: their 256-game scores against handcrafted were 57.03% and 49.22%.
 
 The selected model passed full-precision/integer/native/WASM qualification on 1,024 positions. On the MacBook Pro under the frozen one-game-at-a-time primary protocol, it scored 163–93 against handcrafted over 256 games at 1,000 ms per move, or 63.67%, with a grouped 95% interval of 55.58%–71.77%. This replicates the recipe's development strength across initialization seed. Because it reuses the corpus and opening groups, it is model A evidence rather than the independent-data model B required for final confirmation. Handcrafted remains the production recommendation. The complete report is [step8-result-report.md](../r0/anhoku-strength-first/step8-result-report.md).
+
+## Independent-data preparation — 2026-09-11
+
+The CPU-only Step 9 lane is frozen by [step9-model-b-data-contract-v2.json](../r0/anhoku-strength-first/step9-model-b-data-contract-v2.json). It is generating 30,000 independent training source games and 2,016 validation games on the MBP with the unchanged 10k-node handcrafted label teacher, bounded four-candidate searched exploration, and adaptive label retries. The completion pipeline excludes every color-swap board family in model A's training, validation, and development payloads, deduplicates model B, and fails closed unless it can freeze exactly 880,000 training and 60,000 validation records. The 16-candidate v1 probe was stopped after its rollout cost projected roughly 40 wall-clock hours; its 270 completed games remain preserved as non-decisional throughput evidence.
+
+Two disjoint 2,048-group confirmation suites are frozen by [step9-confirmation-contract.json](../r0/anhoku-strength-first/step9-confirmation-contract.json). Each model has one color-swapped pair per group, or 4,096 games, which gives about 83% worst-case normal-approximation power for a true +20 Elo effect before the preregistered one-sided paired test. Neither suite may be opened until model B is trained and both complete schedules are ready.
 
 The exact selected checkpoint, selected integer network, update-2,048 checkpoint, final checkpoint, and evaluation receipts are preserved locally. Two early historical full-precision checkpoints were not fully transferred before the training instance was destroyed. A bounded recovery replay confirmed the same initial predictions and boundary metrics but could not reproduce post-update CUDA artifacts byte for byte. This limits complete archival rehashing of the historical graph; it does not change the selected-model result. Both Vast instances are destroyed. Training and recovery charges totaled $2.266.
 
