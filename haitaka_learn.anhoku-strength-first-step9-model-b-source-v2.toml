@@ -1,0 +1,66 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-strength-first/step9-model-b-source-20260911-v2"
+
+[data]
+# The v1 throughput probe showed that 16 rollout candidates dominated CPU.
+# Four candidates retain bounded searched exploration while this 30,000-game
+# oversample still projects well above the exact 880,000-record freeze target.
+train_games = 30000
+validation_games = 2016
+max_plies = 180
+position_policy = "root-position"
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 96
+
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_candidate_limit = 4
+rollout_score_margin = 80
+rollout_temperature = 40.0
+rollout_rng_version = "splitmix64-v1"
+opening_random_plies = 0
+
+opening_policy = "suite"
+opening_suite = "haitaka_learn/openings/anhoku-v3.tsv"
+opening_suite_id = "anhoku-v3"
+validation_opening_ids = ["anhoku-v3-053", "anhoku-v3-054", "anhoku-v3-055", "anhoku-v3-056", "anhoku-v3-057", "anhoku-v3-058", "anhoku-v3-059", "anhoku-v3-060", "anhoku-v3-061", "anhoku-v3-062", "anhoku-v3-063", "anhoku-v3-064"]
+validation_opening_schedule = "equal-color-swapped-pairs-v1"
+validation_opening_pairs_per_id = 84
+split_policy = "opening-group-hash-v1"
+split_seed = 2026091112
+shuffle_policy = "chunk-v1"
+shuffle_seed = 2026091113
+shuffle_chunk_records = 65536
+
+sample_start_ply = 8
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 64
+minimum_train_boards = 920000
+seed = 2026091111
+jobs = 0
+shard_games = 10
+progress_every_percent = 5
+resume = true
+
+[generation]
+record_format = "haitaka-packed-training-record-v3-72-byte"
+
+[generation.trajectory_evaluator]
+search_depth = 1
+
+[generation.trajectory_evaluator.evaluator]
+kind = "handcrafted"
+
+[generation.label_evaluator]
+search_budget = "nodes"
+search_nodes = 10000
+max_depth = 64
+target_semantics = "bounded-nonmate-root-plus-explicit-mate-class-distance"
+score_transform_version = "identity-with-robust-clip-v1"
+
+[generation.label_evaluator.evaluator]
+kind = "handcrafted"
