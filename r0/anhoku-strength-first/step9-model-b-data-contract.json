@@ -11,7 +11,7 @@
   "sourceGeneration": {
     "config": {
       "path": "haitaka_learn.anhoku-strength-first-step9-model-b-source.toml",
-      "sha256": "57504ebad9c7a87df9ea960af6b93fb0b9833a5645907fc831fdab0f9572f857"
+      "sha256": "32ff41c7dd145f67e38afe5fe2e29aceb074730b0955b561632b81e2548c5382"
     },
     "outputDirectory": "out/anhoku-strength-first/step9-model-b-source-20260911-v1",
     "openingSuite": {
