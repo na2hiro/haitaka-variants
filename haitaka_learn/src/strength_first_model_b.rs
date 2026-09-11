@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use crate::dataset::{ENTRY_BYTES, PACKED_SFEN_BYTES, unpack_board_from_training};
-use crate::openings::color_swap_anhoku_sfen;
+use crate::openings::color_swap_anhoku_training_sfen;
 
 #[derive(Clone)]
 struct RankedRecord {
@@ -340,7 +340,7 @@ fn record_family(record: &[u8; ENTRY_BYTES]) -> Result<String> {
 
 fn canonical_family(board: &Board) -> Result<String> {
     let direct = board.to_string();
-    let swapped = color_swap_anhoku_sfen(&direct)?;
+    let swapped = color_swap_anhoku_training_sfen(&direct)?;
     Ok(if direct <= swapped { direct } else { swapped })
 }
 

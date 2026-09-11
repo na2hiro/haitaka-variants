@@ -77,5 +77,24 @@
     "exactFreeze": true
   },
   "estimatedRemainingWallHoursAtLaunch": 2.0,
-  "status": "running"
+  "completion": {
+    "completedAt": "2026-09-12T07:38:36+09:00",
+    "mbaLaneCompletedAt": "2026-09-12T07:04:28+09:00",
+    "mergedTrainingRecords": 1274121,
+    "mergedValidationRecords": 86608,
+    "trainAuditPassed": true,
+    "validationAuditPassed": true,
+    "frozenTrainingRecords": 880000,
+    "frozenValidationRecords": 60000,
+    "modelACanonicalFamiliesExcluded": 1000000,
+    "frozenCorpusPassed": true,
+    "collectedLocally": true,
+    "sha256ManifestSha256": "483f91428c6c5040591653e62fb92ca84a5af7e001194dc8b50dec023af35e7d",
+    "freezeExecutableSha256": "c780cbe25920415c79228c9ae672c09844ba5ef3d243cee65747f53178915969",
+    "pipelineCorrections": [
+      "Audit strict manifests without the legacy --config fallback.",
+      "Canonicalize unpacked packed-training board families with Board::from_training_sfen because the packed ABI coalesces promoted minor-piece identities into the gold slot."
+    ]
+  },
+  "status": "complete"
 }

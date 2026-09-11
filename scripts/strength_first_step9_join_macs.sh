@@ -32,12 +32,10 @@ ssh "$mbp" "cd '$mbp_workspace' && \
   target/release/haitaka_learn audit-data \
     --bin '$source_rel/datasets/train.bin' \
     --manifest '$source_rel/datasets/train.json' \
-    --config '$config' \
     --output '$source_rel/artifacts/train-audit.json' && \
   target/release/haitaka_learn audit-data \
     --bin '$source_rel/datasets/validation.bin' \
     --manifest '$source_rel/datasets/validation.json' \
-    --config '$config' \
     --output '$source_rel/artifacts/validation-audit.json' && \
   target/release/haitaka_learn strength-first-freeze-model-b-corpus \
     --model-a inputs/model-a/training.bin \
