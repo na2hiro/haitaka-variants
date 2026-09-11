@@ -1,0 +1,81 @@
+{
+  "schema": "haitaka-anhoku-strength-first-model-b-mac-rebalance-v1",
+  "createdAt": "2026-09-12T04:54:39+09:00",
+  "supersedes": {
+    "path": "r0/anhoku-strength-first/step9-model-b-mac-split-receipt.json",
+    "sha256": "2ebccc67935de1df9cc6a1ed102ca5e9e0fa225ceb65a37a734cb6757309af78"
+  },
+  "reason": "The MBP finished its original lane while the MBA had 626 of 883 training shards complete. Rebalance the exact unfinished inventory across both idle capacity pools.",
+  "sourceRevision": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c",
+  "configSha256": "36a8521f1dde00e94db687a34c7b716060847aa78a1095c1cda3920586a2311e",
+  "executableSha256": "83ff0eac62ea340f37b9fa64d0006cd12f0f9ff8575e67989d4d1f186e6eed5c",
+  "preservedBeforeRebalance": {
+    "mbpTrainingShards": 2117,
+    "mbpValidationShards": 142,
+    "mbaTrainingShards": 626,
+    "mbaValidationShards": 0
+  },
+  "stop": {
+    "requestedSignal": "SIGINT",
+    "sigintCount": 1,
+    "completedShardsPreserved": true,
+    "lingeringSupersededWorkers": 3,
+    "lingeringWorkerAction": "SIGTERM after the single graceful SIGINT stopped dispatch but did not promptly finish three active shards",
+    "unfinishedActiveShardsAreResumable": true
+  },
+  "partition": {
+    "laneCount": 170,
+    "mbp": {
+      "endpoint": "192.168.0.12",
+      "relativeCpuPower": 10,
+      "jobsArgumentOmitted": true,
+      "detectedLogicalCpus": 18,
+      "laneIndexRangeInclusive": [
+        160,
+        169
+      ],
+      "trainingShardRange": [
+        2823,
+        3000
+      ],
+      "unfinishedTrainingShardsAtLaunch": 177,
+      "validationShardRange": [
+        190,
+        202
+      ],
+      "unfinishedValidationShardsAtLaunch": 12
+    },
+    "mba": {
+      "endpoint": "192.168.0.5",
+      "relativeCpuPower": 7,
+      "jobsArgumentOmitted": true,
+      "detectedLogicalCpus": 10,
+      "laneIndexRangeInclusive": [
+        120,
+        159
+      ],
+      "trainingShardRange": [
+        2117,
+        2823
+      ],
+      "unfinishedTrainingShardsAtLaunch": 80,
+      "validationShardRange": [
+        142,
+        190
+      ],
+      "unfinishedValidationShardsAtLaunch": 48
+    },
+    "rangeConvention": "zero-based half-open",
+    "overlap": false,
+    "completeCoverageWithPreservedShards": true
+  },
+  "automaticCompletion": {
+    "joinService": "anhoku-step9-model-b-mac-join.service",
+    "collectorService": "anhoku-step9-model-b-collector.service",
+    "strictMerge": true,
+    "audits": true,
+    "exactFreeze": true
+  },
+  "estimatedRemainingWallHoursAtLaunch": 2.0,
+  "status": "running"
+}
