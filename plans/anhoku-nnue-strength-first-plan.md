@@ -1,6 +1,6 @@
 # Anhoku NNUE: strength-first plan
 
-Created: 2026-09-06. Updated: 2026-09-10. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, and two-checkpoint rescreen completed; independent-seed preflight awaits GPU-rental permission. No deployment authorized.
+Created: 2026-09-06. Updated: 2026-09-11. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, checkpoint rescreen, and independent-seed development replication completed. Update 2,688 is nominated as model A; independent-data preparation is next. No deployment authorized.
 
 ## Objective and scope
 
@@ -48,18 +48,21 @@ The frozen conservative point-estimate rule therefore selects **update 2,048** a
 
 This selection uses checkpoints, openings, and matches already exposed during development. The result nominates update 2,048 for the next bounded experiment; it is not independent confirmation and does not authorize production use. Stop retained-checkpoint screening here. Any next training treatment that needs a GPU requires a concrete cost envelope and explicit Vast.ai rental permission. The complete report is [step7-result-report.md](../r0/anhoku-strength-first/step7-result-report.md).
 
-## Independent-seed preflight — 2026-09-10
+## Independent-seed development replication — 2026-09-11
 
-The next bounded lane is the third and final full training run in the initial tournament: a fresh width-256 scratch seed on the unchanged audited 880k training and 60k validation records. It keeps the features, objective, optimizer, schedule, 4,096-update exposure, and development openings fixed. This isolates initialization variance. Because it reuses the corpus, it is not the independent-data model B required for final confirmation.
+The third and final initial-tournament run completed from a fresh width-256 scratch seed on the unchanged audited 880k training and 60k validation records. It kept the features, objective, optimizer, schedule, 4,096-update exposure, and development openings fixed. The lowest validation loss was 0.012594 at update 2,688. The frozen equal-node comparison selected update 2,688 over update 2,048: their 256-game scores against handcrafted were 57.03% and 49.22%.
 
-The config validator, deterministic runner self-test, and real CPU resume/export fixture pass. Execution starts with a mandatory 128-update throughput boundary; later legs require hash-bound evidence and the existing stopping rule. After explicit permission, verified offer 48470912 created Vast.ai instance 50523521 at a listed combined rate of $0.3944/hour for 60 GiB. The hard ceiling remains one RTX 4090, 60 GiB, at most $0.75/hour, four rented hours, and $5 total. An earlier empty instance was destroyed after its host could not pull the pinned image. The [Step 8 preflight](../r0/anhoku-strength-first/step8-seed-replication-preflight.md) binds the launch evidence.
+The selected model passed full-precision/integer/native/WASM qualification on 1,024 positions. On the MacBook Pro under the frozen one-game-at-a-time primary protocol, it scored 163–93 against handcrafted over 256 games at 1,000 ms per move, or 63.67%, with a grouped 95% interval of 55.58%–71.77%. This replicates the recipe's development strength across initialization seed. Because it reuses the corpus and opening groups, it is model A evidence rather than the independent-data model B required for final confirmation. Handcrafted remains the production recommendation. The complete report is [step8-result-report.md](../r0/anhoku-strength-first/step8-result-report.md).
+
+The exact selected checkpoint, selected integer network, update-2,048 checkpoint, final checkpoint, and evaluation receipts are preserved locally. Two early historical full-precision checkpoints were not fully transferred before the training instance was destroyed. A bounded recovery replay confirmed the same initial predictions and boundary metrics but could not reproduce post-update CUDA artifacts byte for byte. This limits complete archival rehashing of the historical graph; it does not change the selected-model result. Both Vast instances are destroyed. Training and recovery charges totaled $2.266.
 
 ## Next execution sequence
 
 1. **Completed: establish the controlled 1-second production-path baseline (CPU only).** The Step 6 browser/WASM run and its 100 ms secondary check record the required fixed-time score, search qualification, timing, memory, load, and provenance evidence. A second supported target device is still required before production use.
 2. **Completed: diagnose integer-export versus full-precision disagreement and reselect the retained checkpoint (CPU only).** Step 6 identified and fixed the feature-transformer scale defect; Step 7 stopped after the two predeclared checkpoints and selected update 2,048 under the corrected runtime.
-3. **Choose one evidence-backed treatment.** Fix any demonstrated parity defect first. If quantization error explains the move-quality gap, freeze one export or quantization-aware treatment; if it does not, consider one calibrated-objective treatment against the current objective on the same corpus. Validate parity and compare against both the unchanged candidate and handcrafted, with 1 second as the primary development endpoint and 100 ms secondary. New training that needs a GPU requires a concrete cost envelope and explicit Vast.ai rental permission before execution.
-4. **Scale or confirm only after a credible gain.** Route a successful recipe to the conditional data-growth stage below, or nominate it for independent confirmation when ready. Final confirmation uses 1 second on the shipped path, unseen opening-source groups, and the unchanged statistical success criterion. The current development wins and timing smoke test do not authorize promotion.
+3. **Completed: replicate the compact recipe across initialization seed.** Step 8 trained the final initial-tournament seed, selected update 2,688, passed parity, and beat handcrafted under the 256-game primary development protocol.
+4. **Prepare independent-data model B on CPU.** Freeze a separately generated corpus, validation split, and unseen opening-source groups without exposing model A to the confirmation schedule. Bind generation, exclusion, provenance, and the later 1-second confirmation protocol before requesting GPU time.
+5. **Train and confirm only after preparation passes.** New GPU work requires a concrete cost envelope and explicit Vast.ai rental permission. Final confirmation compares model A and independently trained model B on the shipped path and unseen opening-source groups under the unchanged statistical success criterion. The development wins do not authorize promotion.
 
 ## Evidence behind the reset
 

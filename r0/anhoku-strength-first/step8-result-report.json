@@ -1,0 +1,213 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step8-result-report-v1",
+  "experimentId": "strength-first-step8-compact-seed-replication-20260910-v1",
+  "createdAt": "2026-09-11T06:31:53Z",
+  "complete": true,
+  "developmentOnly": true,
+  "config": {
+    "path": "r0/anhoku-strength-first/step8-seed-replication-experiment-v1.json",
+    "sha256": "3ec626241a4787e660177d6b4e72123532441582d619555b5225f990c981f5a6"
+  },
+  "training": {
+    "seed": 2026091002,
+    "width": [256, 16, 32],
+    "optimizerUpdates": 4096,
+    "examplesSeen": 66753664,
+    "equivalentPasses": 75.85643636363636,
+    "stopReason": "maximum-updates",
+    "bestValidation": {
+      "teacherOnlyLoss": 0.012593777974446614,
+      "update": 2688,
+      "checkpoint": {
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+        "bytes": 163439003,
+        "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+      }
+    },
+    "run": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/run.json",
+      "sha256": "cd084128f020ece9669970742eaa2872250f763a89123ff5f529361b96ac7f5d"
+    },
+    "measuredSeconds": {
+      "training": 122.16246401146054,
+      "validation": 43.68711647391319,
+      "shuffle": 11.365307100117207,
+      "checkpoint": 52.05829522758722,
+      "export": 39.040467254817486
+    }
+  },
+  "scheduledScreens": [
+    {
+      "update": 256,
+      "games": 128,
+      "wins": 48,
+      "losses": 80,
+      "draws": 0,
+      "meanScore": 0.375,
+      "lower95": 0.3011941846243014,
+      "upper95": 0.4488058153756986,
+      "decision": "continue",
+      "rawMatch": {
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/screen-u00000256/raw-match-u00000256.json",
+        "sha256": "a28655be5781b3d023d340f2a009a87436ebbbea3e22907b2ac68643c8e466b6"
+      }
+    },
+    {
+      "update": 1024,
+      "games": 128,
+      "wins": 50,
+      "losses": 77,
+      "draws": 1,
+      "meanScore": 0.39453125,
+      "lower95": 0.3184094727808196,
+      "upper95": 0.4706530272191804,
+      "decision": "continue",
+      "rawMatch": {
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/screen-u00001024/raw-match-u00001024.json",
+        "sha256": "d1cbc988610239d2a78219f32c4ae0d7b392bbf2bb716b913c2280a284fe9af0"
+      }
+    },
+    {
+      "update": 2048,
+      "games": 128,
+      "wins": 63,
+      "losses": 65,
+      "draws": 0,
+      "meanScore": 0.4921875,
+      "lower95": 0.39649269009423416,
+      "upper95": 0.5878823099057658,
+      "decision": "continue",
+      "rawMatch": {
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/screen-u00002048/raw-match-u00002048.json",
+        "sha256": "bfae60baa8f5a573b695cb95d5cd2e9cee588210065903104dad386b7e16b3d1"
+      }
+    }
+  ],
+  "frozenSelection": {
+    "history": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/selection-history-v2.json",
+      "sha256": "08e25fcb2a8ef448e8c539e64346916bb3935c557d51ac853166538ce29d54c2"
+    },
+    "candidates": [
+      {
+        "update": 2048,
+        "role": "highest-scheduled-screen-score",
+        "validationLoss": 0.012745658111572265,
+        "equalNode": {
+          "games": 256,
+          "wins": 126,
+          "losses": 130,
+          "draws": 0,
+          "meanScore": 0.4921875,
+          "lower95": 0.39649269009423416,
+          "upper95": 0.5878823099057658,
+          "rawMatchSha256": "4e41af96b2d2af4e3651f9756f54688a21d16b7034a1791f4d8874d4f828f0e3"
+        }
+      },
+      {
+        "update": 2688,
+        "role": "lowest-validation-loss",
+        "validationLoss": 0.012593777974446614,
+        "equalNode": {
+          "games": 256,
+          "wins": 146,
+          "losses": 110,
+          "draws": 0,
+          "meanScore": 0.5703125,
+          "lower95": 0.4874441992016436,
+          "upper95": 0.6531808007983564,
+          "rawMatchSha256": "d6fb63f7ab442ceeb140aff814de07b24a177536306e11dfe15dadfaf4bd092c"
+        }
+      }
+    ],
+    "selectedUpdate": 2688,
+    "decision": "selected-by-frozen-ranking"
+  },
+  "selectedQualification": {
+    "checkpointSha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e",
+    "integerNetwork": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/exports/selected-u00002688.nnue",
+      "bytes": 83048706,
+      "sha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa"
+    },
+    "parity": {
+      "positions": 1024,
+      "fullPrecisionToIntegerMeasured": true,
+      "integerReferenceMatchesNative": true,
+      "integerReferenceMatchesWasm": true,
+      "nativeMatchesWasm": true,
+      "status": "passed"
+    },
+    "quantizationAbsoluteScoreDelta": {
+      "mean": 9.552227032836527,
+      "p95": 45.34771728515625,
+      "p99": 70.19161987304688,
+      "maximum": 113.310546875
+    }
+  },
+  "primaryFixedTime": {
+    "machine": "MacBook Pro",
+    "budgetMillisecondsPerMove": 1000,
+    "concurrentGames": 1,
+    "openingGroups": 64,
+    "pairs": 128,
+    "games": 256,
+    "wins": 163,
+    "losses": 93,
+    "draws": 0,
+    "meanScore": 0.63671875,
+    "lower95": 0.5557692987207903,
+    "upper95": 0.7176682012792097,
+    "approximateElo": 97.5,
+    "rawMatch": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/final-fixed-time-u00002688/raw-match-final-fixed-time-u00002688.json",
+      "sha256": "b1235e74ec41608a852859ef5811af84d6c9706886c534b32f99d823025c4a51"
+    },
+    "sourceAudit": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/final-fixed-time-u00002688/native-final-fixed-time-source-audit-u00002688.json",
+      "sha256": "39be27790162f7f4ecaf72a8b589a7001aca19dfae682e0a1b3ddecea090593b"
+    },
+    "status": "passed"
+  },
+  "rentalAccounting": {
+    "trainingInstance": {
+      "id": 50523521,
+      "destroyed": true,
+      "costUsd": 2.025,
+      "breakdownUsd": {"gpu": 1.945, "storage": 0.075, "download": 0.002, "upload": 0.003}
+    },
+    "recoveryInstance": {
+      "id": 50558431,
+      "destroyed": true,
+      "costUsd": 0.241,
+      "breakdownUsd": {"gpu": 0.231, "storage": 0.009, "download": 0.001, "upload": 0.0}
+    },
+    "totalUsd": 2.266
+  },
+  "preservation": {
+    "productionRelevantArtifactsPreserved": true,
+    "selectedCheckpointPreservedExactly": true,
+    "selectedIntegerNetworkPreservedExactly": true,
+    "update2048CheckpointPreservedExactly": true,
+    "finalUpdate4096CheckpointPreservedExactly": true,
+    "historicalEarlyCheckpointGap": {
+      "update256": "truncated original prefix only",
+      "update1024": "absent",
+      "effect": "The full historical selection-graph validator cannot rehash every scheduled checkpoint. Selected-model use, parity, equal-node comparison, and final fixed-time evidence remain locally present and hash-bound."
+    },
+    "recoveryEvidence": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoint-recovery-50558431/recovery-evidence.json",
+      "sha256": "e124f19e983ef669fd7cc677c52e5a762edc8a35b41a7ea6ada7b704760a18bf",
+      "exactRecoverySucceeded": false
+    }
+  },
+  "decision": {
+    "developmentRecipeReplicatedAcrossInitializationSeed": true,
+    "nominatedRecipe": "width-256 fresh-scratch robust-clipped-huber recipe on the audited 880k corpus",
+    "nominatedModelAUpdate": 2688,
+    "productionRecommendation": "handcrafted",
+    "productionPromotionAuthorized": false,
+    "reason": "The candidate beat handcrafted under the frozen development protocol, but training data and opening groups were reused. Independent data and unseen opening-source confirmation are still required."
+  },
+  "nextAction": "Prepare a separately generated model-B corpus and unseen opening-source confirmation contract; request new GPU rental permission only after CPU preparation and a concrete cost envelope are complete."
+}
