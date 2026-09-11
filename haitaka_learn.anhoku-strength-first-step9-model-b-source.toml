@@ -50,10 +50,3 @@ jobs = 0
 shard_games = 10
 progress_every_percent = 5
 resume = true
-
-[training]
-features = "HalfKAv2^+DonorSingleEff"
-teacher_move_consumers = false
-
-[verify]
-run_search_smoke = false
