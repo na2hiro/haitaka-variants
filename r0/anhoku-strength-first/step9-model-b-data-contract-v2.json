@@ -5,6 +5,10 @@
   "supersedes": {
     "path": "r0/anhoku-strength-first/step9-model-b-data-contract.json",
     "sha256": "79fcc40bb4de48b456ddb3ae54e287ca8346db02961f36cb762fcc0e80b0ae21",
+    "abortReport": {
+      "path": "r0/anhoku-strength-first/step9-model-b-v1-abort-report.json",
+      "sha256": "ecbe9b818bcd282a8e99e45d5ae8caf44d0cec3697ee8e144114eb9f7f4a5ff3"
+    },
     "reason": "The ten-game probe took 129 seconds on one core, while 18-way saturation spent about 90 percent of measured search CPU in the 16-candidate rollout and projected roughly 40 wall-clock hours. V1 was stopped before opening aggregate results."
   },
   "executionHost": {

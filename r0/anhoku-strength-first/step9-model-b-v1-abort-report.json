@@ -1,0 +1,24 @@
+{
+  "schema": "haitaka-anhoku-strength-first-model-b-generation-abort-v1",
+  "experimentId": "strength-first-step9-model-b-data-20260911-v1",
+  "stoppedAt": "2026-09-11T16:21:00+09:00",
+  "reason": "The 18-way run completed only 27 ten-game shards in about 15.4 minutes. Completed manifests attributed 9,694.21 CPU-seconds to rollout search versus 785.75 to label search, so the 16-candidate rollout dominated cost and projected roughly 40 wall-clock hours.",
+  "decision": "Supersede with the preregistered v2 four-candidate, ten-job lane; retain all v1 shards as non-decisional throughput evidence.",
+  "sourceRevision": "e085d1ee091bf5483c9c9460d206c79f7b59991d",
+  "canonicalConfigSha256": "cc61cc24e51043634c592730522bd7b9acd103339f52262e6115c4c7a42af864",
+  "completed": {
+    "shards": 27,
+    "games": 270,
+    "acceptedPositions": 11093,
+    "labelSearches": 16040,
+    "labelSearchCpuSeconds": 785.753952745,
+    "rolloutSearchCpuSeconds": 9694.208972654
+  },
+  "log": {
+    "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v1/logs/generate.log",
+    "sha256": "c104571ee4738918c405e7d49a3523ae27941622a41b957687ea3d900ce1c028"
+  },
+  "aggregateResultsOpened": false,
+  "corpusEligible": false,
+  "preserved": true
+}
