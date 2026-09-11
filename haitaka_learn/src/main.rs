@@ -18,6 +18,7 @@ mod r4;
 mod r4f;
 mod r4replacement;
 mod selection;
+mod strength_first_model_b;
 mod trainer;
 mod verify;
 
@@ -389,6 +390,40 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value_t = 1)]
         jobs: usize,
+    },
+    /// Generate fresh, color-swap-unique Anhoku opening groups for frozen confirmation.
+    StrengthFirstGenerateOpeningSuite {
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+        #[arg(long)]
+        seed: u64,
+        #[arg(long)]
+        positions: usize,
+        #[arg(long, default_value_t = 16)]
+        random_plies: u16,
+        #[arg(long)]
+        id_prefix: String,
+        #[arg(long)]
+        exclude_suite: Vec<PathBuf>,
+    },
+    /// Exclude model-A board families and freeze exact model-B train/validation payloads.
+    StrengthFirstFreezeModelBCorpus {
+        #[arg(long, required = true)]
+        model_a: Vec<PathBuf>,
+        #[arg(long)]
+        source_train: PathBuf,
+        #[arg(long)]
+        source_validation: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 880000)]
+        train_records: usize,
+        #[arg(long, default_value_t = 60000)]
+        validation_records: usize,
+        #[arg(long)]
+        selection_seed: u64,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -974,6 +1009,46 @@ fn main() -> Result<()> {
                 jobs,
             })?;
             println!("Replacement R4 gate report written to {}", path.display());
+        }
+        Command::StrengthFirstGenerateOpeningSuite {
+            output,
+            report,
+            seed,
+            positions,
+            random_plies,
+            id_prefix,
+            exclude_suite,
+        } => {
+            strength_first_model_b::generate_opening_suite(
+                &output,
+                &report,
+                seed,
+                positions,
+                random_plies,
+                &id_prefix,
+                &exclude_suite,
+            )?;
+            println!("opening suite written to {}", output.display());
+        }
+        Command::StrengthFirstFreezeModelBCorpus {
+            model_a,
+            source_train,
+            source_validation,
+            output_dir,
+            train_records,
+            validation_records,
+            selection_seed,
+        } => {
+            let path = strength_first_model_b::freeze_corpus(
+                &model_a,
+                &source_train,
+                &source_validation,
+                &output_dir,
+                train_records,
+                validation_records,
+                selection_seed,
+            )?;
+            println!("model-B corpus manifest written to {}", path.display());
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
