@@ -56,7 +56,9 @@ ssh "$mbp" "cd '$mbp_workspace' && \
     '$source_rel/artifacts/validation-audit.json' \
     '$frozen_rel/training.bin' \
     '$frozen_rel/training.json' \
+    '$frozen_rel/training.jsonl' \
     '$frozen_rel/validation.bin' \
     '$frozen_rel/validation.json' \
+    '$frozen_rel/validation.jsonl' \
     '$frozen_rel/model-b-corpus.json' \
     > '$frozen_rel/sha256sums.txt'"

@@ -1,0 +1,111 @@
+{
+  "schema": "haitaka-anhoku-strength-first-independent-confirmation-contract-v2",
+  "createdAt": "2026-09-12T08:12:00+09:00",
+  "experimentId": "strength-first-independent-confirmation-20260911-v1",
+  "developmentResultsOpenedBeforeFreeze": true,
+  "modelA": {
+    "role": "nominated-before-confirmation",
+    "checkpointUpdate": 2688,
+    "integerNetworkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+    "confirmationSuite": "A"
+  },
+  "modelB": {
+    "role": "independent-data-replication",
+    "trainingCorpusContract": {
+      "path": "r0/anhoku-strength-first/step9-model-b-data-contract-v2.json",
+      "sha256": "a6a949adf74c45a091ccea834a00e11df911bad87243f1868d0c2a41ab3ae6db"
+    },
+    "initializationSeed": 2026091108,
+    "optimizerUpdates": 4096,
+    "checkpointUpdate": 2688,
+    "selectionAfterConfirmationBegins": false,
+    "confirmationSuite": "B",
+    "frozenCorpus": {
+      "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/model-b-corpus.json",
+      "bytes": 3311,
+      "sha256": "2e7b32aa0103b033e627a272c20f135f6a5aa11d1c22d6c6d0b75b7c4412b54d"
+    },
+    "trainingExperiment": {
+      "path": "r0/anhoku-strength-first/step9-model-b-training-experiment-v1.json",
+      "bytes": 18237,
+      "sha256": "1c14643cd5eba5fea343d207a4f027db3a4fa02f49b8c38727cf8cae7addd74b"
+    },
+    "trainingRunner": {
+      "path": "scripts/strength_first_model_b_trainer.py",
+      "bytes": 3401,
+      "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+    }
+  },
+  "suites": {
+    "A": {
+      "path": "haitaka_learn/openings/anhoku-strength-confirmation-a-v1.tsv",
+      "sha256": "d58c3adfdb7ba96f0cf5e21e36c97fe48d1d3df337293b92b33665744f497f39",
+      "generationReceipt": {
+        "path": "r0/anhoku-strength-first/step9-confirmation-a-generation.json",
+        "sha256": "81c1e7ee5c81e0958e4d5db0fb3774b474fb7a7ebe8b20e67d9ed8a099be3b1a"
+      },
+      "openingSourceGroups": 2048,
+      "sourceGameSeed": 2026091109,
+      "sourceRandomPlies": 16
+    },
+    "B": {
+      "path": "haitaka_learn/openings/anhoku-strength-confirmation-b-v1.tsv",
+      "sha256": "4824a0c63bae39d86148cc1bc4bd6471b4c8f1296a460ec5b150fba0cce54578",
+      "generationReceipt": {
+        "path": "r0/anhoku-strength-first/step9-confirmation-b-generation.json",
+        "sha256": "c81d59e5639df92ae9f8132e722e9e3a14508b802fd05494cdc882c782e38559"
+      },
+      "openingSourceGroups": 2048,
+      "sourceGameSeed": 2026091110,
+      "sourceRandomPlies": 16,
+      "excludedSuiteA": true
+    }
+  },
+  "matchProtocol": {
+    "hostRole": "mbp",
+    "endpoint": "192.168.0.12",
+    "concurrentGames": 1,
+    "moveTimeMilliseconds": 1000,
+    "opponent": "haitaka-native-handcrafted",
+    "gamesPerOpeningSourceGroup": 2,
+    "schedule": "one-color-swapped-pair-in-file-order-v1",
+    "gamesPerModel": 4096,
+    "interimLooks": 0,
+    "sampleExtension": false,
+    "incompleteSchedulePolicy": "fail-closed-and-rerun-the-original-complete-schedule-without-inspecting-a-partial-result",
+    "primaryEndpoint": "candidate-viewpoint-paired-score"
+  },
+  "statisticalDecision": {
+    "minimumEffectForPowerElo": 20.0,
+    "minimumEffectScore": 0.5287505638922686,
+    "alphaOneSided": 0.05,
+    "targetPower": 0.8,
+    "analysisUnit": "opening-source color-swapped pair",
+    "pairCountPerModel": 2048,
+    "pairScoreRange": [
+      0.0,
+      1.0
+    ],
+    "standardDeviationBound": 0.5,
+    "normalApproximationNoncentralZAtMinimumEffect": 2.602203785899882,
+    "normalApproximationWorstCasePower": 0.8309,
+    "interval": "one-sided-95-percent-student-t-lower-bound-over-pair-scores-v1",
+    "perModelPass": "lower-bound-strictly-greater-than-0.5",
+    "overallPass": "both-model-A-and-model-B-pass",
+    "multiplicity": "intersection-union-conjunction; each component tested at one-sided alpha 0.05"
+  },
+  "exposurePolicy": {
+    "modelAAlreadyFrozen": true,
+    "modelBTrainingAndCheckpointMustFinishBeforeAnyConfirmationGame": true,
+    "suiteResultsMustRemainUnopenedUntilBothCompleteSchedulesFinish": true,
+    "noModelOrCheckpointSelectionFromConfirmation": true
+  },
+  "deploymentAuthorized": false,
+  "gpuAuthorized": false,
+  "status": "preregistered",
+  "supersedes": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-contract.json",
+    "sha256": "56292d9cd7595e45daa2d6b692c8d18808252dc0ffa5ffcb06c5c8abec5e560e",
+    "reason": "Bind the completed v2 independent corpus, its trainer-required diagnostic sidecars, and the exact Model B training config before GPU execution."
+  }
+}

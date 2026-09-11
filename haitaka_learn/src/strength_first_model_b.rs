@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, ensure};
 use haitaka::{Board, Color, Move, Piece};
+use haitaka_wasm::r1_donor_single_active_feature_indices;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde_json::{Value, json};
@@ -190,9 +191,15 @@ pub(crate) fn freeze_corpus(
     let validation_path = output_dir.join("validation.bin");
     write_records(&train_path, &selected_train)?;
     write_records(&validation_path, &selected_validation)?;
+    let train_sidecar_path = output_dir.join("training.jsonl");
+    let validation_sidecar_path = output_dir.join("validation.jsonl");
+    write_training_sidecar(&train_sidecar_path, &selected_train)?;
+    write_training_sidecar(&validation_sidecar_path, &selected_validation)?;
 
     let train_receipt = file_receipt(&train_path, None)?;
     let validation_receipt = file_receipt(&validation_path, None)?;
+    let train_sidecar_receipt = file_receipt(&train_sidecar_path, None)?;
+    let validation_sidecar_receipt = file_receipt(&validation_sidecar_path, None)?;
     let train_manifest_path = output_dir.join("training.json");
     let validation_manifest_path = output_dir.join("validation.json");
     write_json(
@@ -201,6 +208,7 @@ pub(crate) fn freeze_corpus(
             "training",
             train_records,
             &train_receipt,
+            &train_sidecar_receipt,
             source_train,
             &train_stats,
         )?,
@@ -211,6 +219,7 @@ pub(crate) fn freeze_corpus(
             "validation",
             validation_records,
             &validation_receipt,
+            &validation_sidecar_receipt,
             source_validation,
             &validation_stats,
         )?,
@@ -227,12 +236,14 @@ pub(crate) fn freeze_corpus(
         "training": {
             "records": train_records,
             "binary": train_receipt,
+            "sidecar": train_sidecar_receipt,
             "manifest": file_receipt(&train_manifest_path, None)?,
             "sourceStats": train_stats,
         },
         "validation": {
             "records": validation_records,
             "binary": validation_receipt,
+            "sidecar": validation_sidecar_receipt,
             "manifest": file_receipt(&validation_manifest_path, None)?,
             "sourceStats": validation_stats,
             "excludedSelectedTrainingFamilies": selected_train_families.len(),
@@ -364,10 +375,57 @@ fn write_records(path: &Path, records: &[RankedRecord]) -> Result<()> {
     Ok(())
 }
 
+fn write_training_sidecar(path: &Path, records: &[RankedRecord]) -> Result<()> {
+    let mut writer = BufWriter::new(File::create(path)?);
+    for record in records {
+        let packed: [u8; PACKED_SFEN_BYTES] = record.bytes[..PACKED_SFEN_BYTES]
+            .try_into()
+            .expect("fixed packed-board prefix");
+        let board = unpack_board_from_training(&packed)?;
+        let moves = legal_moves(&board);
+        let ply = board.move_number();
+        let in_check = !board.checkers().is_empty();
+        let tactical = in_check || moves.iter().any(|mv| board.piece_on(mv.to()).is_some());
+        let black = r1_donor_single_active_feature_indices(&board, Color::Black);
+        let white = r1_donor_single_active_feature_indices(&board, Color::White);
+        let donor_state = if black.donor.is_empty() && white.donor.is_empty() {
+            "none"
+        } else {
+            "active"
+        };
+        let phase = if moves.len() <= 3 || ply >= 150 {
+            "terminal-adjacent"
+        } else if ply < 36 {
+            "early"
+        } else if ply < 90 {
+            "middle"
+        } else {
+            "late"
+        };
+        serde_json::to_writer(
+            &mut writer,
+            &json!({
+                "schema": "haitaka-strength-first-frozen-training-metadata-v1",
+                "sourceIndex": record.source_index,
+                "position": {
+                    "phase": phase,
+                    "tactical": tactical,
+                    "inCheck": in_check,
+                    "donorState": donor_state,
+                },
+            }),
+        )?;
+        writer.write_all(b"\n")?;
+    }
+    writer.flush()?;
+    Ok(())
+}
+
 fn split_manifest(
     split: &str,
     records: usize,
     binary: &Value,
+    sidecar: &Value,
     source: &Path,
     stats: &Value,
 ) -> Result<Value> {
@@ -377,6 +435,7 @@ fn split_manifest(
         "records": records,
         "entryBytes": ENTRY_BYTES,
         "binary": binary,
+        "sidecar": sidecar,
         "source": file_receipt(source, None)?,
         "sourceStats": stats,
         "labelEvaluator": "haitaka-native-handcrafted-search-v1",
@@ -538,9 +597,29 @@ mod tests {
         assert!(model_a_families.is_disjoint(&train_families));
         assert!(model_a_families.is_disjoint(&validation_families));
         assert!(train_families.is_disjoint(&validation_families));
+        let training_sidecar = fs::read_to_string(output.join("training.jsonl")).unwrap();
+        let sidecar_rows = training_sidecar
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(sidecar_rows.len(), 4);
+        assert!(sidecar_rows.iter().all(|row| {
+            matches!(
+                row["position"]["phase"].as_str(),
+                Some("early" | "middle" | "late" | "terminal-adjacent")
+            ) && matches!(
+                row["position"]["donorState"].as_str(),
+                Some("none" | "active")
+            ) && row["position"]["tactical"].is_boolean()
+                && row["position"]["inCheck"].is_boolean()
+        }));
         let manifest: Value =
             serde_json::from_slice(&fs::read(output.join("model-b-corpus.json")).unwrap()).unwrap();
         assert_eq!(manifest["passed"], true);
+        assert_eq!(
+            manifest["training"]["sidecar"]["bytes"].as_u64().unwrap(),
+            training_sidecar.len() as u64
+        );
     }
 
     #[test]

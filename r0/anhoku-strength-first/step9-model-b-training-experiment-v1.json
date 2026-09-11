@@ -1,0 +1,532 @@
+{
+  "schema": "haitaka-anhoku-strength-first-experiment-v3",
+  "experimentId": "strength-first-step9-model-b-training-20260912-v1",
+  "status": "prepared-awaiting-gpu-approval-and-throughput-probe",
+  "authorization": {
+    "candidateTrainingAuthorized": false,
+    "gpuRentalAuthorized": false,
+    "gpuApprovalReceipt": null,
+    "paidExecutionRequiresExplicitUserApproval": true,
+    "approvalReceiptSchema": "haitaka-explicit-gpu-rental-approval-v2",
+    "approvedAction": "rent-and-run-this-exact-config-through-receipt-gated-boundaries"
+  },
+  "trainer": {
+    "runnerVersion": "haitaka-anhoku-strength-first-trainer-v4",
+    "runner": {
+      "path": "scripts/strength_first_model_b_trainer.py",
+      "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+    },
+    "reusedR5Runner": {
+      "path": "scripts/r5_trainer.py",
+      "sha256": "4973361a1296e4e2cdc169ded0f39af6660f9c95527e7e774e14134868e1bd13"
+    },
+    "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+    "contextInputs": [
+      {
+        "path": "trainer-patches/variant-nnue-pytorch-phase7.1.patch",
+        "sha256": "79603cc66250e335ba242477137366f0aa8a2e530ffa36f3abfb582fafaf802f"
+      },
+      {
+        "path": "trainer-patches/variant-nnue-pytorch-r5.patch",
+        "sha256": "69d0003c3421157a1e0fc2a2c61d5f21e72ec74d730ae8fe561acd950e6d6158"
+      },
+      {
+        "path": "haitaka_learn/trainer_overlay/feature_set.py",
+        "sha256": "fb935620aed34426c83a105ee58085637c98cb4c228477e9aaa78c1f17288f52"
+      },
+      {
+        "path": "haitaka_learn/trainer_overlay/features.py",
+        "sha256": "bb58e9adcd2dab2ff0038a357f50846ea4e64dd6d70ae085ebe23e83e8b18596"
+      },
+      {
+        "path": "haitaka_learn/trainer_overlay/donor_features.py",
+        "sha256": "ce2cf87dc1a7a42d77837dbc1e3459fd85fca5dabb54fcb8c4d7e6eb79bbce9a"
+      },
+      {
+        "path": "haitaka_learn/trainer_overlay/training_data_loader.cpp",
+        "sha256": "cc4b88537d4b5533f3a2a6b134e0e25623e4c77d3260211374cc1d5effc7dbe7"
+      },
+      {
+        "path": "trainer-patches/evaluate.py",
+        "sha256": "9a93fbff1549d1884300ef5623370173a1b9e06bbd9fe400c2ea5f9940da9748"
+      }
+    ]
+  },
+  "recipe": {
+    "seed": 2026091108,
+    "initialization": "fresh-scratch",
+    "featureFamily": "HalfKAv2^+DonorSingleEff",
+    "width": {
+      "l1": 256,
+      "l2": 16,
+      "l3": 32
+    },
+    "data": {
+      "training": {
+        "records": 880000,
+        "entryBytes": 72,
+        "manifest": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.json",
+          "bytes": 1384,
+          "sha256": "89f976b5fdfde9198fa9b671e8a6024758b1d638cceedecf9316371865cb0c55"
+        },
+        "binary": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+          "bytes": 63360000,
+          "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+        },
+        "sidecar": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+          "bytes": 149594430,
+          "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+        }
+      },
+      "validation": {
+        "records": 60000,
+        "entryBytes": 72,
+        "manifest": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.json",
+          "bytes": 1389,
+          "sha256": "e72d1119554bc7bcfb2b56487217d5af6801e0892c7532197b539a6b330755bf"
+        },
+        "binary": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+          "bytes": 4320000,
+          "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+        },
+        "sidecar": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+          "bytes": 10123281,
+          "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+        }
+      }
+    },
+    "loader": {
+      "batchSize": 16384,
+      "workers": 1,
+      "cyclic": false,
+      "filtered": false,
+      "randomFenSkipping": 0,
+      "finiteFinalPartialBatch": true,
+      "trainingOrder": "pcg64dxsm-seed-epoch-record-permutation-v1",
+      "validationOrder": "fixed-source-order-once-per-evaluation-v1"
+    },
+    "objective": {
+      "kind": "robust-clipped-huber-v1",
+      "teacherOnly": true,
+      "resultLossEnabled": false,
+      "lambda": 1.0,
+      "targetScoreClip": 12000.0,
+      "normalizedScoreScale": 12000.0,
+      "huberDeltaNormalized": 0.1,
+      "modelOutputToRuntimeScore": 600.0
+    },
+    "optimizer": {
+      "kind": "Ranger",
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "epsilon": 1E-7,
+      "weightDecay": 0.0,
+      "lookaheadAlpha": 0.5,
+      "lookaheadK": 6,
+      "nSmaThreshold": 5,
+      "gradientCentralizationLocation": false,
+      "gradientCentralizationEnabled": false,
+      "gradientCentralizationConvOnly": false,
+      "parameterGroupNames": [
+        "feature-transformer",
+        "l1-factor-weight",
+        "l1-weight",
+        "l1-bias",
+        "l2-weight",
+        "l2-bias",
+        "output-weight",
+        "output-bias"
+      ],
+      "parameterGroupLearningRateMultipliers": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.1,
+        0.1
+      ],
+      "weightProjection": "pinned-model-_clip_weights-before-and-after-update-v1"
+    },
+    "schedule": {
+      "kind": "linear-warmup-then-cosine-by-optimizer-update-v1",
+      "baseLearningRate": 0.0015,
+      "minimumLearningRate": 0.00005,
+      "warmupUpdates": 64,
+      "maximumUpdates": 4096,
+      "firstUpdateLearningRate": 0.0000234375,
+      "warmupEndpointLearningRate": 0.0015,
+      "finalUpdateLearningRate": 0.00005
+    },
+    "evaluation": {
+      "everyUpdates": 128,
+      "initialValidation": true,
+      "validationRecordsPerEvaluation": 60000,
+      "batchSize": 16384,
+      "repeatWithinEvaluation": false
+    },
+    "checkpoints": {
+      "throughputProbeUpdate": 128,
+      "scheduledUpdates": [
+        256,
+        1024,
+        2048,
+        2688,
+        4096
+      ],
+      "retainBestValidation": true,
+      "retainFinal": true,
+      "atomicLastState": true,
+      "lastStateEveryEvaluation": true,
+      "portableFullPrecision": true
+    },
+    "diagnostics": {
+      "updateMagnitudeEveryUpdates": 128,
+      "logScoreRange": true,
+      "logPhaseLoss": true,
+      "logTacticalAndCheckLoss": true,
+      "logDonorStateLoss": true,
+      "logFeatureCoverage": true,
+      "logOutputScaleAndSaturation": true,
+      "logGradientMagnitude": true,
+      "logUpdateMagnitude": true,
+      "logExposureCounters": true,
+      "logTiming": true
+    },
+    "export": {
+      "format": "pinned-serialize-py-nnue-v1",
+      "automaticScheduledUpdates": [
+        256,
+        1024,
+        2048,
+        2688,
+        4096
+      ],
+      "selectedCheckpointMustBeExplicit": true,
+      "selectionHistorySchema": "haitaka-anhoku-strength-first-selection-history-v2",
+      "selectionMustReferenceRunHistory": true,
+      "sourceCheckpointMustBeRecordedArtifact": true,
+      "atomicCommit": true,
+      "candidateExportSchema": "haitaka-anhoku-strength-first-candidate-export-v1",
+      "candidateRuntimeSchema": "haitaka-anhoku-strength-first-candidate-runtime-v1",
+      "parityReceiptSchema": "haitaka-anhoku-strength-first-parity-receipt-v1",
+      "rawMatchSchema": "haitaka-anhoku-strength-first-raw-match-v1",
+      "comparisonReceiptSchema": "haitaka-anhoku-strength-first-comparison-receipt-v1",
+      "fullPrecisionIntegerReferenceNativeWasmParityRequiredBeforeGames": true,
+      "quantizationErrorReportedSeparately": true
+    },
+    "realCpuFixture": {
+      "device": "cpu",
+      "source": "first-nine-record-prefix-of-hash-bound-training-binary-v1",
+      "records": 9,
+      "entryBytes": 72,
+      "batchSize": 5,
+      "finiteBatchSizesPerEpoch": [
+        5,
+        4
+      ],
+      "width": {
+        "l1": 16,
+        "l2": 8,
+        "l3": 8
+      },
+      "seed": 20260906,
+      "maximumUpdates": 12,
+      "interruptAfterUpdates": 1,
+      "schedule": {
+        "kind": "linear-warmup-then-cosine-by-optimizer-update-v1",
+        "baseLearningRate": 0.0015,
+        "minimumLearningRate": 0.00005,
+        "warmupUpdates": 2,
+        "maximumUpdates": 12
+      },
+      "requirements": {
+        "actualPinnedNnue": true,
+        "actualRanger": true,
+        "actualProductionLoader": true,
+        "actualAtomicCheckpointResume": true,
+        "exactUninterruptedResumeWeights": true,
+        "exactUninterruptedResumePredictions": true,
+        "exactUninterruptedResumeExport": true,
+        "tinyOverfitLossMustDecrease": true,
+        "finitePartialBatchMustBeObserved": true,
+        "comprehensiveFiniteChecks": true,
+        "atomicExportCommit": true
+      },
+      "qualificationLimits": {
+        "productionTrainingLoopExercised": false,
+        "cudaRngAndOptimizerStateExercised": false,
+        "productionMetricsStateCommitOrderingExercised": false,
+        "productionContinuationAndIntermediateLegExercised": false,
+        "nativeWasmParityExercised": false,
+        "scope": "cpu-fixture-only-not-production-or-cuda-qualification"
+      },
+      "outputDirectory": "out/anhoku-strength-first/step9-model-b-preflight-20260912-v1/real-fixture"
+    }
+  },
+  "strengthProtocol": {
+    "scheduleId": "anhoku-strength-first-model-b-development-gates-v1",
+    "openingSuite": {
+      "path": "haitaka_learn/openings/anhoku-v3.tsv",
+      "bytes": 6148,
+      "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+    },
+    "openingIds": [
+      "anhoku-v3-001",
+      "anhoku-v3-002",
+      "anhoku-v3-003",
+      "anhoku-v3-004",
+      "anhoku-v3-005",
+      "anhoku-v3-006",
+      "anhoku-v3-007",
+      "anhoku-v3-008",
+      "anhoku-v3-009",
+      "anhoku-v3-010",
+      "anhoku-v3-011",
+      "anhoku-v3-012",
+      "anhoku-v3-013",
+      "anhoku-v3-014",
+      "anhoku-v3-015",
+      "anhoku-v3-016",
+      "anhoku-v3-017",
+      "anhoku-v3-018",
+      "anhoku-v3-019",
+      "anhoku-v3-020",
+      "anhoku-v3-021",
+      "anhoku-v3-022",
+      "anhoku-v3-023",
+      "anhoku-v3-024",
+      "anhoku-v3-025",
+      "anhoku-v3-026",
+      "anhoku-v3-027",
+      "anhoku-v3-028",
+      "anhoku-v3-029",
+      "anhoku-v3-030",
+      "anhoku-v3-031",
+      "anhoku-v3-032",
+      "anhoku-v3-033",
+      "anhoku-v3-034",
+      "anhoku-v3-035",
+      "anhoku-v3-036",
+      "anhoku-v3-037",
+      "anhoku-v3-038",
+      "anhoku-v3-039",
+      "anhoku-v3-040",
+      "anhoku-v3-041",
+      "anhoku-v3-042",
+      "anhoku-v3-043",
+      "anhoku-v3-044",
+      "anhoku-v3-045",
+      "anhoku-v3-046",
+      "anhoku-v3-047",
+      "anhoku-v3-048",
+      "anhoku-v3-049",
+      "anhoku-v3-050",
+      "anhoku-v3-051",
+      "anhoku-v3-052",
+      "anhoku-v3-053",
+      "anhoku-v3-054",
+      "anhoku-v3-055",
+      "anhoku-v3-056",
+      "anhoku-v3-057",
+      "anhoku-v3-058",
+      "anhoku-v3-059",
+      "anhoku-v3-060",
+      "anhoku-v3-061",
+      "anhoku-v3-062",
+      "anhoku-v3-063",
+      "anhoku-v3-064"
+    ],
+    "cycles": 2,
+    "pairOrder": "cycle-major-then-opening-id-ascending-v1",
+    "totalPairs": 128,
+    "colorSwap": "anhoku-rotate-180-and-swap-colors-v1",
+    "opponent": "handcrafted-production-evaluator",
+    "threads": 1,
+    "concurrency": 1,
+    "randomPlies": 0,
+    "maximumPly": 200,
+    "scheduledScreens": {
+      "updates": [
+        256,
+        1024,
+        2048
+      ],
+      "pairsPerScreen": 64,
+      "nodesPerMove": 10000,
+      "openingCycle": 0
+    },
+    "finalEqualNodeComparisonPairs": 128,
+    "finalFixedTimeScreenPairs": 128,
+    "fixedTimeMillisecondsPerMove": 1000,
+    "uncertainty": {
+      "independentUnit": "opening-id",
+      "independentGroups": 64,
+      "colorSwappedGamesAggregatedWithinPair": true,
+      "repeatedCyclesAggregatedWithinOpeningGroup": true,
+      "repeatedCyclesAreNotIndependent": true,
+      "intervalMethod": "two-sided-95-percent-student-t-interval-over-64-opening-group-mean-scores-v1",
+      "screenStoppingBound": "upper-endpoint-of-the-two-sided-95-percent-grouped-interval",
+      "screenStoppingThreshold": 0.45,
+      "sequentialUse": "development-budget-heuristic-only-no-confirmatory-claim"
+    },
+    "finalSelection": {
+      "maximumComparedCheckpoints": 2,
+      "candidateRoles": [
+        "lowest-validation-loss",
+        "highest-scheduled-screen-score"
+      ],
+      "deduplicateSameCheckpoint": true,
+      "comparisonPairsPerCandidate": 128,
+      "comparisonUsesFrozenGroupedSchedule": true,
+      "rankingOrder": [
+        "higher-fixed-time-score-if-measured-for-every-candidate",
+        "higher-equal-node-score",
+        "lower-runtime-cost",
+        "lower-validation-loss",
+        "earlier-optimizer-update"
+      ],
+      "postSelectionScreen": "selected-checkpoint-only-128-pairs-at-1000-ms-per-move",
+      "selectionHistoryRetained": true,
+      "confirmatoryClaimAllowed": false
+    },
+    "executionGates": {
+      "defaultFullRunAllowed": false,
+      "freshRunStopUpdate": 128,
+      "continuationSequence": [
+        {
+          "fromUpdate": 128,
+          "toUpdate": 256,
+          "requiredEvidenceRoles": [
+            "throughput-probe-report"
+          ]
+        },
+        {
+          "fromUpdate": 256,
+          "toUpdate": 1024,
+          "requiredEvidenceRoles": [
+            "throughput-probe-report",
+            "strength-screen-u00000256"
+          ]
+        },
+        {
+          "fromUpdate": 1024,
+          "toUpdate": 2048,
+          "requiredEvidenceRoles": [
+            "throughput-probe-report",
+            "strength-screen-u00001024"
+          ]
+        },
+        {
+          "fromUpdate": 2048,
+          "toUpdate": 4096,
+          "requiredEvidenceRoles": [
+            "throughput-probe-report",
+            "strength-screen-u00002048"
+          ]
+        }
+      ],
+      "receiptSchema": "haitaka-anhoku-strength-first-continuation-receipt-v3",
+      "throughputEvidenceSchema": "haitaka-anhoku-strength-first-throughput-probe-v2",
+      "screenEvidenceSchema": "haitaka-anhoku-strength-first-screen-receipt-v2",
+      "screenGameSchema": "haitaka-anhoku-strength-first-screen-game-v1",
+      "receiptDecision": "continue",
+      "receiptEvidenceMustBeHashBound": true,
+      "activeLegPersistedForIntermediateResume": true,
+      "noOrchestratorRequired": true
+    }
+  },
+  "stopping": {
+    "numericalOrCorrectnessFailure": "stop-immediately",
+    "strengthRule": "stop-after-two-successive-screens-with-paired-upper-95-score-bound-below-0.45",
+    "singleLosingScreenStops": false,
+    "budgetStopRecordedAsConvergence": false
+  },
+  "budget": {
+    "maximumFullTrainingRuns": 3,
+    "maximumTotalGpuHours": 24.0,
+    "maximumTotalRentalCostUsd": 25.0,
+    "initialCycleStorageBytes": 26843545600,
+    "firstRentalEnvelopeGpuHours": 4.0,
+    "firstRentalEnvelopeUsd": 5.0
+  },
+  "costForecast": {
+    "status": "model-b-independent-data-training-envelope-awaiting-explicit-gpu-approval",
+    "historicalAnchor": {
+      "gpu": "RTX 4090",
+      "updates": 4096,
+      "approximateWallSeconds": 263.543865172,
+      "source": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/run.json summed recorded shuffle/training/validation/checkpoint/export time",
+      "historicalCombinedOfferRateUsdPerHour": 0.4625925925925926
+    },
+    "liveQuote": {
+      "provider": "Vast.ai",
+      "offerId": 32084934,
+      "gpu": "A10",
+      "diskGigabytes": 60,
+      "combinedHourlyRateUsd": 0.21111111111111108,
+      "observedAt": "2026-09-11T23:11:20.473765Z",
+      "validUntil": "2026-09-12T03:11:20.473765Z",
+      "binding": false,
+      "use": "exact-approval-target-with-availability-and-rate-rechecked-before-rental"
+    },
+    "probe": {
+      "updates": 128,
+      "maximumGpuHours": 0.25,
+      "mustReplaceForecastBeforeContinuingPastUpdate": 256,
+      "evidenceSchema": "haitaka-anhoku-strength-first-throughput-probe-v2",
+      "forecastLowerBoundMethod": "elapsed-probe-plus-remaining-at-measured-rate-plus-declared-fixed-overhead-v1",
+      "tournamentRuns": 3,
+      "requiredMeasuredFields": [
+        "elapsedGpuHours",
+        "updatesPerGpuHour",
+        "revisedFirstRunGpuHours",
+        "revisedFirstRunCostUsd",
+        "revisedTournamentGpuHours",
+        "revisedTournamentCostUsd"
+      ]
+    },
+    "firstRun": {
+      "forecastTrainingGpuHours": 2.0,
+      "reservedTotalRentedUptimeHours": 4.0,
+      "totalRentedUptimeBreakdownHours": {
+        "setupBuildAndRealFixture": 0.5,
+        "throughputProbe": 0.25,
+        "candidateTrainingAndValidation": 2.0,
+        "compilationAndResumeRestarts": 0.25,
+        "parityExportAndTransfers": 0.25,
+        "paidWaitingForCpuScreens": 0.5,
+        "contingency": 0.25
+      },
+      "maximumCombinedHourlyRateUsd": 0.75,
+      "reservedComputeAndDiskUsd": 3.0,
+      "reservedTransferUsd": 1.0,
+      "reservedContingencyUsd": 1.0,
+      "totalEnvelopeUsd": 5.0,
+      "peakNewStorageBytes": 7516192768
+    },
+    "threeRunTournament": {
+      "forecastTrainingGpuHours": 6.0,
+      "reservedTotalRentedUptimeHours": 12.0,
+      "forecastCostUsdAtMaximumAcceptedRate": 9.0,
+      "reservedTotalCostUsd": 15.0,
+      "forecastPeakNewStorageBytes": 22548578304
+    },
+    "basis": "Independent-data Model B uses the frozen 880k/60k corpus, the established width-256 recipe, seed 2026091108, 4096 optimizer updates, and the preregistered u2688 confirmation checkpoint. The prior width-256 run recorded 263.54 seconds across shuffle, training, validation, checkpoints, and export on RTX 4090. The quoted verified A10 is slower but the four-hour, five-dollar ceiling remains conservative and includes setup, validation, parity/export, transfer, restart, CPU-screen waiting risk, and contingency. Offer availability and rate must be rechecked before creation."
+  },
+  "output": {
+    "directory": "out/anhoku-strength-first/step9-model-b-training-20260912-v1",
+    "freshRunRefusesExistingState": true,
+    "resolvedConfigCopiedBeforeTraining": true,
+    "receiptsCopiedIntoRun": true
+  }
+}
