@@ -27,13 +27,20 @@
     },
     "trainingExperiment": {
       "path": "r0/anhoku-strength-first/step9-model-b-training-experiment-v1.json",
-      "bytes": 18237,
-      "sha256": "1c14643cd5eba5fea343d207a4f027db3a4fa02f49b8c38727cf8cae7addd74b"
+      "bytes": 18009,
+      "sha256": "c838091b1a3163572b88bcd107d487ef4bb592fe4334c45c643800c7ee35d1fc"
     },
     "trainingRunner": {
       "path": "scripts/strength_first_model_b_trainer.py",
       "bytes": 3401,
       "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+    },
+    "commercialBinding": {
+      "instanceId": 50678643,
+      "offerId": 36130603,
+      "gpu": "RTX 3090",
+      "combinedHourlyRateUsd": 0.18444444444444444,
+      "note": "Only the commercial quote changed after the scientific training contract was frozen."
     }
   },
   "suites": {
