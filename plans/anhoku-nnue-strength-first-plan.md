@@ -1,6 +1,6 @@
 # Anhoku NNUE: strength-first plan
 
-Created: 2026-09-06. Updated: 2026-09-11. Status: controlled 1-second evaluation, export diagnosis, serializer/runtime correction, corrected-runtime baseline, checkpoint rescreen, and independent-seed development replication completed. Update 2,688 is nominated as model A. Independent-data preparation is running on the MBP under the frozen Step 9 v2 contract; independent confirmation suites are frozen but unopened. No deployment authorized.
+Created: 2026-09-06. Updated: 2026-09-14. Status: the independent-data confirmation is complete. Model A passed the separately frozen 100 ms endpoint, but model B failed; the required conjunction therefore failed. Handcrafted remains the production evaluator, no deployment is authorized, and this candidate lane is closed.
 
 ## Objective and scope
 
@@ -54,11 +54,15 @@ The third and final initial-tournament run completed from a fresh width-256 scra
 
 The selected model passed full-precision/integer/native/WASM qualification on 1,024 positions. On the MacBook Pro under the frozen one-game-at-a-time primary protocol, it scored 163–93 against handcrafted over 256 games at 1,000 ms per move, or 63.67%, with a grouped 95% interval of 55.58%–71.77%. This replicates the recipe's development strength across initialization seed. Because it reuses the corpus and opening groups, it is model A evidence rather than the independent-data model B required for final confirmation. Handcrafted remains the production recommendation. The complete report is [step8-result-report.md](../r0/anhoku-strength-first/step8-result-report.md).
 
-## Independent-data preparation — 2026-09-11
+## Independent-data replication and confirmation — 2026-09-14
 
-The CPU-only Step 9 lane is frozen by [step9-model-b-data-contract-v2.json](../r0/anhoku-strength-first/step9-model-b-data-contract-v2.json). It is generating 30,000 independent training source games and 2,016 validation games on the MBP with the unchanged 10k-node handcrafted label teacher, bounded four-candidate searched exploration, and adaptive label retries. The completion pipeline excludes every color-swap board family in model A's training, validation, and development payloads, deduplicates model B, and fails closed unless it can freeze exactly 880,000 training and 60,000 validation records. The 16-candidate v1 probe was stopped after its rollout cost projected roughly 40 wall-clock hours; its 270 completed games remain preserved as non-decisional throughput evidence.
+The Step 9 lane generated and froze an independent 880,000-record training corpus and 60,000-record validation corpus under [step9-model-b-data-contract-v2.json](../r0/anhoku-strength-first/step9-model-b-data-contract-v2.json). Model B then completed all 4,096 optimizer updates. Its preregistered update-2,688 network passed the 1,024-position full-precision, integer-reference, native, and WASM parity qualification with zero mismatches.
 
-Two disjoint 2,048-group confirmation suites are frozen by [step9-confirmation-contract.json](../r0/anhoku-strength-first/step9-confirmation-contract.json). Each model has one color-swapped pair per group, or 4,096 games, which gives about 83% worst-case normal-approximation power for a true +20 Elo effect before the preregistered one-sided paired test. Neither suite may be opened until model B is trained and both complete schedules are ready.
+The initial 1,000 ms confirmation was stopped before completion to reduce elapsed time. Its partial results remain unopened and excluded. A new prospective [100 ms contract](../r0/anhoku-strength-first/step9-confirmation-100ms-contract-v1.json) froze two fresh disjoint 2,048-pair suites, the same two predesignated u2,688 models, 4,096 games per model, one concurrent game, and the unchanged one-sided paired success rule before either new game ran.
+
+Both complete schedules were kept sealed until they finished. Model A scored 2,324–1,771–1, or 56.7505%, with a one-sided 95% lower bound of 55.5928%, and passed. Independent-data model B scored 1,992–2,103–1, or 48.6450%, with a lower bound of 47.4931%, and failed. All 8,192 games and artifact bindings passed the frozen analyzer with zero fallbacks or maximum-ply games. Because both models had to pass, the confirmation failed. The complete record is [step9-result-report.md](../r0/anhoku-strength-first/step9-result-report.md).
+
+This 100 ms native result does not establish the original 1,000 ms production claim or qualify the shipped WASM path. Those limitations cannot change the decision: the only completed prospective confirmation failed its frozen conjunction. Handcrafted remains the production recommendation, no deployment is authorized, and these suites must not be extended or rerun.
 
 The exact selected checkpoint, selected integer network, update-2,048 checkpoint, final checkpoint, and evaluation receipts are preserved locally. Two early historical full-precision checkpoints were not fully transferred before the training instance was destroyed. A bounded recovery replay confirmed the same initial predictions and boundary metrics but could not reproduce post-update CUDA artifacts byte for byte. This limits complete archival rehashing of the historical graph; it does not change the selected-model result. Both Vast instances are destroyed. Training and recovery charges totaled $2.266.
 
@@ -67,8 +71,8 @@ The exact selected checkpoint, selected integer network, update-2,048 checkpoint
 1. **Completed: establish the controlled 1-second production-path baseline (CPU only).** The Step 6 browser/WASM run and its 100 ms secondary check record the required fixed-time score, search qualification, timing, memory, load, and provenance evidence. A second supported target device is still required before production use.
 2. **Completed: diagnose integer-export versus full-precision disagreement and reselect the retained checkpoint (CPU only).** Step 6 identified and fixed the feature-transformer scale defect; Step 7 stopped after the two predeclared checkpoints and selected update 2,048 under the corrected runtime.
 3. **Completed: replicate the compact recipe across initialization seed.** Step 8 trained the final initial-tournament seed, selected update 2,688, passed parity, and beat handcrafted under the 256-game primary development protocol.
-4. **Prepare independent-data model B on CPU.** Freeze a separately generated corpus, validation split, and unseen opening-source groups without exposing model A to the confirmation schedule. Bind generation, exclusion, provenance, and the later 1-second confirmation protocol before requesting GPU time.
-5. **Train and confirm only after preparation passes.** New GPU work requires a concrete cost envelope and explicit Vast.ai rental permission. Final confirmation compares model A and independently trained model B on the shipped path and unseen opening-source groups under the unchanged statistical success criterion. The development wins do not authorize promotion.
+4. **Completed: prepare and train independent-data model B.** The separately generated 880k/60k corpus passed its exclusions and audits, Model B completed training, and the preregistered u2,688 export passed parity qualification.
+5. **Completed: run independent confirmation.** The separately frozen 100 ms native endpoint completed without opening interim results. Model A passed and model B failed, so the conjunction failed. End this candidate lane with handcrafted retained in production. Any future NNUE work starts from a new development hypothesis and prospective contract.
 
 ## Evidence behind the reset
 
@@ -201,7 +205,7 @@ Use mbp, mba, local Ubuntu, and nubu for suitable independent CPU work according
 
 After two engineering days without an executable experiment, cut optional infrastructure scope and identify the precise correctness blocker. After the initial three training runs, end with a candidate or a supported next hypothesis; do not launch another schedule extension automatically. Retain about 25 GiB for the initial new cycle, with a checkpoint-size forecast before execution; historical artifacts are outside this cap and must not be deleted to meet it.
 
-The original Steps 1–2 implementation assignment is complete. The active assignment follows the next execution sequence above: controlled 1-second production-path development measurement, then bounded CPU export diagnosis. It excludes exhaustive child-label generation, broad new data generation, GPU rental without approval, and deployment.
+The execution sequence is complete. The confirmation failed and no further compute is scheduled. Handcrafted remains the production evaluator; any future NNUE program requires a new development hypothesis, fresh prospective evidence, and explicit GPU rental permission when applicable.
 
 ## Reference anchors
 
