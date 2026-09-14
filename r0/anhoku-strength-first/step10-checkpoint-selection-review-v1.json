@@ -1,0 +1,37 @@
+{
+  "schema": "haitaka-anhoku-strength-first-checkpoint-selection-independent-review-v1",
+  "reviewedAt": "2026-09-14",
+  "reviewer": {
+    "configuration": "Astra medium",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium",
+    "agentId": "01a09e62-5815-7ed3-a064-f818cbfec2a6",
+    "nickname": "Planck"
+  },
+  "reviewedArtifacts": [
+    {
+      "path": "r0/anhoku-strength-first/step10-checkpoint-selection-contract-v1.json",
+      "sha256": "754ff18ef79993f3356664cfc9888e98e8e433ec885370fc844c4b4e67b97652"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step9-diagnosis-report.json",
+      "sha256": "2031bccd6be29043d065ad2f9c201c026267d5423b8642431a4d78fcdd62baab"
+    },
+    {
+      "path": "plans/anhoku-nnue-strength-first-plan.md",
+      "sha256": "f1bd5267a3afe2888fd0e513a2e7ec4acfa4fe9a64ca3172bc8650e7a39e537e"
+    }
+  ],
+  "verdict": "approve-with-required-amendments",
+  "assessment": "The same-run early-selection versus update-2688 comparison meaningfully tests the stated hypothesis, conditional on one fresh seed, the reused Model B corpus/validation set, and the new native 1,000 ms endpoint.",
+  "requiredAmendments": [
+    "bind a separate executable Step 10 runner and config; retain the historical B wrapper as provenance only",
+    "fail closed on any missing or invalid candidate and define global-minimum tie handling",
+    "correct the opening generator binary, expand exclusions, and add generator/build, corpus-family, and independent validation receipts",
+    "freeze exact match blocks, seeds, command settings, runner/analyzer hashes, and interruption policy",
+    "define pair-score averaging and distinguish material inferiority from failure to show improvement",
+    "state that review and artifact binding alone authorize no compute and require a prelaunch budget forecast"
+  ],
+  "executionAuthorized": false,
+  "boundary": "Handcrafted remains production, deployment remains unauthorized, the failed Step 9 confirmation remains closed, and no training, opening generation, match, or GPU work was performed by this review."
+}
