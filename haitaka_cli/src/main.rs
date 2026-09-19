@@ -182,6 +182,10 @@ struct SelfPlayArgs {
     /// Opening suite selection policy.
     #[arg(long = "opening-order", value_enum, default_value = "sequential")]
     opening_order: OpeningOrder,
+    /// Opening suite unit. Pair mode reuses one opening for both seats; game
+    /// mode consumes one supplied SFEN for each game.
+    #[arg(long = "opening-unit", value_enum, default_value = "pair")]
+    opening_unit: OpeningUnit,
     /// Number of random plies applied before each paired game to diversify openings.
     #[arg(long, default_value_t = 0)]
     opening_random_plies: u16,
@@ -201,6 +205,13 @@ struct SelfPlayArgs {
 enum OpeningOrder {
     Sequential,
     Random,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum OpeningUnit {
+    Pair,
+    Game,
 }
 
 #[derive(Debug, Parser)]
@@ -749,6 +760,8 @@ struct ReportCommand {
     openings: Option<String>,
     #[serde(rename = "openingOrder")]
     opening_order: OpeningOrder,
+    #[serde(rename = "openingUnit")]
+    opening_unit: OpeningUnit,
     #[serde(rename = "openingRandomPlies")]
     opening_random_plies: u16,
     seed: u64,
@@ -1440,10 +1453,25 @@ fn game_opening(
     base_board: &Board,
     openings: Option<&[OpeningPosition]>,
     args: &SelfPlayArgs,
-    pair_index: u32,
+    game_index: u32,
 ) -> Result<(Board, OpeningRecord)> {
     let (base, mut record) = if let Some(openings) = openings {
-        let opening = select_suite_opening(openings, args.opening_order, args.seed, pair_index);
+        let selection_index = match args.opening_unit {
+            OpeningUnit::Pair => game_index / 2,
+            OpeningUnit::Game => game_index,
+        };
+        if args.opening_unit == OpeningUnit::Game && selection_index as usize >= openings.len() {
+            bail!(
+                "opening suite has {} positions, but game index {} requires one",
+                openings.len(),
+                selection_index
+            );
+        }
+        let opening = if args.opening_unit == OpeningUnit::Game {
+            &openings[selection_index as usize]
+        } else {
+            select_suite_opening(openings, args.opening_order, args.seed, selection_index)
+        };
         let board = Board::from_sfen(&opening.sfen).map_err(|err| {
             anyhow!(
                 "failed to parse selected opening SFEN at suite index {}: {}: {err}",
@@ -1474,6 +1502,7 @@ fn game_opening(
         )
     };
     if args.opening_random_plies > 0 {
+        let pair_index = game_index / 2;
         let random_seed = opening_seed(args.seed, pair_index, 0);
         record.random_seed = Some(random_seed);
         let board =
@@ -2033,8 +2062,7 @@ fn play_self_play_game(
     engine_a: &EngineConfig,
     engine_b: &EngineConfig,
 ) -> Result<GameResult> {
-    let pair_index = game_index / 2;
-    let (mut board, opening) = game_opening(base_board, openings, args, pair_index)?;
+    let (mut board, opening) = game_opening(base_board, openings, args, game_index)?;
     let start_sfen = board.to_string();
     let mut history = PositionHistory::new(board.clone());
     let a_color = game_a_color(game_index);
@@ -2894,6 +2922,7 @@ fn report_command(args: &SelfPlayArgs, threads: usize) -> ReportCommand {
             .as_ref()
             .map(|path| path.display().to_string()),
         opening_order: args.opening_order,
+        opening_unit: args.opening_unit,
         opening_random_plies: args.opening_random_plies,
         seed: args.seed,
         max_plies: args.max_plies,
@@ -3150,6 +3179,25 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
         .as_ref()
         .map(|path| load_opening_suite(path))
         .transpose()?;
+    if args.opening_unit == OpeningUnit::Game {
+        if args.openings.is_none() {
+            bail!("--opening-unit game requires --openings");
+        }
+        if args.opening_order != OpeningOrder::Sequential {
+            bail!("--opening-unit game requires --opening-order sequential");
+        }
+        if args.opening_random_plies != 0 {
+            bail!("--opening-unit game requires --opening-random-plies 0");
+        }
+        let supplied = openings.as_ref().map_or(0, Vec::len);
+        if supplied != args.games as usize {
+            bail!(
+                "--opening-unit game requires exactly one opening per requested game (got {}, expected {})",
+                supplied,
+                args.games
+            );
+        }
+    }
     validate_engine_source("A", args.a_engine.as_ref(), args.a_engine_archive.as_ref())?;
     validate_engine_source("B", args.b_engine.as_ref(), args.b_engine_archive.as_ref())?;
     let a_archive = args
@@ -3261,6 +3309,7 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
             openings.as_ref().map_or(0, Vec::len),
             args.opening_order
         );
+        println!("opening unit={:?}", args.opening_unit);
     }
     if args.opening_random_plies > 0 {
         println!(
@@ -3956,6 +4005,7 @@ mod tests {
             sfen: Some(SFEN_STARTPOS.to_string()),
             openings: Some("fixtures/openings.sfen".to_string()),
             opening_order: OpeningOrder::Random,
+            opening_unit: OpeningUnit::Pair,
             opening_random_plies: 2,
             seed: 123,
             max_plies: 200,
@@ -4336,6 +4386,7 @@ mod tests {
                 assert_eq!(args.movetime_ms, Some(100));
                 assert_eq!(args.openings, Some(PathBuf::from("openings.sfen")));
                 assert_eq!(args.opening_order, OpeningOrder::Random);
+                assert_eq!(args.opening_unit, OpeningUnit::Pair);
                 assert_eq!(args.opening_random_plies, 4);
                 assert_eq!(args.seed, 7);
                 assert_eq!(args.report_dir, Some(PathBuf::from("reports/run-1")));
@@ -5593,6 +5644,7 @@ mod tests {
             sfen: None,
             openings: None,
             opening_order: OpeningOrder::Sequential,
+            opening_unit: OpeningUnit::Pair,
             opening_random_plies: 0,
             seed: 0,
             max_plies: 4,
@@ -5664,6 +5716,7 @@ mod tests {
             sfen: Some(base.to_string()),
             openings: None,
             opening_order: OpeningOrder::Sequential,
+            opening_unit: OpeningUnit::Pair,
             opening_random_plies: 0,
             seed: 0,
             max_plies: 1,

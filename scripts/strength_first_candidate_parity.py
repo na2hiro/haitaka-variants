@@ -167,7 +167,14 @@ def integer_score(network, position: dict, black_rows: list[int], white_rows: li
 
 
 def full_precision_scores(checkpoint: Path, rows, width: dict[str, int], cmake: str) -> list[float]:
-    context_temp, context = r5.prepare_context(width, cmake)
+    experiment_root = checkpoint.resolve().parents[1]
+    compatibility_receipt = experiment_root / "preflight" / "parity-patch-compatibility.json"
+    context_temp, context = r5.prepare_context(
+        width,
+        cmake,
+        parity_only=True,
+        compatibility_receipt=compatibility_receipt,
+    )
     original_cwd = Path.cwd()
     try:
         # The pinned transformer's CUDA kernels import CuPy eagerly. This audit
