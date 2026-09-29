@@ -191,6 +191,8 @@ def prepare_context(
     r5: Any,
     cmake: str,
     purpose: str,
+    experiment_id: str = "strength-first-step12-independent-replication-20260916-v1",
+    assembly_schema: str = ASSEMBLY_SCHEMA,
 ) -> tuple[tempfile.TemporaryDirectory[str], Path]:
     """Assemble, independently replay, receipt, then build one context."""
     patch_executable = Path(patch_binding["path"]).resolve()
@@ -214,12 +216,12 @@ def prepare_context(
                 for name in sorted(set(first_identity) | set(second_identity))
                 if first_identity.get(name) != second_identity.get(name)
             }
-            atomic_json(receipt_path, {"schema": ASSEMBLY_SCHEMA, "createdAt": now(), "experimentId": "strength-first-step12-independent-replication-20260916-v1", "status": "failed", "purpose": purpose, "firstAssembly": first, "independentReplay": second, "sourceHashDifferences": differences, "error": "independent context assembly produced different source hashes", "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "outcomesOpened": False, "handcraftedRemainsProduction": True}})
+            atomic_json(receipt_path, {"schema": assembly_schema, "createdAt": now(), "experimentId": experiment_id, "status": "failed", "purpose": purpose, "firstAssembly": first, "independentReplay": second, "sourceHashDifferences": differences, "error": "independent context assembly produced different source hashes", "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "outcomesOpened": False, "handcraftedRemainsProduction": True}})
             raise ContextAssemblyError(f"independent context assembly produced different source hashes: {sorted(differences)}")
         receipt = {
-            "schema": ASSEMBLY_SCHEMA,
+            "schema": assembly_schema,
             "createdAt": now(),
-            "experimentId": "strength-first-step12-independent-replication-20260916-v1",
+            "experimentId": experiment_id,
             "status": "assembled-before-cmake",
             "purpose": purpose,
             "externalCheckout": {"path": str(external), "revision": first["revision"]},
@@ -250,7 +252,7 @@ def prepare_context(
         second_temp = None
         return first_temp, first_context
     except Exception as exc:
-        failure = {"schema": ASSEMBLY_SCHEMA, "createdAt": now(), "experimentId": "strength-first-step12-independent-replication-20260916-v1", "status": "failed", "purpose": purpose, "error": str(exc), "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "outcomesOpened": False, "handcraftedRemainsProduction": True}}
+        failure = {"schema": assembly_schema, "createdAt": now(), "experimentId": experiment_id, "status": "failed", "purpose": purpose, "error": str(exc), "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "outcomesOpened": False, "handcraftedRemainsProduction": True}}
         atomic_json(receipt_path, failure)
         if second_temp is not None:
             second_temp.cleanup()

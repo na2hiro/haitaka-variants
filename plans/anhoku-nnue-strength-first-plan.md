@@ -1,6 +1,6 @@
 # Anhoku NNUE: strength-first plan
 
-Created: 2026-09-06. Updated: 2026-09-19. Status: Step 9 confirmation failed and remains closed. Steps 10 and 11 completed the bounded checkpoint-selection follow-up and selected `step10-u768` as the development incumbent; its 1,000 ms browser/WASM check scored 74W/0D/54L (57.8125%, descriptive 95% bootstrap interval 49.21875%–65.64453125%). Step 12 completed the independent-data/initialization development replication. Validation-only selection chose `u640`, which scored 166W/1D/89L (65.0391%) against handcrafted versus 156W/0D/100L (60.9375%) for the same-run `u2688` control. The paired advantage was `21/512 = 4.1016` percentage points, with a descriptive 95% bootstrap interval of −3.125% to +11.3281%, so the frozen replication criterion was inconclusive. All nine exports passed parity and runtime qualification; all eight corrected match blocks and 512 games were sealed; the required 44-artifact production archive passed byte-for-byte verification; and the GPU instance was destroyed with no running provider instances remaining. Investigation is recommended before any 1,000 ms browser follow-up. Handcrafted remains production; confirmation and deployment are unauthorized.
+Created: 2026-09-06. Updated: 2026-09-28. Status: F1 completed; its development screen did not advance, and Step 10 `u768` remains the experimental incumbent. See the [F1 report](../r0/anhoku-strength-first/f1-loss-ablation-report.md). Handcrafted remains production; deployment is not authorized.
 
 ## Objective and scope
 
@@ -336,3 +336,9 @@ The required production archive set was then verified byte-for-byte against GPU 
 - [Current native/WASM NNUE implementation](../haitaka_wasm/src/nnue.rs)
 
 External practice is supporting context, not evidence that Anhoku will improve: the [official Stockfish NNUE trainer](https://github.com/official-stockfish/nnue-pytorch) includes match-based network testing, and [Stockfish's testing guide](https://official-stockfish.github.io/docs/fishtest-wiki/Creating-my-first-test.html) describes testing new nets at short and long time controls. This plan adopts early direct strength measurement; it does not copy chess hyperparameters or require a new SPRT implementation.
+
+## Future work — after the bounded model-strength closeout
+
+### 1. Further strengthening ideas
+
+The [F1 further-strengthening runbook](anhoku-nnue-further-strengthening-runbook.md) was executed under explicit user authorization on 2026-09-28. T scored 53.125% against C and 45.3125% against incumbent I over 128 color-swapped pairs per matchup. The two-opponent screen failed, so no holdout ran. The [F1 report](../r0/anhoku-strength-first/f1-loss-ablation-report.md) and [closeout](../out/anhoku-strength-first/f1-loss-ablation-20260925-v1/closeout.json) preserve the result and its limits. Any further loss experiment needs a separate hypothesis, contract and budget; no repeat or follow-on work is automatic.
