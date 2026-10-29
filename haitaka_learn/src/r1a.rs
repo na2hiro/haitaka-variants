@@ -314,7 +314,7 @@ pub(crate) fn run(
 
     let trainer_checkout = loaded.trainer_checkout()?;
     let prepared = PreparedTrainer::new(&loaded, &trainer_checkout)?;
-    let loader_library = find_loader_library(prepared.path())?;
+    let loader_library = retain_loader_library(prepared.path(), output_dir)?;
     let helper = workspace_root.join("scripts/r1a-cpp-feature-oracle.py");
     let status = Command::new(&loaded.config.paths.python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
@@ -1035,6 +1035,20 @@ fn find_loader_library(checkout: &Path) -> Result<PathBuf> {
     )
 }
 
+// R1 evidence must remain readable after the disposable trainer context is dropped.
+fn retain_loader_library(checkout: &Path, output_dir: &Path) -> Result<PathBuf> {
+    let source = find_loader_library(checkout)?;
+    let destination = output_dir.join(source.file_name().context("loader has no filename")?);
+    fs::copy(&source, &destination).with_context(|| {
+        format!(
+            "failed to retain loader {} as {}",
+            source.display(),
+            destination.display()
+        )
+    })?;
+    Ok(destination)
+}
+
 fn artifact_identity(path: &Path) -> Result<ArtifactIdentity> {
     let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
     Ok(ArtifactIdentity {
@@ -1061,6 +1075,21 @@ fn hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retained_loader_evidence_survives_disposable_context_cleanup() {
+        let context = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let contents = b"frozen compiled loader";
+        fs::write(context.path().join("libtraining_data_loader.so"), contents).unwrap();
+        let loader = retain_loader_library(context.path(), output.path()).unwrap();
+        drop(context);
+        assert_eq!(fs::read(&loader).unwrap(), contents);
+        assert_eq!(
+            artifact_identity(&loader).unwrap().sha256,
+            sha256_bytes(contents)
+        );
+    }
 
     #[test]
     #[cfg(not(feature = "anhoku"))]
