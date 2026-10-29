@@ -1,16 +1,18 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::SystemTime;
 
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::config::{
-    FEATURE_SET_DONOR_KNIGHT8, FEATURE_SET_DONOR_PAIR, FEATURE_SET_DONOR_SINGLE,
-    FEATURE_SET_HALFKAV2, LoadedConfig, Ruleset,
+    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
 };
 use crate::dataset::ENTRY_BYTES;
+use crate::dataset_audit::audit_dataset;
 
 #[derive(Debug, Serialize)]
 pub(crate) struct ExportMetadata {
@@ -23,12 +25,92 @@ pub(crate) struct ExportMetadata {
     config_hash: String,
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct TrainerFeatureParityReport {
+    schema: &'static str,
+    schema_version: u32,
+    trainer_checkout: String,
+    trainer_revision: Option<String>,
+    feature_set: String,
+    feature_set_hash: String,
+    real_features: usize,
+    donor_block_features: usize,
+    python_spec_passed: bool,
+    cpp_loader_compiled: bool,
+    rust_cpp_index_anchors: [usize; 4],
+    donor_features_py_sha256: String,
+    training_data_loader_cpp_sha256: String,
+    pub(crate) passed: bool,
+}
+
+pub(crate) fn verify_receiver_pair_v2_trainer_parity(
+    loaded: &LoadedConfig,
+    output: &Path,
+) -> Result<TrainerFeatureParityReport> {
+    if loaded.training_features() != FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
+        bail!("trainer parity requires training.features={FEATURE_SET_DONOR_RECEIVER_PAIR_V2}");
+    }
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let donor_overlay = overlay_donor_features_py_contents();
+    let loader_overlay = overlay_training_data_loader_cpp_contents();
+    // This gate certifies the C++ loader, even when ordinary training reuses a build.
+    let _guard = PreparedTrainer::new_inner(loaded, &trainer_checkout, true)?;
+    run_command(
+        &loaded.config.paths.python,
+        &[
+            "-c".to_string(),
+            concat!(
+                "import sys, types; ",
+                "chess=types.ModuleType('chess'); chess.Board=object; sys.modules['chess']=chess; ",
+                "sys.modules['torch']=types.ModuleType('torch'); ",
+                "variant=types.ModuleType('variant'); variant.SQUARES=81; variant.PIECE_TYPES=10; ",
+                "variant.DONOR_MODE='single-front'; sys.modules['variant']=variant; ",
+                "import donor_features; f=donor_features.DonorReceiverPairV2(); ",
+                "assert f.name == 'DonorReceiverPairV2'; ",
+                "assert f.hash == 0x6D124A8F; ",
+                "assert f.num_real_features == 16200; ",
+                "composite=(0x5F234CB8 ^ ((f.hash << 1) & 0xffffffff) ^ (f.hash >> 1)) & 0xffffffff; ",
+                "assert composite == 0xB38EFCE1"
+            )
+            .to_string(),
+        ],
+        &trainer_checkout,
+        "validate DonorReceiverPairV2 Python feature specification",
+    )?;
+
+    let report = TrainerFeatureParityReport {
+        schema: "haitaka-anhoku-phase11a-trainer-parity",
+        schema_version: 1,
+        trainer_checkout: trainer_checkout.display().to_string(),
+        trainer_revision: detect_git_revision(&trainer_checkout),
+        feature_set: FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string(),
+        feature_set_hash: "0xb38efce1".to_string(),
+        real_features: 167_103,
+        donor_block_features: 16_200,
+        python_spec_passed: true,
+        cpp_loader_compiled: true,
+        rust_cpp_index_anchors: [6520, 6601, 6682, 8140],
+        donor_features_py_sha256: format!("{:x}", Sha256::digest(donor_overlay.as_bytes())),
+        training_data_loader_cpp_sha256: format!("{:x}", Sha256::digest(loader_overlay.as_bytes())),
+        passed: true,
+    };
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    fs::write(output, serde_json::to_vec_pretty(&report)?)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    Ok(report)
+}
+
 #[derive(Debug, Deserialize)]
 struct DatasetCompletionManifest {
     game_count: u32,
     completed_games: u32,
     sampled_positions: u64,
     entry_bytes: usize,
+    #[serde(default)]
+    teacher_move_encoding: String,
 }
 
 pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
@@ -58,6 +140,19 @@ pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<Pat
             "training finished but no valid checkpoint was found under {}",
             artifacts.logs_dir.display()
         )
+    })
+}
+
+/// Materialize the configured warm-start as a trainer checkpoint while doing
+/// no optimization. In particular, this exercises the V1-to-V2 migration and
+/// the real PyTorch deserializer before an hourly GPU run is authorized.
+pub fn prepare_bootstrap(loaded: &LoadedConfig) -> Result<PathBuf> {
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let artifacts = loaded.artifact_paths();
+    artifacts.ensure_dirs()?;
+    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    materialize_bootstrap_pt(loaded, &trainer_checkout)?.ok_or_else(|| {
+        anyhow!("paths.bootstrap_nnue is required to prepare a bootstrap checkpoint")
     })
 }
 
@@ -109,6 +204,55 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     Ok(artifacts.exported_nnue)
 }
 
+/// Evaluate one arbitrary checkpoint against the configured ID validation set
+/// and the optional legacy two-opening OOD set without starting training.
+pub fn evaluate_checkpoint(
+    loaded: &LoadedConfig,
+    checkpoint: PathBuf,
+    output: Option<PathBuf>,
+) -> Result<PathBuf> {
+    let trainer_checkout = loaded.trainer_checkout()?;
+    let artifacts = loaded.artifact_paths();
+    let checkpoint = loaded.resolve_path(&checkpoint);
+    ensure_file_exists(&checkpoint, "checkpoint")?;
+    ensure_file_exists(&artifacts.validation_bin, "ID validation dataset")?;
+    let ood = loaded.legacy_ood_validation_bin().ok_or_else(|| {
+        anyhow!("paths.legacy_ood_validation_bin is required for offline ID/OOD evaluation")
+    })?;
+    ensure_file_exists(&ood, "legacy OOD validation dataset")?;
+
+    let output = output
+        .map(|path| loaded.resolve_path(&path))
+        .unwrap_or_else(|| artifacts.artifacts_dir.join("offline-evaluation.json"));
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    run_command(
+        &loaded.config.paths.python,
+        &[
+            "evaluate.py".to_string(),
+            checkpoint.display().to_string(),
+            "--id-validation".to_string(),
+            artifacts.validation_bin.display().to_string(),
+            "--ood-validation".to_string(),
+            ood.display().to_string(),
+            "--features".to_string(),
+            loaded.training_features().to_string(),
+            "--batch-size".to_string(),
+            loaded.config.training.batch_size.to_string(),
+            "--validation-size".to_string(),
+            loaded.config.training.validation_size.to_string(),
+            "--output".to_string(),
+            output.display().to_string(),
+        ],
+        &trainer_checkout,
+        "haitaka-variant-nnue-pytorch offline checkpoint evaluation",
+    )?;
+    Ok(output)
+}
+
 pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> {
     let artifacts = loaded.artifact_paths();
     ensure_training_dataset_ready(
@@ -117,12 +261,26 @@ pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> 
         "training dataset",
         loaded.config.data.train_games,
     )?;
+    ensure_training_board_minimum(loaded, &artifacts.train_bin, &artifacts.train_manifest)?;
     ensure_training_dataset_ready(
         &artifacts.validation_bin,
         &artifacts.validation_manifest,
         "validation dataset",
         loaded.config.data.validation_games,
-    )
+    )?;
+    if let Some(ood) = loaded.legacy_ood_validation_bin() {
+        ensure_file_exists(&ood, "legacy OOD validation dataset")?;
+        let metadata =
+            fs::metadata(&ood).with_context(|| format!("failed to stat {}", ood.display()))?;
+        if metadata.len() == 0 || metadata.len() % ENTRY_BYTES as u64 != 0 {
+            bail!(
+                "legacy OOD validation dataset {} must be a non-empty multiple of {} bytes",
+                ood.display(),
+                ENTRY_BYTES
+            );
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn training_args(
@@ -169,7 +327,25 @@ pub(crate) fn training_args(
         loaded.config.training.epoch_size.to_string(),
         "--validation-size".to_string(),
         loaded.config.training.validation_size.to_string(),
+        "--initial-learning-rate".to_string(),
+        loaded.config.training.initial_learning_rate.to_string(),
     ];
+    if let Some(interval) = loaded.config.training.checkpoint_interval_steps {
+        args.push("--checkpoint-interval-steps".to_string());
+        args.push(interval.to_string());
+    }
+    if let Some(interval) = loaded.config.training.validation_interval_steps {
+        args.push("--validation-interval-steps".to_string());
+        args.push(interval.to_string());
+    }
+    if let Some(max_steps) = loaded.config.training.max_steps {
+        args.push("--max-steps".to_string());
+        args.push(max_steps.to_string());
+    }
+    if let Some(ood) = loaded.legacy_ood_validation_bin() {
+        args.push("--ood-validation".to_string());
+        args.push(ood.display().to_string());
+    }
     if let Some(checkpoint) = resume_checkpoint {
         println!("resuming training from {}", checkpoint.display());
         args.push("--resume_from_checkpoint".to_string());
@@ -239,7 +415,7 @@ pub(crate) fn write_export_metadata(
         exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(&trainer_checkout),
+        trainer_revision: detect_git_revision(trainer_checkout),
         features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
@@ -259,6 +435,27 @@ pub(crate) struct PreparedTrainer {
 
 impl PreparedTrainer {
     pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
+        Self::new_inner(
+            loaded,
+            trainer_checkout,
+            loaded.config.training.build_data_loader,
+        )
+    }
+
+    /// Install the exact Python/variant overlays while deliberately skipping
+    /// the C++ loader build. Phase 11-C only deserializes a frozen checkpoint.
+    pub(crate) fn new_without_build(
+        loaded: &LoadedConfig,
+        trainer_checkout: &Path,
+    ) -> Result<Self> {
+        Self::new_inner(loaded, trainer_checkout, false)
+    }
+
+    fn new_inner(
+        loaded: &LoadedConfig,
+        trainer_checkout: &Path,
+        build_data_loader: bool,
+    ) -> Result<Self> {
         if !trainer_checkout.exists() {
             bail!(
                 "trainer checkout does not exist: {}",
@@ -285,7 +482,7 @@ impl PreparedTrainer {
             overlay_training_data_loader_cpp_contents(),
         )?;
 
-        if loaded.config.training.build_data_loader {
+        if build_data_loader {
             run_command(
                 &loaded.config.paths.cmake,
                 &["-S".into(), ".".into(), "-B".into(), "build".into()],
@@ -356,8 +553,31 @@ fn materialize_bootstrap_pt(
     ensure_file_exists(&bootstrap_nnue, "bootstrap NNUE")?;
 
     let artifacts = loaded.artifact_paths();
-    let import_features = bootstrap_import_features(loaded);
+    let mut import_features = bootstrap_import_features(&bootstrap_nnue)?;
     let training_features = loaded.training_features();
+    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2
+        && import_features == "HalfKAv2^+DonorSingleEff"
+    {
+        let source = fs::read(&bootstrap_nnue)
+            .with_context(|| format!("failed to read {}", bootstrap_nnue.display()))?;
+        let migrated =
+            haitaka_wasm::migrate_donor_single_to_receiver_pair_v2(&source).map_err(|err| {
+                anyhow!("failed to migrate V1 bootstrap to DonorReceiverPairV2: {err}")
+            })?;
+        fs::write(&artifacts.bootstrap_migrated_nnue, migrated).with_context(|| {
+            format!(
+                "failed to write {}",
+                artifacts.bootstrap_migrated_nnue.display()
+            )
+        })?;
+        import_features = FEATURE_SET_DONOR_RECEIVER_PAIR_V2;
+        artifacts.bootstrap_migrated_nnue.clone()
+    } else {
+        bootstrap_nnue
+    };
+    if import_features != training_features && import_features != "HalfKAv2^" {
+        bail!("cannot bootstrap {training_features} training from {import_features}");
+    }
     let imported_model_pt = if import_features == training_features {
         artifacts.bootstrap_model_pt.clone()
     } else {
@@ -395,13 +615,13 @@ fn materialize_bootstrap_pt(
     Ok(Some(artifacts.bootstrap_model_pt))
 }
 
-fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
-    match loaded.training_features() {
-        FEATURE_SET_DONOR_SINGLE | FEATURE_SET_DONOR_PAIR | FEATURE_SET_DONOR_KNIGHT8 => {
-            FEATURE_SET_HALFKAV2
-        }
-        features => features,
-    }
+fn bootstrap_import_features(path: &Path) -> Result<&'static str> {
+    let mut header = [0u8; 8];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .with_context(|| format!("failed to read bootstrap NNUE header {}", path.display()))?;
+    haitaka_wasm::NnueModel::feature_family_from_header(&header)
+        .map_err(|err| anyhow!("invalid bootstrap NNUE header {}: {err}", path.display()))
 }
 
 fn bootstrap_base_model_pt_path(path: &Path) -> PathBuf {
@@ -440,6 +660,26 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     }
 }
 
+fn ensure_training_board_minimum(
+    loaded: &LoadedConfig,
+    bin_path: &Path,
+    manifest_path: &Path,
+) -> Result<()> {
+    let Some(minimum) = loaded.config.data.minimum_train_boards()? else {
+        return Ok(());
+    };
+    let report = audit_dataset(bin_path, manifest_path, None).with_context(|| {
+        format!("failed to audit the training dataset before applying the {minimum}-board minimum")
+    })?;
+    let distinct_boards = report.distinct_packed_boards();
+    if distinct_boards < minimum {
+        bail!(
+            "training dataset contains {distinct_boards} distinct packed boards, below the configured minimum of {minimum}; do not start training"
+        );
+    }
+    Ok(())
+}
+
 fn ensure_training_dataset_ready(
     bin_path: &Path,
     manifest_path: &Path,
@@ -473,6 +713,16 @@ fn ensure_training_dataset_ready(
             "{label} manifest entry_bytes is {}, expected {}",
             manifest.entry_bytes,
             ENTRY_BYTES
+        );
+    }
+    if manifest.teacher_move_encoding != TEACHER_MOVE_ENCODING {
+        bail!(
+            "{label} manifest teacher_move_encoding is `{}`, expected `{TEACHER_MOVE_ENCODING}`; regenerate the dataset so teacher-move-dependent filtering cannot consume ambiguous 16-bit values",
+            if manifest.teacher_move_encoding.is_empty() {
+                "legacy-unspecified"
+            } else {
+                &manifest.teacher_move_encoding
+            }
         );
     }
     let expected_len = manifest
@@ -665,28 +915,74 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[cfg(unix)]
+    fn parity_requires_a_successful_loader_build_when_training_skips_it() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Anhoku);
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string());
+        loaded.config.training.build_data_loader = false;
+        loaded.config.paths.trainer_checkout = Some(temp.path().to_path_buf());
+        loaded.config.paths.cmake = "/bin/false".to_string();
+        let overlay = temp.path().join("donor_features.py");
+        fs::write(&overlay, "original overlay").unwrap();
+        let output = temp.path().join("parity.json");
+
+        let error = verify_receiver_pair_v2_trainer_parity(&loaded, &output).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("configure trainer data loader failed")
+        );
+        assert!(!output.exists());
+        assert_eq!(fs::read_to_string(overlay).unwrap(), "original overlay");
+    }
+
+    #[test]
     fn checkpoint_validation_script_disables_weights_only_mode() {
         assert!(checkpoint_validation_script().contains("weights_only=False"));
     }
 
-    #[test]
-    fn donor_training_imports_standard_bootstrap_with_base_features() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_PAIR.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
-
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_SINGLE.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
-
-        loaded.config.training.features = Some(FEATURE_SET_DONOR_KNIGHT8.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+    fn write_bootstrap_header(path: &Path, hash: u32) {
+        let mut header = 0x7af32f20u32.to_le_bytes().to_vec();
+        header.extend(hash.to_le_bytes());
+        fs::write(path, header).unwrap();
     }
 
     #[test]
-    fn standard_training_imports_bootstrap_with_training_features() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
-        loaded.config.training.features = Some(FEATURE_SET_HALFKAV2.to_string());
-        assert_eq!(bootstrap_import_features(&loaded), FEATURE_SET_HALFKAV2);
+    fn bootstrap_import_detects_base_network_for_donor_warm_starts() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("base.nnue");
+        write_bootstrap_header(&path, 0x3c103e72);
+        assert_eq!(bootstrap_import_features(&path).unwrap(), "HalfKAv2^");
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn bootstrap_import_detects_both_anhoku_donor_families() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("donor.nnue");
+        write_bootstrap_header(&path, 0x0d8f62a2);
+        assert_eq!(
+            bootstrap_import_features(&path).unwrap(),
+            "HalfKAv2^+DonorSingleEff"
+        );
+        write_bootstrap_header(&path, 0xd0bd8e2b);
+        assert_eq!(
+            bootstrap_import_features(&path).unwrap(),
+            FEATURE_SET_DONOR_RECEIVER_PAIR_V2
+        );
+    }
+
+    #[test]
+    fn bootstrap_import_rejects_invalid_headers() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("invalid.nnue");
+        fs::write(&path, [0; 4]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
+        write_bootstrap_header(&path, 0);
+        assert!(bootstrap_import_features(&path).is_err());
+        fs::write(&path, [0; 8]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
     }
 
     #[test]
@@ -720,6 +1016,15 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+        assert!(
+            overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorReceiverPairV2")
+        );
+        assert!(overlay_donor_features_py_contents().contains("DonorReceiverPairV2"));
+        assert!(overlay_donor_features_py_contents().contains("0x6D124A8F"));
+        assert!(
+            overlay_training_data_loader_cpp_contents()
+                .contains("Ignore the trainer's smart/filtered")
+        );
 
         let anki = loaded_config_for_tests(Ruleset::Anki);
         assert!(variant_py_contents(&anki).contains("DONOR_MODE = \"knight8-friendly\""));
@@ -736,7 +1041,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 72]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":72}"#,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":72,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 
@@ -751,7 +1056,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 72]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":1,"sampled_positions":1,"entry_bytes":72}"#,
+            r#"{"game_count":2,"completed_games":1,"sampled_positions":1,"entry_bytes":72,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 
@@ -769,7 +1074,7 @@ mod tests {
         fs::write(&bin_path, vec![0u8; 64]).unwrap();
         fs::write(
             &manifest_path,
-            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":64}"#,
+            r#"{"game_count":2,"completed_games":2,"sampled_positions":1,"entry_bytes":64,"teacher_move_encoding":"unavailable"}"#,
         )
         .unwrap();
 

@@ -1,0 +1,124 @@
+{
+  "schema": "haitaka-anhoku-phase11a-gate",
+  "schema_version": 1,
+  "source": {
+    "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+    "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0",
+    "bytes": 161206531,
+    "feature_family": "HalfKAv2^+DonorSingleEff"
+  },
+  "migrated": {
+    "path": "out/anhoku-v0.7-phase11a/artifacts/c16-donor-receiver-pair-v2.nnue",
+    "sha256": "5c67b70d97e89bef28029d06a69dab1da185e32ace1387569bf844f314df03fa",
+    "bytes": 176603011,
+    "feature_family": "HalfKAv2^+DonorReceiverPairV2"
+  },
+  "feature_geometry": {
+    "v1_real_features": 152523,
+    "v2_real_features": 167103,
+    "increase_percent": 9.559214020180562,
+    "donor_features_per_influenced_piece": 1
+  },
+  "equivalence": {
+    "representative_positions": 6,
+    "randomized_games": 16,
+    "randomized_positions": 754,
+    "incremental_transitions": 754,
+    "fixed_depth_searches": 6,
+    "score_mismatches": 0,
+    "accumulator_mismatches": 0,
+    "search_mismatches": 0,
+    "passed": true
+  },
+  "tactical_suite": {
+    "suite_path": "scripts/phase11a-tactical-suite-v1.json",
+    "suite_sha256": "d0343f3583d16d996b5d3ef83eb5113a3cafebdfde0cff01d71d6ed09f41ab9d",
+    "schema": "anhoku-phase11a-tactical-suite",
+    "schema_version": 1,
+    "fixtures": [
+      {
+        "id": "hanging-rook-capture",
+        "purpose": "capture and qsearch continuation",
+        "depth": 2,
+        "expected_bestmove": "5e4e",
+        "v1_bestmove": "5e4e",
+        "v2_bestmove": "5e4e",
+        "v1_best_score": 2021,
+        "v2_best_score": 2021,
+        "passed": true
+      },
+      {
+        "id": "silver-promotion",
+        "purpose": "native silver promotion choice",
+        "depth": 1,
+        "expected_bestmove": "5c4d+",
+        "v1_bestmove": "5c4d+",
+        "v2_bestmove": "5c4d+",
+        "v1_best_score": 521,
+        "v2_best_score": 521,
+        "passed": true
+      },
+      {
+        "id": "bishop-promotion",
+        "purpose": "native bishop and Anhoku donor-aware promotion choice",
+        "depth": 1,
+        "expected_bestmove": "5c1g+",
+        "v1_bestmove": "5c1g+",
+        "v2_bestmove": "5c1g+",
+        "v1_best_score": 921,
+        "v2_best_score": 921,
+        "passed": true
+      },
+      {
+        "id": "quiet-check-drop",
+        "purpose": "checking drop and quiet alternatives",
+        "depth": 2,
+        "expected_bestmove": "5i4h",
+        "v1_bestmove": "5i4h",
+        "v2_bestmove": "5i4h",
+        "v1_best_score": 1021,
+        "v2_best_score": 1021,
+        "passed": true
+      },
+      {
+        "id": "check-evasion",
+        "purpose": "in-check legal evasion",
+        "depth": 2,
+        "expected_bestmove": "5i6i",
+        "v1_bestmove": "5i6i",
+        "v2_bestmove": "5i6i",
+        "v1_best_score": 1021,
+        "v2_best_score": 1021,
+        "passed": true
+      },
+      {
+        "id": "donor-mate-threat",
+        "purpose": "complex Anhoku donor-relation tactical regression",
+        "depth": 2,
+        "expected_bestmove": "5c5b",
+        "v1_bestmove": "5c5b",
+        "v2_bestmove": "5c5b",
+        "v1_best_score": 29999,
+        "v2_best_score": 29999,
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "inference": {
+    "corpus_positions": 6,
+    "rounds": 9,
+    "repetitions_per_round": 200,
+    "v1_median_ns_per_position": 3636.4108333333334,
+    "v2_median_ns_per_position": 3638.8616666666667,
+    "regression_percent": 0.06739704190923401
+  },
+  "gates": {
+    "model_size_increase_percent": 9.550779304344692,
+    "model_size_at_most_10_percent": true,
+    "inference_regression_at_most_5_percent": true,
+    "equivalence_passed": true,
+    "tactical_suite_passed": true,
+    "phase11b_go": true
+  }
+}

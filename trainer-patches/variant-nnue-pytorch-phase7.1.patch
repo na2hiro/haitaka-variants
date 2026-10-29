@@ -1,0 +1,120 @@
+diff --git a/model.py b/model.py
+--- a/model.py
++++ b/model.py
+@@ -119,6 +120,7 @@ class NNUE(pl.LightningModule):
+   It is not ideal for training a Pytorch quantized model directly.
+   """
+-  def __init__(self, feature_set, lambda_=1.0):
++  def __init__(self, feature_set, lambda_=1.0, learning_rate=1.5e-3):
+     super(NNUE, self).__init__()
++    self.learning_rate = learning_rate
+     self.num_psqt_buckets = feature_set.num_psqt_buckets
+     self.num_ls_buckets = feature_set.num_ls_buckets
+@@ -263,22 +264,19 @@ class NNUE(pl.LightningModule):
+     return x
+ 
++  def loss_value(self, batch):
++    us, them, white_indices, white_values, black_indices, black_values, outcome, score, psqt_indices, layer_stack_indices = batch
++    q = (self(us, them, white_indices, white_values, black_indices, black_values, psqt_indices, layer_stack_indices) * 600 / 361).sigmoid()
++    p = (score / 410).sigmoid()
++    loss_eval = (p - q).square().mean()
++    loss_result = (q - outcome).square().mean()
++    return self.lambda_ * loss_eval + (1.0 - self.lambda_) * loss_result
++
+   def step_(self, batch, batch_idx, loss_type):
+     self._clip_weights()
+ 
+-    us, them, white_indices, white_values, black_indices, black_values, outcome, score, psqt_indices, layer_stack_indices = batch
+ 
+-    # 600 is the kPonanzaConstant scaling factor needed to convert the training net output to a score.
+-    # This needs to match the value used in the serializer
+-    nnue2score = 600
+-    in_scaling = 410
+-    out_scaling = 361
+ 
+-    q = (self(us, them, white_indices, white_values, black_indices, black_values, psqt_indices, layer_stack_indices) * nnue2score / out_scaling).sigmoid()
+-    t = outcome
+-    p = (score / in_scaling).sigmoid()
+ 
+-    loss_eval = (p - q).square().mean()
+-    loss_result = (q - t).square().mean()
+-    loss = self.lambda_ * loss_eval + (1.0 - self.lambda_) * loss_result
+ 
++    loss = self.loss_value(batch)
+     self.log(loss_type, loss)
+@@ -292,4 +307,4 @@ class NNUE(pl.LightningModule):
+     return self.step_(batch, batch_idx, 'train_loss')
+ 
+-  def validation_step(self, batch, batch_idx):
+-    self.step_(batch, batch_idx, 'val_loss')
++  def validation_step(self, batch, batch_idx, dataloader_idx=0):
++    self.step_(batch, batch_idx, 'id_val_loss' if dataloader_idx == 0 else 'ood_val_loss')
+@@ -300,4 +316,4 @@ class NNUE(pl.LightningModule):
+   def configure_optimizers(self):
+     # Train with a lower LR on the output layer
+-    LR = 1.5e-3
++    LR = self.learning_rate
+     train_params = [
+diff --git a/train.py b/train.py
+--- a/train.py
++++ b/train.py
+@@ -10,3 +10,3 @@ from pytorch_lightning import loggers as pl_loggers
+ from torch.utils.data import DataLoader, Dataset
+ 
+-def make_data_loaders(train_filename, val_filename, feature_set, num_workers, batch_size, filtered, random_fen_skipping, main_device, epoch_size, val_size):
++def make_data_loaders(train_filename, val_filename, feature_set, num_workers, batch_size, filtered, random_fen_skipping, main_device, epoch_size, val_size, ood_filename=None):
+@@ -20,3 +20,19 @@ def make_data_loaders(train_filename, val_filename, feature_set, num_workers, batch_size, filtered, random_fen_skipping, main_device, epoch_size, val_size):
+   train = DataLoader(nnue_dataset.FixedNumBatchesDataset(train_infinite, (epoch_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+   val = DataLoader(nnue_dataset.FixedNumBatchesDataset(val_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+-  return train, val
++  if ood_filename is None:
++    return train, val
++  ood_infinite = nnue_dataset.SparseBatchDataset(features_name, ood_filename, batch_size, filtered=filtered, random_fen_skipping=random_fen_skipping, device=main_device)
++  ood = DataLoader(nnue_dataset.FixedNumBatchesDataset(ood_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
++  return train, [val, ood]
++
++class DiagnosticLogCallback(pl.Callback):
++  def __init__(self, batch_size):
++    self.batch_size = batch_size
++
++  def on_validation_epoch_end(self, trainer, pl_module):
++    if trainer.logger is None or not trainer.optimizers:
++      return
++    trainer.logger.log_metrics({'optimizer_step': trainer.global_step,
++                                'accepted_positions': trainer.global_step * self.batch_size,
++                                'learning_rate': trainer.optimizers[0].param_groups[0]['lr']},
++                               step=trainer.global_step)
+@@ -27,2 +34,7 @@ def main():
+   parser.add_argument("--epoch-size", type=int, default=20000000, dest='epoch_size', help="Number of positions per epoch.")
+   parser.add_argument("--validation-size", type=int, default=1000000, dest='validation_size', help="Number of positions per validation step.")
++  parser.add_argument("--initial-learning-rate", type=float, default=1.5e-3, dest='initial_learning_rate')
++  parser.add_argument("--checkpoint-interval-steps", type=int, default=None, dest='checkpoint_interval_steps')
++  parser.add_argument("--validation-interval-steps", type=int, default=None, dest='validation_interval_steps')
++  parser.add_argument("--max-steps", type=int, default=-1, dest='max_steps')
++  parser.add_argument("--ood-validation", default=None, dest='ood_validation')
+@@ -48,3 +60,3 @@ def main():
+   if args.resume_from_model is None:
+-    nnue = M.NNUE(feature_set=feature_set, lambda_=args.lambda_)
++    nnue = M.NNUE(feature_set=feature_set, lambda_=args.lambda_, learning_rate=args.initial_learning_rate)
+     nnue.cuda()
+@@ -56,1 +70,2 @@ def main():
+     nnue.lambda_ = args.lambda_
++    nnue.learning_rate = args.initial_learning_rate
+@@ -84,3 +99,8 @@ def main():
+   tb_logger = pl_loggers.TensorBoardLogger(logdir)
+-  checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=1, save_top_k=-1)
+-  trainer = pl.Trainer.from_argparse_args(args, callbacks=[checkpoint_callback], logger=tb_logger)
++  if args.checkpoint_interval_steps is None:
++    checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=1, save_top_k=-1)
++  else:
++    checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=None, every_n_train_steps=args.checkpoint_interval_steps, save_top_k=-1)
++  if args.validation_interval_steps is not None:
++    args.val_check_interval = args.validation_interval_steps
++  trainer = pl.Trainer.from_argparse_args(args, callbacks=[checkpoint_callback, DiagnosticLogCallback(batch_size)], logger=tb_logger)
+@@ -92,2 +117,2 @@ def main():
+   print('Using c++ data loader')
+-  train, val = make_data_loaders(args.train, args.val, feature_set, args.num_workers, batch_size, not args.no_smart_fen_skipping, args.random_fen_skipping, main_device, args.epoch_size, args.validation_size)
++  train, val = make_data_loaders(args.train, args.val, feature_set, args.num_workers, batch_size, not args.no_smart_fen_skipping, args.random_fen_skipping, main_device, args.epoch_size, args.validation_size, args.ood_validation)
+ 
+-  trainer.fit(nnue, train, val)
++  trainer.fit(nnue, train_dataloaders=train, val_dataloaders=val)

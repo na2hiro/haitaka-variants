@@ -1,0 +1,55 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-v0.6-pilot"
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
+python = "python3"
+cmake = "cmake"
+
+[data]
+train_games = 200
+validation_games = 20
+max_plies = 180
+search_depth = 3
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+opening_policy = "suite"
+opening_suite = "haitaka_learn/openings/anhoku-v1.tsv"
+opening_suite_id = "anhoku-v1"
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+shuffle_policy = "chunk-v1"
+shuffle_seed = 77
+shuffle_chunk_records = 4096
+sample_start_ply = 8
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 64
+seed = 75
+jobs = 12
+shard_games = 10
+progress_every_percent = 5
+resume = true
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+num_workers = 8
+batch_size = 16384
+lambda = 0.8
+random_fen_skipping = 3
+epoch_size = 1000000
+validation_size = 100000
+max_epochs = 60
+build_data_loader = true
+teacher_move_consumers = false
+extra_args = ["--threads", "8", "--accelerator", "gpu", "--devices", "1"]
+
+[export]
+output_name = "haitaka-anhoku-v0.6-pilot.nnue"
+description = "Haitaka Anhoku v0.6 local end-to-end pilot"
+
+[verify]
+search_depth = 2
+run_search_smoke = true

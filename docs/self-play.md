@@ -47,6 +47,43 @@ cargo run -p haitaka_cli --release -- self-play \
   --b-depth 2
 ```
 
+## Combined Node Budget
+
+Use `--nodes-per-move N` when both evaluators must receive the same literal
+search budget:
+
+```bash
+cargo run -p haitaka_cli --release --features anhoku -- self-play \
+  --games 32 \
+  --threads 1 \
+  --a-eval nnue \
+  --nnue path/to/model.nnue \
+  --nodes-per-move 50000 \
+  --opening-random-plies 4 \
+  --seed 8207 \
+  --report-dir target/self-play/node-calibration-50k
+```
+
+The node budget is fresh for every move and is shared between alpha-beta and
+qsearch. Its counting contract is `alpha-beta-plus-qsearch-v1`, so
+`consumedBudgetNodes` must equal `alphaBetaNodes + qnodes` and must never exceed
+`requestedBudgetNodes`. Node-budget searches use a depth cap of 64, retain the
+last fully completed iterative-deepening result, and choose a deterministic
+lexicographically first legal move if depth 1 cannot complete.
+
+`--nodes-per-move` is mutually exclusive with `--a-depth`, `--b-depth`, and
+`--movetime-ms`. The native USI endpoint accepts the matching command
+`go nodes N` and emits the budget identity and telemetry in its final `info`
+line. External USI engines used with this mode must emit the same telemetry;
+the self-play controller rejects missing or inconsistent accounting.
+
+Node-mode reports include requested and consumed combined nodes, alpha-beta
+nodes, qnodes, completed depth, incomplete iterations, node-budget cap hits,
+fallbacks, elapsed time, aggregate NPS, and aggregate QNPS at the per-side,
+per-game, and aggregate levels. The command identity includes both
+`nodesPerMove` and `nodeCountingVersion`, so changing the budget or counting
+contract cannot silently resume or merge into an existing report.
+
 ## Native Engine Archives
 
 Use native archives when comparing different code versions. The archive stores
@@ -188,7 +225,8 @@ cargo run -p haitaka_cli --release -- self-play \
 - engine identity and launch metadata
 - embedded native archive manifest metadata for archive engines
 - score, approximate Elo, approximate 95% confidence interval, nodes, NPS,
-  qsearch nodes/QNPS/cap/check telemetry, and warnings
+  combined-node budget accounting, qsearch nodes/QNPS/cap/check telemetry,
+  and warnings
 
 `self-play-games.jsonl` writes one JSON object per completed game:
 
@@ -197,7 +235,8 @@ cargo run -p haitaka_cli --release -- self-play \
 - opening source and start SFEN
 - played USI moves
 - result and winner
-- plies, nodes, elapsed time, and qsearch telemetry
+- plies, nodes, combined-node budget accounting, elapsed time, NPS/QNPS, and
+  qsearch telemetry
 - failure state, currently `null` because protocol failures stop the match
 
 `totalNodes` and `aggregateNps` count alpha-beta search nodes. Qsearch work is

@@ -28,6 +28,7 @@ DONOR_SINGLE_HASH = DONOR_SINGLE_MODE_HASHES.get(
     getattr(variant, "DONOR_MODE", "none"),
     DONOR_SINGLE_BASE_HASH,
 )
+DONOR_RECEIVER_PAIR_V2_HASH = 0x6D124A8F
 DONOR_PAIR_HASH = 0x467CDF71
 DONOR_KNIGHT8_BASE_HASH = 0x3CC37189
 DONOR_KNIGHT8_MODE_HASHES = {
@@ -41,6 +42,7 @@ NUM_SQ = variant.SQUARES
 NUM_PT = variant.PIECE_TYPES
 NUM_COLORS = 2
 NUM_SINGLE_FEATURES = NUM_SQ * NUM_PT * NUM_COLORS
+NUM_RECEIVER_PAIR_V2_FEATURES = NUM_SINGLE_FEATURES * NUM_PT
 NUM_PAIR_SLOTS = 2
 NUM_PAIR_FEATURES = NUM_SINGLE_FEATURES * NUM_PAIR_SLOTS
 NUM_KNIGHT8_SLOTS = 8
@@ -53,6 +55,21 @@ class DonorSingleEff(FeatureBlock):
             "DonorSingleEff",
             DONOR_SINGLE_HASH,
             OrderedDict([("DonorSingleEff", NUM_SINGLE_FEATURES)]),
+        )
+
+    def get_active_features(self, board: chess.Board):
+        raise Exception("Use the C++ data loader for donor feature expansion during training")
+
+    def get_initial_psqt_features(self):
+        return [0] * self.num_features
+
+
+class DonorReceiverPairV2(FeatureBlock):
+    def __init__(self):
+        super(DonorReceiverPairV2, self).__init__(
+            "DonorReceiverPairV2",
+            DONOR_RECEIVER_PAIR_V2_HASH,
+            OrderedDict([("DonorReceiverPairV2", NUM_RECEIVER_PAIR_V2_FEATURES)]),
         )
 
     def get_active_features(self, board: chess.Board):
@@ -93,4 +110,4 @@ class DonorKnight8Slots(FeatureBlock):
 
 
 def get_feature_block_clss():
-    return [DonorSingleEff, DonorPairSlots, DonorKnight8Slots]
+    return [DonorSingleEff, DonorReceiverPairV2, DonorPairSlots, DonorKnight8Slots]

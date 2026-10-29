@@ -1102,6 +1102,85 @@ fn anhoku_effective_slider_check_is_detected() {
 
 #[test]
 #[cfg(feature = "anhoku")]
+fn anhoku_capture_of_enemy_donor_must_not_expose_own_king() {
+    let board: Board =
+        "2sg1k3/4g2b1/l2Kp1s1+P/pP2PPpp1/2+r6/P6P1/+n3+bgP2/2+p5+l/3+s3+n1 b Prgs2n2l5p 129"
+            .parse()
+            .unwrap();
+    let capture_donor = Move::BoardMove {
+        from: Square::D5,
+        to: Square::C5,
+        promotion: false,
+    };
+
+    let mut after = board.clone();
+    after.play_unchecked(capture_donor);
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::Black);
+    assert!(
+        !checkers.is_empty(),
+        "removing the Pawn donor restores the White Gold's native check"
+    );
+
+    assert!(!board.is_legal_board_move(capture_donor));
+    assert!(!board.is_legal(capture_donor));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(capture_donor);
+        generated
+    });
+    assert!(!generated);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
+fn anhoku_influenced_king_may_move_next_to_enemy_king_when_not_attacked() {
+    let board: Board =
+        "2+B1R1+N+R1/3s2N1+B/4s4/2p2k+L2/p2pP2P1/2PPKp3/P4P3/+p1G6/4+pNG2 w 2G2SNL4P2l2p 126"
+            .parse()
+            .unwrap();
+    let adjacent = Move::BoardMove {
+        from: Square::D4,
+        to: Square::E4,
+        promotion: false,
+    };
+
+    let effective_moves = crate::variant_rules::pseudo_legals_for(
+        crate::variant_rules::effective_piece(&board, Color::White, Square::D4),
+        Color::White,
+        Square::D4,
+        board.occupied(),
+    );
+    assert!(effective_moves.has(Square::E4));
+
+    let mut after = board.clone();
+    after.play_unchecked(adjacent);
+    assert_eq!(
+        crate::variant_rules::effective_piece(&after, Color::Black, after.king(Color::Black)),
+        Piece::Pawn
+    );
+    let (checkers, _) = after.calculate_checkers_and_pins(Color::White);
+    assert!(
+        checkers.is_empty(),
+        "the adjacent enemy King does not attack with King movement here"
+    );
+
+    assert!(board.is_legal_board_move(adjacent));
+    assert!(board.is_legal(adjacent));
+
+    let mut generated = false;
+    board.generate_board_moves(|mvs| {
+        generated |= mvs.has(adjacent);
+        generated
+    });
+    assert!(generated);
+
+    let reparsed: Board = after.to_string().parse().unwrap();
+    assert_eq!(reparsed, after);
+}
+
+#[test]
+#[cfg(feature = "anhoku")]
 fn anhoku_last_rank_drops_stay_illegal_but_second_rank_knight_drop_is_legal() {
     let board: Board = "k8/9/9/9/9/9/9/9/8K b NLP 1".parse().unwrap();
     let forbidden = [

@@ -21,6 +21,7 @@ Ruleset-to-feature-set mapping:
 
 - standard / handicap: `HalfKAv2^`
 - Annan / Anhoku / Taimen / Haimen: `HalfKAv2^+DonorSingleEff`
+- experimental Anhoku Feature V2: `HalfKAv2^+DonorReceiverPairV2`
 - Antouzai: `HalfKAv2^+DonorPairSlots`
 
 ## What Is Already Prepared
@@ -97,19 +98,66 @@ Key fields:
   - `opening_sfen` can override the default opening for any ruleset
 - `[paths]`
   - `trainer_checkout`
-  - `bootstrap_nnue`
+  - `bootstrap_nnue`; when present, `generate-data` requires the file to be
+    readable and loadable and uses it as the teacher. Omit the field to use the
+    handcrafted teacher.
   - `output_dir`
 - `[data]`
   - self-play and sampling parameters
-  - `search_depth` labels sampled positions
-  - `rollout_search_depth` chooses non-labeling self-play moves after `opening_random_plies`; keep this shallow, for example `1`, when running expensive label depths
+  - `opening_policy = "suite"` loads the tab-separated file in `opening_suite` and
+    selects one stable opening ID deterministically per game pair
+  - `opening_suite_id` is the human-readable suite version; the raw file SHA-256 is
+    computed and stored separately in manifests
+  - `opening_policy = "uniform-random"` preserves the old random-opening behavior for
+    compatibility and smoke tests; production Anhoku v0.6 does not use it
+  - `sampling_policy = "per-game-random-v1"` deterministically chooses a phase per
+    game and starts at or after `max(sample_start_ply, opening_random_plies)`; this is
+    the default
+  - `sampling_policy = "fixed-phase-legacy"` is the explicit compatibility mode for
+    reproducing old datasets and may sample during the random opening
+  - choose exactly one label-search budget for new configs:
+    `search_depth` for legacy fixed-depth labels, or `label_search_nodes` plus
+    `label_search_max_depth` for deterministic iterative-deepening labels
+  - fixed-node labels count both alpha-beta entries and qsearch entries under
+    `node_counting_version = "alpha-beta-plus-qsearch-v1"`; the shared budget
+    has zero overshoot, and the manifest reports the two counters separately
+  - `incomplete_label_policy = "error"` is the default when a fixed-node
+    search cannot complete depth 1; production fixed-node experiments may use
+    `"reject-position"` with a versioned rollout policy to skip and explicitly
+    count those candidates without changing the self-play trajectory
+  - `position_policy = "root-position"` preserves legacy records and is the
+    default; `position_policy = "qsearch-pv-leaf"` stores the final traced PV
+    leaf with its static evaluation while retaining the root game ply in the
+    72-byte record
+  - `max_candidate_roots_per_game` caps attempted sampled roots rather than
+    accepted records. Phase 8 uses `64` so terminal, mate, and incomplete leaf
+    rejection cannot request replacement roots
+  - `rollout_search_depth` chooses self-play moves after `opening_random_plies`; keep this
+    shallow, for example `1`, when running expensive label depths
+  - `self_play_move_policy = "searched-stochastic-rollout-v1"` scores a bounded,
+    canonically ordered legal-move set with cheap search, always includes the
+    canonical root search's best move, samples within the configured score
+    margin, and derives the choice from the pair-index/ply stream. Manifests
+    report total legal moves and candidates truncated by the bound.
+    `uniform-rollout-v1` remains readable only for historical data; the explicit
+    `label-on-sample-legacy` policy reproduces older biased data.
+  - `rollout_candidate_limit`, `rollout_score_margin`, `rollout_temperature`,
+    and `rollout_rng_version` are part of the generation-semantic identity.
+    The current implementation accepts only
+    `rollout_rng_version = "splitmix64-v1"`; unknown names are configuration
+    errors.
+    `opening_random_plies` must be zero for searched-stochastic production.
+  - `minimum_train_boards` gates generation, merge, and training using distinct
+    packed board payloads (`bin` bytes `0..64`), not accepted-record count.
   - `jobs = 0` uses all available CPU cores; this is the default and the recommended setting for serious generation runs unless memory or thermals force a lower value
   - `shard_games` controls resumable shard size
   - `progress_every_percent` controls stdout progress and ETA frequency
   - `resume = true` reuses completed shard files after interruptions. Each shard records the
-    git revision and a config-file hash; if a resumed shard's revision or config hash differs
-    from the current run (e.g. a local patch that doesn't affect data generation, or a
-    comment-only config edit), `generate-data` reports how much of the run's data is affected
+    git revision, config-file hash, label budget type/nodes/depth cap/node-counting
+    version, position/trace policy, sampling/self-play policy, and teacher-move
+    contract; if a resumed
+    shard's identity differs from the current run (e.g. a local patch that doesn't affect
+    data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
     Pass `--ignore-identity-mismatch` to reuse them non-interactively (e.g. on sharded/CI runs).
     Throughput (`speed`) and `eta` are computed from freshly generated games only, so restored
@@ -121,6 +169,9 @@ Key fields:
   - Antouzai uses `HalfKAv2^+DonorPairSlots`
   - Anki uses `HalfKAv2^+DonorKnight8Slots`
   - trainer args like batch size and epoch count
+  - `teacher_move_consumers` must remain `false` while the 72-byte record ABI records
+    `teacher_move_encoding = "unavailable"`; the overlaid loader does not apply smart
+    capture/FEN filtering based on that field
 - `[export]`
   - output name and description string
 - `[selection]`
@@ -150,10 +201,114 @@ This:
 - always uses the release build for data generation
 - plays Haitaka self-play games
 - samples positions
-- labels sampled positions with teacher search scores at `data.search_depth`
-- uses `data.rollout_search_depth` for post-opening self-play moves that are not sampled
+- labels sampled positions with either the depth budget in `data.search_depth`
+  or the fixed-node budget in `data.label_search_nodes`; node-budgeted search
+  retains the last fully completed iterative-deepening result
+- optionally replaces each sampled root with its deterministic qsearch-PV leaf,
+  rejects terminal and mate-saturated examples, and orients the final game
+  result to the leaf side to move
+  - uses the versioned searched-stochastic rollout for every move under the
+    Phase 8D policy, independently of whether the position is sampled
 - writes resumable shard files, then assembles trainer-compatible `.bin` files
   plus JSON manifests
+
+Phase 8D-A trajectory and label calibration telemetry:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- trajectory-audit \
+  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+cargo run --release -p haitaka_learn --features anhoku -- calibrate-labels \
+  --config haitaka_learn.anhoku-v0.6-phase8d-a.toml
+```
+
+The audit is label-free, assigns two base/swapped pairs to every one of the 52
+train and 12 OOD-v2 IDs, and writes opening coverage, deterministic trajectory
+hashes, packed-board uniqueness, post-initial-coverage tranche yield, pair
+symmetry, legal/scored/truncated candidate counts, score gaps, outcomes, and
+rollout CPU telemetry. The repeat-yield gate is evaluated only after every ID
+has completed its first pair.
+Calibration regenerates one pair per ID for the predeclared 50k/100k/200k node
+budgets. It cannot select a budget unless all 64 IDs produce at least one
+matched root; otherwise it records a block requiring a revised calibration
+contract.
+
+Validate the configured suite without generating games:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- validate-openings \
+  --config haitaka_learn.anhoku-v0.6.toml
+```
+
+Run the bounded Anhoku v0.6 generation smoke test with production data contracts:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6.smoke.toml --no-resume
+```
+
+Run the corresponding Phase 4 fixed-node smoke configuration with:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6-phase4.smoke.toml --no-resume
+```
+
+Final dataset manifests report `label_search_states`, `label_search_qnodes`,
+their `label_search_total_nodes`, average `label_nodes_per_search`, and elapsed
+label/rollout search seconds. `generation_cpu_seconds` is the sum of elapsed
+teacher-search time across worker jobs; `elapsed_seconds` remains split wall
+time. Rollout moves always retain their independent `rollout_search_depth`.
+
+Run the Phase 5 qsearch-PV leaf smoke configuration with:
+
+```bash
+cargo run --release -p haitaka_learn --features anhoku -- generate-data \
+  --config haitaka_learn.anhoku-v0.6-phase5.smoke.toml --no-resume
+```
+
+Leaf manifests use `training_trace_version = "qsearch-pv-v1"` and report root
+ply bounds, leaf-distance bounds/mean, candidate count, and separate terminal
+and mate-score rejection counts. The binary ABI stays 72 bytes: its ply remains
+the sampling root ply, while leaf distance is aggregate audit metadata.
+
+Suite files use one `<stable-opening-id><TAB><SFEN>` entry per line. Blank lines and
+text after `#` are ignored. Validation rejects malformed SFENs, duplicate IDs,
+duplicate canonical positions, missing kings, positions without a legal move, and
+non-reversible Anhoku color swaps. Add a new file and `opening_suite_id` for any suite
+change; do not edit an already-used suite version in place.
+
+For Anhoku, adjacent games form a pair. Both select the same opening ID; the second
+uses the versioned `anhoku-rotate180-color-swap-v1` transformation (rotate the board
+180 degrees, exchange piece/hand colors, and exchange side to move). Shard and final
+manifests contain the suite hash and per-game opening metadata.
+
+Phase 8A uses `haitaka_learn/openings/anhoku-v2.tsv`. Its configs explicitly
+freeze `anhoku-v2-053` through `anhoku-v2-064` as the 12-opening OOD-v2 split.
+The generator records `candidate_identity_sha256` in every shard and final
+manifest; compare root and leaf outputs before training with:
+
+```bash
+python3 scripts/phase8_prepare.py check-matched \
+  --root-output out/anhoku-v0.6-phase8a-root \
+  --leaf-output out/anhoku-v0.6-phase8a-leaf \
+  --output out/anhoku-v0.6-phase8a-matched.json
+```
+
+The v0.6 configs also use `split_policy = "opening-group-hash-v1"`. Suite IDs are
+ranked from `split_seed` before any game is generated, and each ID is assigned wholly
+to train or validation. At least two validation groups are retained when the suite has
+four or more IDs. This keeps a base/swapped pair—and every repeated game from the same
+opening—on one side of the split. Manifests record both assigned ID lists, qualified
+game IDs such as `train-0000000000`, and their empty intersection.
+
+`shuffle_policy = "chunk-v1"` performs a deterministic external shuffle after shard
+generation. It shuffles records inside fixed-size chunks and visits the chunk files by
+a seeded affine permutation. The algorithm never loads a full shard or dataset. Its
+documented heap bound for record and I/O buffers is
+`shuffle_chunk_records * 72 + 131072` bytes; the config validator caps the record
+payload at 1,000,000 records (about 68.7 MiB). Temporary chunk files live beside the
+final dataset and are removed after assembly. Historical configs explicitly use
+`independent-legacy` and `game-order-legacy`.
 
 Data generation uses all available CPU cores by default. Pass `--jobs N` only
 when you need to cap CPU, memory, or thermal load.
@@ -181,7 +336,27 @@ cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/
 
 `merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
 expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
-`--ignore-identity-mismatch` to skip those two checks.
+`--ignore-identity-mismatch` to skip identity checks. Sampling-policy and teacher-move
+contract mismatches are also rejected unless this explicit override is supplied.
+Self-play move policy, split policy/seed, assigned opening groups, shuffle policy/seed,
+and chunk size are checked in the same way.
+
+Audit a completed dataset with deterministic JSON output:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- audit-data \
+  --bin out/anhoku-v0.6/datasets/train.bin \
+  --manifest out/anhoku-v0.6/datasets/train.json \
+  --output out/anhoku-v0.6/datasets/train.audit.json
+```
+
+New manifests embed the seed, ruleset, feature family, sampling contract, opening
+length, and teacher-move encoding. For a legacy manifest, add `--config FILE` to
+recover seed, ruleset, feature family, and opening length. The report validates the
+exact byte length and includes the file SHA-256, side/ply/outcome counters, score
+statistics and nearest-rank quantiles, mate-like scores (`abs(score) >= 29000`),
+clamped scores, nonzero teacher moves, samples taken during the opening, and
+the position/trace policy with root-ply, leaf-distance, and rejection metadata.
 
 Bundle generated data for a CUDA training host:
 
@@ -192,6 +367,27 @@ cargo bundle-pretrain haitaka_learn.toml
 The bundle includes the config, configured `output_dir/datasets`, and optional
 `paths.bootstrap_nnue`. The bundled config is rewritten to use archive-local
 paths after extraction.
+
+### Diagnostic checkpoint evaluation
+
+Phase 7.1 configs add an explicit `training.initial_learning_rate`, optional
+step-based `checkpoint_interval_steps`, `validation_interval_steps`, and
+`max_steps`. Omitting these fields preserves the existing epoch checkpoint and
+trainer defaults. A diagnostic config may also set
+`paths.legacy_ood_validation_bin`; training then logs that two-opening set as
+secondary OOD validation data.
+
+After the trainer overlay is installed, evaluate any checkpoint without
+starting training:
+
+```bash
+cargo run -p haitaka_learn --features anhoku -- evaluate-checkpoint \
+  --config haitaka_learn.anhoku-v0.6-phase7.1-c.toml \
+  --checkpoint out/anhoku-v0.6-phase7.1/lane-c/logs/.../checkpoints/step=2.ckpt
+```
+
+The resulting JSON contains deterministic ID and legacy-OOD losses. The OOD
+loss is diagnostic only and must not select a Phase 7.1 checkpoint.
 
 ### 2. Train And Select The Best Checkpoint
 
@@ -317,7 +513,10 @@ Current training entries contain:
 Current limitation:
 
 - the trainer's 16-bit move field is not expressive enough for full shogi move encoding, so `haitaka_learn` currently writes `0` there
-- this is fine for score/result-driven training, but teacher move match-rate tooling is not meaningful yet
+- manifests identify this as `teacher_move_encoding = "unavailable"`; zero must not be
+  interpreted as a real move
+- score/result-driven training remains supported, while teacher-move match-rate and
+  smart capture/FEN skipping consumers are rejected for this record format
 
 ## Verification Behavior
 

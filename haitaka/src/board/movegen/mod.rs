@@ -112,6 +112,98 @@ impl Board {
         !touches_axis || self.variant_move_resolves_check(mv)
     }
 
+    /// Enemy pieces that currently donate movement to another enemy piece in a
+    /// same-side donor variant. Capturing one of these pieces can change the
+    /// recipient's effective movement and create a new attack on our King.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn opposing_same_side_donors(&self) -> BitBoard {
+        use crate::variant_rules::{MovementInfluence, influencing_donor_squares};
+
+        let enemy = !self.side_to_move();
+        let influence = MovementInfluence::compute(self, enemy);
+        let mut donors = BitBoard::EMPTY;
+        for recipient in influence.has_influence {
+            donors |= influencing_donor_squares(self, enemy, recipient);
+        }
+        donors
+    }
+
+    /// Recheck captures that remove an opponent's active same-side donor.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn same_side_donor_capture_safe(&self, mv: Move) -> bool {
+        let Move::BoardMove { to, .. } = mv else {
+            return true;
+        };
+        if !self.colors(!self.side_to_move()).has(to) {
+            return true;
+        }
+        !self.opposing_same_side_donors().has(to) || self.variant_move_resolves_check(mv)
+    }
+
+    /// Generate not-in-check board moves for same-side donor variants, replaying
+    /// only captures that remove an active opposing donor. Other moves retain the
+    /// batched fast path.
+    #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+    fn generate_same_side_donor_safe_board<F: FnMut(PieceMoves) -> bool>(
+        &self,
+        mask: BitBoard,
+        listener: &mut F,
+    ) -> bool {
+        debug_assert!(self.checkers.is_empty());
+        let stm = self.side_to_move();
+        let enemies = self.colors(!stm);
+        let mut donors = None;
+        let mut filter = |mvs: PieceMoves| {
+            let PieceMoves::BoardMoves {
+                color,
+                piece,
+                from,
+                to,
+                prom_status,
+            } = mvs
+            else {
+                return listener(mvs);
+            };
+            let captures = to & enemies;
+            let needs_recheck = if captures.is_empty() {
+                BitBoard::EMPTY
+            } else {
+                captures & *donors.get_or_insert_with(|| self.opposing_same_side_donors())
+            };
+            let safe = to & !needs_recheck;
+            if !safe.is_empty()
+                && listener(PieceMoves::BoardMoves {
+                    color,
+                    piece,
+                    from,
+                    to: safe,
+                    prom_status,
+                })
+            {
+                return true;
+            }
+            if needs_recheck.is_empty() {
+                return false;
+            }
+            let recheck = PieceMoves::BoardMoves {
+                color,
+                piece,
+                from,
+                to: needs_recheck,
+                prom_status,
+            };
+            for mv in recheck {
+                if self.variant_move_resolves_check(mv)
+                    && listener(Self::variant_singleton_piece_moves(mv, stm, piece))
+                {
+                    return true;
+                }
+            }
+            false
+        };
+        self.add_all_legals::<_, false>(mask, &mut filter)
+    }
+
     /// Generate not-in-check board moves for enemy-donor variants, rechecking the
     /// post-move king safety of any move that can change an enemy's donated movement.
     ///
@@ -1779,7 +1871,17 @@ impl Board {
                 if self.checkers.is_empty() {
                     return self.enemy_donor_move_safe(mv, self.enemy_donor_axis());
                 }
-                #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+                #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+                if self.checkers.is_empty() {
+                    return self.same_side_donor_capture_safe(mv);
+                }
+                #[cfg(not(any(
+                    feature = "annan",
+                    feature = "anhoku",
+                    feature = "antouzai",
+                    feature = "taimen",
+                    feature = "haimen"
+                )))]
                 if self.checkers.is_empty() {
                     return true;
                 }
@@ -2051,7 +2153,16 @@ impl Board {
             #[cfg(any(feature = "taimen", feature = "haimen"))]
             return self.generate_enemy_donor_safe_board(mask, &mut listener);
 
-            #[cfg(not(any(feature = "taimen", feature = "haimen")))]
+            #[cfg(any(feature = "annan", feature = "anhoku", feature = "antouzai"))]
+            return self.generate_same_side_donor_safe_board(mask, &mut listener);
+
+            #[cfg(not(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen"
+            )))]
             match self.checkers.len() {
                 0 => self.add_all_legals::<_, false>(mask, &mut listener),
                 1 => self.add_all_legals::<_, true>(mask, &mut listener),

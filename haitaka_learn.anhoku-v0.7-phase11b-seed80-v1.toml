@@ -1,0 +1,78 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-v0.7-phase11b-seed80-v1"
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
+bootstrap_nnue = "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue"
+python = "../haitaka-variant-nnue-pytorch/env/bin/python"
+cmake = "cmake"
+
+[data]
+# Reuse the complete, audited Phase 8D-B.1 unique-262k train/OOD-v2 corpus.
+# Do not generate data from this training-only ablation config.
+train_games = 8200
+validation_games = 96
+max_plies = 180
+label_search_nodes = 50000
+label_search_max_depth = 64
+position_policy = "root-position"
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 72
+rollout_search_depth = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_candidate_limit = 16
+rollout_score_margin = 80
+rollout_temperature = 40.0
+rollout_rng_version = "splitmix64-v1"
+opening_random_plies = 0
+opening_policy = "suite"
+opening_suite = "haitaka_learn/openings/anhoku-v3.tsv"
+opening_suite_id = "anhoku-v3"
+validation_opening_ids = ["anhoku-v3-053", "anhoku-v3-054", "anhoku-v3-055", "anhoku-v3-056", "anhoku-v3-057", "anhoku-v3-058", "anhoku-v3-059", "anhoku-v3-060", "anhoku-v3-061", "anhoku-v3-062", "anhoku-v3-063", "anhoku-v3-064"]
+validation_opening_schedule = "equal-color-swapped-pairs-v1"
+validation_opening_pairs_per_id = 4
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+shuffle_policy = "chunk-v1"
+shuffle_seed = 77
+shuffle_chunk_records = 65536
+sample_start_ply = 8
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 64
+minimum_train_boards = 262144
+seed = 75
+jobs = 0
+shard_games = 10
+progress_every_percent = 5
+resume = true
+
+[training]
+# Resume is safe for an interrupted Vast job; a clean lane starts from the
+# configured C/16 bootstrap. Both lanes otherwise remain byte-for-byte matched.
+resume = true
+features = "HalfKAv2^+DonorSingleEff"
+num_workers = 8
+batch_size = 16384
+lambda = 0.8
+initial_learning_rate = 0.00015
+random_fen_skipping = 3
+epoch_size = 262144
+validation_size = 100000
+checkpoint_interval_steps = 4
+validation_interval_steps = 4
+max_steps = 16
+max_epochs = 60
+build_data_loader = true
+teacher_move_consumers = false
+extra_args = ["--seed", "80", "--threads", "8", "--accelerator", "gpu", "--devices", "1"]
+
+[export]
+output_name = "haitaka-anhoku-v0.7-phase11b-seed80-v1-step16.nnue"
+description = "Anhoku Phase 11-B seed 80 V1 control, audited unique-262k data, C/16 bootstrap, fixed step 16"
+
+[verify]
+search_depth = 2
+run_search_smoke = true

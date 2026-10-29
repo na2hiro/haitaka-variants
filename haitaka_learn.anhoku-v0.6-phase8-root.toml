@@ -1,0 +1,71 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-v0.6-phase8a-root"
+trainer_checkout = "../haitaka-variant-nnue-pytorch"
+python = "python3"
+cmake = "cmake"
+
+[data]
+train_games = 50000
+validation_games = 12000
+max_plies = 180
+label_search_nodes = 50000
+label_search_max_depth = 64
+position_policy = "root-position"
+incomplete_label_policy = "reject-position"
+rollout_search_depth = 1
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+opening_policy = "suite"
+opening_suite = "haitaka_learn/openings/anhoku-v2.tsv"
+opening_suite_id = "anhoku-v2"
+validation_opening_ids = ["anhoku-v2-053", "anhoku-v2-054", "anhoku-v2-055", "anhoku-v2-056", "anhoku-v2-057", "anhoku-v2-058", "anhoku-v2-059", "anhoku-v2-060", "anhoku-v2-061", "anhoku-v2-062", "anhoku-v2-063", "anhoku-v2-064"]
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+shuffle_policy = "chunk-v1"
+shuffle_seed = 77
+shuffle_chunk_records = 65536
+sample_start_ply = 8
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 64
+max_candidate_roots_per_game = 64
+seed = 75
+jobs = 0
+shard_games = 20
+progress_every_percent = 1
+resume = true
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+num_workers = 8
+batch_size = 16384
+lambda = 0.8
+random_fen_skipping = 3
+epoch_size = 1000000
+validation_size = 100000
+max_epochs = 60
+build_data_loader = true
+teacher_move_consumers = false
+extra_args = ["--threads", "8", "--accelerator", "gpu", "--devices", "1"]
+
+[export]
+output_name = "haitaka-anhoku-v0.6-phase8-root.nnue"
+description = "Haitaka Anhoku v0.6 Phase 8 fixed-node root-position NNUE"
+
+[verify]
+search_depth = 2
+run_search_smoke = true
+
+[selection]
+strategy = "anchored-ranking"
+screen_games = 256
+round_games = 128
+max_total_games = 32768
+max_games_per_candidate = 4096
+explore_factor = 1.5
+top_k = 3
+movetime_ms = 100
+storage_saver = true

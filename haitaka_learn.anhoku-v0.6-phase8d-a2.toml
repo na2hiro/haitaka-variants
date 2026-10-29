@@ -1,0 +1,59 @@
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-v0.6-phase8d-a2"
+bootstrap_nnue = "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue"
+
+[data]
+# 52 train IDs and 12 OOD-v2 IDs. trajectory-audit visits two base/swapped
+# pairs per ID so the second cycle measures repeat-opening diversity;
+# calibrate-labels keeps its fixed one-pair-per-ID 128-game schedule.
+train_games = 208
+validation_games = 48
+max_plies = 180
+label_search_nodes = 50000
+label_search_max_depth = 64
+position_policy = "root-position"
+incomplete_label_policy = "reject-position"
+label_retry_policy = "root-position-adaptive-retry-v1"
+max_label_attempts_per_game = 8
+
+# Phase 8D-A's sole production rollout policy.  The two tunable values are
+# frozen only after trajectory-audit telemetry; this file records the initial
+# bounded pilot contract and is not a training configuration.
+rollout_search_depth = 1
+self_play_move_policy = "searched-stochastic-rollout-v1"
+rollout_candidate_limit = 16
+rollout_score_margin = 80
+rollout_temperature = 40.0
+rollout_rng_version = "splitmix64-v1"
+opening_random_plies = 0
+
+opening_policy = "suite"
+opening_suite = "haitaka_learn/openings/anhoku-v3.tsv"
+opening_suite_id = "anhoku-v3"
+validation_opening_ids = ["anhoku-v3-053", "anhoku-v3-054", "anhoku-v3-055", "anhoku-v3-056", "anhoku-v3-057", "anhoku-v3-058", "anhoku-v3-059", "anhoku-v3-060", "anhoku-v3-061", "anhoku-v3-062", "anhoku-v3-063", "anhoku-v3-064"]
+validation_opening_schedule = "equal-color-swapped-pairs-v1"
+validation_opening_pairs_per_id = 2
+split_policy = "opening-group-hash-v1"
+split_seed = 76
+
+sample_start_ply = 8
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 1
+# Calibration fills one accepted slot, retrying at most the eight scheduled
+# plies 8,10,...,22. Rejected attempts do not consume this accepted quota.
+seed = 75
+jobs = 0
+shard_games = 8
+progress_every_percent = 10
+resume = false
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+teacher_move_consumers = false
+
+[verify]
+run_search_smoke = false
