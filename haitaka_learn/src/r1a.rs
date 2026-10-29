@@ -284,7 +284,7 @@ pub(crate) fn run(
         }))?,
     )?;
 
-    let sentinel = R1SentinelNetwork::donor_single();
+    let sentinel = donor_single_sentinel()?;
     let mut states = Vec::with_capacity(fixtures.len());
     let mut transitions_checked = 0usize;
     let mut restore_round_trips_checked = 0usize;
@@ -432,6 +432,17 @@ fn feature_perspective(indices: &R1ActiveFeatureIndices) -> FeaturePerspective<'
     FeaturePerspective {
         base: &indices.base,
         donor: &indices.donor,
+    }
+}
+
+fn donor_single_sentinel() -> Result<R1SentinelNetwork> {
+    #[cfg(feature = "anhoku")]
+    {
+        Ok(R1SentinelNetwork::donor_single())
+    }
+    #[cfg(not(feature = "anhoku"))]
+    {
+        bail!("R1-A sentinel checks require building haitaka_learn with --features anhoku")
     }
 }
 
@@ -1049,6 +1060,13 @@ fn hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(not(feature = "anhoku"))]
+    fn sentinel_requires_anhoku_build() {
+        let error = donor_single_sentinel().unwrap_err();
+        assert!(error.to_string().contains("--features anhoku"));
+    }
 
     #[test]
     fn independent_signature_matches_start_position() {

@@ -56,6 +56,48 @@ fn usi_subprocess_returns_legal_bestmove() {
 }
 
 #[test]
+fn merging_single_game_runs_completes_the_color_swapped_pair() {
+    let temp = unique_temp_dir("merge-single-games");
+    let report_dir = temp.to_str().unwrap();
+    let args = [
+        "self-play",
+        "--games",
+        "1",
+        "--threads",
+        "1",
+        "--a-depth",
+        "1",
+        "--b-depth",
+        "1",
+        "--max-plies",
+        "1",
+        "--report-dir",
+        report_dir,
+    ];
+    let first = Command::new(cli_exe()).args(args).output().unwrap();
+    assert!(
+        first.status.success(),
+        "{}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let second = run_with_stdin(&args, "2\n");
+    assert!(
+        second.status.success(),
+        "{}",
+        String::from_utf8_lossy(&second.stderr)
+    );
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(temp.join("self-play-report.json")).unwrap()).unwrap();
+    assert_eq!(report["summary"]["games"], 2);
+    assert_eq!(report["summary"]["pairCount"], 1);
+    assert_eq!(
+        report["summary"]["pairScoreBins"],
+        serde_json::json!([0, 0, 1, 0, 0])
+    );
+    fs::remove_dir_all(temp).unwrap();
+}
+
+#[test]
 fn self_play_can_use_current_binary_as_both_external_engines() {
     let output = Command::new(cli_exe())
         .args([
