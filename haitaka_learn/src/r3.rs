@@ -1057,24 +1057,35 @@ fn observation_from_summary(
 
 fn reference_move_ranking(board: &Board, contract: &Contract) -> Result<Vec<RankedMove>> {
     let moves = legal_moves(board);
+    ensure!(
+        !moves.is_empty(),
+        "reference move ranking requires a nonterminal root"
+    );
     let per_move = (contract.teachers.move_ranking_total_nodes / moves.len() as u64).max(256);
     let mut ranking = Vec::with_capacity(moves.len());
     let mut workspace = SearchWorkspace::new();
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
-            &child,
-            per_move,
-            contract.teachers.maximum_depth,
-            &mut workspace,
-        )
-        .map_err(anyhow::Error::msg)?;
-        if let Some(score) = summary.best_score {
+        let (score, child_node_limit) = match child.status() {
+            GameStatus::Won => (Some(29_999), 0),
+            GameStatus::Drawn => (Some(0), 0),
+            GameStatus::Ongoing => {
+                let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+                    &child,
+                    per_move,
+                    contract.teachers.maximum_depth,
+                    &mut workspace,
+                )
+                .map_err(anyhow::Error::msg)?;
+                (summary.best_score.map(|score| -score), per_move)
+            }
+        };
+        if let Some(score) = score {
             ranking.push(RankedMove {
                 move_: mv.to_string(),
-                score: -score,
-                child_node_limit: per_move,
+                score,
+                child_node_limit,
             });
         }
     }
@@ -1693,6 +1704,37 @@ fn write_jsonl(path: &Path, values: &[impl Serialize]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn reference_ranking_includes_immediate_mates_without_searching_terminal_children() {
+        let board = Board::from_sfen("4k4/9/3LGL3/9/9/9/9/9/4K4 b R 1").unwrap();
+        let mut contract = test_contract();
+        contract.teachers.maximum_depth = 1;
+        contract.teachers.move_ranking_total_nodes = 256;
+        let mates = legal_moves(&board)
+            .into_iter()
+            .filter(|&mv| {
+                let mut child = board.clone();
+                child.play_unchecked(mv);
+                child.status() == GameStatus::Won
+            })
+            .collect::<Vec<_>>();
+        assert!(!mates.is_empty());
+        let ranking = reference_move_ranking(&board, &contract).unwrap();
+        assert_eq!(ranking[0].score, 29_999);
+        for mv in mates {
+            let ranked = ranking
+                .iter()
+                .find(|item| item.move_ == mv.to_string())
+                .unwrap();
+            assert_eq!(ranked.score, 29_999);
+            assert_eq!(ranked.child_node_limit, 0);
+            let mut terminal = board.clone();
+            terminal.play_unchecked(mv);
+            assert!(reference_move_ranking(&terminal, &contract).is_err());
+        }
+    }
 
     #[test]
     fn ranks_average_ties() {
