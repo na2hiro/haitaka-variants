@@ -50,6 +50,10 @@ function parseSearch(outputs, requestedMs, dispatchAt, begunAt, endedAt) {
     missingMove: boolAfter(tokens, "missingMove") || (!gameover && bestMove === "resign"),
     alphaBetaNodes: numberAfter(tokens, "alphaBetaNodes") ?? numberAfter(tokens, "nodes") ?? 0,
     qnodes: numberAfter(tokens, "qnodes") ?? 0,
+    dfpnSelected: boolAfter(tokens, "dfpnSelected"),
+    dfpnNodes: numberAfter(tokens, "dfpnNodes") ?? 0,
+    dfpnStatus: valueAfter(tokens, "dfpnStatus"),
+    dfpnBestMove: valueAfter(tokens, "dfpnBestMove"),
     provenanceEnvelopeId: self.r1d3ProvenanceEnvelopeId,
   };
 }

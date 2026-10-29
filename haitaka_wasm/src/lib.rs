@@ -1710,6 +1710,19 @@ impl Default for UsiSession {
     }
 }
 
+fn usi_dfpn_fields(summary: Option<&DfpnSummary>) -> String {
+    let Some(summary) = summary else {
+        return "dfpnSelected 0 dfpnNodes 0 dfpnStatus none dfpnBestMove null".to_string();
+    };
+    format!(
+        "dfpnSelected {} dfpnNodes {} dfpnStatus {} dfpnBestMove {}",
+        u8::from(summary.selected),
+        summary.nodes,
+        summary.status,
+        summary.best_move.as_deref().unwrap_or("null")
+    )
+}
+
 fn usi_info_line(
     depth: u8,
     elapsed_ms: f64,
@@ -1946,7 +1959,7 @@ impl UsiSession {
                         .unwrap_or_else(|| "resign".to_string());
                     vec![
                         format!(
-                            "{} {}",
+                            "{} {} {}",
                             usi_info_line(
                                 summary.completed_depth,
                                 summary.elapsed_ms,
@@ -1956,6 +1969,7 @@ impl UsiSession {
                                 summary.qsearch_stats,
                             ),
                             usi_root_result_fields(&summary.root_result),
+                            usi_dfpn_fields(summary.dfpn.as_ref()),
                         ),
                         format!("bestmove {best_move}"),
                     ]
@@ -4418,6 +4432,30 @@ mod tests {
         let board = Board::from_sfen(haitaka::SFEN_STARTPOS).expect("startpos should parse");
         let mv = Move::from_str(best_move).expect("bestmove should parse");
         assert!(board.is_legal(mv), "{best_move} should be legal");
+    }
+
+    #[test]
+    fn usi_timed_mate_reports_dfpn_selection_evidence() {
+        let mut session = UsiSession::default();
+        assert!(
+            session
+                .handle_line(&format!("position sfen {DFPN_MATE_SFEN}"))
+                .is_empty()
+        );
+        let outputs = session.handle_line("go movetime 1000");
+        let tokens = outputs[0].split_whitespace().collect::<Vec<_>>();
+        let field = |name| {
+            tokens
+                .windows(2)
+                .find(|pair| pair[0] == name)
+                .map(|pair| pair[1])
+                .unwrap()
+        };
+        assert_eq!(field("dfpnSelected"), "1");
+        assert_eq!(field("dfpnStatus"), "mate");
+        assert!(field("dfpnNodes").parse::<u64>().unwrap() > 0);
+        assert_eq!(outputs[1], format!("bestmove {}", field("dfpnBestMove")));
+        assert_eq!(field("playMoveWasSearched"), "1");
     }
 
     #[test]

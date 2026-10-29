@@ -95,3 +95,16 @@ test("the last allowed move is adjudicated before recording a capped draw", () =
     }
   }
 });
+
+test("DFPN-selected moves retain their independent proof/node evidence", () => {
+  const result = parseSearch([
+    "info depth 0 nodes 0 qnodes 0 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 dfpnSelected 1 dfpnNodes 5 dfpnStatus mate dfpnBestMove R*1b",
+    "bestmove R*1b",
+  ], 100, 0, 0, 1);
+  assert.equal(result.dfpnSelected, true);
+  assert.equal(result.dfpnNodes, 5);
+  assert.equal(result.dfpnStatus, "mate");
+  assert.equal(result.dfpnBestMove, result.bestMove);
+  assert.equal(result.alphaBetaNodes, 0);
+  assert.equal(result.qnodes, 0);
+});

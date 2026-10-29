@@ -181,6 +181,14 @@ struct SearchTrace {
     alpha_beta_nodes: u64,
     qnodes: u64,
     #[serde(default)]
+    dfpn_selected: bool,
+    #[serde(default)]
+    dfpn_nodes: u64,
+    #[serde(default)]
+    dfpn_status: Option<String>,
+    #[serde(default)]
+    dfpn_best_move: Option<String>,
+    #[serde(default)]
     engine: Option<String>,
     #[serde(default)]
     cold_warm_state: Option<String>,
@@ -848,7 +856,7 @@ fn analyze_lane(
             ensure!(search.cold_warm_state.as_deref() == Some("warm"));
             ensure!(search.root_result_schema.as_deref() == Some(ROOT_RESULT_SCHEMA));
             ensure!(!search.interruption_reason.is_empty());
-            ensure!(search.alpha_beta_nodes + search.qnodes > 0);
+            validate_search_node_evidence(search)?;
             ensure!(!search.best_move.is_empty() && !search.outputs.is_empty());
             if search.partial_root_state {
                 ensure!(search.play_move_was_searched);
@@ -914,6 +922,27 @@ fn analyze_lane(
         searched_partial_root_moves,
         explicit_terminations,
     })
+}
+
+fn validate_search_node_evidence(trace: &SearchTrace) -> Result<()> {
+    if trace.dfpn_selected {
+        ensure!(
+            trace.dfpn_nodes > 0 && trace.dfpn_status.as_deref() == Some("mate"),
+            "DFPN-selected move is missing mate proof/node evidence"
+        );
+        ensure!(
+            trace.dfpn_best_move.as_deref() == Some(trace.best_move.as_str())
+                && trace.play_move_was_searched
+                && trace.best_move != "resign",
+            "DFPN-selected move differs from the searched best move"
+        );
+    } else {
+        ensure!(
+            trace.alpha_beta_nodes > 0 || trace.qnodes > 0,
+            "search has neither alpha-beta/qsearch nodes nor verified DFPN selection"
+        );
+    }
+    Ok(())
 }
 
 fn validate_terminal_notification(game: &RawGame) -> Result<()> {
@@ -1141,6 +1170,12 @@ fn parse_native_trace(outputs: &[String]) -> Result<SearchTrace> {
         missing_move: token_after(&tokens, "missingMove") == Some("1"),
         alpha_beta_nodes: 0,
         qnodes: 0,
+        dfpn_selected: token_after(&tokens, "dfpnSelected") == Some("1"),
+        dfpn_nodes: token_after(&tokens, "dfpnNodes")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0),
+        dfpn_status: token_after(&tokens, "dfpnStatus").map(str::to_string),
+        dfpn_best_move: token_after(&tokens, "dfpnBestMove").map(str::to_string),
         engine: None,
         cold_warm_state: None,
         provenance_envelope_id: String::new(),
@@ -1345,6 +1380,27 @@ fn command_succeeds(program: &str, args: &[&str]) -> bool {
 #[cfg(test)]
 mod provenance_tests {
     use super::*;
+
+    #[test]
+    fn dfpn_selection_requires_matching_mate_and_node_evidence() {
+        let mut trace = parse_native_trace(&[
+            format!("info depth 0 rootResultSchema {ROOT_RESULT_SCHEMA} playMoveWasSearched 1 dfpnSelected 1 dfpnNodes 5 dfpnStatus mate dfpnBestMove R*1b"),
+            "bestmove R*1b".to_string(),
+        ]).unwrap();
+        validate_search_node_evidence(&trace).unwrap();
+        trace.dfpn_nodes = 0;
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_nodes = 5;
+        trace.dfpn_status = Some("unknown".to_string());
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_status = Some("mate".to_string());
+        trace.dfpn_best_move = Some("7g7f".to_string());
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_selected = false;
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.alpha_beta_nodes = 1;
+        validate_search_node_evidence(&trace).unwrap();
+    }
 
     #[test]
     fn terminal_notifications_are_validated_without_search_node_requirements() {
