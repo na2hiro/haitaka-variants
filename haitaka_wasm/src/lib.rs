@@ -6093,7 +6093,7 @@ mod tests {
         assert_ne!(summary.best_move.as_deref(), Some("5c5b"));
         assert_ne!(summary.best_move.as_deref(), Some("5c5b+"));
         let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
-        assert_eq!(dfpn.status, "unknown");
+        assert_eq!(dfpn.status, "no_mate");
         assert!(!dfpn.selected);
     }
 
