@@ -56,3 +56,42 @@ test("terminal notifications stay separate from genuine search traces", () => {
 test("an unexplained resign remains a failure", () => {
   assert.throws(() => terminalFrom(parseSearch(["bestmove resign"], null, 0, 0, 1), "A", "A", "B"), /nonterminal missing move/);
 });
+
+test("the last allowed move is adjudicated before recording a capped draw", () => {
+  for (const reason of [null, "no-legal-move", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
+    for (const second of [false, true]) {
+      let searches = 0;
+      let adjudications = 0;
+      let finalPosition = "";
+      const engine = {
+        send(command) {
+          if (command.startsWith("position ")) { finalPosition = command; return []; }
+          if (!command.startsWith("go ")) return [];
+          searches += 1;
+          return ["info depth 1 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 alphaBetaNodes 1 interruptionReason none", "bestmove 7g7f"];
+        },
+        terminal_notifications() {
+          adjudications += 1;
+          assert.equal(finalPosition, "position sfen start moves 7g7f");
+          return reason ? [`info string gameover ${reason} rules anhoku`, "bestmove resign"] : [];
+        },
+      };
+      const game = playGame(engine, { id: "unit", a: { go: "depth 1" }, b: { go: "depth 1" } },
+        { id: "start", sfen: "start" }, 0, second, 1);
+      assert.equal(searches, 1);
+      assert.equal(adjudications, 1);
+      assert.equal(game.searches.length, 1);
+      assert.equal(game.moves.length, 1);
+      if (reason === null) {
+        assert.equal(game.terminationReason, "maximum-ply-capped");
+        assert.equal(game.winner, null);
+        assert.equal(game.terminalNotification, null);
+      } else {
+        assert.equal(game.terminationReason, reason.split(":")[0]);
+        assert.equal(game.terminalNotification.rootResultSchema, null);
+        const winner = reason === "repetition-draw" ? null : reason.endsWith(":black") ? game.whiteEngine : game.blackEngine;
+        assert.equal(game.winner, winner);
+      }
+    }
+  }
+});

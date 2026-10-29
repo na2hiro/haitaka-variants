@@ -1862,7 +1862,8 @@ impl UsiSession {
         Ok(())
     }
 
-    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+    /// Return a terminal notification without starting a search or changing history.
+    pub fn terminal_notifications(&self) -> Vec<String> {
         let history_result = self.history.adjudication();
         if history_result != HistoryAdjudication::Ongoing {
             return vec![
@@ -1882,6 +1883,15 @@ impl UsiSession {
                 ),
                 "bestmove resign".to_string(),
             ];
+        }
+
+        Vec::new()
+    }
+
+    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+        let terminal = self.terminal_notifications();
+        if !terminal.is_empty() {
+            return terminal;
         }
 
         match budget {
@@ -3380,6 +3390,15 @@ impl UsiEngine {
             .map_err(|err| JsValue::from_str(&err))
     }
 
+    /// Adjudicate the current position without consuming a search budget.
+    pub fn terminal_notifications(&self) -> js_sys::Array {
+        self.session
+            .terminal_notifications()
+            .into_iter()
+            .map(JsValue::from)
+            .collect()
+    }
+
     pub fn send(&mut self, line: &str) -> js_sys::Array {
         self.session
             .handle_line(line)
@@ -4404,13 +4423,17 @@ mod tests {
     #[test]
     fn usi_session_marks_terminal_resign_as_no_legal_move() {
         let mut session = UsiSession::default();
+        assert!(session.terminal_notifications().is_empty());
         assert!(
             session
                 .handle_line("position sfen 8k/6G2/7B1/9/9/9/9/9/K8 b R 1 moves R*1b")
                 .is_empty()
         );
+        let terminal = session.terminal_notifications();
+        assert_eq!(session.handle_line("go depth 1"), terminal);
+        assert_eq!(session.terminal_notifications(), terminal);
         assert_eq!(
-            session.handle_line("go depth 1"),
+            terminal,
             vec![
                 format!(
                     "info string gameover no-legal-move rules {}",

@@ -124,6 +124,26 @@ function playGame(engine, lane, opening, pairIndex, secondGame, maxPlies) {
     searches.push(trace);
     moves.push(trace.bestMove);
   }
+  if (terminationReason === "maximum-ply-capped") {
+    // The last allowed move can itself end the game. Adjudicate its child
+    // without performing an extra search or including it in timing metrics.
+    position(engine, opening.sfen, moves);
+    const now = performance.now();
+    const outputs = Array.from(engine.terminal_notifications(), String);
+    if (outputs.length) {
+      const trace = parseSearch(outputs, null, now, now, performance.now());
+      const sideEngine = moves.length % 2 === 0 ? blackEngine : whiteEngine;
+      trace.ply = moves.length + 1;
+      trace.engine = sideEngine;
+      trace.color = moves.length % 2 === 0 ? "black" : "white";
+      trace.coldWarmState = "warm";
+      const terminal = terminalFrom(trace, sideEngine, blackEngine, whiteEngine);
+      if (!terminal) throw new Error("terminal adjudication did not return a terminal result");
+      terminalNotification = trace;
+      winner = terminal.winner;
+      terminationReason = terminal.reason;
+    }
+  }
   return {
     schema: "haitaka-r1d3-raw-game-v1",
     lane: lane.id,
