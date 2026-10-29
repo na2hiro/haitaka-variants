@@ -16,6 +16,11 @@ pub enum GameStatus {
     /// The game ended in a win for *the other side*
     /// (not the current side_to_move, but see also [`Board::status`])
     Won,
+    /// The game ended in a win for the current side-to-move.
+    ///
+    /// This is used by variant rules in which the previous mover loses, such
+    /// as Capital Return Shogi and a failed Human Shogi checkmate.
+    WonBySideToMove,
     /// The game ended in a draw
     Drawn,
     /// The game is still ongoing.
@@ -72,6 +77,8 @@ pub struct Board {
     checkers: BitBoard,
     pawnless_files: [BitBoard; Color::NUM],
     move_number: u16,
+    #[cfg(feature = "ningenshogi")]
+    unmoved_pieces: BitBoard,
 }
 
 /// Default only initializes an empty board.
@@ -86,6 +93,8 @@ impl Default for Board {
             checkers: BitBoard::EMPTY,
             pawnless_files: [BitBoard::FULL; Color::NUM],
             move_number: 0,
+            #[cfg(feature = "ningenshogi")]
+            unmoved_pieces: BitBoard::EMPTY,
         }
     }
 }
@@ -142,6 +151,10 @@ impl Board {
     #[inline(always)]
     pub fn unchecked_put(&mut self, color: Color, piece: Piece, square: Square) {
         self.inner.xor_square(piece, color, square);
+        #[cfg(feature = "ningenshogi")]
+        {
+            self.unmoved_pieces |= square.bitboard();
+        }
         if piece == Piece::Pawn {
             self.refresh_pawnless_file(color, square.file());
         }
@@ -157,20 +170,7 @@ impl Board {
         }
     }
 
-    #[cfg(any(
-        feature = "annan",
-        feature = "anhoku",
-        feature = "antouzai",
-        feature = "taimen",
-        feature = "haimen",
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    ))]
+    #[cfg(feature = "donor-category")]
     #[inline(always)]
     fn pawn_move_would_be_nifu(
         &self,
@@ -515,11 +515,23 @@ impl Board {
     ///
     /// const SFEN: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5";
     /// let expected: Board = Board::from_sfen(SFEN).unwrap();
+    /// #[cfg(not(feature = "ningenshogi"))]
     /// assert_eq!(expected.hash(), board.hash());
+    /// #[cfg(feature = "ningenshogi")]
+    /// assert_ne!(expected.hash(), board.hash());
     /// ```
     #[inline(always)]
     pub fn hash(&self) -> u64 {
-        self.inner.hash()
+        let hash = self.inner.hash();
+        #[cfg(feature = "ningenshogi")]
+        {
+            let unmoved = self.unmoved_pieces.0;
+            return hash
+                ^ (unmoved as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                ^ ((unmoved >> 64) as u64).rotate_left(29);
+        }
+        #[cfg(not(feature = "ningenshogi"))]
+        hash
     }
 
     /// Get the pinned pieces for the side to move.
@@ -571,8 +583,9 @@ impl Board {
     /// // Since it's Black's turn, the Silver on D4 is not yet pinned
     /// assert_eq!(board.pinned(), BitBoard::EMPTY);
     /// let mv = Move::BoardMove { from: Square::C6, to: Square::A4, promotion: false };
+    /// #[cfg(not(feature = "shihonkangen"))]
     /// assert!(board.is_legal(mv));
-    /// board.play(mv);
+    /// board.play_unchecked(mv);
     /// // Now it's White's turn and the Silver on D4 should be pinned
     /// assert_eq!(board.pinned(), Square::D4.bitboard());
     /// ```
@@ -624,7 +637,7 @@ impl Board {
     /// let mut board = Board::from_sfen(sfen).unwrap();
     /// assert_eq!(board.checkers(), BitBoard::EMPTY);
     /// let mv = Move::BoardMove { from: Square::F6, to: Square::D4, promotion: false };
-    /// board.play(mv);
+    /// board.play_unchecked(mv);
     /// assert_eq!(board.checkers(), Square::D4.bitboard());
     ///
     /// // a rather absurd position with two checkers
@@ -833,9 +846,10 @@ impl Board {
     ///
     /// This returns the current status of the game. If `GameStatus::Ongoing`
     /// then the game may still actually be a draw by Sennichite or Jishogi.
-    /// If `GameStatus::Won` then the game is won by *the other side*, lost by
-    /// the current `side_to_move`... unless the last move was an illegal
-    /// checkmate by Pawn drop.
+    /// If `GameStatus::Won` then the game is won by *the other side* and if
+    /// `GameStatus::WonBySideToMove` then the current side won because the
+    /// previous mover triggered a variant loss condition. See [`Board::winner`]
+    /// when the winning color is needed directly.
     ///
     /// Due to the rather complicated rules related to Sennichite and Jishogi
     /// the Board cannot always determine what the actual game status is. So
@@ -860,17 +874,99 @@ impl Board {
     ///   fourth time, and this was not caused by a sequence of continuous checks.
     ///
     pub fn status(&self) -> GameStatus {
-        if self.generate_moves(|_| true) {
-            GameStatus::Ongoing
-        } else {
-            // if we don't have any moves, it's a loss for us
-            // (it doesn't matter if the position is checkmate)
-            // ... unless ...
-            // we were checkmated with an illegal Pawn drop,
-            // in which case it's also a Win, but a Win for us
-            // (this case can not be handled by `Board`)
-            GameStatus::Won
+        match self.winner() {
+            Some(winner) if winner == self.side_to_move() => GameStatus::WonBySideToMove,
+            Some(_) => GameStatus::Won,
+            None => GameStatus::Ongoing,
         }
+    }
+
+    /// Return the winning color if this position is terminal.
+    ///
+    /// Besides position-based immediate outcomes, this checks for the normal
+    /// no-legal-move ending. In Human Shogi, a checkmating player instead loses
+    /// when one of their original, uncaptured pieces has never moved.
+    pub fn winner(&self) -> Option<Color> {
+        if let Some(winner) = self.immediate_winner() {
+            return Some(winner);
+        }
+        if self.generate_moves(|_| true) {
+            return None;
+        }
+
+        let previous = !self.side_to_move();
+        #[cfg(feature = "ningenshogi")]
+        if !self.checkers.is_empty() && !(self.unmoved_pieces & self.colors(previous)).is_empty() {
+            return Some(self.side_to_move());
+        }
+
+        // With no legal moves, the side to move normally loses. Illegal Pawn
+        // drop mates still require game-level history and remain out of scope.
+        Some(previous)
+    }
+
+    /// Return the winner of an enabled position-based immediate outcome rule.
+    #[inline(always)]
+    pub fn immediate_winner(&self) -> Option<Color> {
+        #[cfg(feature = "win-condition-category")]
+        {
+            #[cfg(any(
+                feature = "oute",
+                feature = "sanmaime",
+                feature = "inochinotokin",
+                feature = "shihonkangen"
+            ))]
+            let previous = !self.side_to_move();
+
+            // Reaching five pieces in hand is a loss, and therefore takes
+            // precedence over immediate-win conditions triggered by the same move.
+            #[cfg(feature = "shihonkangen")]
+            if self
+                .hand(previous)
+                .iter()
+                .copied()
+                .map(u16::from)
+                .sum::<u16>()
+                >= 5
+            {
+                return Some(self.side_to_move());
+            }
+
+            #[cfg(feature = "oute")]
+            if !self.checkers.is_empty() {
+                return Some(previous);
+            }
+
+            #[cfg(feature = "sanmaime")]
+            if self
+                .hand(previous)
+                .iter()
+                .copied()
+                .map(u16::from)
+                .sum::<u16>()
+                >= 3
+            {
+                return Some(previous);
+            }
+
+            #[cfg(feature = "inochinotokin")]
+            if self.has(previous, Piece::Tokin) {
+                return Some(previous);
+            }
+        }
+
+        None
+    }
+
+    /// Return the original pieces that have neither moved nor been captured.
+    ///
+    /// This state is available only for Human Shogi. A board parsed from SFEN
+    /// treats every piece present in the loaded position as not yet moved,
+    /// because SFEN itself contains no move-history information.
+    #[cfg(feature = "ningenshogi")]
+    #[inline(always)]
+    pub const fn unmoved_pieces(&self) -> BitBoard {
+        self.unmoved_pieces
     }
 
     /// Check if two positions are equivalent.
@@ -888,7 +984,16 @@ impl Board {
     /// assert!(board1.same_position(&board2));
     /// ```
     pub fn same_position(&self, other: &Self) -> bool {
-        self.hash() == other.hash() && self.inner.board_is_equal(&other.inner)
+        self.hash() == other.hash() && self.inner.board_is_equal(&other.inner) && {
+            #[cfg(feature = "ningenshogi")]
+            {
+                self.unmoved_pieces == other.unmoved_pieces
+            }
+            #[cfg(not(feature = "ningenshogi"))]
+            {
+                true
+            }
+        }
     }
 
     /// Check if this Board position dominates the other.
@@ -925,6 +1030,10 @@ impl Board {
     /// assert_eq!(board3.dominates(board2), Dominance::Incomparable);
     ///
     pub fn dominates(&self, other: &Self) -> Dominance {
+        #[cfg(feature = "ningenshogi")]
+        if self.unmoved_pieces != other.unmoved_pieces {
+            return Dominance::Incomparable;
+        }
         self.inner.dominates(&other.inner)
     }
 
@@ -1087,6 +1196,14 @@ impl Board {
             let piece = self
                 .piece_on(from)
                 .expect("Missing piece on move's `from` square");
+
+            #[cfg(feature = "ningenshogi")]
+            {
+                self.unmoved_pieces -= from.bitboard();
+                if self.piece_on(to).is_some() {
+                    self.unmoved_pieces -= to.bitboard();
+                }
+            }
 
             // optional capture
             if let Some(capture) = self.piece_on(to) {

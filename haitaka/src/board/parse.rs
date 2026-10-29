@@ -96,6 +96,8 @@ impl Board {
             checkers: BitBoard::EMPTY,
             pawnless_files: [BitBoard::FULL; Color::NUM],
             move_number: 0,
+            #[cfg(feature = "ningenshogi")]
+            unmoved_pieces: BitBoard::EMPTY,
         };
 
         let mut parts = sfen.split(' ');

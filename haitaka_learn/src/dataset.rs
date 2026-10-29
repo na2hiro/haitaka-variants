@@ -64,6 +64,7 @@ impl GenerateOptions {
 struct DatasetManifest {
     dataset: String,
     ruleset: Ruleset,
+    rule_profile: String,
     rule_id: u16,
     opening_sfen: String,
     game_count: u32,
@@ -95,6 +96,8 @@ struct DatasetManifest {
 struct ShardManifest {
     dataset: String,
     ruleset: Ruleset,
+    #[serde(default)]
+    rule_profile: String,
     rule_id: u16,
     opening_sfen: String,
     game_start: u32,
@@ -577,6 +580,7 @@ fn generate_split(
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
+        rule_profile: loaded.config.rules.profile().canonical_name(),
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
         game_count,
@@ -926,6 +930,7 @@ fn generate_or_reuse_shard(
     let manifest = ShardManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
+        rule_profile: loaded.config.rules.profile().canonical_name(),
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
         game_start: plan.game_start,
@@ -1030,6 +1035,7 @@ fn shard_manifest_matches(
 ) -> Result<bool> {
     Ok(manifest.dataset == dataset_name
         && manifest.ruleset == loaded.config.rules.ruleset
+        && shard_rule_profile_matches(loaded, manifest)
         && manifest.rule_id == loaded.effective_rule_id()?
         && manifest.opening_sfen == opening_sfen
         && manifest.game_start == plan.game_start
@@ -1040,6 +1046,15 @@ fn shard_manifest_matches(
         && (ignore_identity || manifest.config_hash == loaded.hash_hex)
         && manifest.entry_bytes == ENTRY_BYTES
         && manifest.shard_index == plan.shard_index)
+}
+
+fn shard_rule_profile_matches(loaded: &LoadedConfig, manifest: &ShardManifest) -> bool {
+    let expected = loaded.config.rules.profile().canonical_name();
+    if manifest.rule_profile.is_empty() {
+        expected == loaded.config.rules.ruleset.as_str()
+    } else {
+        manifest.rule_profile == expected
+    }
 }
 
 fn shard_teacher_matches(
@@ -1284,6 +1299,7 @@ fn generate_game_entries(
     } else {
         match board.status() {
             haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
+            haitaka::GameStatus::WonBySideToMove => GameOutcome::Winner(board.side_to_move()),
             haitaka::GameStatus::Drawn => GameOutcome::Draw,
             haitaka::GameStatus::Ongoing => GameOutcome::Draw,
         }
@@ -1424,6 +1440,7 @@ fn merge_split(
     let manifest = DatasetManifest {
         dataset: dataset_name.to_string(),
         ruleset: loaded.config.rules.ruleset,
+        rule_profile: loaded.config.rules.profile().canonical_name(),
         rule_id: loaded.effective_rule_id()?,
         opening_sfen: opening_sfen.to_string(),
         game_count,
@@ -1483,6 +1500,10 @@ fn validate_merge_shard(
     ensure_merge(
         manifest.ruleset == loaded.config.rules.ruleset,
         "ruleset does not match",
+    )?;
+    ensure_merge(
+        shard_rule_profile_matches(loaded, manifest),
+        "rule profile does not match",
     )?;
     ensure_merge(
         manifest.rule_id == loaded.effective_rule_id()?,
@@ -1615,6 +1636,7 @@ fn format_duration(duration: Duration) -> String {
 fn terminal_teacher_score(board: &Board) -> i32 {
     match board.status() {
         haitaka::GameStatus::Won => -30_000,
+        haitaka::GameStatus::WonBySideToMove => 30_000,
         haitaka::GameStatus::Drawn => 0,
         haitaka::GameStatus::Ongoing => 0,
     }
@@ -1863,6 +1885,15 @@ mod tests {
         assert_eq!(ENTRY_BYTES, 72);
     }
 
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn terminal_teacher_score_rewards_the_side_that_received_capital_return_win() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(terminal_teacher_score(&board), 30_000);
+    }
+
     #[test]
     fn packer_preserves_feature_signature() {
         let board = Board::from_sfen(
@@ -2017,6 +2048,8 @@ mod tests {
                 r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "out"
@@ -2035,6 +2068,7 @@ seed = 7
 [verify]
 run_search_smoke = false
 "#,
+                aux = active_test_aux_rules(),
             ),
         )
         .unwrap();
@@ -2875,10 +2909,13 @@ run_search_smoke = false
         let config_path = temp.path().join("haitaka_learn.toml");
         fs::write(
             &config_path,
-            r#"
+            format!(
+                r#"
 [rules]
 ruleset = "handicap"
 handicap = "six-piece"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "out"
@@ -2894,6 +2931,8 @@ sample_every_ply = 1
 max_positions_per_game = 4
 seed = 9
 "#,
+                aux = active_test_aux_rules()
+            ),
         )
         .unwrap();
 
@@ -3023,11 +3062,42 @@ seed = 9
         }
     }
 
+    fn active_test_aux_rules() -> String {
+        let wins: Vec<&str> = [
+            (cfg!(feature = "oute"), "oute"),
+            (cfg!(feature = "sanmaime"), "sanmaime"),
+            (cfg!(feature = "inochinotokin"), "inochinotokin"),
+            (cfg!(feature = "shihonkangen"), "shihonkangen"),
+            (cfg!(feature = "ningenshogi"), "ningenshogi"),
+        ]
+        .into_iter()
+        .filter_map(|(enabled, name)| enabled.then_some(name))
+        .collect();
+        let mut config = if wins.is_empty() {
+            String::new()
+        } else {
+            let quoted = wins
+                .into_iter()
+                .map(|name| format!("\"{name}\""))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("win_conditions = [{quoted}]\n")
+        };
+        if cfg!(feature = "igyoku") {
+            config.push_str("movement_constraint = \"igyoku\"\n");
+        } else if cfg!(feature = "hitomasuou") {
+            config.push_str("movement_constraint = \"hitomasuou\"\n");
+        }
+        config
+    }
+
     fn deterministic_test_config(ruleset: &str, output_dir: &str) -> String {
         format!(
             r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "{output_dir}"
@@ -3050,6 +3120,7 @@ resume = true
 [verify]
 run_search_smoke = false
 "#,
+            aux = active_test_aux_rules(),
         )
     }
 
@@ -3058,6 +3129,8 @@ run_search_smoke = false
             r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "{output_dir}"
@@ -3080,6 +3153,7 @@ resume = true
 [verify]
 run_search_smoke = false
 "#,
+            aux = active_test_aux_rules(),
         )
     }
 
@@ -3088,6 +3162,8 @@ run_search_smoke = false
             r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "{output_dir}"
@@ -3111,6 +3187,7 @@ resume = false
 [verify]
 run_search_smoke = false
 "#,
+            aux = active_test_aux_rules(),
         )
     }
 
@@ -3182,6 +3259,7 @@ run_search_smoke = false
 [rules]
 ruleset = "annan"
 rule_id = 26
+{aux}
 opening_sfen = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1"
 
 [paths]
@@ -3202,7 +3280,8 @@ seed = 5
 [verify]
 run_search_smoke = false
 "#,
-                bootstrap.display()
+                bootstrap.display(),
+                aux = active_test_aux_rules()
             ),
         )
         .unwrap();
@@ -3215,6 +3294,8 @@ run_search_smoke = false
 
     #[test]
     #[cfg(feature = "annan")]
+    #[cfg(not(feature = "win-condition-category"))]
+    #[cfg(not(feature = "king-constraint-category"))]
     fn annan_nnue_teacher_handles_king_capture_lines() {
         let bootstrap = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
@@ -3233,6 +3314,7 @@ run_search_smoke = false
 [rules]
 ruleset = "annan"
 rule_id = 26
+{aux}
 opening_sfen = "4R4/9/k8/9/9/4r4/4p4/9/4K4 b - 1"
 
 [paths]
@@ -3253,7 +3335,8 @@ seed = 11
 [verify]
 run_search_smoke = false
 "#,
-                bootstrap.display()
+                bootstrap.display(),
+                aux = active_test_aux_rules()
             ),
         )
         .unwrap();

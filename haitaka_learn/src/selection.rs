@@ -873,6 +873,8 @@ mod tests {
             config: LearnConfig {
                 rules: RulesConfig {
                     ruleset: Ruleset::Standard,
+                    win_conditions: Vec::new(),
+                    movement_constraint: None,
                     rule_id: None,
                     handicap: None,
                     opening_sfen: None,

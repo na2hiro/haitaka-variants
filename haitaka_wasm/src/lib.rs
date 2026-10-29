@@ -1114,7 +1114,7 @@ impl UsiSession {
             }),
             UsiSearchBudget::Movetime { max_depth, millis } => {
                 search_iterative_deepening_with_strategy_and_deadline_and_tt(
-                    &self.board.to_string(),
+                    SearchPosition::Board(&self.board),
                     max_depth,
                     millis,
                     self.evaluation_strategy(),
@@ -1334,12 +1334,49 @@ fn search_iterative_deepening_with_strategy_and_deadline(
     let mut tt = search_tt_slot().write().unwrap();
     tt.clear();
     search_iterative_deepening_with_strategy_and_deadline_and_tt(
-        sfen, max_depth, timeout_ms, evaluation, config, deadline, &mut tt,
+        SearchPosition::Sfen(sfen),
+        max_depth,
+        timeout_ms,
+        evaluation,
+        config,
+        deadline,
+        &mut tt,
+    )
+}
+
+#[derive(Clone, Copy)]
+enum SearchPosition<'a> {
+    Sfen(&'a str),
+    Board(&'a Board),
+}
+
+fn search_board_iterative_deepening_with_strategy(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    evaluation: EvaluationStrategy,
+    config: IterativeSearchConfig,
+) -> Result<IterativeSearchSummary, String> {
+    let deadline = if timeout_ms == 0 {
+        None
+    } else {
+        Some(Instant::now() + std::time::Duration::from_millis(u64::from(timeout_ms)))
+    };
+    let mut tt = search_tt_slot().write().unwrap();
+    tt.clear();
+    search_iterative_deepening_with_strategy_and_deadline_and_tt(
+        SearchPosition::Board(board),
+        max_depth,
+        timeout_ms,
+        evaluation,
+        config,
+        deadline,
+        &mut tt,
     )
 }
 
 fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
-    sfen: &str,
+    position: SearchPosition<'_>,
     max_depth: u8,
     timeout_ms: u32,
     evaluation: EvaluationStrategy,
@@ -1351,39 +1388,42 @@ fn search_iterative_deepening_with_strategy_and_deadline_and_tt(
     let started_at = Instant::now();
     let mut dfpn = None;
 
-    let board = match Board::from_sfen(sfen) {
-        Ok(board) => board,
-        Err(strict_err) => {
-            if config.run_dfpn {
-                let options = root_dfpn_options(timeout_ms);
-                let root_dfpn = dfpn_impl(
-                    sfen,
-                    options.max_nodes,
-                    options.max_time_ms,
-                    options.tt_megabytes,
-                    options.max_pv_moves,
-                )?;
-                let dfpn_summary = to_dfpn_summary(root_dfpn);
-                if dfpn_summary.selected {
-                    let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
-                    let best_move = dfpn_summary.best_move.clone();
-                    return Ok(IterativeSearchSummary {
-                        best_move,
-                        completed_depth: 0,
-                        timed_out: false,
-                        elapsed_ms,
-                        states: 0,
-                        nps: 0.0,
-                        tt_stats: SearchTtStats::default(),
-                        ordering_stats: SearchOrderingStats::default(),
-                        qsearch_stats: SearchQsearchStats::default(),
-                        iterations: Vec::new(),
-                        dfpn: Some(dfpn_summary),
-                    });
+    let board = match position {
+        SearchPosition::Board(board) => board.clone(),
+        SearchPosition::Sfen(sfen) => match Board::from_sfen(sfen) {
+            Ok(board) => board,
+            Err(strict_err) => {
+                if config.run_dfpn {
+                    let options = root_dfpn_options(timeout_ms);
+                    let root_dfpn = dfpn_impl(
+                        sfen,
+                        options.max_nodes,
+                        options.max_time_ms,
+                        options.tt_megabytes,
+                        options.max_pv_moves,
+                    )?;
+                    let dfpn_summary = to_dfpn_summary(root_dfpn);
+                    if dfpn_summary.selected {
+                        let elapsed_ms = elapsed_ms_since(started_at).max(0.0);
+                        let best_move = dfpn_summary.best_move.clone();
+                        return Ok(IterativeSearchSummary {
+                            best_move,
+                            completed_depth: 0,
+                            timed_out: false,
+                            elapsed_ms,
+                            states: 0,
+                            nps: 0.0,
+                            tt_stats: SearchTtStats::default(),
+                            ordering_stats: SearchOrderingStats::default(),
+                            qsearch_stats: SearchQsearchStats::default(),
+                            iterations: Vec::new(),
+                            dfpn: Some(dfpn_summary),
+                        });
+                    }
                 }
+                return Err(strict_parse_error(strict_err));
             }
-            return Err(strict_parse_error(strict_err));
-        }
+        },
     };
 
     if config.run_dfpn && has_checking_move(&board) {
@@ -1496,6 +1536,22 @@ pub fn search_iterative_deepening_impl(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_board_iterative_deepening_impl(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
+        max_depth,
+        timeout_ms,
+        current_evaluation_strategy(),
+        IterativeSearchConfig::default(),
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_iterative_deepening_impl_with_dfpn_mode(
     sfen: &str,
     max_depth: u8,
@@ -1550,6 +1606,24 @@ pub fn search_iterative_deepening_impl_with_eval_mode(
 ) -> Result<IterativeSearchSummary, String> {
     search_iterative_deepening_with_strategy(
         sfen,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Nnue { model, mode },
+        IterativeSearchConfig::default(),
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_board_iterative_deepening_impl_with_eval_mode(
+    board: &Board,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<NnueModel>,
+    mode: SearchEvalMode,
+) -> Result<IterativeSearchSummary, String> {
+    search_board_iterative_deepening_with_strategy(
+        board,
         max_depth,
         timeout_ms,
         EvaluationStrategy::Nnue { model, mode },
@@ -1924,7 +1998,7 @@ fn negamax(
     let ply_index = usize::try_from(ply).unwrap_or(usize::MAX);
     let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, ply_index);
     if move_picker.is_empty() {
-        return Ok(-MATE_SCORE + ply);
+        return Ok(no_legal_moves_terminal_score(board, ply));
     }
 
     let mut best_score = -INF_SCORE;
@@ -2060,7 +2134,7 @@ fn quiescence(
 
     if in_check {
         if !searched_move {
-            return Ok(-MATE_SCORE + ply);
+            return Ok(no_legal_moves_terminal_score(board, ply));
         }
         return Ok(alpha);
     }
@@ -2207,7 +2281,7 @@ fn evaluate_or_mate(
     let us = board.side_to_move();
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
-        return -MATE_SCORE + ply;
+        return no_legal_moves_terminal_score(board, ply);
     }
 
     match &ctx.evaluation {
@@ -2236,13 +2310,30 @@ fn has_both_kings(board: &Board) -> bool {
 
 fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
     let us = board.side_to_move();
-    if !board.has(us, Piece::King) {
+    if let Some(winner) = board.immediate_winner() {
+        Some(terminal_score_for_winner(us, winner, ply))
+    } else if !board.has(us, Piece::King) {
         Some(-MATE_SCORE + ply)
     } else if !board.has(!us, Piece::King) {
         Some(MATE_SCORE - ply)
     } else {
         None
     }
+}
+
+fn terminal_score_for_winner(side_to_move: Color, winner: Color, ply: i32) -> i32 {
+    if winner == side_to_move {
+        MATE_SCORE - ply
+    } else {
+        -MATE_SCORE + ply
+    }
+}
+
+fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
+    let winner = board
+        .winner()
+        .expect("a position without legal moves must have a winner");
+    terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -2705,6 +2796,42 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "oute")]
+    fn immediate_win_is_scored_as_terminal_loss_for_side_to_move() {
+        let sfen = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1";
+        let board: Board = sfen.parse().unwrap();
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(-MATE_SCORE + 3)
+        );
+        assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn capital_return_loss_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(MATE_SCORE - 3)
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        board.play("9b5b".parse().unwrap());
+
+        assert_eq!(terminal_score_for_side_to_move(&board, 3), None);
+        assert_eq!(no_legal_moves_terminal_score(&board, 3), MATE_SCORE - 3);
+    }
+
+    #[test]
     #[cfg(not(any(
         feature = "annan",
         feature = "anhoku",
@@ -3120,7 +3247,7 @@ mod tests {
 
         let moves = reference_ordered_moves(board);
         if moves.is_empty() {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
 
         let mut best_score = -INF_SCORE;
@@ -3212,7 +3339,7 @@ mod tests {
             return if searched_move {
                 alpha
             } else {
-                -MATE_SCORE + ply
+                no_legal_moves_terminal_score(board, ply)
             };
         }
 
@@ -3264,7 +3391,7 @@ mod tests {
         let us = board.side_to_move();
         let our_mobility = count_legal_moves(board) as i32;
         if our_mobility == 0 {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
         material_score(board, us) - material_score(board, them)
@@ -3479,6 +3606,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -3491,6 +3619,54 @@ mod tests {
         assert_eq!(dfpn.status, "mate");
         assert!(dfpn.selected);
         assert_eq!(dfpn.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_human_shogi() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 1, 5_000, true).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("R*1b"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "unknown");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_capital_return() {
+        let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
+        let summary = search_board_iterative_deepening_with_strategy(
+            &board,
+            1,
+            5_000,
+            EvaluationStrategy::Handcrafted,
+            IterativeSearchConfig::default(),
+        )
+        .unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b"));
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b+"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "no_mate");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_movetime_search_preserves_human_shogi_move_history() {
+        let initial = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1";
+        let moves = ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"];
+        let mut session = UsiSession::default();
+        let position = format!("position sfen {initial} moves {}", moves.join(" "));
+        assert!(session.handle_line(&position).is_empty());
+
+        let output = session.handle_line("go movetime 0 depth 1");
+
+        assert_eq!(output.last().map(String::as_str), Some("bestmove 9b5b+"));
     }
 
     #[test]
@@ -3528,6 +3704,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -3580,6 +3757,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",

@@ -171,8 +171,8 @@ impl LoadedConfig {
         }
     }
 
-    pub fn runtime_mode(&self) -> &'static str {
-        active_variant_feature().unwrap_or("standard")
+    pub fn runtime_mode(&self) -> String {
+        self.config.rules.profile().canonical_name()
     }
 
     pub fn training_features(&self) -> &str {
@@ -192,7 +192,7 @@ impl LoadedConfig {
                         self.config.rules.ruleset.as_str()
                     );
                 }
-                Ok(())
+                self.config.rules.ensure_auxiliary_features_match()
             }
             ruleset => {
                 let required_feature = ruleset
@@ -200,7 +200,7 @@ impl LoadedConfig {
                     .and_then(|spec| spec.required_feature)
                     .expect("non-standard variant rulesets should have a required feature");
                 if active_variant_feature() == Some(required_feature) {
-                    Ok(())
+                    self.config.rules.ensure_auxiliary_features_match()
                 } else {
                     bail!(
                         "ruleset={} requires building haitaka_learn with `--features {required_feature}`",
@@ -260,6 +260,15 @@ impl LoadedConfig {
     pub fn effective_rule_id(&self) -> Result<u16> {
         if let Some(rule_id) = self.config.rules.rule_id {
             return Ok(rule_id);
+        }
+
+        if !self.config.rules.win_conditions.is_empty()
+            || self.config.rules.movement_constraint.is_some()
+        {
+            bail!(
+                "rules.rule_id must be set for composite or auxiliary rule profile {}",
+                self.config.rules.profile().canonical_name()
+            );
         }
 
         match self.config.rules.ruleset {
@@ -380,6 +389,19 @@ pub struct LearnConfig {
 
 impl LearnConfig {
     fn validate(&self) -> Result<()> {
+        let mut win_conditions = self.rules.win_conditions.clone();
+        win_conditions.sort_unstable();
+        win_conditions.dedup();
+        ensure!(
+            win_conditions.len() == self.rules.win_conditions.len(),
+            "rules.win_conditions must not contain duplicates"
+        );
+        if !self.rules.win_conditions.is_empty() || self.rules.movement_constraint.is_some() {
+            ensure!(
+                self.rules.rule_id.is_some(),
+                "rules.rule_id must be set for composite or auxiliary rule profiles"
+            );
+        }
         ensure!(self.data.train_games > 0, "data.train_games must be > 0");
         ensure!(
             self.data.validation_games > 0,
@@ -458,11 +480,116 @@ impl LearnConfig {
 pub struct RulesConfig {
     pub ruleset: Ruleset,
     #[serde(default)]
+    pub win_conditions: Vec<WinCondition>,
+    #[serde(default)]
+    pub movement_constraint: Option<MovementConstraint>,
+    #[serde(default)]
     pub rule_id: Option<u16>,
     #[serde(default)]
     pub handicap: Option<HandicapPreset>,
     #[serde(default)]
     pub opening_sfen: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WinCondition {
+    Oute,
+    Sanmaime,
+    Inochinotokin,
+    Shihonkangen,
+    Ningenshogi,
+}
+
+impl WinCondition {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Oute => "oute",
+            Self::Sanmaime => "sanmaime",
+            Self::Inochinotokin => "inochinotokin",
+            Self::Shihonkangen => "shihonkangen",
+            Self::Ningenshogi => "ningenshogi",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MovementConstraint {
+    Igyoku,
+    Hitomasuou,
+}
+
+impl MovementConstraint {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Igyoku => "igyoku",
+            Self::Hitomasuou => "hitomasuou",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuleProfile {
+    pub ruleset: Ruleset,
+    pub win_conditions: Vec<WinCondition>,
+    pub movement_constraint: Option<MovementConstraint>,
+}
+
+impl RuleProfile {
+    pub fn canonical_name(&self) -> String {
+        let mut name = self.ruleset.as_str().to_string();
+        for condition in [
+            WinCondition::Oute,
+            WinCondition::Sanmaime,
+            WinCondition::Inochinotokin,
+            WinCondition::Shihonkangen,
+            WinCondition::Ningenshogi,
+        ] {
+            if self.win_conditions.contains(&condition) {
+                name.push('+');
+                name.push_str(condition.as_str());
+            }
+        }
+        if let Some(constraint) = self.movement_constraint {
+            name.push('+');
+            name.push_str(constraint.as_str());
+        }
+        name
+    }
+}
+
+impl RulesConfig {
+    pub fn profile(&self) -> RuleProfile {
+        RuleProfile {
+            ruleset: self.ruleset,
+            win_conditions: self.win_conditions.clone(),
+            movement_constraint: self.movement_constraint,
+        }
+    }
+
+    fn ensure_auxiliary_features_match(&self) -> Result<()> {
+        let mut configured = self.win_conditions.clone();
+        configured.sort_unstable();
+        configured.dedup();
+        ensure!(
+            configured.len() == self.win_conditions.len(),
+            "rules.win_conditions must not contain duplicates"
+        );
+        ensure!(
+            configured == active_win_conditions(),
+            "rules.win_conditions does not match compiled features (configured: {:?}, compiled: {:?})",
+            configured,
+            active_win_conditions()
+        );
+        ensure!(
+            self.movement_constraint == active_movement_constraint(),
+            "rules.movement_constraint does not match compiled feature (configured: {:?}, compiled: {:?})",
+            self.movement_constraint,
+            active_movement_constraint()
+        );
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -924,6 +1051,36 @@ fn active_variant_feature() -> Option<&'static str> {
     }
 }
 
+fn active_win_conditions() -> Vec<WinCondition> {
+    let mut conditions = Vec::new();
+    if cfg!(feature = "oute") {
+        conditions.push(WinCondition::Oute);
+    }
+    if cfg!(feature = "sanmaime") {
+        conditions.push(WinCondition::Sanmaime);
+    }
+    if cfg!(feature = "inochinotokin") {
+        conditions.push(WinCondition::Inochinotokin);
+    }
+    if cfg!(feature = "shihonkangen") {
+        conditions.push(WinCondition::Shihonkangen);
+    }
+    if cfg!(feature = "ningenshogi") {
+        conditions.push(WinCondition::Ningenshogi);
+    }
+    conditions
+}
+
+fn active_movement_constraint() -> Option<MovementConstraint> {
+    if cfg!(feature = "igyoku") {
+        Some(MovementConstraint::Igyoku)
+    } else if cfg!(feature = "hitomasuou") {
+        Some(MovementConstraint::Hitomasuou)
+    } else {
+        None
+    }
+}
+
 pub fn recommended_feature_set(ruleset: Ruleset) -> &'static str {
     match ruleset {
         Ruleset::Standard | Ruleset::Handicap => FEATURE_SET_HALFKAV2,
@@ -966,6 +1123,79 @@ mod tests {
 
     use super::*;
     use tempfile::tempdir;
+
+    #[test]
+    fn composite_rule_profile_has_stable_canonical_name() {
+        let rules = RulesConfig {
+            ruleset: Ruleset::Annan,
+            win_conditions: vec![WinCondition::Sanmaime, WinCondition::Oute],
+            movement_constraint: Some(MovementConstraint::Igyoku),
+            rule_id: Some(123),
+            handicap: None,
+            opening_sfen: None,
+        };
+        assert_eq!(
+            rules.profile().canonical_name(),
+            "annan+oute+sanmaime+igyoku"
+        );
+    }
+
+    #[test]
+    fn composite_rule_config_deserializes_without_breaking_legacy_ruleset() {
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "annan"
+win_conditions = ["oute", "sanmaime"]
+movement_constraint = "igyoku"
+rule_id = 123
+"#,
+        )
+        .unwrap();
+        assert_eq!(config.rules.ruleset, Ruleset::Annan);
+        assert_eq!(
+            config.rules.win_conditions,
+            vec![WinCondition::Oute, WinCondition::Sanmaime]
+        );
+        assert_eq!(
+            config.rules.movement_constraint,
+            Some(MovementConstraint::Igyoku)
+        );
+    }
+
+    #[test]
+    fn history_and_loss_conditions_have_stable_profile_names() {
+        let rules = RulesConfig {
+            ruleset: Ruleset::Standard,
+            win_conditions: vec![
+                WinCondition::Ningenshogi,
+                WinCondition::Shihonkangen,
+                WinCondition::Inochinotokin,
+            ],
+            movement_constraint: None,
+            rule_id: Some(124),
+            handicap: None,
+            opening_sfen: None,
+        };
+        assert_eq!(
+            rules.profile().canonical_name(),
+            "standard+inochinotokin+shihonkangen+ningenshogi"
+        );
+
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+win_conditions = ["shihonkangen", "ningenshogi"]
+rule_id = 124
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            config.rules.win_conditions,
+            vec![WinCondition::Shihonkangen, WinCondition::Ningenshogi]
+        );
+    }
 
     #[test]
     fn parses_minimal_config() {
@@ -1136,6 +1366,8 @@ validation_games = 1
                 config: LearnConfig {
                     rules: RulesConfig {
                         ruleset,
+                        win_conditions: Vec::new(),
+                        movement_constraint: None,
                         rule_id: None,
                         handicap: None,
                         opening_sfen: None,
@@ -1160,6 +1392,8 @@ validation_games = 1
             config: LearnConfig {
                 rules: RulesConfig {
                     ruleset: Ruleset::Handicap,
+                    win_conditions: Vec::new(),
+                    movement_constraint: None,
                     rule_id: None,
                     handicap: None,
                     opening_sfen: Some("4k4/9/9/9/9/9/9/9/4K4 b - 1".to_string()),

@@ -24,3 +24,36 @@ jobs:
       run: cargo build --workspace --features annan --verbose
     - name: Run Annan tests
       run: cargo test --workspace --features annan --verbose
+    - name: Run orthogonal rule tests
+      run: |
+        cargo check --workspace --features annan,oute,sanmaime,igyoku --verbose
+        cargo test -p haitaka --features annan,oute,sanmaime,igyoku oute_is_an_immediate_win_and_stops_play
+        cargo test -p haitaka_wasm --features annan,oute,sanmaime,igyoku immediate_win_is_scored_as_terminal_loss_for_side_to_move
+        cargo test -p haitaka_learn --features annan,oute,sanmaime,igyoku composite_rule_profile_has_stable_canonical_name
+    - name: Run remaining outcome and king-constraint tests
+      run: |
+        cargo test -p haitaka --features sanmaime three_hand_pieces_are_an_immediate_win
+        cargo test -p haitaka --features inochinotokin a_previous_movers_tokin_is_an_immediate_win
+        cargo test -p haitaka --features igyoku igyoku_forbids_physical_king_moves
+        cargo test -p haitaka --features hitomasuou hitomasuou_only_allows_destinations_in_the_home_zone
+        cargo test -p haitaka --features annan,hitomasuou king_constraint_only_applies_to_the_physical_king
+        cargo test -p haitaka --features sanmaime,shihonkangen immediate_loss_takes_precedence_over_win_conditions
+    - name: Check replay-filter donor composition
+      run: cargo check --workspace --features neko,hitomasuou --verbose
+    - name: Run history and loss outcome tests
+      run: |
+        cargo test -p haitaka --features shihonkangen reaching_five_hand_pieces_is_an_immediate_loss
+        cargo test -p haitaka_wasm --features shihonkangen capital_return_loss_is_scored_as_a_win_for_side_to_move
+        cargo test -p haitaka --features shihonkangen mating_line_is_rejected_when_capture_reaches_five_hand_pieces
+        cargo test -p haitaka_wasm --features shihonkangen iterative_search_does_not_select_dfpn_mate_that_loses_capital_return
+        cargo test -p haitaka --features ningenshogi human_shogi
+        cargo test -p haitaka_wasm --features ningenshogi human_shogi
+        cargo test -p haitaka_cli --features shihonkangen,ningenshogi external_engine_receives_the_full_position_history
+        cargo test -p haitaka_cli --features shihonkangen,ningenshogi self_play_report_records_the_active_composite_profile
+        cargo check --workspace --features annan,shihonkangen,ningenshogi,igyoku --verbose
+    - name: Reject invalid feature categories
+      shell: bash
+      run: |
+        if cargo check -p haitaka --features donor-category; then exit 1; fi
+        if cargo check -p haitaka --features igyoku,hitomasuou; then exit 1; fi
+        if cargo check -p haitaka --features annan,anhoku; then exit 1; fi

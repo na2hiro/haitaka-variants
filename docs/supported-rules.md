@@ -14,7 +14,44 @@
 - `yokonekoneko`: 横ネコネコ将棋. Same as `nekoneko` but **horizontal**.
 - `tenkyo`: 点鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
 
-The variant feature flags are mutually exclusive compile-time engine modes. `annan` keeps its custom start position; the other variants currently use the standard shogi start position until variant-specific openings are documented.
+The piece-influence (donor) feature flags are mutually exclusive, but they are
+orthogonal to the following win-condition and king-constraint features:
+
+- `oute`: the previous mover wins immediately by giving check.
+- `sanmaime`: the previous mover wins when their total hand reaches three pieces.
+- `inochinotokin`: the previous mover wins when they have made a Tokin.
+- `shihonkangen`: the previous mover loses when their total hand reaches five pieces.
+- `ningenshogi`: normal checkmate is reversed when the mating player still has
+  an original piece on the board that has neither moved nor been captured.
+- `igyoku`: the physical King cannot move.
+- `hitomasuou`: the physical King may only move within the six squares on files
+  4--6 and its two home ranks.
+
+Multiple outcome conditions may be enabled together. Immediate losses take
+precedence over immediate wins triggered by the same move; otherwise enabled
+immediate wins are combined with OR. Human Shogi modifies only the normal
+checkmate outcome.
+At most one donor and one king constraint may be enabled. Concrete features
+automatically enable the internal `donor-category`, `win-condition-category`,
+or `king-constraint-category` marker; those markers must not be selected
+directly. `annan` keeps its custom start position; the other variants currently
+use the standard shogi start position until variant-specific openings are documented.
+
+Position-based outcomes are checked before the normal no-legal-move ending.
+`Board::winner()` returns the winning color directly; `GameStatus::WonBySideToMove`
+represents rules such as `shihonkangen` where the previous mover lost.
+
+Human Shogi is the one supported rule that requires history. `Board` tracks a
+bitboard of original pieces that have not moved or been captured, and includes
+it in position identity and the transposition hash. Because SFEN has no field
+for this history, every board piece in a newly parsed SFEN is treated as not yet
+moved. Drops never become part of this requirement. DFPN remains a
+checking-move solver and validates that the reconstructed line actually names
+the attacker as `Board::winner()`, so a Human Shogi or Capital Return reversal
+is rejected. It is still not a complete solver for plans requiring non-checking
+preparation. Stateful CLI/WASM searches pass `Board` directly, and external USI
+self-play replays the base SFEN plus its full move list so Human Shogi history is
+preserved across searches.
 
 `taimen` and `haimen` are "donor" variants like `annan`/`anhoku`, but the donating piece is an enemy rather than a friendly piece, and captures, promotion, and drops still use the physical moving piece.
 
