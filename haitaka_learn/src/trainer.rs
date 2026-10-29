@@ -53,7 +53,8 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
     let trainer_checkout = loaded.trainer_checkout()?;
     let donor_overlay = overlay_donor_features_py_contents();
     let loader_overlay = overlay_training_data_loader_cpp_contents();
-    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    // This gate certifies the C++ loader, even when ordinary training reuses a build.
+    let _guard = PreparedTrainer::new_inner(loaded, &trainer_checkout, true)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -912,6 +913,29 @@ mod tests {
         TrainingConfig, VerifyConfig,
     };
     use tempfile::tempdir;
+
+    #[test]
+    #[cfg(unix)]
+    fn parity_requires_a_successful_loader_build_when_training_skips_it() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Anhoku);
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string());
+        loaded.config.training.build_data_loader = false;
+        loaded.config.paths.trainer_checkout = Some(temp.path().to_path_buf());
+        loaded.config.paths.cmake = "/bin/false".to_string();
+        let overlay = temp.path().join("donor_features.py");
+        fs::write(&overlay, "original overlay").unwrap();
+        let output = temp.path().join("parity.json");
+
+        let error = verify_receiver_pair_v2_trainer_parity(&loaded, &output).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("configure trainer data loader failed")
+        );
+        assert!(!output.exists());
+        assert_eq!(fs::read_to_string(overlay).unwrap(), "original overlay");
+    }
 
     #[test]
     fn checkpoint_validation_script_disables_weights_only_mode() {
