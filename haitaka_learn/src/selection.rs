@@ -1149,7 +1149,7 @@ fn rank_candidates(
     let anchor_sha256 = candidates[0].sha256.clone();
 
     let mut ranking = if ranking_path.exists() {
-        let saved: RankingState = serde_json::from_slice(&fs::read(&ranking_path)?)
+        let mut saved: RankingState = serde_json::from_slice(&fs::read(&ranking_path)?)
             .with_context(|| format!("failed to parse {}", ranking_path.display()))?;
         if saved.schema != RANKING_SCHEMA
             || saved.schema_version != RANKING_SCHEMA_VERSION
@@ -1161,6 +1161,7 @@ fn rank_candidates(
                 ranking_path.display()
             );
         }
+        reconcile_ranking_candidates(&mut saved, candidates);
         saved
     } else {
         if import_legacy {
@@ -1187,6 +1188,9 @@ fn rank_candidates(
         );
     }
     ranking.budget_games = budget_games;
+    ranking.status = RankingStatus::Collecting;
+    ranking.selected_sha256 = None;
+    ranking.selected_nnue = None;
     refresh_estimates(&mut ranking);
     save_ranking_state(&ranking_path, &ranking)?;
 
@@ -1361,6 +1365,31 @@ fn deduplicated_ranking_candidates(
         });
     }
     Ok(result)
+}
+
+// Preserve completed games while refreshing paths/aliases and adding new hashes.
+fn reconcile_ranking_candidates(ranking: &mut RankingState, candidates: Vec<RankingCandidate>) {
+    for candidate in candidates {
+        if let Some(saved) = ranking
+            .candidates
+            .iter_mut()
+            .find(|saved| saved.sha256 == candidate.sha256)
+        {
+            saved.nnue = candidate.nnue;
+            for checkpoint in candidate.checkpoints {
+                if !saved.checkpoints.contains(&checkpoint) {
+                    saved.checkpoints.push(checkpoint);
+                }
+            }
+            for alias in candidate.aliases {
+                if !saved.aliases.contains(&alias) {
+                    saved.aliases.push(alias);
+                }
+            }
+        } else {
+            ranking.candidates.push(candidate);
+        }
+    }
 }
 
 fn import_legacy_pairs(
@@ -1977,6 +2006,65 @@ mod tests {
         assert_eq!(ranking.candidates[0].rating, 0.0);
         assert!(ranking.candidates[1].rating > 0.0);
         assert!(ranking.candidates[1].standard_error > 0.0);
+    }
+
+    #[test]
+    fn resumed_ranking_adds_new_hashes_and_preserves_completed_matches() {
+        let candidate = |hash: &str| RankingCandidate {
+            sha256: hash.to_string(),
+            nnue: format!("{hash}.nnue"),
+            checkpoints: vec![format!("{hash}.ckpt")],
+            aliases: vec![hash.to_string()],
+            imported_games: 0,
+            fresh_games: 0,
+            pair_score_bins: [0; 5],
+            rating: 0.0,
+            standard_error: 0.0,
+            confidence95: [0.0; 2],
+        };
+        let mut old = candidate("old");
+        old.imported_games = 2;
+        old.fresh_games = 4;
+        old.pair_score_bins = [0, 0, 1, 1, 1];
+        let saved = RankingState {
+            schema: RANKING_SCHEMA.to_string(),
+            schema_version: RANKING_SCHEMA_VERSION,
+            match_identity: "match".to_string(),
+            anchor_sha256: "anchor".to_string(),
+            budget_games: 100,
+            fresh_games: 4,
+            status: RankingStatus::Decisive,
+            selected_sha256: Some("old".to_string()),
+            selected_nnue: Some("selected.nnue".to_string()),
+            candidates: vec![candidate("anchor"), old],
+            warnings: vec![],
+        };
+        let mut resumed: RankingState =
+            serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+        let mut alias = candidate("old");
+        alias.nnue = "relocated.nnue".to_string();
+        alias.checkpoints.push("alias.ckpt".to_string());
+        alias.aliases.push("alias".to_string());
+        let current = vec![candidate("anchor"), alias, candidate("new")];
+        reconcile_ranking_candidates(&mut resumed, current.clone());
+        reconcile_ranking_candidates(&mut resumed, current);
+        refresh_estimates(&mut resumed);
+
+        assert_eq!(resumed.candidates.len(), 3);
+        assert_eq!(resumed.candidates[0].sha256, "anchor");
+        let old = &resumed.candidates[1];
+        assert_eq!(old.nnue, "relocated.nnue");
+        assert_eq!(old.imported_games, 2);
+        assert_eq!(old.fresh_games, 4);
+        assert_eq!(old.pair_score_bins, [0, 0, 1, 1, 1]);
+        assert_eq!(old.checkpoints, ["old.ckpt", "alias.ckpt"]);
+        assert_eq!(old.aliases, ["old", "alias"]);
+        assert_eq!(resumed.fresh_games, 4);
+        assert!(!is_decisive(&resumed));
+        assert_eq!(
+            next_ranking_candidate(&resumed, &SelectionConfig::default()),
+            Some(2)
+        );
     }
 
     fn args_as_strings(args: &[OsString]) -> Vec<String> {

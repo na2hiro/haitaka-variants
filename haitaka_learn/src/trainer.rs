@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::SystemTime;
@@ -551,9 +552,11 @@ fn materialize_bootstrap_pt(
     ensure_file_exists(&bootstrap_nnue, "bootstrap NNUE")?;
 
     let artifacts = loaded.artifact_paths();
-    let import_features = bootstrap_import_features(loaded);
+    let mut import_features = bootstrap_import_features(&bootstrap_nnue)?;
     let training_features = loaded.training_features();
-    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
+    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2
+        && import_features == "HalfKAv2^+DonorSingleEff"
+    {
         let source = fs::read(&bootstrap_nnue)
             .with_context(|| format!("failed to read {}", bootstrap_nnue.display()))?;
         let migrated =
@@ -566,10 +569,14 @@ fn materialize_bootstrap_pt(
                 artifacts.bootstrap_migrated_nnue.display()
             )
         })?;
+        import_features = FEATURE_SET_DONOR_RECEIVER_PAIR_V2;
         artifacts.bootstrap_migrated_nnue.clone()
     } else {
         bootstrap_nnue
     };
+    if import_features != training_features && import_features != "HalfKAv2^" {
+        bail!("cannot bootstrap {training_features} training from {import_features}");
+    }
     let imported_model_pt = if import_features == training_features {
         artifacts.bootstrap_model_pt.clone()
     } else {
@@ -607,12 +614,13 @@ fn materialize_bootstrap_pt(
     Ok(Some(artifacts.bootstrap_model_pt))
 }
 
-fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
-    // A warm-start NNUE must be parsed with the exact family that produced its
-    // network hash.  The Phase 7.1 v0.5.1 anchor is already a donor-family
-    // network; importing it as plain HalfKAv2 makes serialize.py reject the
-    // header before any feature expansion can occur.
-    loaded.training_features()
+fn bootstrap_import_features(path: &Path) -> Result<&'static str> {
+    let mut header = [0u8; 8];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .with_context(|| format!("failed to read bootstrap NNUE header {}", path.display()))?;
+    haitaka_wasm::NnueModel::feature_family_from_header(&header)
+        .map_err(|err| anyhow!("invalid bootstrap NNUE header {}: {err}", path.display()))
 }
 
 fn bootstrap_base_model_pt_path(path: &Path) -> PathBuf {
@@ -910,33 +918,47 @@ mod tests {
         assert!(checkpoint_validation_script().contains("weights_only=False"));
     }
 
-    #[test]
-    fn donor_training_imports_bootstrap_with_exact_feature_family() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
-        loaded.config.training.features = Some("HalfKAv2^+DonorPairSlots".to_string());
-        assert_eq!(
-            bootstrap_import_features(&loaded),
-            "HalfKAv2^+DonorPairSlots"
-        );
+    fn write_bootstrap_header(path: &Path, hash: u32) {
+        let mut header = 0x7af32f20u32.to_le_bytes().to_vec();
+        header.extend(hash.to_le_bytes());
+        fs::write(path, header).unwrap();
+    }
 
-        loaded.config.training.features = Some("HalfKAv2^+DonorSingleEff".to_string());
+    #[test]
+    fn bootstrap_import_detects_base_network_for_donor_warm_starts() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("base.nnue");
+        write_bootstrap_header(&path, 0x3c103e72);
+        assert_eq!(bootstrap_import_features(&path).unwrap(), "HalfKAv2^");
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn bootstrap_import_detects_both_anhoku_donor_families() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("donor.nnue");
+        write_bootstrap_header(&path, 0x0d8f62a2);
         assert_eq!(
-            bootstrap_import_features(&loaded),
+            bootstrap_import_features(&path).unwrap(),
             "HalfKAv2^+DonorSingleEff"
         );
-
-        loaded.config.training.features = Some("HalfKAv2^+DonorKnight8Slots".to_string());
+        write_bootstrap_header(&path, 0xd0bd8e2b);
         assert_eq!(
-            bootstrap_import_features(&loaded),
-            "HalfKAv2^+DonorKnight8Slots"
+            bootstrap_import_features(&path).unwrap(),
+            FEATURE_SET_DONOR_RECEIVER_PAIR_V2
         );
     }
 
     #[test]
-    fn standard_training_imports_bootstrap_with_training_features() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
-        loaded.config.training.features = Some("HalfKAv2^".to_string());
-        assert_eq!(bootstrap_import_features(&loaded), "HalfKAv2^");
+    fn bootstrap_import_rejects_invalid_headers() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("invalid.nnue");
+        fs::write(&path, [0; 4]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
+        write_bootstrap_header(&path, 0);
+        assert!(bootstrap_import_features(&path).is_err());
+        fs::write(&path, [0; 8]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
     }
 
     #[test]

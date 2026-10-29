@@ -1288,6 +1288,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn runtime_v2_activation_reports_both_perspective_rows() {
         let board = Board::startpos();
         let black = donor_receiver_pair_v2_active_rows(&board, Color::Black);

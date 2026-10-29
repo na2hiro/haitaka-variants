@@ -186,6 +186,16 @@ enum FeatureFamily {
 }
 
 impl FeatureFamily {
+    fn name(self) -> &'static str {
+        match self {
+            FeatureFamily::HalfKAv2 => "HalfKAv2^",
+            FeatureFamily::HalfKAv2DonorSingle => DONOR_SINGLE_FEATURE_NAME,
+            FeatureFamily::HalfKAv2DonorReceiverPairV2 => DONOR_RECEIVER_PAIR_V2_FEATURE_NAME,
+            FeatureFamily::HalfKAv2DonorPair => "HalfKAv2^+DonorPairSlots",
+            FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
+        }
+    }
+
     fn from_network_hash(hash: u32) -> Option<Self> {
         match hash {
             HALFKAV2_NETWORK_HASH => Some(Self::HalfKAv2),
@@ -365,26 +375,31 @@ impl NnuePositionState {
     }
 }
 
-impl NnueModel {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
-        let mut reader = ByteReader::new(bytes);
-        let version = reader.read_u32()?;
-        if version != VERSION {
-            return Err(NnueError::new(format!(
-                "unsupported NNUE version: expected 0x{VERSION:08x}, got 0x{version:08x}"
-            )));
-        }
+fn read_feature_family(reader: &mut ByteReader<'_>) -> Result<FeatureFamily, NnueError> {
+    let version = reader.read_u32()?;
+    if version != VERSION {
+        return Err(NnueError::new(format!(
+            "unsupported NNUE version: expected 0x{VERSION:08x}, got 0x{version:08x}"
+        )));
+    }
 
-        let hash = reader.read_u32()?;
-        let family = FeatureFamily::from_network_hash(hash).ok_or_else(|| {
-            NnueError::new(format!(
-                "unexpected NNUE hash: expected one of 0x{HALFKAV2_NETWORK_HASH:08x}, \
+    let hash = reader.read_u32()?;
+    let family = FeatureFamily::from_network_hash(hash).ok_or_else(|| {
+        NnueError::new(format!(
+            "unexpected NNUE hash: expected one of 0x{HALFKAV2_NETWORK_HASH:08x}, \
 0x{HALFKAV2_DONOR_SINGLE_NETWORK_HASH:08x}, \
 0x{HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH:08x}, \
 0x{HALFKAV2_DONOR_PAIR_NETWORK_HASH:08x}, \
 0x{HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH:08x}, got 0x{hash:08x}"
-            ))
-        })?;
+        ))
+    })?;
+    Ok(family)
+}
+
+impl NnueModel {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
+        let mut reader = ByteReader::new(bytes);
+        let family = read_feature_family(&mut reader)?;
         if !family_supported_by_build(family) {
             return Err(NnueError::new(format!(
                 "NNUE family {:?} is not supported by this build configuration",
@@ -419,13 +434,13 @@ impl NnueModel {
     }
 
     pub fn feature_family_name(&self) -> &'static str {
-        match self.family {
-            FeatureFamily::HalfKAv2 => "HalfKAv2^",
-            FeatureFamily::HalfKAv2DonorSingle => DONOR_SINGLE_FEATURE_NAME,
-            FeatureFamily::HalfKAv2DonorReceiverPairV2 => DONOR_RECEIVER_PAIR_V2_FEATURE_NAME,
-            FeatureFamily::HalfKAv2DonorPair => "HalfKAv2^+DonorPairSlots",
-            FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
-        }
+        self.family.name()
+    }
+
+    /// Inspect the version and feature-family hash without loading network weights.
+    /// The header must belong to a feature family recognized by this build.
+    pub fn feature_family_from_header(bytes: &[u8]) -> Result<&'static str, NnueError> {
+        Ok(read_feature_family(&mut ByteReader::new(bytes))?.name())
     }
 
     pub fn evaluate(&self, board: &Board) -> i32 {

@@ -1248,9 +1248,17 @@ fn choose_searched_stochastic_rollout_move(
         );
         let mut child = canonical_board.clone();
         child.play_unchecked(canonical_move);
-        let summary = teacher.search_depth(&child, search_depth, workspace)?;
-        stats.record_rollout(&summary);
-        let score = summary.best_score.map_or(0, |score| -score);
+        let score = match child.status() {
+            haitaka::GameStatus::Won => 30_000,
+            haitaka::GameStatus::Drawn => 0,
+            haitaka::GameStatus::Ongoing => {
+                let summary = teacher.search_depth(&child, search_depth, workspace)?;
+                stats.record_rollout(&summary);
+                -summary.best_score.ok_or_else(|| {
+                    anyhow!("rollout search returned no score for ongoing position `{child}`")
+                })?
+            }
+        };
         scored.push(ScoredRolloutMove {
             move_: canonical_move,
             score,
@@ -6657,6 +6665,54 @@ mod tests {
         board: [Option<TrainerPiece>; 81],
         hands: [[u8; 10]; 2],
         fullmove: u16,
+    }
+
+    #[test]
+    #[cfg(any(
+        feature = "anhoku",
+        not(any(
+            feature = "annan",
+            feature = "antouzai",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn searched_rollout_keeps_an_immediate_mate_above_ordinary_moves() {
+        let board = Board::from_sfen("4k4/9/3LGL3/9/9/9/9/9/4K4 b R 1").unwrap();
+        let legal_moves = collect_legal_moves(&board);
+        let mut workspace = SearchWorkspace::default();
+        let mut stats = SearchUseStats::default();
+        for seed in 0..4 {
+            let decision = choose_searched_stochastic_rollout_move(
+                &board,
+                &legal_moves,
+                &Teacher::Handcrafted,
+                1,
+                u16::MAX,
+                0,
+                100.0,
+                seed,
+                "mate",
+                0,
+                0,
+                "splitmix64-v1",
+                &mut workspace,
+                &mut stats,
+            )
+            .unwrap();
+            assert_eq!(decision.best_score, 30_000);
+            assert_eq!(decision.selected_score, 30_000);
+            let mut child = board.clone();
+            child.play_unchecked(decision.move_);
+            assert_eq!(child.status(), haitaka::GameStatus::Won);
+        }
     }
 
     #[test]
