@@ -278,6 +278,14 @@ def set_learning_rate(optimizer, base: float, update: int) -> float:
     return value
 
 
+def average_ranks(values: np.ndarray) -> np.ndarray:
+    """Assign the mean zero-based rank to every group of equal values."""
+    _, inverse, counts = np.unique(values, return_inverse=True, return_counts=True)
+    ends = np.cumsum(counts)
+    starts = ends - counts
+    return ((starts + ends - 1) / 2.0)[inverse]
+
+
 def metrics_from_predictions(np_predictions: np.ndarray, np_targets: np.ndarray) -> dict[str, Any]:
     error = (np_predictions - np_targets) / SCORE_CLIP
     absolute = np.abs(error)
@@ -288,8 +296,8 @@ def metrics_from_predictions(np_predictions: np.ndarray, np_targets: np.ndarray)
     )
     if len(np_predictions) > 1 and np.std(np_predictions) > 0 and np.std(np_targets) > 0:
         pearson = float(np.corrcoef(np_predictions, np_targets)[0, 1])
-        prediction_rank = np.argsort(np.argsort(np_predictions))
-        target_rank = np.argsort(np.argsort(np_targets))
+        prediction_rank = average_ranks(np_predictions)
+        target_rank = average_ranks(np_targets)
         spearman = float(np.corrcoef(prediction_rank, target_rank)[0, 1])
     else:
         pearson = None
@@ -727,6 +735,12 @@ def recover_existing_export(
     if not rows:
         fail(f"cannot recover export from an empty metrics file: {metrics_path}")
     last = rows[-1]
+    checkpoint = last.get("checkpoint")
+    expected_hash = checkpoint.get("sha256") if isinstance(checkpoint, dict) else None
+    if not isinstance(expected_hash, str) or sha256(model_path) != expected_hash:
+        fail("recovery checkpoint does not match the final metrics row checkpoint hash")
+    if last.get("width") != width:
+        fail("recovery width does not match the final metrics row")
     lane_id = last.get("lane")
     lanes = {lane["id"]: lane for lane in contract["initialization"]["lanes"]}
     lane = lanes.get(lane_id)

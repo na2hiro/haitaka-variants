@@ -122,6 +122,7 @@ pub(crate) fn run(
     source_identity_path: &Path,
     workspace_root: &Path,
 ) -> Result<R1aReport> {
+    ensure!(cfg!(feature = "anhoku"), "R1-A requires --features anhoku");
     let loaded = LoadedTrainingConfig::from_path(config_path)?;
     loaded.ruleset_requires_matching_engine()?;
     ensure!(
@@ -1079,6 +1080,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn curated_seeds_cover_every_output_bucket() {
         let seeds = curated_seeds().unwrap();
         let buckets = seeds
@@ -1089,6 +1091,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn corpus_is_deterministic_and_large_enough() {
         let first = build_corpus().unwrap();
         let second = build_corpus().unwrap();
@@ -1106,6 +1109,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn independent_handcrafted_oracle_matches_runtime() {
         for fixture in build_corpus().unwrap() {
             assert_eq!(
