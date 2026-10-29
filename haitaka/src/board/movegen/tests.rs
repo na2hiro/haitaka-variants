@@ -104,6 +104,17 @@ fn reaching_five_hand_pieces_is_an_immediate_loss() {
     assert!(!board.generate_moves(|_| true));
 }
 
+#[cfg(all(feature = "sanmaime", feature = "shihonkangen"))]
+#[test]
+fn immediate_loss_takes_precedence_over_win_conditions() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 w RBGSN 1".parse().unwrap();
+
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+    assert!(!board.generate_moves(|_| true));
+}
+
 #[cfg(feature = "ningenshogi")]
 #[test]
 fn human_shogi_mate_wins_after_every_surviving_piece_has_moved() {

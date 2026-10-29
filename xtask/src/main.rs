@@ -1353,11 +1353,18 @@ rule_id = 124
     }
 
     #[test]
-    fn merge_data_infers_variant_feature_and_forwards_inputs() {
-        let ruleset = ruleset_from_toml("[rules]\nruleset = \"taimen\"\n").unwrap();
+    fn merge_data_preserves_composite_features_and_forwards_inputs() {
+        let features = learn_features_from_toml(
+            r#"[rules]
+ruleset = "taimen"
+win_conditions = ["shihonkangen"]
+movement_constraint = "hitomasuou"
+"#,
+        )
+        .unwrap();
         let args = haitaka_learn_merge_data_args(
             &PathBuf::from("haitaka_learn.taimen.toml"),
-            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            features.as_deref(),
             &[
                 OsString::from("--input"),
                 OsString::from("out/machine-a"),
@@ -1368,7 +1375,11 @@ rule_id = 124
         let args = args_as_strings(&args);
 
         assert!(args.iter().any(|arg| arg == "--release"));
-        assert!(has_adjacent_args(&args, "--features", "taimen"));
+        assert!(has_adjacent_args(
+            &args,
+            "--features",
+            "taimen,shihonkangen,hitomasuou"
+        ));
         assert!(args.iter().any(|arg| arg == "merge-data"));
         assert!(has_adjacent_args(
             &args,
@@ -1380,17 +1391,28 @@ rule_id = 124
     }
 
     #[test]
-    fn verify_infers_variant_feature() {
-        let ruleset = ruleset_from_toml("[rules]\nruleset = \"nekoneko\"\n").unwrap();
+    fn verify_preserves_composite_features() {
+        let features = learn_features_from_toml(
+            r#"[rules]
+ruleset = "nekoneko"
+win_conditions = ["ningenshogi"]
+movement_constraint = "igyoku"
+"#,
+        )
+        .unwrap();
         let args = haitaka_learn_verify_args(
             &PathBuf::from("haitaka_learn.nekoneko.toml"),
-            required_learn_feature_for_ruleset(&ruleset).unwrap(),
+            features.as_deref(),
             &[],
         );
         let args = args_as_strings(&args);
 
         assert!(args.iter().any(|arg| arg == "--release"));
-        assert!(has_adjacent_args(&args, "--features", "nekoneko"));
+        assert!(has_adjacent_args(
+            &args,
+            "--features",
+            "nekoneko,ningenshogi,igyoku"
+        ));
         assert!(args.iter().any(|arg| arg == "verify"));
         assert!(has_adjacent_args(
             &args,

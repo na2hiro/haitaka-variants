@@ -218,7 +218,7 @@ impl DfpnSolver {
         let tt_move = self.entry(hash).and_then(|entry| entry.best_move);
         let moves = collect_candidate_moves(board, kind, tt_move);
         if moves.is_empty() {
-            let numbers = terminal_numbers(kind);
+            let numbers = terminal_numbers(board, self.attacker);
             self.store(hash, numbers, None);
             return NodeEvaluation {
                 numbers,
@@ -470,10 +470,11 @@ fn verify_mating_line(board: &Board, attacker: Color, pv: &[Move]) -> bool {
         && board.winner() == Some(attacker)
 }
 
-const fn terminal_numbers(kind: NodeKind) -> ProofNumbers {
-    match kind {
-        NodeKind::Attacker => ProofNumbers::NO_MATE,
-        NodeKind::Defender => ProofNumbers::MATE,
+fn terminal_numbers(board: &Board, attacker: Color) -> ProofNumbers {
+    if board.winner() == Some(attacker) {
+        ProofNumbers::MATE
+    } else {
+        ProofNumbers::NO_MATE
     }
 }
 
@@ -766,6 +767,9 @@ mod tests {
 
         assert!(board.is_legal(mate));
         assert!(!verify_mating_line(&board, Color::Black, &[mate]));
+        let result = board.dfpn(&DfpnOptions::default());
+        assert_eq!(result.status, DfpnStatus::NoMate);
+        assert!(result.pv.is_empty());
     }
 
     #[cfg(feature = "shihonkangen")]
@@ -776,6 +780,9 @@ mod tests {
 
         assert!(board.is_legal(mate));
         assert!(!verify_mating_line(&board, Color::Black, &[mate]));
+        let result = board.dfpn(&DfpnOptions::default());
+        assert_eq!(result.status, DfpnStatus::NoMate);
+        assert!(result.pv.is_empty());
     }
 
     #[test]

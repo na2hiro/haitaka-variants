@@ -30,6 +30,14 @@ jobs:
         cargo test -p haitaka --features annan,oute,sanmaime,igyoku oute_is_an_immediate_win_and_stops_play
         cargo test -p haitaka_wasm --features annan,oute,sanmaime,igyoku immediate_win_is_scored_as_terminal_loss_for_side_to_move
         cargo test -p haitaka_learn --features annan,oute,sanmaime,igyoku composite_rule_profile_has_stable_canonical_name
+    - name: Run remaining outcome and king-constraint tests
+      run: |
+        cargo test -p haitaka --features sanmaime three_hand_pieces_are_an_immediate_win
+        cargo test -p haitaka --features inochinotokin a_previous_movers_tokin_is_an_immediate_win
+        cargo test -p haitaka --features igyoku igyoku_forbids_physical_king_moves
+        cargo test -p haitaka --features hitomasuou hitomasuou_only_allows_destinations_in_the_home_zone
+        cargo test -p haitaka --features annan,hitomasuou king_constraint_only_applies_to_the_physical_king
+        cargo test -p haitaka --features sanmaime,shihonkangen immediate_loss_takes_precedence_over_win_conditions
     - name: Check replay-filter donor composition
       run: cargo check --workspace --features neko,hitomasuou --verbose
     - name: Run history and loss outcome tests
