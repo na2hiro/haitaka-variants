@@ -1240,7 +1240,7 @@ fn main() -> Result<()> {
         } => {
             let loaded = LoadedTrainingConfig::from_path(&config)?;
             let trainer_checkout = loaded.trainer_checkout()?;
-            let prepared = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
+            let prepared = trainer::PreparedTrainer::new_without_build(&loaded, &trainer_checkout)?;
             trainer::export_checkpoint_to(&loaded, prepared.path(), &checkpoint, &output)?;
             println!("exported NNUE: {}", output.display());
         }

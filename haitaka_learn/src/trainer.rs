@@ -92,7 +92,7 @@ fn verify_receiver_pair_v2_trainer_parity_with_preparer(
         schema: "haitaka-anhoku-phase11a-trainer-parity",
         schema_version: 1,
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(&trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         feature_set: FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string(),
         feature_set_hash: "0xb38efce1".to_string(),
         real_features: 167_103,
@@ -163,7 +163,7 @@ pub fn prepare_bootstrap(loaded: &LoadedTrainingConfig) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
-    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
     materialize_bootstrap_pt(loaded, prepared.path())?.ok_or_else(|| {
         anyhow!("training.initial_checkpoint must not be scratch to prepare a checkpoint")
     })
@@ -176,6 +176,7 @@ pub fn export(
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
 
     let checkpoint = if let Some(path) = source_checkpoint {
         path
@@ -183,7 +184,7 @@ pub fn export(
         find_latest_valid_checkpoint(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
-            &trainer_checkout,
+            prepared.path(),
         )?
         .ok_or_else(|| {
             anyhow!(
@@ -194,7 +195,6 @@ pub fn export(
     };
     ensure_file_exists(&checkpoint, "checkpoint")?;
 
-    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -441,7 +441,7 @@ pub(crate) fn write_export_metadata(
         exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
@@ -469,16 +469,18 @@ pub(crate) struct PreparedTrainer {
 }
 
 impl PreparedTrainer {
+    /// Prepare a dataset-consuming operation with a loader built in its pinned context.
     pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
-        Self::new_inner(
-            loaded,
-            trainer_checkout,
-            loaded.config.training.build_data_loader,
-        )
+        if !loaded.config.training.build_data_loader {
+            bail!(
+                "dataset-consuming operations require training.build_data_loader=true: immutable trainer contexts need their own compiled loader"
+            );
+        }
+        Self::new_inner(loaded, trainer_checkout, true)
     }
 
-    /// Install the exact Python/variant overlays while deliberately skipping
-    /// the C++ loader build. Phase 11-C only deserializes a frozen checkpoint.
+    /// Prepare source-only checkpoint import/export or Phase 11-C deserialization
+    /// with the exact Python/variant overlays and no C++ data-loader build.
     pub(crate) fn new_without_build(
         loaded: &LoadedConfig,
         trainer_checkout: &Path,
@@ -876,19 +878,6 @@ fn ensure_training_dataset_ready(
     Ok(())
 }
 
-fn detect_git_revision(repo_root: &Path) -> Option<String> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
 pub(crate) fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(root) else {
         return;
@@ -1047,6 +1036,20 @@ mod tests {
         TrainingConfig, VerifyConfig,
     };
     use tempfile::tempdir;
+
+    #[test]
+    fn dataset_operations_reject_disabled_loader_before_preparing_context() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
+        loaded.config.training.build_data_loader = false;
+        let error = PreparedTrainer::new(&loaded, temp.path()).err().unwrap();
+        assert!(
+            error
+                .to_string()
+                .contains("training.build_data_loader=true")
+        );
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 0);
+    }
 
     #[test]
     #[cfg(unix)]

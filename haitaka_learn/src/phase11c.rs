@@ -376,6 +376,8 @@ fn run_checkpoint_helper(args: &Phase11cArgs, output: &Path) -> Result<()> {
         .arg("--checkpoint")
         .arg(&args.v2_checkpoint)
         .arg("--trainer-checkout")
+        .arg(&args.trainer_checkout)
+        .arg("--trainer-context")
         .arg(prepared.path())
         .arg("--reviewed-patch")
         .arg(&args.reviewed_patch)

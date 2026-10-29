@@ -142,6 +142,12 @@ The example config expects the modified trainer checkout at:
 
 The example config at [/haitaka_learn.toml](../haitaka_learn.toml) already points there.
 
+Trainer operations use fresh, pinned build contexts. Dataset-consuming commands
+(`train`, `train-select`, `evaluate-checkpoint`, R1-A, and R2) require
+`training.build_data_loader = true` so the loader is built in that context.
+Bootstrap preparation, checkpoint export, and Phase 11-C checkpoint inspection
+use source-only contexts and skip the C++ loader build.
+
 Important environment note:
 
 - `haitaka-variant-nnue-pytorch` is a CUDA-first trainer.
