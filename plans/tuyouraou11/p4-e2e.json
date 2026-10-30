@@ -1,0 +1,1870 @@
+{
+  "schemaVersion": 1,
+  "stats": {
+    "startTime": "2026-10-30T06:34:25.374Z",
+    "duration": 127003.60800000001,
+    "expected": 12,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "loads only on AI selection, prepares SFNN, applies a legal reply, and keeps the UI responsive",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 13292,
+      "evidence": [
+        {
+          "name": "SFNN Worker and network evidence",
+          "value": {
+            "requests": [
+              "http://127.0.0.1:3099/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/nn.bin",
+              "http://127.0.0.1:3099/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/progress.bin"
+            ],
+            "messages": [
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "init",
+                  {
+                    "playerType": "haitaka",
+                    "search": {
+                      "iterativeDeepening": {
+                        "maxDepth": 6,
+                        "mode": "engine"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": ["ready"]
+              },
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "prepare",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-wasm"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-wasm"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-model"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "ready",
+                    "prepared": {
+                      "ruleId": 0,
+                      "evaluator": "sfnn",
+                      "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                      "arch": "SFNN_ka2_2048_8_64_progress8"
+                    }
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "go",
+                  {
+                    "ruleId": 0,
+                    "plies": 1
+                  },
+                  {
+                    "moveTimeMs": 3000,
+                    "requestId": 1
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "command",
+                  {
+                    "type": "move",
+                    "from": [8, 3],
+                    "to": [8, 4]
+                  },
+                  1
+                ]
+              }
+            ],
+            "engineLogs": [
+              "[haitaka] request {\"ruleId\":0,\"teban\":1,\"currentDirection\":1,\"maxDepth\":6,\"timeoutMs\":3000,\"sfen\":\"lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL w - 1\"}",
+              "[haitaka] search {\"ruleId\":0,\"maxDepth\":6,\"timeoutMs\":3000,\"completedDepth\":5,\"timedOut\":true,\"bestMove\":\"8c8d\",\"elapsedMs\":2999.2999999999997,\"states\":57462,\"nps\":19158.47030973894,\"iterations\":[{\"depth\":1,\"bestMove\":\"8c8d\",\"elapsedMs\":15.2,\"states\":31,\"nps\":2039.4736842105262},{\"depth\":2,\"bestMove\":\"3c3d\",\"elapsedMs\":19.400000000000002,\"states\":142,\"nps\":7319.587628865979},{\"depth\":3,\"bestMove\":\"4a3b\",\"elapsedMs\":198.199999,\"states\":1518,\"nps\":7658.930412002676},{\"depth\":4,\"bestMove\":\"8c8d\",\"elapsedMs\":367.700001,\"states\":5501,\"nps\":14960.56563785541},{\"depth\":5,\"bestMove\":\"8c8d\",\"elapsedMs\":2079.7,\"states\":43581,\"nps\":20955.426263403377}]}"
+            ]
+          }
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-c3d04-and-keeps-the-UI-responsive-chromium/trace.zip",
+          "bytes": 8161046,
+          "sha256": "c0e86593d36301b0f1ec0453d25bc89b752281d962a22af80c5ead2bf4745e51"
+        }
+      ]
+    },
+    {
+      "title": "shows an actual HTTP failure and retries preparation in a fresh Worker",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 13685,
+      "evidence": [
+        {
+          "name": "retry Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "error",
+                  "error": {
+                    "code": "MODEL_HTTP_ERROR",
+                    "message": "評価モデルを取得できません（HTTP 503）。",
+                    "retryable": true
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "command",
+                {
+                  "type": "move",
+                  "from": [8, 3],
+                  "to": [8, 4]
+                },
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-4abaa-eparation-in-a-fresh-Worker-chromium/trace.zip",
+          "bytes": 6350523,
+          "sha256": "be4bc8e79856d0a97b6248f1382f65e6b064477621d501c74e226cef861f050e"
+        }
+      ]
+    },
+    {
+      "title": "a rule sharing the standard wrapper uses handcrafted evaluation without model requests",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 4953,
+      "evidence": [
+        {
+          "name": "variant Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 1,
+                    "evaluator": "handcrafted",
+                    "modelId": null,
+                    "arch": null
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-ab95e-tion-without-model-requests-chromium/trace.zip",
+          "bytes": 3367451,
+          "sha256": "b9014bd7386ad8f1c7bc53fe6f5412b6820a1a21eadec39796cb601e408b4784"
+        }
+      ]
+    },
+    {
+      "title": "perft initializes real Wasm without fetching a model",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 2327,
+      "evidence": [
+        {
+          "name": "perft result",
+          "value": "1\nホーム\nルール集\nノート\n対局室\nログイン\nPerft\nEngine\nHaitaka (built-in)\nRule\n本将棋(平手)\nDepth\nRun\n\nHaitaka (built-in) / 本将棋(平手)\n\n30 nodes in 1.10ms (27,273 nps)\n\n2010-2026 @na2hiro (@shogitter_dev) all rights reserved. license attribution"
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-95bd3-sm-without-fetching-a-model-chromium/trace.zip",
+          "bytes": 273348,
+          "sha256": "dafca24d6e110143841d386dd228447995bac493dc55109b6da45c7cdf35a8f4"
+        }
+      ]
+    },
+    {
+      "title": "changing rules replaces the Worker and does not reuse SFNN for a handicap",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 7486,
+      "evidence": [
+        {
+          "name": "rule switch evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": ["dispose"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 1,
+                    "evaluator": "handcrafted",
+                    "modelId": null,
+                    "arch": null
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-916a1-t-reuse-SFNN-for-a-handicap-chromium/trace.zip",
+          "bytes": 6537909,
+          "sha256": "f5176ae8c59c9052fc35c824caad8fbad5ed1f1c46a5cbe7ce0d60a67f8bc3db"
+        }
+      ]
+    },
+    {
+      "title": "rollback stops active Wasm search and prepares a new Worker before the next go",
+      "browser": "chromium",
+      "status": "passed",
+      "durationMs": 11264,
+      "evidence": [
+        {
+          "name": "stop and new Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 2
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "command",
+                {
+                  "type": "move",
+                  "from": [8, 3],
+                  "to": [8, 4]
+                },
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-2bcb4-w-Worker-before-the-next-go-chromium/trace.zip",
+          "bytes": 7620190,
+          "sha256": "e67844d21bea99ffb87bfd4e5c6f29add7ce4185d336f5a90251f85d97ec4215"
+        }
+      ]
+    },
+    {
+      "title": "loads only on AI selection, prepares SFNN, applies a legal reply, and keeps the UI responsive",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 16168,
+      "evidence": [
+        {
+          "name": "SFNN Worker and network evidence",
+          "value": {
+            "requests": [
+              "http://127.0.0.1:3099/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/nn.bin",
+              "http://127.0.0.1:3099/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/progress.bin"
+            ],
+            "messages": [
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "init",
+                  {
+                    "playerType": "haitaka",
+                    "search": {
+                      "iterativeDeepening": {
+                        "maxDepth": 6,
+                        "mode": "engine"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": ["ready"]
+              },
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "prepare",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-wasm"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-wasm"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "loading-model"
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "prepare-state",
+                  {
+                    "generation": 1,
+                    "prepareId": 1,
+                    "ruleId": 0,
+                    "state": "ready",
+                    "prepared": {
+                      "ruleId": 0,
+                      "evaluator": "sfnn",
+                      "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                      "arch": "SFNN_ka2_2048_8_64_progress8"
+                    }
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "in",
+                "message": [
+                  "go",
+                  {
+                    "ruleId": 0,
+                    "plies": 1
+                  },
+                  {
+                    "moveTimeMs": 3000,
+                    "requestId": 1
+                  }
+                ]
+              },
+              {
+                "workerId": 1,
+                "direction": "out",
+                "message": [
+                  "command",
+                  {
+                    "type": "move",
+                    "from": [8, 3],
+                    "to": [8, 4]
+                  },
+                  1
+                ]
+              }
+            ],
+            "engineLogs": [
+              "[haitaka] request {\"ruleId\":0,\"teban\":1,\"currentDirection\":1,\"maxDepth\":6,\"timeoutMs\":3000,\"sfen\":\"lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP/1B5R1/LNSGKGSNL w - 1\"}",
+              "[haitaka] search {\"ruleId\":0,\"maxDepth\":6,\"timeoutMs\":3000,\"completedDepth\":4,\"timedOut\":true,\"bestMove\":\"8c8d\",\"elapsedMs\":2998,\"states\":8746,\"nps\":2917.278185456971,\"iterations\":[{\"depth\":1,\"bestMove\":\"8c8d\",\"elapsedMs\":27,\"states\":31,\"nps\":1148.1481481481483},{\"depth\":2,\"bestMove\":\"3c3d\",\"elapsedMs\":118,\"states\":142,\"nps\":1203.3898305084747},{\"depth\":3,\"bestMove\":\"4a3b\",\"elapsedMs\":710,\"states\":1518,\"nps\":2138.0281690140846},{\"depth\":4,\"bestMove\":\"8c8d\",\"elapsedMs\":1549,\"states\":5501,\"nps\":3551.3234344738544}]}"
+            ]
+          }
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-c3d04-and-keeps-the-UI-responsive-firefox/trace.zip",
+          "bytes": 13730748,
+          "sha256": "8739375b6f10a6232ab0582e6d01de02074b605056a421fd56d936f41aa067df"
+        }
+      ]
+    },
+    {
+      "title": "shows an actual HTTP failure and retries preparation in a fresh Worker",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 14350,
+      "evidence": [
+        {
+          "name": "retry Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "error",
+                  "error": {
+                    "code": "MODEL_HTTP_ERROR",
+                    "message": "評価モデルを取得できません（HTTP 503）。",
+                    "retryable": true
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "command",
+                {
+                  "type": "move",
+                  "from": [8, 3],
+                  "to": [8, 4]
+                },
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-4abaa-eparation-in-a-fresh-Worker-firefox/trace.zip",
+          "bytes": 12821381,
+          "sha256": "c841ba2d557fc06e231047058ff743babb79dd7baf05dbb23d6947626d1adc9d"
+        }
+      ]
+    },
+    {
+      "title": "a rule sharing the standard wrapper uses handcrafted evaluation without model requests",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 5837,
+      "evidence": [
+        {
+          "name": "variant Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 1,
+                    "evaluator": "handcrafted",
+                    "modelId": null,
+                    "arch": null
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-ab95e-tion-without-model-requests-firefox/trace.zip",
+          "bytes": 3671063,
+          "sha256": "4ae8553635294f8b153f1bfc651003c309ccaddfe8f693a7d1e01c451d308065"
+        }
+      ]
+    },
+    {
+      "title": "perft initializes real Wasm without fetching a model",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 6004,
+      "evidence": [
+        {
+          "name": "perft result",
+          "value": "1\nホーム\nルール集\nノート\n対局室\nログイン\nPerft\nEngine\nHaitaka (built-in)\nRule\n本将棋(平手)\nDepth\nRun\n\nHaitaka (built-in) / 本将棋(平手)\n\n30 nodes in 0.00ms (0 nps)\n\n2010-2026 @na2hiro (@shogitter_dev) all rights reserved. license attribution"
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-95bd3-sm-without-fetching-a-model-firefox/trace.zip",
+          "bytes": 1502283,
+          "sha256": "aadc2a68c706a0372f2b9be5a97e22ce659f4c07d869038d72676f8c921d6116"
+        }
+      ]
+    },
+    {
+      "title": "changing rules replaces the Worker and does not reuse SFNN for a handicap",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 9804,
+      "evidence": [
+        {
+          "name": "rule switch evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": ["dispose"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 1,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 1,
+                    "evaluator": "handcrafted",
+                    "modelId": null,
+                    "arch": null
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-916a1-t-reuse-SFNN-for-a-handicap-firefox/trace.zip",
+          "bytes": 12045303,
+          "sha256": "e1c0fb67ccc3b24873000ed04f1d2862c17066cdfe21e2ee67b751d6542a067b"
+        }
+      ]
+    },
+    {
+      "title": "rollback stops active Wasm search and prepares a new Worker before the next go",
+      "browser": "firefox",
+      "status": "passed",
+      "durationMs": 12796,
+      "evidence": [
+        {
+          "name": "stop and new Worker evidence",
+          "value": [
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 1,
+                  "prepareId": 1,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 1,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 1
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "init",
+                {
+                  "playerType": "haitaka",
+                  "search": {
+                    "iterativeDeepening": {
+                      "maxDepth": 6,
+                      "mode": "engine"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": ["ready"]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "prepare",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-wasm"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "loading-model"
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "prepare-state",
+                {
+                  "generation": 2,
+                  "prepareId": 2,
+                  "ruleId": 0,
+                  "state": "ready",
+                  "prepared": {
+                    "ruleId": 0,
+                    "evaluator": "sfnn",
+                    "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+                    "arch": "SFNN_ka2_2048_8_64_progress8"
+                  }
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "in",
+              "message": [
+                "go",
+                {
+                  "ruleId": 0,
+                  "plies": 1
+                },
+                {
+                  "moveTimeMs": 3000,
+                  "requestId": 2
+                }
+              ]
+            },
+            {
+              "workerId": 2,
+              "direction": "out",
+              "message": [
+                "command",
+                {
+                  "type": "move",
+                  "from": [8, 3],
+                  "to": [8, 4]
+                },
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "name": "trace",
+          "path": ".tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-2bcb4-w-Worker-before-the-next-go-firefox/trace.zip",
+          "bytes": 11066412,
+          "sha256": "4d771c7a9f8bccfffc73531086e6857ed0ab38ff9deae48edb420e156f49bf7e"
+        }
+      ]
+    }
+  ],
+  "build": "all 13 variants regenerated before final staging build"
+}

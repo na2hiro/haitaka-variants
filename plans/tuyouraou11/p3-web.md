@@ -73,3 +73,6 @@ Prettier は変更ファイルに限定して適用し、最終の check で確�
 - P4 の実 Wasm E2E、モデル使用の証拠、Network 記録、実機性能、対局は未実施。合法手や評価一致をモック結果から主張しない。
 - 配信データは bin 合計 4,867,714 bytes。既存 Express 配信は 1 年 immutable。JS 受信 buffer、Wasm コピー・重み展開、progress Q16、TT/accumulator のメモリ実測と cold/warm の許容値は P4 で確定する。
 - 公開デプロイ・dev server 起動・コミットは実施していない。
+
+P4追記: 上記はP3実施時点の記録。P3はshogitter `5d62198d` / 本記録 `b541db5` にコミット済み。
+P4で実Wasmを同期してローカル統合・対局検証を完了した。最新結果と実機保留は [p4-lead.md](p4-lead.md) を参照。
