@@ -183,9 +183,12 @@ def verify():
     jsonschema.Draft202012Validator(json.loads((META / 'reference-fixture.schema.json').read_text())).validate(fixture)
     if fixture['reference']['commit'] != COMMIT or fixture['model']['id'] != PROV['id']:
         raise ValueError('reference/provenance metadata mismatch')
-    env = dict(os.environ, HAITAKA_SFNN_MODEL_DIR=str(MODEL))
+    env = dict(os.environ, HAITAKA_SFNN_MODEL_DIR=str(MODEL),
+               HAITAKA_SFNN_CORPUS=str(WORK / 'p2-corpus.json'))
     subprocess.run(['cargo', 'test', '-p', 'haitaka_wasm', '--release', '--test', 'sfnn_reference',
                     '--', '--ignored', '--nocapture'], cwd=ROOT, env=env, check=True)
+    subprocess.run(['cargo', 'test', '-p', 'haitaka_wasm', '--release', '--lib', 'sfnn_',
+                    '--', '--ignored', '--nocapture', '--test-threads=1'], cwd=ROOT, env=env, check=True)
 
 
 def main():

@@ -2,7 +2,7 @@
 
 作成: 2026-10-30
 調査対象: haitaka-variants d0c29c0 / shogitter-3 c94a8d63
-状態: P0・P1完了。共通契約は[contract.md](tuyouraou11/contract.md)、進捗は[status.md](tuyouraou11/status.md)。P1のscalar評価器・モデル実体検証は完了（[結果](tuyouraou11/p1-engine.md)）。差分評価・探索/Wasm統合・ブラウザ実測は未実施。
+状態: P0・P1・P2完了（P3はWEB完了報告あり）。共通契約は[contract.md](tuyouraou11/contract.md)、進捗は[status.md](tuyouraou11/status.md)。P1のscalar評価器・モデル実体検証は完了（[結果](tuyouraou11/p1-engine.md)）。差分評価・探索/Wasm APIはP2で実装し、engine Workerを実ブラウザで検証済み（[結果](tuyouraou11/p2-engine.md)）。将棋ったー画面E2E・実機測定・対局はP4で未実施。
 
 ## agentsへの割当方法（実行指示）
 

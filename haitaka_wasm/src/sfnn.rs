@@ -1,7 +1,7 @@
 //! Scalar SFNN micro evaluator. File-format and arithmetic interoperability only;
 //! independently implemented for Haitaka (MIT), not a port of YaneuraOu source.
 //! See docs/tuyouraou11-sfnn.md for the pinned reference and verification procedure.
-use haitaka::{Board, Color, Piece, Square};
+use haitaka::{Board, Color, Move, Piece, Square};
 use std::fmt;
 
 pub const MICRO_ARCH: &str = "SFNN_ka2_2048_8_64_progress8";
@@ -36,6 +36,7 @@ pub struct SfnnEvaluation {
     pub eval_cp: i32,
 }
 
+#[derive(Debug)]
 struct Affine {
     bias: Vec<i32>,
     weights: Vec<i8>,
@@ -54,27 +55,32 @@ impl Affine {
             stride,
         })
     }
-    fn forward(&self, inputs: &[u8]) -> Vec<i32> {
-        self.bias
-            .iter()
-            .enumerate()
-            .map(|(row, &bias)| {
-                inputs.iter().enumerate().fold(bias, |sum, (col, &v)| {
-                    sum.wrapping_add(
-                        i32::from(v) * i32::from(self.weights[row * self.stride + col]),
-                    )
-                })
+    fn forward<const N: usize>(&self, inputs: &[u8]) -> [i32; N] {
+        assert_eq!(self.bias.len(), N);
+        std::array::from_fn(|row| {
+            let bias = self.bias[row];
+            inputs.iter().enumerate().fold(bias, |sum, (col, &v)| {
+                sum.wrapping_add(i32::from(v) * i32::from(self.weights[row * self.stride + col]))
             })
-            .collect()
+        })
     }
 }
+#[derive(Debug)]
 struct Stack {
     first: Affine,
     second: Affine,
     output: Affine,
 }
 
-/// Immutable weights; P1 deliberately does not install them in the search runtime.
+/// Per-position values only: no weight arrays are cloned at a search node.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SfnnPositionState {
+    accumulators: [Vec<i16>; 2],
+    progress_sums_q16: [i64; 2],
+}
+
+/// Immutable shared weights for full-refresh and incremental scalar evaluation.
+#[derive(Debug)]
 pub struct SfnnModel {
     biases: Vec<i16>,
     weights: Vec<i16>,
@@ -144,48 +150,155 @@ impl SfnnModel {
         ))
     }
     /// Panics if either king is missing or more than 38 nonking pieces exist.
-    pub fn evaluate_full_refresh(&self, board: &Board) -> SfnnEvaluation {
+    pub fn build_position_state_full(&self, board: &Board) -> SfnnPositionState {
         let pieces = bona_pieces(board);
-        let kings = [
-            board.king(Color::Black) as usize,
-            80 - board.king(Color::White) as usize,
-        ];
-        let sums = std::array::from_fn(|p| {
-            pieces[p]
+        let mut state = SfnnPositionState {
+            accumulators: [self.biases.clone(), self.biases.clone()],
+            progress_sums_q16: [0; 2],
+        };
+        for p in 0..2 {
+            let friendly = orient(
+                board.king(if p == 0 { Color::Black } else { Color::White }),
+                p,
+            );
+            let enemy = orient(
+                board.king(if p == 0 { Color::White } else { Color::Black }),
+                p,
+            );
+            state.progress_sums_q16[p] = pieces[p]
                 .iter()
-                .map(|&i| i64::from(self.progress[kings[p] * BONA_NONKING + i]))
-                .sum::<i64>()
-        });
-        let sum = sums[0] + sums[1];
-        let bucket = progress_bucket(sum);
-        let mut transformed = vec![0u8; WIDTH];
-        let stm = color_index(board.side_to_move());
-        for (output_side, p) in [stm, 1 - stm].into_iter().enumerate() {
-            let mut acc = self.biases.clone();
-            let friendly = if p == 0 {
-                board.king(Color::Black) as usize
-            } else {
-                80 - board.king(Color::White) as usize
-            };
-            let enemy = if p == 0 {
-                board.king(Color::White) as usize
-            } else {
-                80 - board.king(Color::Black) as usize
-            };
-            // A2 includes both kings folded into one plane; K distinguishes colors.
+                .map(|&i| i64::from(self.progress[friendly * BONA_NONKING + i]))
+                .sum();
             for index in pieces[p].iter().copied().chain([
                 BONA_NONKING + friendly,
                 BONA_NONKING + enemy,
                 1629 + friendly,
                 1629 + 81 + enemy,
             ]) {
-                for (a, &w) in acc
-                    .iter_mut()
-                    .zip(&self.weights[index * WIDTH..(index + 1) * WIDTH])
-                {
-                    *a = a.wrapping_add(w);
+                self.update_row(&mut state.accumulators[p], index, true);
+            }
+        }
+        state
+    }
+
+    fn update_row(&self, accumulator: &mut [i16], index: usize, add: bool) {
+        for (a, &w) in accumulator
+            .iter_mut()
+            .zip(&self.weights[index * WIDTH..(index + 1) * WIDTH])
+        {
+            *a = if add {
+                a.wrapping_add(w)
+            } else {
+                a.wrapping_sub(w)
+            };
+        }
+    }
+
+    /// Requires a state built by this model for parent and a legal move to child.
+    /// K+A2 is not king-relative: even king moves update just the changed rows.
+    pub fn apply_move(
+        &self,
+        parent: &Board,
+        child: &Board,
+        state: &SfnnPositionState,
+        mv: Move,
+    ) -> SfnnPositionState {
+        let mut next = state.clone();
+        let mover = parent.side_to_move();
+        let king_moved = match mv {
+            Move::BoardMove { from, .. } => {
+                parent.colored_piece_on(from).unwrap().piece == Piece::King
+            }
+            _ => false,
+        };
+        let refresh_pieces = king_moved.then(|| bona_pieces(child));
+        for p in 0..2 {
+            let mut removed = Vec::with_capacity(4);
+            let mut added = Vec::with_capacity(4);
+            match mv {
+                Move::Drop { piece, to } => {
+                    removed.push(hand_index(
+                        piece,
+                        mover,
+                        p,
+                        usize::from(parent.num_in_hand(mover, piece)) - 1,
+                    ));
+                    added.push(board_index(piece, mover, to, p));
+                }
+                Move::BoardMove { from, to, .. } => {
+                    let piece = parent.colored_piece_on(from).unwrap().piece;
+                    removed.push(board_index(piece, mover, from, p));
+                    added.push(board_index(
+                        child.colored_piece_on(to).unwrap().piece,
+                        mover,
+                        to,
+                        p,
+                    ));
+                    if piece == Piece::King {
+                        let plane = 1629 + usize::from(color_index(mover) != p) * 81;
+                        removed.push(plane + orient(from, p));
+                        added.push(plane + orient(to, p));
+                    }
+                    if let Some(captured) = parent.colored_piece_on(to) {
+                        assert_ne!(
+                            captured.piece,
+                            Piece::King,
+                            "terminal king capture has no SFNN state"
+                        );
+                        removed.push(board_index(captured.piece, captured.color, to, p));
+                        let hand_piece = captured.piece.unpromote();
+                        added.push(hand_index(
+                            hand_piece,
+                            mover,
+                            p,
+                            usize::from(parent.num_in_hand(mover, hand_piece)),
+                        ));
+                    }
                 }
             }
+            for &i in &removed {
+                self.update_row(&mut next.accumulators[p], i, false);
+            }
+            for &i in &added {
+                self.update_row(&mut next.accumulators[p], i, true);
+            }
+            let color = if p == 0 { Color::Black } else { Color::White };
+            let king = orient(child.king(color), p);
+            if parent.king(color) != child.king(color) {
+                next.progress_sums_q16[p] = refresh_pieces.as_ref().unwrap()[p]
+                    .iter()
+                    .map(|&i| i64::from(self.progress[king * BONA_NONKING + i]))
+                    .sum();
+            } else {
+                for &i in &removed {
+                    if i < BONA_NONKING {
+                        next.progress_sums_q16[p] -=
+                            i64::from(self.progress[king * BONA_NONKING + i]);
+                    }
+                }
+                for &i in &added {
+                    if i < BONA_NONKING {
+                        next.progress_sums_q16[p] +=
+                            i64::from(self.progress[king * BONA_NONKING + i]);
+                    }
+                }
+            }
+        }
+        next
+    }
+
+    pub fn evaluate_full_refresh(&self, board: &Board) -> SfnnEvaluation {
+        self.evaluate_from_state(board, &self.build_position_state_full(board))
+    }
+
+    pub fn evaluate_from_state(&self, board: &Board, state: &SfnnPositionState) -> SfnnEvaluation {
+        let sums = state.progress_sums_q16;
+        let sum = sums[0] + sums[1];
+        let bucket = progress_bucket(sum);
+        let mut transformed = [0u8; WIDTH];
+        let stm = color_index(board.side_to_move());
+        for (output_side, p) in [stm, 1 - stm].into_iter().enumerate() {
+            let acc = &state.accumulators[p];
             for j in 0..WIDTH / 2 {
                 let a = i32::from(acc[j].clamp(0, 254));
                 let b = i32::from(acc[j + WIDTH / 2].clamp(0, 254));
@@ -193,19 +306,14 @@ impl SfnnModel {
             }
         }
         let stack = &self.stacks[bucket];
-        let first = stack.first.forward(&transformed);
-        let mut activated = vec![0; 16];
+        let first = stack.first.forward::<8>(&transformed);
+        let mut activated = [0; 16];
         for j in 0..8 {
             activated[j] = ((i64::from(first[j]) * i64::from(first[j]) >> 19).min(127)) as u8;
             activated[8 + j] = clip(first[j]);
         }
-        let second: Vec<_> = stack
-            .second
-            .forward(&activated)
-            .into_iter()
-            .map(clip)
-            .collect();
-        let raw_output = stack.output.forward(&second)[0];
+        let second = stack.second.forward::<64>(&activated).map(clip);
+        let raw_output = stack.output.forward::<1>(&second)[0];
         SfnnEvaluation {
             progress_sums_q16: sums,
             selected_sum_q16: sum,
@@ -229,48 +337,27 @@ pub fn progress_bucket(sum: i64) -> usize {
 fn bona_pieces(board: &Board) -> [Vec<usize>; 2] {
     let mut lists: [Vec<usize>; 2] = std::array::from_fn(|_| Vec::with_capacity(38));
     for square in Square::ALL {
-        let Some(pc) = board.colored_piece_on(square) else {
-            continue;
-        };
-        let slot = match pc.piece {
-            Piece::Pawn => 0,
-            Piece::Lance => 1,
-            Piece::Knight => 2,
-            Piece::Silver => 3,
-            Piece::Gold | Piece::Tokin | Piece::PLance | Piece::PKnight | Piece::PSilver => 4,
-            Piece::Bishop => 5,
-            Piece::PBishop => 6,
-            Piece::Rook => 7,
-            Piece::PRook => 8,
-            Piece::King => continue,
-        };
-        for p in 0..2 {
-            let color = usize::from(color_index(pc.color) != p);
-            let sq = if p == 0 {
-                square as usize
-            } else {
-                80 - square as usize
-            };
-            lists[p].push(90 + (slot * 2 + color) * 81 + sq);
+        if let Some(pc) = board.colored_piece_on(square) {
+            if pc.piece != Piece::King {
+                for p in 0..2 {
+                    lists[p].push(board_index(pc.piece, pc.color, square, p));
+                }
+            }
         }
     }
-    for (piece, friendly, enemy) in [
-        (Piece::Pawn, 1, 20),
-        (Piece::Lance, 39, 44),
-        (Piece::Knight, 49, 54),
-        (Piece::Silver, 59, 64),
-        (Piece::Gold, 69, 74),
-        (Piece::Bishop, 79, 82),
-        (Piece::Rook, 85, 88),
+    for piece in [
+        Piece::Pawn,
+        Piece::Lance,
+        Piece::Knight,
+        Piece::Silver,
+        Piece::Gold,
+        Piece::Bishop,
+        Piece::Rook,
     ] {
         for color in Color::ALL {
             for ordinal in 0..usize::from(board.num_in_hand(color, piece)) {
                 for p in 0..2 {
-                    lists[p].push(if color_index(color) == p {
-                        friendly + ordinal
-                    } else {
-                        enemy + ordinal
-                    });
+                    lists[p].push(hand_index(piece, color, p, ordinal));
                 }
             }
         }
@@ -281,6 +368,46 @@ fn bona_pieces(board: &Board) -> [Vec<usize>; 2] {
         list.resize(38, 0);
     }
     lists
+}
+fn orient(square: Square, p: usize) -> usize {
+    if p == 0 {
+        square as usize
+    } else {
+        80 - square as usize
+    }
+}
+fn board_index(piece: Piece, color: Color, square: Square, p: usize) -> usize {
+    let sq = orient(square, p);
+    let slot = match piece {
+        Piece::Pawn => 0,
+        Piece::Lance => 1,
+        Piece::Knight => 2,
+        Piece::Silver => 3,
+        Piece::Gold | Piece::Tokin | Piece::PLance | Piece::PKnight | Piece::PSilver => 4,
+        Piece::Bishop => 5,
+        Piece::PBishop => 6,
+        Piece::Rook => 7,
+        Piece::PRook => 8,
+        Piece::King => return BONA_NONKING + sq,
+    };
+    90 + (slot * 2 + usize::from(color_index(color) != p)) * 81 + sq
+}
+fn hand_index(piece: Piece, color: Color, p: usize, ordinal: usize) -> usize {
+    let (friendly, enemy) = match piece {
+        Piece::Pawn => (1, 20),
+        Piece::Lance => (39, 44),
+        Piece::Knight => (49, 54),
+        Piece::Silver => (59, 64),
+        Piece::Gold => (69, 74),
+        Piece::Bishop => (79, 82),
+        Piece::Rook => (85, 88),
+        _ => panic!("invalid hand piece"),
+    };
+    if color_index(color) == p {
+        friendly + ordinal
+    } else {
+        enemy + ordinal
+    }
 }
 fn read_progress(bytes: &[u8]) -> Result<Vec<i32>, SfnnError> {
     if bytes.len() != PROGRESS_COUNT * 8 {
@@ -453,5 +580,43 @@ mod tests {
                 .is_err()
             );
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod search_range_test {
+    use super::*;
+    #[test]
+    #[ignore = "requires micro; explicit P2 score-range verification"]
+    fn sfnn_score_stays_outside_search_mate_range() {
+        let dir = std::path::PathBuf::from(
+            std::env::var_os("HAITAKA_SFNN_MODEL_DIR").expect("model directory required"),
+        );
+        let mut model = SfnnModel::from_bytes(
+            &std::fs::read(dir.join("nn.bin")).unwrap(),
+            &std::fs::read(dir.join("progress.bin")).unwrap(),
+            MICRO_ARCH,
+        )
+        .unwrap();
+        for stack in &mut model.stacks {
+            stack.output.weights.fill(0);
+            stack.output.bias[0] = i32::MAX;
+        }
+        assert_eq!(
+            model.evaluate_full_refresh(&Board::startpos()).eval_cp,
+            31753
+        );
+        let model = std::sync::Arc::new(model);
+        let summary = crate::search_impl_sfnn(
+            &Board::startpos().to_string(),
+            1,
+            model,
+            crate::SearchEvalMode::Incremental,
+        )
+        .unwrap();
+        assert_eq!(
+            summary.root_result.last_completed_iteration_value,
+            Some(-crate::MATE_TT_THRESHOLD + 1)
+        );
     }
 }

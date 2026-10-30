@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "branch": "feat/tuyouraou11-p2",
+  "baseCommit": "428e32fef63beaebf759c3b837cc4edfd6f38402",
+  "source": "P2 implementation recorded in this branch commit; see p2-engine.md",
+  "arch": "SFNN_ka2_2048_8_64_progress8",
+  "target": "wasm32-unknown-unknown",
+  "simd128Required": false,
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "wasmPack": "wasm-pack 0.15.0",
+  "wasmBindgen": "0.2.118",
+  "packages": {
+    "pkg": {
+      "directory": "target/tuyouraou11/pkg",
+      "features": [],
+      "files": {
+        "haitaka_wasm.js": {
+          "bytes": 38478,
+          "sha256": "73308ab53cf16016fef86e61f35b7a2dab34d9222e6f9a13b7bf9b430050873d"
+        },
+        "haitaka_wasm_bg.wasm": {
+          "bytes": 18494782,
+          "sha256": "690852a5bf1812b672476f78fac140fdc91d109ca4fc0844b021fcc0f9396e67"
+        },
+        "haitaka_wasm.d.ts": {
+          "bytes": 13152,
+          "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+        },
+        "haitaka_wasm_bg.wasm.d.ts": {
+          "bytes": 7698,
+          "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+        }
+      }
+    },
+    "pkg-diagnostics": {
+      "directory": "target/tuyouraou11/pkg-diagnostics",
+      "features": [
+        "sfnn-diagnostics"
+      ],
+      "files": {
+        "haitaka_wasm.js": {
+          "bytes": 39334,
+          "sha256": "a6e81b6092e9482178f3b0f43f38f8455e9b5c85cfeecf5c41bdcc543d9924ac"
+        },
+        "haitaka_wasm_bg.wasm": {
+          "bytes": 18499747,
+          "sha256": "1d768a65fb24787d378a6901babace64213c366e0222ad2543bdbe61408d4962"
+        },
+        "haitaka_wasm.d.ts": {
+          "bytes": 13325,
+          "sha256": "4b7c29672a9170ba08bdd3898bcbca00fc5b8faa6aa3e10ae2b5867c18d18d46"
+        },
+        "haitaka_wasm_bg.wasm.d.ts": {
+          "bytes": 7805,
+          "sha256": "dbb502ceebf1d68ced8045a22c9803a32b9c1c34805707b3838757aa29d4b088"
+        }
+      }
+    }
+  }
+}
