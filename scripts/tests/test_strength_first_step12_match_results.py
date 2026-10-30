@@ -170,6 +170,24 @@ class CampaignResumeTests(unittest.TestCase):
         engine.write_bytes(b"offline-test-runtime")
         fixture.write(root / "preflight/match-gate.json", {"status": "passed"})
         fixture.write(root / "preflight/qualification-gate.json", {"status": "passed"})
+        fixture.write(root / "contract.json", {})
+        fixture.write(root / "authorization/cpu-match.json", {"granted": True})
+        for row in fixture.rows:
+            row.update({"matchSeed": matches.MATCH_SEED, "movetimeMs": matches.MOVETIME_MS,
+                        "maxPlies": matches.MAX_PLIES, "threads": 1, "concurrentGames": 1,
+                        "openingOrder": "sequential", "openingRandomPlies": 0})
+        schedule_path = root / "openings/schedule.json"
+        fixture.write(schedule_path, {"cells": list(matches.CELLS), "blocks": 4,
+                                     "gamesPerCell": 256, "pairsPerCell": 128, "rows": fixture.rows})
+        regression = root / "preflight/layout-regression.json"
+        fixture.write(regression, {"status": "passed"})
+        fixture.write(root / "preflight/schedule-layout-compatibility.json", {
+            "schema": "haitaka-anhoku-strength-first-step12-schedule-layout-compatibility-v1",
+            "status": "passed", "sourceLayout": "per-row", "rowsVerified": 512,
+            "scheduleModified": False, "scheduleRegenerated": False,
+            "schedule": {"sha256": matches.sha256(schedule_path), "bytes": schedule_path.stat().st_size},
+            "patchedHelper": {"path": "scripts/strength_first_step12_matches.py", "sha256": matches.sha256(Path(matches.__file__))},
+            "regressionTests": {"path": "preflight/layout-regression.json", "sha256": matches.sha256(regression)}})
         real_run_block = matches.run_block
         launched = []
         interrupted = False
@@ -195,8 +213,7 @@ class CampaignResumeTests(unittest.TestCase):
     def exercise(self, interrupt):
         fixture, engine, launched, block = self.campaign(interrupt)
         root = fixture.root
-        with mock.patch.object(matches, "schedule", return_value={"rows": fixture.rows}), \
-             mock.patch.object(matches, "runtime", return_value=engine), \
+        with mock.patch.object(matches, "runtime", return_value=engine), \
              mock.patch.object(matches, "run_block", side_effect=block), \
              mock.patch.object(matches.subprocess, "run", side_effect=AssertionError("no actual matches")):
             if interrupt:
@@ -229,6 +246,42 @@ class CampaignResumeTests(unittest.TestCase):
 
     def test_fresh_campaign_and_completed_rerun_keep_separate_counts(self):
         self.exercise(interrupt=False)
+
+
+    def stale_gate_is_rejected(self, change):
+        fixture, engine, _, _ = self.campaign()
+        root = fixture.root
+        with mock.patch.object(matches, "runtime", return_value=engine):
+            original_gate = matches.gate(root)
+            self.assertEqual(original_gate["status"], "passed")
+            if change == "schedule":
+                fixture.rows[0]["startSfen"] = "changed-opening b - 1"
+                path = root / "openings/schedule.json"
+                value = matches.load(path)
+                value["rows"] = fixture.rows
+                fixture.write(path, value)
+                self.assertEqual(matches.schedule(root)["rows"][0]["startSfen"], "changed-opening b - 1")
+                reason = "frozen schedule bytes"
+            else:
+                fixture.write(root / "authorization/cpu-match.json", {"granted": False})
+                reason = "authorization is not granted"
+            for resume in (False, True):
+                with self.subTest(resume=resume):
+                    fixture.write(root / "preflight/match-gate.json", original_gate)
+                    with mock.patch.object(matches, "run_block", side_effect=AssertionError("must not dispatch")) as dispatch, \
+                         mock.patch.object(matches.subprocess, "run", side_effect=AssertionError("must not launch")):
+                        with self.assertRaisesRegex(matches.MatchError, "match gate is not passed"):
+                            matches.run(root, resume=resume)
+                        dispatch.assert_not_called()
+                    rejected = matches.load(root / "preflight/match-gate.json")
+                    self.assertEqual(rejected["status"], "blocked")
+                    self.assertTrue(any(reason in item for item in rejected["reasons"]))
+
+    def test_opening_changed_after_passed_gate_blocks_fresh_and_resumed_campaign(self):
+        self.stale_gate_is_rejected("schedule")
+
+    def test_revoked_authorization_blocks_fresh_and_resumed_campaign(self):
+        self.stale_gate_is_rejected("authorization")
 
 
 if __name__ == "__main__":

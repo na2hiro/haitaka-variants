@@ -370,8 +370,8 @@ def run_block(root: Path, sched: dict[str, Any], cell: str, block: int, engine: 
 
 def run(root: Path, resume: bool) -> dict[str, Any]:
     root = root.expanduser().resolve()
-    gate_path = root / "preflight/match-gate.json"
-    gate_value = load(gate_path) if gate_path.is_file() else gate(root)
+    # Revalidate artifact bindings and authorization on every invocation.
+    gate_value = gate(root)
     if gate_value.get("status") != "passed":
         fail("match gate is not passed")
     sched = schedule(root)
