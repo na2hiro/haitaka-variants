@@ -386,17 +386,20 @@ def run(root: Path, resume: bool) -> dict[str, Any]:
         write_status(root, "running", gamesLaunched=0, completedBlocks=0, completedGames=0)
         records: list[dict[str, Any]] = []
         total_launched = 0
+        total_completed = 0
         for cell in CELLS:
             update, network = model_update(root, cell)
             for block in range(BLOCKS):
-                write_status(root, "running", cell=cell, block=block, modelUpdate=update, gamesLaunched=total_launched, completedBlocks=len(records), completedGames=total_launched)
+                write_status(root, "running", cell=cell, block=block, modelUpdate=update, gamesLaunched=total_launched, completedBlocks=len(records), completedGames=total_completed)
                 record = run_block(root, sched, cell, block, engine, network)
                 records.append(record)
                 total_launched += int(record.get("gamesLaunched", 0))
-                write_status(root, "running", cell=cell, block=block, modelUpdate=update, gamesLaunched=total_launched, completedBlocks=len(records), completedGames=total_launched)
-        summary = {"schema": "haitaka-anhoku-strength-first-step12-match-status-v1", "createdAt": now(), "experimentId": EXPERIMENT_ID, "status": "complete-sealed", "completedBlocks": len(records), "completedGames": total_launched, "blocks": records, "schedule": {"cells": list(CELLS), "blocks": BLOCKS, "games": 512, "seed": MATCH_SEED, "threads": 1, "concurrency": 1}, "outcomesSealed": True, "outcomesOpened": False, "gamesLaunched": total_launched, "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "handcraftedRemainsProduction": True}}
+                # Both new and previously accepted blocks contain 64 sealed games.
+                total_completed += GAMES_PER_BLOCK
+                write_status(root, "running", cell=cell, block=block, modelUpdate=update, gamesLaunched=total_launched, completedBlocks=len(records), completedGames=total_completed)
+        summary = {"schema": "haitaka-anhoku-strength-first-step12-match-status-v1", "createdAt": now(), "experimentId": EXPERIMENT_ID, "status": "complete-sealed", "completedBlocks": len(records), "completedGames": total_completed, "blocks": records, "schedule": {"cells": list(CELLS), "blocks": BLOCKS, "games": 512, "seed": MATCH_SEED, "threads": 1, "concurrency": 1}, "outcomesSealed": True, "outcomesOpened": False, "gamesLaunched": total_launched, "flags": {"confirmationAuthorized": False, "deploymentAuthorized": False, "handcraftedRemainsProduction": True}}
         atomic_json(root / "matches/status.json", summary)
-        atomic_json(root / "matches/resource-ledger.json", {"schema": "haitaka-anhoku-strength-first-step12-match-resource-ledger-v1", "createdAt": now(), "status": "complete", "host": "192.168.0.12", "runtime": {"path": str(engine), "sha256": sha256(engine)}, "blocks": records, "games": total_launched, "threads": 1, "concurrency": 1, "matchSeed": MATCH_SEED, "outcomesOpened": False})
+        atomic_json(root / "matches/resource-ledger.json", {"schema": "haitaka-anhoku-strength-first-step12-match-resource-ledger-v1", "createdAt": now(), "status": "complete", "host": "192.168.0.12", "runtime": {"path": str(engine), "sha256": sha256(engine)}, "blocks": records, "games": total_completed, "gamesLaunched": total_launched, "threads": 1, "concurrency": 1, "matchSeed": MATCH_SEED, "outcomesOpened": False})
         return summary
 
 

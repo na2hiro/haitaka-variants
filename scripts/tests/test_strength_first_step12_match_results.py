@@ -13,6 +13,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import strength_first_step12_match_validation as validator
 import strength_first_step12_analysis as analysis
+import strength_first_step12_matches as matches
 
 
 class NativeResultTests(unittest.TestCase):
@@ -157,6 +158,77 @@ class NativeResultTests(unittest.TestCase):
             self.assertEqual(model["wdl"], {"aWins": 64, "bWins": 64, "draws": 128})
             self.assertEqual(model["cappedGames"], 64)
             self.assertEqual(model["meanPairScore"]["exact"], "1/2")
+
+
+class CampaignResumeTests(unittest.TestCase):
+    def campaign(self, interrupt=False):
+        fixture = NativeResultTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        root = fixture.root
+        engine = root / "fixture-cli"
+        engine.write_bytes(b"offline-test-runtime")
+        fixture.write(root / "preflight/match-gate.json", {"status": "passed"})
+        fixture.write(root / "preflight/qualification-gate.json", {"status": "passed"})
+        real_run_block = matches.run_block
+        launched = []
+        interrupted = False
+
+        def block(repo, schedule, cell, index, runtime, network):
+            nonlocal interrupted
+            block_dir = root / f"matches/{cell}/block-{index:02d}"
+            if matches.valid_accepted(block_dir) is not None:
+                return real_run_block(repo, schedule, cell, index, runtime, network)
+            if interrupt and len(launched) == 3 and not interrupted:
+                interrupted = True
+                raise matches.MatchError("simulated controller interruption")
+            # Seal the real validator's offline fixture instead of launching games.
+            attempt, _ = fixture.block(cell, index)
+            validator.validate(root, cell, index, attempt)
+            fixture.write(attempt / "accepted.json", {"status": "accepted"})
+            launched.append((cell, index))
+            return {"cell": cell, "block": index, "status": "accepted",
+                    "attempt": attempt.name, "gamesLaunched": 64}
+
+        return fixture, engine, launched, block
+
+    def exercise(self, interrupt):
+        fixture, engine, launched, block = self.campaign(interrupt)
+        root = fixture.root
+        with mock.patch.object(matches, "schedule", return_value={"rows": fixture.rows}), \
+             mock.patch.object(matches, "runtime", return_value=engine), \
+             mock.patch.object(matches, "run_block", side_effect=block), \
+             mock.patch.object(matches.subprocess, "run", side_effect=AssertionError("no actual matches")):
+            if interrupt:
+                with self.assertRaisesRegex(matches.MatchError, "simulated"):
+                    matches.run(root, resume=False)
+                interrupted_status = matches.load(root / "matches/status.json")
+                self.assertEqual(interrupted_status["completedGames"], 192)
+                self.assertEqual(interrupted_status["gamesLaunched"], 192)
+            summary = matches.run(root, resume=interrupt)
+            self.assertEqual(summary["completedBlocks"], 8)
+            self.assertEqual(summary["completedGames"], 512)
+            self.assertEqual(summary["gamesLaunched"], 320 if interrupt else 512)
+            self.assertEqual(len(launched), 8)
+            ledger = matches.load(root / "matches/resource-ledger.json")
+            self.assertEqual(ledger["games"], 512)
+            self.assertEqual(ledger["gamesLaunched"], summary["gamesLaunched"])
+            with mock.patch.object(analysis, "BOOTSTRAP_REPLICATES", 16):
+                result = analysis.analyze(root, root / "analysis.json")
+            self.assertEqual(result["status"], "complete-sealed")
+            repeated = matches.run(root, resume=True)
+            self.assertEqual(repeated["completedGames"], 512)
+            self.assertEqual(repeated["completedBlocks"], 8)
+            self.assertEqual(repeated["gamesLaunched"], 0)
+            self.assertEqual(len(launched), 8, "accepted blocks must not launch again")
+            self.assertTrue(all(record["status"] == "already-accepted" for record in repeated["blocks"]))
+            self.assertEqual(matches.load(root / "matches/resource-ledger.json")["games"], 512)
+
+    def test_interrupted_campaign_resumes_and_remains_analyzable_without_relaunches(self):
+        self.exercise(interrupt=True)
+
+    def test_fresh_campaign_and_completed_rerun_keep_separate_counts(self):
+        self.exercise(interrupt=False)
 
 
 if __name__ == "__main__":
