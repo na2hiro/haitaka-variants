@@ -71,9 +71,9 @@ def _phase(root: Path, phase: str) -> dict[str, Any]:
                 f1.require(len(replay_cache[cache_key]) == len(replay_rows), "replay identity duplicated")
             replayed = replay_cache[cache_key].get(replay_binding["replayGameIndex"])
             f1.require(replayed is not None and replayed.get("status") == "passed" and replayed.get("searchDispatched") is False and replayed.get("modelLoaded") is False and replayed.get("browserLaunched") is False and all(replayed.get("checks", {}).values()), f"replay evidence differs: {game_id}")
-            f1.require(replayed.get("terminationReason") == raw["rawEnd"] and replayed.get("winnerColor") == raw["rawWinnerColor"] and replayed.get("replayedPlies") == raw["plies"], f"replayed result differs: {game_id}")
-            score = .5 if replayed["winner"] is None else 1 if replayed["winner"] == "A" else 0
-            f1.require(game.get("scoreTreatment") == score and game.get("genuinePlyCap") == (replayed["terminationReason"] == "move-limit-reached"), f"game score differs from replay: {game_id}")
+            f1.require(replayed.get("replayedPlies") == raw["plies"], f"replayed ply count differs: {game_id}")
+            score, genuine_cap = f1.canonical_replay_result(raw, replayed)
+            f1.require(game.get("scoreTreatment") == score and game.get("genuinePlyCap") == genuine_cap, f"game score differs from replay: {game_id}")
             accepted.append(game)
         evidence.append(f1.artifact(path))
     f1.require(len(accepted) == expected and {game["gameId"] for game in accepted} == set(by_id), "accepted game IDs incomplete or repeated")

@@ -245,6 +245,21 @@ def select_by_common_huber(candidates: Sequence[Mapping[str, Any]], *, verify_fi
     return {"selectedUpdate": selected, "globalMinimumHuber": minimum, "selectedHuber": by_update[selected]["validationHuber"], "tieTolerance": 1e-12, "criterion": "earliest-eligible-Huber-within-global-minimum-plus-tolerance", "matchEvidenceUsed": False, "selected": dict(by_update[selected])}
 
 
+def canonical_replay_result(game: Mapping[str, Any], replay: Mapping[str, Any]) -> tuple[float, bool]:
+    """A browser cap is provisional; replay adjudicates the final position."""
+    cap = game["rawEnd"] == "move-limit-reached"
+    if cap:
+        require(game["plies"] == 200 and game["rawWinnerColor"] is None, "provisional cap differs")
+    else:
+        require(replay.get("terminationReason") == game["rawEnd"] and replay.get("winnerColor") == game["rawWinnerColor"], "independent terminal replay differs")
+    require(replay.get("terminationReason") in ("king-captured", "no-legal-move", "repetition-draw", "perpetual-check-loss", "jishogi-draw", "maximum-ply-capped"), "canonical terminal reason differs")
+    if replay["terminationReason"] == "maximum-ply-capped":
+        require(cap and replay.get("winner") is None and replay.get("winnerColor") is None, "unreported replay cap")
+    require(replay.get("winner") in (None, "A", "B"), "canonical winner differs")
+    score = 0.5 if replay["winner"] is None else 1 if replay["winner"] == "A" else 0
+    return score, replay["terminationReason"] == "maximum-ply-capped"
+
+
 def pair_statistics(pair_legs: Sequence[Sequence[Mapping[str, Any]]]) -> dict[str, Any]:
     from strength_first_confirmation_core import conservative_lower_bound, rejects_half
     ordinary: list[Fraction] = []

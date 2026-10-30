@@ -636,18 +636,7 @@ def _ordered_parts(rows: list[dict[str, Any]]) -> list[tuple[str, list[dict[str,
 
 
 def _canonical_replay_result(game: dict[str, Any], replay: dict[str, Any]) -> tuple[float, bool]:
-    """A browser cap is provisional; replay adjudicates the final position."""
-    cap = game["rawEnd"] == "move-limit-reached"
-    if cap:
-        f1.require(game["plies"] == 200 and game["rawWinnerColor"] is None, "provisional cap differs")
-    else:
-        f1.require(replay.get("terminationReason") == game["rawEnd"] and replay.get("winnerColor") == game["rawWinnerColor"], "independent terminal replay differs")
-    f1.require(replay.get("terminationReason") in ("king-captured", "no-legal-move", "repetition-draw", "perpetual-check-loss", "jishogi-draw", "maximum-ply-capped"), "canonical terminal reason differs")
-    if replay["terminationReason"] == "maximum-ply-capped":
-        f1.require(cap and replay.get("winner") is None and replay.get("winnerColor") is None, "unreported replay cap")
-    f1.require(replay.get("winner") in (None, "A", "B"), "canonical winner differs")
-    score = 0.5 if replay["winner"] is None else 1 if replay["winner"] == "A" else 0
-    return score, replay["terminationReason"] == "maximum-ply-capped"
+    return f1.canonical_replay_result(game, replay)
 
 
 def _accept(root: Path, phase: str, block: int, attempt: int, runtime: dict[str, Any], parts: list[dict[str, Any]], block_dir: Path, *, deadline: float, attempt_started: float) -> dict[str, Any]:
