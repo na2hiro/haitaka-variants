@@ -193,6 +193,20 @@ def state_equal(torch: Any, left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
+def snapshot_identity(state: dict[str, Any]) -> dict[str, Any]:
+    """Ignore checkpoint recovery bookkeeping, preserving all training state."""
+    return {
+        **state,
+        "candidates": [
+            {
+                **candidate,
+                "checkpoint": {key: value for key, value in candidate["checkpoint"].items() if key != "recoveredOrphan"},
+            }
+            for candidate in state["candidates"]
+        ],
+    }
+
+
 def evaluate_both(torch: Any, model: Any, loader: Any, recipe: dict[str, Any], tau: float, device: Any, path: Path, records: int) -> dict[str, Any]:
     import strength_first_trainer as core
     total_h = 0.0
@@ -358,7 +372,7 @@ def _run_arm_locked(root: Path, arm: str, resume: bool, attempt: int, gate: dict
                 snapshot = output / f"states/u{update:06d}.pt"
                 if snapshot.exists():
                     previous = torch.load(snapshot, map_location=device, weights_only=False)
-                    f1.require(state_equal(torch, previous, state), f"immutable state snapshot conflicts at {update}")
+                    f1.require(state_equal(torch, snapshot_identity(previous), snapshot_identity(state)), f"immutable state snapshot conflicts at {update}")
                 else:
                     core.atomic_torch_save(torch, state, snapshot)
                 core.atomic_torch_save(torch, state, state_path)
