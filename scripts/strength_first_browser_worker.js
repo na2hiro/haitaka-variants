@@ -17,7 +17,7 @@ const TERMINAL_REASONS = new Set([
   "jishogi-draw",
 ]);
 const DRAW_REASONS = new Set(["repetition-draw", "jishogi-draw"]);
-const LOSS_REASONS = new Set(["king-captured", "no-legal-move", "perpetual-check-loss"]);
+const LOSS_REASONS = new Set(["king-captured", "no-legal-move"]);
 
 function send(engine, command) {
   return Array.from(engine.send(command), String);
@@ -64,9 +64,14 @@ function percentile(values, quantile) {
 
 function parseGameover(outputs) {
   const line = outputs.find((item) => item.startsWith("info string gameover ")) ?? null;
-  if (!line) return { line: null, reason: null };
+  if (!line) return { line: null, reason: null, loserColor: null };
   const rest = line.slice("info string gameover ".length).trim();
-  return { line, reason: rest.split(/\s+/)[0] || null };
+  const token = rest.split(/\s+/)[0] || null;
+  if (token === "perpetual-check-loss" || token?.startsWith("perpetual-check-loss:")) {
+    const match = token.match(/^perpetual-check-loss:(black|white)$/);
+    return { line, reason: "perpetual-check-loss", loserColor: match?.[1] ?? null };
+  }
+  return { line, reason: token, loserColor: null };
 }
 
 function parseSearch(outputs, budget, engineName, color, dispatchAt, begunAt, endedAt, envelopeId) {
@@ -78,7 +83,7 @@ function parseSearch(outputs, budget, engineName, color, dispatchAt, begunAt, en
 
   const bestMove = bestLine.slice("bestmove ".length).trim();
   const gameover = parseGameover(outputs);
-  const requestedMs = budget.mode === "movetime" ? budget.movetimeMs : null;
+  const requestedMs = budget?.mode === "movetime" ? budget.movetimeMs : null;
   const elapsedMs = endedAt - begunAt;
   const deadlineLatenessMs = requestedMs === null ? 0 : Math.max(0, elapsedMs - requestedMs);
   const alphaBetaNodes = numberAfter(tokens, "alphaBetaNodes", "nodes") ?? 0;
@@ -93,13 +98,14 @@ function parseSearch(outputs, budget, engineName, color, dispatchAt, begunAt, en
     schema: "haitaka-anhoku-strength-first-raw-search-v1",
     engine: engineName,
     color: colorName(color),
-    command: `go ${budget.command}`,
+    command: budget ? `go ${budget.command}` : null,
     outputs,
     info,
     bestMove,
     gameover: gameover.line,
     gameoverReason: gameover.reason,
-    requestedNodes: budget.mode === "nodes" ? budget.nodes : null,
+    gameoverLoserColor: gameover.loserColor,
+    requestedNodes: budget?.mode === "nodes" ? budget.nodes : null,
     requestedMs,
     dispatchAt,
     begunAt,
@@ -145,7 +151,7 @@ function search(engine, startSfen, moves, budget, engineName, color, envelopeId)
   return parseSearch(outputs, budget, engineName, color, dispatchAt, begunAt, endedAt, envelopeId);
 }
 
-function terminalFrom(trace, sideEngine) {
+function terminalFrom(trace, sideEngine, blackEngine, whiteEngine) {
   if (!trace.gameoverReason) {
     if (trace.bestMove === "resign" || trace.missingMove || trace.emergencyFallbackUsed || !trace.playMoveWasSearched) {
       throw new Error(`unqualified ${sideEngine} move: ${JSON.stringify(trace)}`);
@@ -163,6 +169,13 @@ function terminalFrom(trace, sideEngine) {
     throw new Error(`terminal ${trace.gameoverReason} returned ${trace.bestMove}`);
   }
   if (DRAW_REASONS.has(trace.gameoverReason)) return { reason: trace.gameoverReason, winner: null };
+  if (trace.gameoverReason === "perpetual-check-loss") {
+    if (trace.gameoverLoserColor !== "black" && trace.gameoverLoserColor !== "white") {
+      throw new Error(`missing perpetual-check losing color: ${trace.gameover}`);
+    }
+    const loser = trace.gameoverLoserColor === "black" ? blackEngine : whiteEngine;
+    return { reason: trace.gameoverReason, winner: loser === "A" ? "B" : "A" };
+  }
   if (LOSS_REASONS.has(trace.gameoverReason)) {
     return { reason: trace.gameoverReason, winner: sideEngine === "A" ? "B" : "A" };
   }
@@ -187,6 +200,7 @@ function playGame(engineA, engineB, opening, pairIndex, secondGame, budget, maxP
   const searches = [];
   let winner = null;
   let terminationReason = "maximum-ply-capped";
+  let terminalNotification = null;
 
   for (let ply = 0; ply < maxPlies; ply += 1) {
     const color = ply % 2 === 0 ? startColor : oppositeColor(startColor);
@@ -195,15 +209,35 @@ function playGame(engineA, engineB, opening, pairIndex, secondGame, budget, maxP
     const trace = search(engine, opening.sfen, moves, budget, sideEngine, color, envelopeId);
     trace.ply = ply + 1;
     trace.moveIndex = moves.length;
-    searches.push(trace);
-
-    const terminal = terminalFrom(trace, sideEngine);
+    const terminal = terminalFrom(trace, sideEngine, blackEngine, whiteEngine);
     if (terminal) {
       winner = terminal.winner;
       terminationReason = terminal.reason;
+      terminalNotification = trace;
       break;
     }
+    searches.push(trace);
     moves.push(trace.bestMove);
+  }
+
+  if (terminationReason === "maximum-ply-capped") {
+    // Adjudicate the final child without another search or timing sample.
+    const color = moves.length % 2 === 0 ? startColor : oppositeColor(startColor);
+    const sideEngine = color === "b" ? blackEngine : whiteEngine;
+    const engine = sideEngine === "A" ? engineA : engineB;
+    position(engine, opening.sfen, moves);
+    const begunAt = performance.now();
+    const outputs = Array.from(engine.terminal_notifications(), String);
+    if (outputs.length) {
+      const trace = parseSearch(outputs, null, sideEngine, color, begunAt, begunAt, performance.now(), envelopeId);
+      trace.ply = moves.length + 1;
+      trace.moveIndex = moves.length;
+      const terminal = terminalFrom(trace, sideEngine, blackEngine, whiteEngine);
+      if (!terminal) throw new Error("terminal adjudication did not return a terminal result");
+      winner = terminal.winner;
+      terminationReason = terminal.reason;
+      terminalNotification = trace;
+    }
   }
 
   return {
@@ -228,6 +262,7 @@ function playGame(engineA, engineB, opening, pairIndex, secondGame, budget, maxP
     emergencyFallbacks: searches.filter((item) => item.emergencyFallbackUsed).length,
     unsearchedMoves: searches.filter((item) => item.unsearchedMove).length,
     searches,
+    terminalNotification,
   };
 }
 
