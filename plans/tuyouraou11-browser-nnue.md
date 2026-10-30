@@ -2,7 +2,7 @@
 
 作成: 2026-10-30
 調査対象: haitaka-variants d0c29c0 / shogitter-3 c94a8d63
-状態: P0完了。共通契約は[contract.md](tuyouraou11/contract.md)、進捗は[status.md](tuyouraou11/status.md)。エンジン実装、モデル実体の検証、ブラウザ実測は未実施。
+状態: P0・P1完了。共通契約は[contract.md](tuyouraou11/contract.md)、進捗は[status.md](tuyouraou11/status.md)。P1のscalar評価器・モデル実体検証は完了（[結果](tuyouraou11/p1-engine.md)）。差分評価・探索/Wasm統合・ブラウザ実測は未実施。
 
 ## agentsへの割当方法（実行指示）
 
@@ -164,7 +164,7 @@ https://github.com/yaneurao/YaneuraOu/blob/master/source/eval/nnue/features/half
 
 公式progress仕様では、81玉位置×1548 BonaPiece、ヘッダなしlittle-endian f64を125,388個（1,003,104 bytes）格納する。読込時にQ16へ丸め、局面和は64bit整数。progress8境界は -127527, -71999, -33477, 0, 33477, 71999, 127527 で、境界との一致は上側bucket。nn.bin内にProgressセクションはない。SFNN構造hashは0x3C203B32だが、hashだけで幅やstack配置まで検証したことにはならない。
 
-公式masterは可変参照である。実装開始時に対応するcommitを固定し、配布binと一致することを検証する。現時点では配布アーカイブ自体は展開しておらず、正確なnn.binバイト数、SHA-256、ヘッダ、同梱ライセンス文面は未確認。
+公式masterは可変参照である。実装開始時に対応するcommitを固定し、配布binと一致することを検証する。P1でmicroを展開し、正確なbytes/SHA-256/ヘッダをprovenance.jsonへ固定した。配布物にライセンス文書はなく、記事の明示許諾とtag.jsonの作者表記をMODEL-LICENSE.txtへ保存した。miniは未取得。
 
 ## 現状のコードと差分
 

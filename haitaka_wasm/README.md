@@ -24,6 +24,14 @@ and tests.
 for browser and Worker transports where stdin/stdout are not available. The
 initial API is synchronous: `send("go ...")` returns after search completes.
 
+## TuyouraOu11 micro (P1)
+
+The native `sfnn::SfnnModel` API supports standalone scalar full-refresh
+evaluation with `nn.bin` plus `progress.bin`. It is verified against the pinned
+external reference on 236 positions. It is not yet connected to search or
+exported as a browser `load_sfnn` function; that is the next implementation phase.
+See [format, model provenance, and reproduction steps](../docs/tuyouraou11-sfnn.md).
+
 ## Build For Browser Use
 
 Install prerequisites:

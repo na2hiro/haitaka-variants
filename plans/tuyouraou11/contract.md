@@ -31,7 +31,7 @@ function load_sfnn(
 | SFNN_UNSUPPORTED_ARCH | 完全一致しないarch（miniを含む） |
 | SFNN_UNSUPPORTED_RULESET | 通常将棋以外のfeatureビルド |
 | SFNN_INVALID_NN | nn.binのヘッダ/section/次元/長さ/余剰等の不正 |
-| SFNN_INVALID_PROGRESS | progress.binの長さ/非有限値/変換範囲等の不正 |
+| SFNN_INVALID_PROGRESS | progress.binの長さ/非有限値等の不正 |
 
 検証順序はarch、build、nn、progress。両方を検証後に一括交換し、その評価器に属するTTを消去する。失敗時は旧評価器とTTを保持する。トップレベルとUsiEngineは従来どおり別所有で、一方のロードで他方を変更しない。既存load_nnueのABIを維持する。要求したSFNN失敗をhandcraftedへ自動フォールバックしない。
 
@@ -140,3 +140,7 @@ progress.sumsQ16は参照実装が加算に用いる各視点の整数和を名�
 ## P0の検証範囲
 
 本書は実装契約であって検証結果ではない。実bin/正解fixture/測定結果は未生成。公式masterの参照を正解として固定したとは扱わず、P1で対応commitとbinの一致を証明する。P4までの未決項目はstatus.mdへ明示する。
+
+## P1の確認結果（契約の明確化）
+
+P1で実microと固定参照commitを検証済み。provenance.json、reference-fixture.json、p1-engine.mdを参照。progress.sumsQ16のキーはblack/white、その合計がselectedSumQ16で確定。有限の範囲外progress重みは参照どおりQ16変換後int32へ飽和し、NaN/Infinityは拒否する（旧表の「変換範囲等の不正」はこの挙動へ明確化）。API/Worker通信の変更なし。236局面の全整数値が完全一致。エンジンの評価クリップは参照のMAX_PLY=246で±31753。

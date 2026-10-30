@@ -2,6 +2,8 @@ mod movepick;
 mod nnue;
 #[doc(hidden)]
 pub mod nnue_kernels;
+/// Standalone scalar SFNN evaluator (not yet installed in the search runtime).
+pub mod sfnn;
 mod tt;
 
 use std::collections::HashMap;

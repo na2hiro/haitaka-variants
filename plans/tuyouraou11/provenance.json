@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+  "name": "つようら王11micro",
+  "arch": "SFNN_ka2_2048_8_64_progress8",
+  "fvScale": 24,
+  "sourcePageUrl": "https://yaneurao.fanbox.cc/posts/12761272",
+  "archiveUrl": "https://storage.yaneu.com/yaneuraou/TuyouraOu11micro-SFNN_ka2_2048_8_64_progress8-epoch0010-20261001.7z",
+  "archiveSha256": "d1326e9a620c30d40ae553259dd0b6828d2f4e9fca3b6ab9440566579ab0e8c2",
+  "publishedDate": "2026-10-14",
+  "artifactDate": "2026-10-01",
+  "license": "MIT",
+  "licenseEvidence": {
+    "url": "https://yaneurao.fanbox.cc/posts/12761272",
+    "statement": "nn.bin , progress.binのライセンスはMIT Licenseとします。二次配布、商用利用などご自由にどうぞ。",
+    "author": "やねうら王プロジェクト",
+    "authorSource": "archive tag.json",
+    "archiveLicenseFile": null,
+    "notice": "Archive contains banner.png, eval_options.txt, nn.bin, progress.bin, tag.json; no LICENSE or copyright notice supplied. Preserve this source attribution; do not invent a copyright year. Banner is excluded."
+  },
+  "reference": {
+    "repository": "https://github.com/yaneurao/YaneuraOu",
+    "commit": "7d9743646f1006ff6d84da45d6d6160048a5a416",
+    "targetCpu": "OTHER",
+    "fvScale": 24,
+    "instrumentation": "scripts/tuyouraou11.py (p1ref diagnostic command only)"
+  },
+  "files": {
+    "nn": {
+      "path": "nn.bin",
+      "bytes": 3864610,
+      "sha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb"
+    },
+    "progress": {
+      "path": "progress.bin",
+      "bytes": 1003104,
+      "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+    }
+  }
+}
