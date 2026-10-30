@@ -3899,6 +3899,16 @@ fn quiescence(
         let score = score_result?;
 
         if ctx.qsearch_soft_cap_reached {
+            // Keep the leaf aligned with the value selected while unwinding
+            // the capped subtree, including the first evasion without stand pat.
+            let child_selected = if in_check {
+                in_check_best_score.is_none_or(|best| score > best)
+            } else {
+                score > alpha
+            };
+            if child_selected {
+                ctx.promote_child_training_trace(ply);
+            }
             return Ok(if in_check {
                 in_check_best_score.map_or(score, |best| best.max(score))
             } else {
@@ -3961,6 +3971,9 @@ fn quiescence(
             let score = score_result?;
 
             if ctx.qsearch_soft_cap_reached {
+                if score > alpha {
+                    ctx.promote_child_training_trace(ply);
+                }
                 return Ok(alpha.max(score));
             }
 
@@ -5019,6 +5032,86 @@ mod tests {
             evasion_trace.static_eval,
             static_handcrafted_eval(&evasion_trace.leaf_board)
         );
+    }
+
+    #[test]
+    fn qsearch_soft_cap_training_trace_matches_selected_score() {
+        let fixtures = [
+            ("evasion", "9/9/9/9/9/9/9/8k/3rK4 b - 1", true),
+            ("capture", "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", true),
+            ("quiet check", "9/9/4k4/9/4G4/9/9/9/4K4 b r 1", true),
+            (
+                "quiet check stand pat",
+                "4k4/9/9/9/9/9/9/9/4K4 b R 1",
+                false,
+            ),
+        ];
+        for (name, sfen, selects_child) in fixtures {
+            let board = Board::from_sfen(sfen).unwrap();
+            for node_limit in 1..=16 {
+                let mut tt = TranspositionTable::default();
+                let mut ordering = SearchOrdering::default();
+                let mut ctx = handcrafted_context(
+                    &board,
+                    &mut tt,
+                    &mut ordering,
+                    QsearchLimits {
+                        node_limit,
+                        check_budget: 1,
+                        ..qsearch_limits()
+                    },
+                );
+                ctx.training_trace = Some(TrainingTraceCollector::default());
+                let score =
+                    quiescence(&board, -INF_SCORE, INF_SCORE, 0, 0, 1, &mut ctx, None).unwrap();
+                if node_limit == 1 {
+                    assert!(ctx.qsearch_soft_cap_reached, "{name} at cap {node_limit}");
+                }
+                let trace = ctx
+                    .training_trace
+                    .as_ref()
+                    .unwrap()
+                    .root()
+                    .unwrap_or_else(|| panic!("missing {name} trace at cap {node_limit}"));
+                let root_score = if trace.root_ply_distance % 2 == 0 {
+                    trace.static_eval
+                } else {
+                    -trace.static_eval
+                };
+                assert_eq!(score, root_score, "stale {name} trace at cap {node_limit}");
+                if !trace.terminal {
+                    assert_eq!(
+                        trace.static_eval,
+                        static_handcrafted_eval(&trace.leaf_board)
+                    );
+                }
+                if name.starts_with("quiet check") {
+                    assert!(ctx.qsearch_stats.qsearch_check_move_tries > 0);
+                }
+                if node_limit == 1 {
+                    if selects_child {
+                        assert_eq!(trace.root_ply_distance, 1, "{name} capped child");
+                        let picked = if !board.checkers().is_empty() {
+                            QsearchMovePicker::new_evasions(&board).next().unwrap()
+                        } else if name == "capture" {
+                            QsearchMovePicker::new_tactical(&board).next().unwrap()
+                        } else {
+                            assert!(QsearchMovePicker::new_tactical(&board).next().is_none());
+                            QsearchMovePicker::new_quiet_checks(&board).next().unwrap()
+                        };
+                        let mut child = board.clone();
+                        child.play_unchecked(picked.mv);
+                        assert_eq!(
+                            trace.leaf_board, child,
+                            "{name} must trace the selected child"
+                        );
+                    } else {
+                        assert_eq!(trace.root_ply_distance, 0);
+                        assert_eq!(trace.leaf_board, board, "retain the better stand-pat leaf");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
