@@ -193,6 +193,11 @@ def state_equal(torch: Any, left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
+def checkpoint_reference(reference: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist artifact identity without transient checkpoint-recovery metadata."""
+    return {key: reference[key] for key in ("path", "bytes", "sha256")}
+
+
 def snapshot_identity(state: dict[str, Any]) -> dict[str, Any]:
     """Ignore checkpoint recovery bookkeeping, preserving all training state."""
     return {
@@ -306,7 +311,10 @@ def _run_arm_locked(root: Path, arm: str, resume: bool, attempt: int, gate: dict
             seen = state["examplesSeen"]
             trace = list(state["trace"])
             validations = list(state["validations"])
-            candidates = list(state["candidates"])
+            candidates = [
+                {**candidate, "checkpoint": checkpoint_reference(candidate["checkpoint"])}
+                for candidate in state["candidates"]
+            ]
             core.assert_finite_training_state(torch, model, optimizer, "F1 resume")
         else:
             _initial_identical(root, arm, initialized)
@@ -363,7 +371,7 @@ def _run_arm_locked(root: Path, arm: str, resume: bool, attempt: int, gate: dict
                 f1.immutable_json(output / f"validation/u{update:06d}.json", validation_row)
                 checkpoint_path = output / f"checkpoints/u{update:06d}.pt"
                 export_path = output / f"exports/u{update:06d}.nnue"
-                checkpoint = core.save_portable_model(torch, model, checkpoint_path)
+                checkpoint = checkpoint_reference(core.save_portable_model(torch, model, checkpoint_path))
                 export = core.export_checkpoint(torch, checkpoint_path, export_path, context, recipe, f1.EXPERIMENT_ID + f"-{arm}")["integerNetwork"]
                 candidate = {"update": update, "validationHuber": metrics["validationHuber"], "validationProbability": metrics["validationProbability"], "checkpoint": checkpoint, "export": export}
                 candidates.append(candidate)

@@ -1,12 +1,16 @@
 """F1 snapshot recovery identity without importing torch or starting training."""
 
 import copy
+import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import strength_first_f1_train as trainer
+import strength_first_f1_core as f1
 
 
 class SnapshotIdentityTests(unittest.TestCase):
@@ -78,6 +82,59 @@ class SnapshotIdentityTests(unittest.TestCase):
         changed = copy.deepcopy(self.state)
         changed["candidates"][0]["checkpoint"]["otherMetadata"] = True
         self.assertNotEqual(trainer.snapshot_identity(self.state), trainer.snapshot_identity(changed))
+
+
+class CandidateArtifactTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        patch = mock.patch.object(f1, "ROOT", self.root)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.candidates = []
+        for update in f1.UPDATES:
+            checkpoint = self.root / f"u{update:06d}.pt"
+            network = self.root / f"u{update:06d}.nnue"
+            checkpoint.write_bytes(f"checkpoint-{update}".encode())
+            network.write_bytes(f"network-{update}".encode())
+            self.candidates.append({"update": update, "validationHuber": 0.1 if update == 512 else 1.0,
+                "checkpoint": {**f1.artifact(checkpoint), "recoveredOrphan": True},
+                "export": f1.artifact(network)})
+
+    def normalized(self):
+        return [{**candidate, "checkpoint": trainer.checkpoint_reference(candidate["checkpoint"])}
+                for candidate in self.candidates]
+
+    def test_recovered_candidates_round_trip_through_run_json_and_real_selection(self):
+        with self.assertRaisesRegex(f1.F1Error, "artifact bytes/hash changed"):
+            f1.select_by_common_huber(self.candidates)
+        run_path = self.root / "run.json"
+        f1.immutable_json(run_path, {"candidates": self.normalized()})
+        candidates = json.loads(run_path.read_text())["candidates"]
+        for candidate in candidates:
+            self.assertEqual(set(candidate["checkpoint"]), {"path", "bytes", "sha256"})
+        self.assertEqual(f1.select_by_common_huber(candidates)["selectedUpdate"], 512)
+        self.assertTrue(all(candidate["checkpoint"]["recoveredOrphan"] for candidate in self.candidates))
+
+    def test_checkpoint_identity_is_stable_for_fresh_and_recovered_references(self):
+        expected = f1.artifact(self.root / "u000128.pt")
+        for metadata in ({}, {"recoveredOrphan": True}, {"recoveredOrphan": False}):
+            self.assertEqual(trainer.checkpoint_reference({**expected, **metadata}), expected)
+
+    def test_normalization_does_not_hide_artifact_identity_conflicts(self):
+        for field, value in (("path", "missing.pt"), ("bytes", 999), ("sha256", "0" * 64)):
+            with self.subTest(field=field):
+                candidates = self.normalized()
+                candidates[0]["checkpoint"][field] = value
+                with self.assertRaises(f1.F1Error):
+                    f1.select_by_common_huber(candidates)
+        candidates = self.normalized()
+        path = self.root / candidates[0]["checkpoint"]["path"]
+        original = path.read_bytes()
+        path.write_bytes(b"x" * len(original))
+        with self.assertRaisesRegex(f1.F1Error, "artifact bytes/hash changed"):
+            f1.select_by_common_huber(candidates)
 
 
 if __name__ == "__main__":
