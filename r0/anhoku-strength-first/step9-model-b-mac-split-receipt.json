@@ -1,0 +1,69 @@
+{
+  "schema": "haitaka-anhoku-strength-first-model-b-mac-split-v1",
+  "createdAt": "2026-09-11T20:39:30+09:00",
+  "generationContract": {
+    "path": "r0/anhoku-strength-first/step9-model-b-data-contract-v2.json"
+  },
+  "sourceRevision": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c",
+  "config": {
+    "path": "haitaka_learn.anhoku-strength-first-step9-model-b-source-v2.toml",
+    "sha256": "36a8521f1dde00e94db687a34c7b716060847aa78a1095c1cda3920586a2311e"
+  },
+  "executable": {
+    "sha256": "83ff0eac62ea340f37b9fa64d0006cd12f0f9ff8575e67989d4d1f186e6eed5c",
+    "copiedByteIdenticallyFromMbpToMba": true
+  },
+  "priorMbpProgress": {
+    "completedTrainingShards": 827,
+    "completedTrainingGames": 8270,
+    "preservedForResume": true
+  },
+  "partition": {
+    "laneCount": 17,
+    "mbp": {
+      "endpoint": "192.168.0.12",
+      "relativeCpuPower": 10,
+      "jobs": 10,
+      "laneIndexStart": 0,
+      "laneIndexEndInclusive": 11,
+      "trainingShardRange": [
+        0,
+        2117
+      ],
+      "validationShardRange": [
+        0,
+        142
+      ]
+    },
+    "mba": {
+      "endpoint": "192.168.0.5",
+      "relativeCpuPower": 7,
+      "jobs": 7,
+      "laneIndexStart": 12,
+      "laneIndexEndInclusive": 16,
+      "trainingShardRange": [
+        2117,
+        3000
+      ],
+      "validationShardRange": [
+        142,
+        202
+      ]
+    },
+    "rangeConvention": "zero-based half-open",
+    "overlap": false,
+    "completeCoverage": true
+  },
+  "join": {
+    "script": "scripts/strength_first_step9_join_macs.sh",
+    "strictIdentityCheckedMerge": true,
+    "postMergeAudits": [
+      "train",
+      "validation"
+    ],
+    "exactFreezeFollowsMerge": true
+  },
+  "estimatedRemainingWallHoursAtSplit": 7.8,
+  "resumable": true,
+  "status": "running"
+}

@@ -1,0 +1,81 @@
+{
+  "schema": "haitaka-anhoku-strength-first-model-b-data-contract-v2",
+  "createdAt": "2026-09-11T16:18:23+09:00",
+  "experimentId": "strength-first-step9-model-b-data-20260911-v2",
+  "supersedes": {
+    "path": "r0/anhoku-strength-first/step9-model-b-data-contract.json",
+    "sha256": "79fcc40bb4de48b456ddb3ae54e287ca8346db02961f36cb762fcc0e80b0ae21",
+    "abortReport": {
+      "path": "r0/anhoku-strength-first/step9-model-b-v1-abort-report.json",
+      "sha256": "ecbe9b818bcd282a8e99e45d5ae8caf44d0cec3697ee8e144114eb9f7f4a5ff3"
+    },
+    "reason": "The ten-game probe took 129 seconds on one core, while 18-way saturation spent about 90 percent of measured search CPU in the 16-candidate rollout and projected roughly 40 wall-clock hours. V1 was stopped before opening aggregate results."
+  },
+  "executionHost": {
+    "role": "mbp",
+    "endpoint": "192.168.0.12",
+    "requiredArchitecture": "aarch64",
+    "jobs": 10
+  },
+  "sourceGeneration": {
+    "config": {
+      "path": "haitaka_learn.anhoku-strength-first-step9-model-b-source-v2.toml",
+      "sha256": "36a8521f1dde00e94db687a34c7b716060847aa78a1095c1cda3920586a2311e"
+    },
+    "outputDirectory": "out/anhoku-strength-first/step9-model-b-source-20260911-v2",
+    "openingSuite": {
+      "path": "haitaka_learn/openings/anhoku-v3.tsv",
+      "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+    },
+    "trainGames": 30000,
+    "validationGames": 2016,
+    "gameSeed": 2026091111,
+    "splitSeed": 2026091112,
+    "shuffleSeed": 2026091113,
+    "teacher": "haitaka-native-handcrafted-search-v1",
+    "labelNodeBudget": 10000,
+    "trajectoryPolicy": "searched-stochastic-rollout-v1",
+    "rolloutCandidateLimit": 4,
+    "maximumLabelAttemptsPerGame": 96,
+    "maximumSourceLabelAttempts": 3073536,
+    "resumeRequired": true
+  },
+  "modelAExclusions": [
+    {
+      "role": "model-a-training",
+      "path": "out/anhoku-reboot-r4-replacement/datasets/training.bin",
+      "records": 880000,
+      "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+    },
+    {
+      "role": "model-a-validation",
+      "path": "out/anhoku-reboot-r4-replacement/datasets/validation.bin",
+      "records": 60000,
+      "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+    },
+    {
+      "role": "model-a-development",
+      "path": "out/anhoku-reboot-r4-replacement/datasets/development.bin",
+      "records": 60000,
+      "sha256": "21e7f9ca0cbd4b6b8256816f770f5dc6e66939aab7591cf3a3bc55072288cd00"
+    }
+  ],
+  "freeze": {
+    "outputDirectory": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1",
+    "trainingRecords": 880000,
+    "validationRecords": 60000,
+    "selectionSeed": 2026091107,
+    "recordBytes": 72,
+    "selectionPolicy": "sha256-rank-within-split-v1",
+    "deduplicationPolicy": "exclude-model-a-and-deduplicate-model-b-by-anhoku-color-swap-board-family-v1",
+    "splitIsolation": "validation excludes all selected model-b training board families",
+    "shortfallPolicy": "fail-closed-with-source-shards-preserved"
+  },
+  "trainingBoundary": {
+    "modelBInitializationSeed": 2026091108,
+    "optimizerUpdates": 4096,
+    "checkpointSelection": "fixed-update-2688",
+    "gpuAuthorized": false
+  },
+  "status": "preregistered"
+}

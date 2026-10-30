@@ -1,0 +1,140 @@
+{
+  "createdAt": "2026-09-10T19:15:00+09:00",
+  "refreshedAt": "2026-09-11T05:29:24+09:00",
+  "execution": {
+    "afterApproval": [
+      "Recheck a verified, rentable one-RTX-4090 offer within the frozen rate/cost envelope.",
+      "Create one 60 GiB instance and bind the actual offer to an approval receipt.",
+      "Run setup and the real fixture, then train only through update 128.",
+      "Use measured throughput to decide the maximum affordable horizon before any continuation.",
+      "Stop the paid instance before long CPU strength games whenever transfers and export are complete."
+    ],
+    "automaticFullRun": false,
+    "continuationsRequireHashBoundEvidence": true,
+    "paidCpuScreenWaitingPlanned": false
+  },
+  "experiment": {
+    "baseRunner": {
+      "bytes": 190184,
+      "path": "scripts/strength_first_trainer.py",
+      "sha256": "c75e7691f1b105afdf0bd1f7d6b9f7eab42c715de3e1fbc29779fad109a4d44d"
+    },
+    "config": {
+      "bytes": 18147,
+      "path": "r0/anhoku-strength-first/step8-seed-replication-experiment-v1.json",
+      "sha256": "3ec626241a4787e660177d6b4e72123532441582d619555b5225f990c981f5a6"
+    },
+    "data": {
+      "independentDataSeed": false,
+      "reusedAuditedData": true,
+      "trainingRecords": 880000,
+      "validationRecords": 60000
+    },
+    "experimentId": "strength-first-step8-compact-seed-replication-20260910-v1",
+    "featureFamily": "HalfKAv2^+DonorSingleEff",
+    "initialExecutionBoundary": 128,
+    "initialization": "fresh-scratch",
+    "maximumUpdates": 4096,
+    "objective": "unchanged robust-clipped-huber teacher-only control",
+    "openingPairsPerDevelopmentScreen": 64,
+    "primaryFixedTimeMilliseconds": 1000,
+    "runner": {
+      "bytes": 3365,
+      "path": "scripts/strength_first_seed_replication_trainer.py",
+      "sha256": "2879df5b893a31b06a7ae417574ef3fd6f9583b00f0f0a48da0acb4ae1263369"
+    },
+    "trainingSeed": 2026091002,
+    "width": {
+      "l1": 256,
+      "l2": 16,
+      "l3": 32
+    }
+  },
+  "gpuRentalAuthorized": false,
+  "gpuUsed": false,
+  "limits": [
+    "This reuses the existing training and validation corpus, so it tests training-seed sensitivity and is not the independent-data model B required for confirmation.",
+    "All opening games remain development evidence.",
+    "No production model or timing setting is changed."
+  ],
+  "nextAction": "obtain explicit permission for the stated Vast.ai envelope",
+  "preflight": {
+    "closedWorldConfigValidation": "passed",
+    "deterministicRunnerSelfTest": "passed",
+    "realCpuFixture": {
+      "bytes": 5203,
+      "path": "out/anhoku-strength-first/step8-seed-replication-preflight-20260910-v1/real-fixture/report.json",
+      "sha256": "70414b4d8e094f28af9f38cb9d6fd6fcbf1ec6bbcb9e086e767c9825b4be5016"
+    },
+    "realCpuFixturePassed": true,
+    "resumeExportsExact": true,
+    "resumeOptimizerExact": true,
+    "resumePredictionsExact": true,
+    "resumeWeightsExact": true
+  },
+  "productionChanged": false,
+  "rationale": {
+    "reason": "The corrected-runtime u2048 development score clears 50% on the reused 64-opening suite. One independent scratch seed tests whether that gain survives initialization variance before fresh-data replication.",
+    "selectedBrowserLower95": 0.515625,
+    "selectedBrowserScore": 0.59375,
+    "selectedBrowserUpper95": 0.671875,
+    "selectedCheckpoint": "u2048",
+    "step7": {
+      "bytes": 10220,
+      "path": "r0/anhoku-strength-first/step7-result-report.json",
+      "sha256": "74a536cdad5a9b3ade7f8df59cfa8b0031de39ed74a8c87b48de06ecd2de6754"
+    }
+  },
+  "rental": {
+    "currentFourHourComputeAndListedStorageUsd": 1.5777777777777775,
+    "currentQuotedCombinedHourlyRateUsd": 0.3944444444444444,
+    "equivalentOfferWithinEnvelopeAllowedAfterApproval": true,
+    "maximumCombinedHourlyRateUsd": 0.75,
+    "maximumRentedUptimeHours": 4.0,
+    "maximumTotalCostUsd": 5.0,
+    "offerMustBeRecheckedBeforeCreate": true,
+    "provider": "Vast.ai",
+    "publicQuote": {
+      "bytes": 1568,
+      "observedAt": "2026-09-10T20:29:24.494066Z",
+      "path": "out/anhoku-strength-first/step8-seed-replication-preflight-20260910-v1/vast-offer-quote-20260911-instance-50523521.json",
+      "sha256": "9aa34bab5ae4f2150b1754fd1764fd6bfe89954928e8047c04e54aae1105273c",
+      "validUntil": "2026-09-11T00:29:24.494066Z"
+    },
+    "quotedOffer": {
+      "cpu_cores_effective": 16.0,
+      "cpu_ram": 96730,
+      "cuda_max_good": 12.8,
+      "direct_port_count": 124,
+      "disk_bw": 1613,
+      "disk_space": 502.545367382216,
+      "dlperf": 125.43978891147354,
+      "dph_base": 0.37999999999999995,
+      "dph_total": 0.3944444444444444,
+      "driver_version": "570.144",
+      "geolocation": "Japan, JP",
+      "gpu_name": "RTX 4090",
+      "gpu_ram": 49140,
+      "id": 48470912,
+      "inet_down": 334.8,
+      "inet_down_cost": 0.00390625,
+      "inet_up": 245.3,
+      "inet_up_cost": 0.00390625,
+      "num_gpus": 1,
+      "pcie_bw": 22.8,
+      "reliability": 0.9984643,
+      "rentable": true,
+      "rented": false,
+      "static_ip": false,
+      "storage_cost": 0.17333333333333334,
+      "storage_total_cost": 0.014444444444444446,
+      "verification": "verified"
+    },
+    "requestedDiskGigabytes": 60,
+    "requestedGpu": "one RTX 4090"
+  },
+  "schema": "haitaka-strength-first-step8-seed-replication-preflight-v1",
+  "scope": "third and final initial-tournament width-256 scratch seed on reused audited data; development evidence only",
+  "sourceCommit": "19e7cae",
+  "status": "ready-awaiting-explicit-gpu-rental-permission"
+}

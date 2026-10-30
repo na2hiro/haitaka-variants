@@ -1,0 +1,117 @@
+{
+  "schema": "haitaka-anhoku-strength-first-width512-preflight-v1",
+  "experimentId": "strength-first-step3-width512-capacity-seed-20260906-v1",
+  "preparedAt": "2026-09-07T14:08:08+09:00",
+  "status": "ready-awaiting-explicit-gpu-permission",
+  "goal": "Test whether increasing only the first hidden width from 256 to 512 improves the Step 3 development result at matched data, seed, objective, schedule, exposure, and strength protocol.",
+  "parentResult": {
+    "report": {
+      "path": "r0/anhoku-strength-first/step3-result-report.json",
+      "sha256": "4ba816345960c3ea3bebbe812ed007bfc71ca434e6b5f4eedb38d524318f8ea8"
+    },
+    "selectedUpdate": 1920,
+    "selectedNetworkSha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896",
+    "equalNodeScore": 0.6953125,
+    "fixedTimeScore": 0.671875
+  },
+  "contract": {
+    "path": "r0/anhoku-strength-first/step3-width512-experiment-v1.json",
+    "sha256": "e5a6c642728d0f448c18587595ac05fbcef9a0f7091ee6605de648eee0632228"
+  },
+  "implementation": {
+    "trainer": {
+      "path": "scripts/strength_first_width512_trainer.py",
+      "sha256": "6ac656cd2a35c49cc05f319267880c34acf05cabffb3934d934607eeaf7aa54e"
+    },
+    "candidateParity": {
+      "path": "scripts/strength_first_width512_candidate_parity.py",
+      "sha256": "205837ed94854e733070f5efb1bf655f916253cb8ca14467f33b54b639374b3b"
+    },
+    "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+    "reusedR5RunnerSha256": "4973361a1296e4e2cdc169ded0f39af6660f9c95527e7e774e14134868e1bd13"
+  },
+  "controlledDifference": {
+    "trainingRecipeChange": {
+      "path": "recipe.width.l1",
+      "from": 256,
+      "to": 512
+    },
+    "unchanged": [
+      "training and validation artifacts and order",
+      "seed and fresh-scratch initialization",
+      "feature family",
+      "batch size and finite loader semantics",
+      "teacher-only robust clipped Huber objective",
+      "Ranger optimizer and parameter-group multipliers",
+      "learning-rate schedule and 4096-update exposure",
+      "validation and checkpoint schedule",
+      "opening suite, color swaps, search budgets, stopping rule, and selection ranking"
+    ],
+    "operationalDifferences": [
+      "experiment and output identities",
+      "dedicated hash-bound width-512 runner and parity implementation",
+      "preflight output path",
+      "width-512 storage and runtime forecast",
+      "refreshed rental target observation"
+    ]
+  },
+  "localQualification": {
+    "closedWorldConfigValidationPassed": true,
+    "hashBoundInputValidationPassed": true,
+    "runnerSelfTestPassed": true,
+    "candidateParityCliLoaded": true,
+    "nativeRuntimeCargoCheckPassed": true,
+    "nativeWasmCorrectnessTests": {
+      "passed": 92,
+      "failed": 0
+    },
+    "realCpuFixture": {
+      "path": "out/anhoku-strength-first/step3-width512-preflight/real-cpu-fixture-v1/report.json",
+      "sha256": "7150f38f00a47ba1104399cee3a8ded1ee4a83fb9b4cce1403311eb6e9588fc8",
+      "passed": true,
+      "lossDecreased": true,
+      "partialBatchObserved": true,
+      "weightsExact": true,
+      "optimizerExact": true,
+      "predictionsExact": true,
+      "traceExact": true,
+      "exportsExact": true,
+      "exportSha256": "97badf9392feef2d25cfbabcd1858b5aaf761fea605ae65e685ec51c42c19504"
+    }
+  },
+  "rentalRequest": {
+    "provider": "Vast.ai",
+    "action": "restart-and-run-existing-instance-through-receipt-gated-boundaries",
+    "instanceId": 50101026,
+    "offerId": 12239064,
+    "gpu": "RTX 4090",
+    "gpuRamMegabytes": 24564,
+    "diskGigabytes": 50,
+    "observedState": {
+      "actualStatus": "exited",
+      "intendedStatus": "stopped"
+    },
+    "quotedCombinedHourlyRateUsd": 0.4625925925925926,
+    "maximumCombinedHourlyRateUsd": 0.75,
+    "maximumAdditionalRentedUptimeHours": 4.0,
+    "maximumAdditionalCostUsd": 5.0,
+    "observedAt": "2026-09-07T14:08:08+09:00",
+    "validUntil": "2026-09-07T18:08:08+09:00",
+    "priorObservedProgramChargeUsd": 1.213,
+    "maximumProgramCostUsd": 25.0,
+    "forecastTrainingGpuHours": 1.5,
+    "forecastPeakNewStorageBytes": 16106127360
+  },
+  "executionGates": [
+    "Remote source, dependency, data, and CUDA checks must pass before training.",
+    "Fresh training stops at update 128 for a measured throughput receipt.",
+    "The measured forecast must fit the approved envelope before update 256.",
+    "Updates 256, 1024, and 2048 require hash-bound parity and strength-screen evidence before continuation.",
+    "All 4096 updates, final candidate comparisons, and the selected 100 ms screen remain development evidence only."
+  ],
+  "permission": {
+    "gpuRentalAuthorized": false,
+    "approvalReceipt": null,
+    "requiredBefore": "starting Vast.ai instance 50101026 or any other paid GPU"
+  }
+}

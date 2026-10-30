@@ -1,0 +1,87 @@
+{
+  "schema": "haitaka-anhoku-strength-first-independent-confirmation-execution-v1",
+  "createdAt": "2026-09-13T02:52:43Z",
+  "experimentId": "strength-first-independent-confirmation-20260911-v1",
+  "contract": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-contract-v2.json",
+    "bytes": 4838,
+    "sha256": "b1e262c161d6fcf5965d8768aa2dcedbed62bb8225647fa3f550bf493cf88788"
+  },
+  "confirmationResultsOpened": false,
+  "modelA": {
+    "role": "preregistered-deployment-candidate",
+    "checkpointUpdate": 2688,
+    "integerNetwork": {
+      "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/exports/selected-u00002688.nnue",
+      "bytes": 83048706,
+      "sha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa"
+    },
+    "integerNetworkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+    "suite": "A"
+  },
+  "modelB": {
+    "role": "independent-data-replication-fixed-before-unseal",
+    "checkpointUpdate": 2688,
+    "checkpointSha256": "44c62d40b268248b274fa6f4ae7a37a93e06b5e0340b93a89c9648084c46f260",
+    "integerNetwork": {
+      "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/candidates/candidate-u00002688.nnue",
+      "bytes": 83048698,
+      "sha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221"
+    },
+    "integerNetworkSha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221",
+    "suite": "B"
+  },
+  "modelBDevelopmentSelection": {
+    "checkpointUpdate": 768,
+    "integerNetwork": {
+      "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/selected-u00000768.nnue",
+      "bytes": 83048698,
+      "sha256": "ba4cff98b0a94607ba92367888606d37fc5621a41c3b861558c013eb7117e6ef"
+    },
+    "notEligibleToReplaceFixedConfirmationCheckpoint": true
+  },
+  "runtime": {
+    "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+    "bytes": 11372128,
+    "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+  },
+  "nativeParityRunner": {
+    "path": "target/release/strength_first_candidate_parity",
+    "bytes": 1029712,
+    "sha256": "9d1837fc17adc52e51b42440dabafbc70169394b0ae70853451711a6d4fd1b71"
+  },
+  "analyzer": {
+    "path": "scripts/strength_first_step9_confirmation.py",
+    "bytes": 14401,
+    "sha256": "5f0c9f4559b7ba336795579b85d879c4416ca3ce304fb40c18af395c16f4c0e6"
+  },
+  "unattendedRunner": {
+    "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/mbp-postselection-confirmation.sh",
+    "bytes": 4566,
+    "sha256": "86e24243f8e0a887a0593cad22682cb31d57ba38b08edd967779b360ff3e45a5"
+  },
+  "host": {
+    "role": "mbp",
+    "endpoint": "192.168.0.12",
+    "checkout": "/Users/na2hiro/anhoku-step9-model-b-c3109e8",
+    "gitHead": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c"
+  },
+  "execution": {
+    "concurrentGames": 1,
+    "threads": 1,
+    "moveTimeMilliseconds": 1000,
+    "gamesPerModel": 4096,
+    "pairsPerModel": 2048,
+    "openingOrder": "sequential",
+    "openingRandomPlies": 0,
+    "maximumPly": 200,
+    "scheduleOrder": [
+      "model-a-suite-a",
+      "model-b-suite-b"
+    ],
+    "interimLooks": 0,
+    "sampleExtension": false,
+    "interruptedSchedulePolicy": "rerun-that-original-complete-schedule-without-opening-partial-results"
+  },
+  "status": "frozen-before-confirmation-search"
+}

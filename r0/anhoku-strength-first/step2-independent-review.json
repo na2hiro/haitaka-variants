@@ -1,0 +1,124 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step2-independent-review-v1",
+  "reviewedAt": "2026-09-06T14:29:44+09:00",
+  "reviewer": {
+    "model": "gpt-6",
+    "reasoningEffort": "not-exposed-to-reviewer",
+    "mode": "independent-consequential-code-review"
+  },
+  "reviewedArtifacts": [
+    {
+      "path": "plans/anhoku-nnue-strength-first-plan.md",
+      "bytes": 21035,
+      "sha256": "68fbfc9354734411c8cd8208fe4a51ca452392973224721e2248aea7825d6b03"
+    },
+    {
+      "path": "scripts/strength_first_trainer.py",
+      "bytes": 80640,
+      "sha256": "80e357524eacfd9fc539ac02e58925ee761b9ff4ba91348167fd16ee352d8792"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step3-experiment-v1.json",
+      "bytes": 13801,
+      "sha256": "52c4875785a328e09ec90a891b540d22684648e1be256474650b5f0cd2f67ae5"
+    },
+    {
+      "path": "out/anhoku-strength-first/step2/real-cpu-fixture-v7/report.json",
+      "bytes": 3676,
+      "sha256": "97feab19b6f1177a9d77fb6e283ec58583be032d424a470ad91bbbbd5c5439f2"
+    },
+    {
+      "path": "AGENT.md",
+      "bytes": 310,
+      "sha256": "828209ba4be84480397de6873eaff39dc140db802438f7de5f52983609acb638"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "high",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 772,
+      "description": "A crash after an intermediate 128-update checkpoint inside a longer authorized leg cannot resume. For example, the 256-to-1024 receipt is persisted at update 384, but restart validates a nonexistent 384-to-1024 transition because it derives fromUpdate from the current checkpoint. This defeats atomic resumability for every long continuation leg. Persist the active leg and accept its already-validated receipt on recovery, while requiring a new receipt only when crossing the leg destination."
+    },
+    {
+      "severity": "high",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 695,
+      "description": "Continuation evidence is checked only for an arbitrary role string, path, and matching hash. The referenced document's schema, experiment/checkpoint identity, game count, paired opening groups, interval computation, upper bound, prior-screen history, fallback/correctness status, and stop decision are never validated. Consequently any hashable file labeled strength-screen-u... can authorize continuation even after two successive upper 95% bounds below 0.45."
+    },
+    {
+      "severity": "high",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 810,
+      "description": "Numerical failure detection covers only the pre-update mean training loss. Gradients, optimizer state, post-step parameters, validation losses/predictions, and export inputs are not checked for finiteness. A non-finite optimizer update at a target evaluation boundary can therefore be checkpointed/exported and reported as a successful planned boundary, contrary to the stop-immediately protocol."
+    },
+    {
+      "severity": "medium",
+      "path": "r0/anhoku-strength-first/step3-experiment-v1.json",
+      "line": 219,
+      "description": "The 256-to-1024 continuation requires only strength-screen-u00000256, although costForecast.probe at line 247 says the probe must replace the forecast before continuing past update 256. No required evidence role binds the measured throughput, refreshed quote, revised horizon, or proof that the first-run and tournament caps still fit."
+    },
+    {
+      "severity": "medium",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 670,
+      "description": "The paid-GPU approval receipt's scope is returned verbatim but is not type-checked or bound to the resolved config hash, maximum hourly rate, 4 GPU-hour/$5 first-rental envelope, or approved action. A receipt for the experiment with gpuRentalApproved=true and an unrelated or narrower scope passes the training guard."
+    },
+    {
+      "severity": "medium",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 884,
+      "description": "Explicit export accepts any readable checkpoint path and then asserts selectionWasExplicit without proving that the checkpoint is one of this run's immutable recorded artifacts or that it won the frozen best-validation/best-screen selection. The export receipt is not bound to retained selection history, so a same-shaped checkpoint from another run can be attributed to this experiment."
+    },
+    {
+      "severity": "medium",
+      "path": "scripts/strength_first_trainer.py",
+      "line": 609,
+      "description": "A first-time export writes serialize.py output directly to the final filename. If serialization is interrupted, the partial file is subsequently treated as an immutable committed export; retry writes a temporary candidate, detects a hash mismatch, and refuses recovery. Serialize to a temporary file, fsync it, and atomically rename it before treating the path as immutable."
+    },
+    {
+      "severity": "low",
+      "path": "out/anhoku-strength-first/step2/real-cpu-fixture-v7/report.json",
+      "line": 2,
+      "description": "The passing fixture is useful but cannot qualify the production resume path: it uses a separate fixture_train loop and state schema plus fixture-only CPU feature-transformer, tensor-transfer, and CuPy shims. It does not exercise CUDA RNG/optimizer state, production metrics/state commit ordering, continuation receipts, intermediate-leg crash recovery, or native/WASM parity; those limits need to remain explicit at the Step 3 gate."
+    }
+  ],
+  "verification": [
+    {
+      "check": "configuration and bound-input validation",
+      "command": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/strength_first_trainer.py validate",
+      "result": "passed"
+    },
+    {
+      "check": "focused pure schedule, finite-partial-batch, and deterministic seed-plus-epoch permutation probes",
+      "result": "passed",
+      "details": {
+        "learningRateUpdatesChecked": [1, 64, 65, 128, 256, 1024, 2048, 4096],
+        "fixtureBatchSizes": [5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4],
+        "distinctDeterministicEpochsChecked": [0, 1]
+      }
+    },
+    {
+      "check": "fixture artifact hashes and recorded byte size",
+      "result": "passed",
+      "details": "The resume-state, both full-precision checkpoints, and both exports exist; every report hash checked matches, and the two export hashes are identical."
+    },
+    {
+      "check": "built-in self-test",
+      "result": "not-run-to-completion",
+      "details": "The read-only environment had no writable temporary directory. Equivalent pure checks above ran without training or GPU use; the retained real-CPU fixture report and its bound artifacts were inspected separately."
+    },
+    {
+      "check": "static production-path review",
+      "result": "changes-required",
+      "details": "Reviewed finite batches, seed/epoch order, validation order, update-indexed learning rate, optimizer groups, state/RNG/cursor persistence, crash commit order, receipt gates, immutable checkpoints/exports, strength stopping, authorization, and cost declarations."
+    }
+  ],
+  "verdict": "changes-required",
+  "limitations": [
+    "No candidate training, paid execution, GPU use, match execution, or artifact mutation was performed.",
+    "The retained CPU fixture establishes exact equivalence only for its patched CPU environment and simplified fixture loop; it is not evidence of CUDA equivalence or production continuation recovery.",
+    "Native/WASM parity and quantization-error checks remain pending in the fixture report, so no exported network is authorized for games by this review.",
+    "Cumulative provider billing, storage use, and tournament run count cannot be verified from the reviewed files because no external rental ledger or execution receipts were supplied."
+  ]
+}

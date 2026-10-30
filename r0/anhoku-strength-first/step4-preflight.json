@@ -1,0 +1,85 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step4-preflight-v1",
+  "experimentId": "strength-first-step4-objective-search-diagnostic-20260907-v1",
+  "generatedAt": "2026-09-08T09:10:00+09:00",
+  "status": "passed-superseded-by-completed-step4-result",
+  "contract": {
+    "path": "r0/anhoku-strength-first/step4-diagnostic-v1.json",
+    "bytes": 7823,
+    "sha256": "65966edcfc2f700323316084ec8f8ab41af1d922fadc71c505b9b44c2077d418",
+    "validationPassed": true
+  },
+  "staticChecks": {
+    "pythonSelfTestPassed": true,
+    "rustWidth256CheckPassed": true,
+    "rustWidth512CheckPassed": true,
+    "rustWidth256TestTargetPassed": true,
+    "rustWidth512TestTargetPassed": true,
+    "remoteExecutorBashSyntaxPassed": true,
+    "controllerBashSyntaxPassed": true,
+    "diffCheckPassed": true
+  },
+  "parentPool": {
+    "summary": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/parent-pool/summary.json",
+      "sha256": "47e48e1ab31b4da42081991f734c285e23b37c96cc71307b3e37feff24b4e77b"
+    },
+    "positions": 384,
+    "uniqueIds": 384,
+    "uniqueBoards": 384,
+    "phaseCounts": {"early": 128, "middle": 128, "late": 128},
+    "sourceOpeningGroups": 64,
+    "passed": true
+  },
+  "realModelSmoke": {
+    "positionsPerEvaluator": 1,
+    "nodesPerEvaluator": 10000,
+    "handcrafted": {
+      "receiptSha256": "00ea2e104f7745072c8470c60a5240f93e559b08f8f762e7787769837133aec7",
+      "legalBestMove": true,
+      "complete": true,
+      "exactNodeAccounting": true
+    },
+    "c16": {
+      "receiptSha256": "2ac5120b8cf52e18b32386d336921a2e4f39aa1f991c25faa181e37565cf2d92",
+      "modelSha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0",
+      "legalBestMove": true,
+      "complete": true,
+      "exactNodeAccounting": true
+    },
+    "candidate256": {
+      "receiptSha256": "d0081aebec69325f8a121c806307d725e58c75fb34c2ed61499a4dee971d5e78",
+      "modelSha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896",
+      "legalBestMove": true,
+      "complete": true,
+      "exactNodeAccounting": true
+    }
+  },
+  "exactBudgetChildSmoke": {
+    "nodes": 250000,
+    "complete": true,
+    "exactNodeAccounting": true,
+    "optimizedElapsedSeconds": 1.238602475,
+    "receipt": {
+      "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/preflight/label-one-250k/receipt.json",
+      "sha256": "35ebc2e800bdd62c71564f62cd3d04487b7b459cc33d37f7507829e7cf36dc69"
+    }
+  },
+  "endToEndSmoke": {
+    "fullPrecisionSummarySha256": "e1ba0ae34c7beaf896b462092bf376e6118c9b7e1b4eac45ea6b9c30bc8dfd28",
+    "analysisResultSha256": "9a9f497cd66d974aa0e4691122c1bc9193cb759794b2aefe3c9d3deea94d892f",
+    "boundToFinalContract": true,
+    "passed": true
+  },
+  "execution": {
+    "cpuHost": "192.168.0.12",
+    "cpuHostLabel": "mbp",
+    "gpuUsed": false,
+    "controllerUnit": "haitaka-strength-first-step4-mbp-20260907.service",
+    "controllerStateAtReport": "complete",
+    "connectWaitLimitHours": 12,
+    "searchWallLimitHours": 48,
+    "networkObservation": "The user corrected the MBP endpoint to 192.168.0.12; its recorded mbp SSH host keys matched and the run completed."
+  },
+  "passed": true
+}
