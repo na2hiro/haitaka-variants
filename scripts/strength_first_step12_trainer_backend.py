@@ -93,6 +93,53 @@ def atomic_json(path: Path, value: Any) -> None:
     os.replace(temporary, path)
 
 
+def reconcile_metrics_journal(path: Path, state: dict[str, Any]) -> None:
+    """Recover the last committed row and discard only an incomplete tail."""
+    committed_update = state["optimizerUpdates"]
+    committed_row = state["lastMetricsRow"]
+    if committed_row.get("optimizerUpdates") != committed_update:
+        fail("committed metrics row does not match the resume update")
+    original = path.read_bytes() if path.exists() else b""
+    lines = original.splitlines(keepends=True)
+    rows: list[dict[str, Any]] = []
+    previous_update = -1
+    for index, line in enumerate(lines):
+        try:
+            row = json.loads(line)
+        except (ValueError, UnicodeError):
+            if index == len(lines) - 1 and not line.endswith(b"\n"):
+                break  # An interrupted append is recoverable from lastMetricsRow.
+            fail("metrics journal contains an invalid complete row")
+        if not isinstance(row, dict) or type(row.get("optimizerUpdates")) is not int:
+            fail("metrics journal row is missing an integer optimizer update")
+        update = row["optimizerUpdates"]
+        if update <= previous_update:
+            fail("metrics journal updates are not strictly increasing")
+        if update > committed_update:
+            fail("metrics journal is ahead of committed last state")
+        if update == committed_update and row != committed_row:
+            fail("metrics journal conflicts with committed last state")
+        rows.append(row)
+        previous_update = update
+    if previous_update != committed_update:
+        rows.append(committed_row)
+    payload = b"".join(
+        (json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+        for row in rows
+    )
+    if payload == original:
+        return
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def digest_torch_value(torch: Any, value: Any) -> str:
     temporary = Path(os.path.join(os.getcwd(), f".step12-tensor-digest-{os.getpid()}.tmp"))
     try:
@@ -255,6 +302,7 @@ def run_training(*, config_path: Path, root: Path, training_authorization: dict[
             resource = dict(state["resource"])
             core.restore_rng(torch, state["rng"])
             finite_state(core, torch, model, optimizer, "resumed Step 12 state")
+            reconcile_metrics_journal(output / "metrics.jsonl", state)
 
         initialization_path = root / "training" / "initialization.json"
         if not resume:
