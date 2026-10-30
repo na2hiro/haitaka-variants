@@ -1,0 +1,41 @@
+# Transitional combined generation is allowed only for historical import and
+# R1-R3 debug/probe work. R4 replaces this with separate position and label stages.
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-reboot-r0-debug"
+
+[data]
+train_games = 2
+validation_games = 2
+max_plies = 16
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 4
+sample_every_ply = 2
+sampling_policy = "per-game-random-v1"
+max_positions_per_game = 4
+seed = 75
+jobs = 1
+shard_games = 1
+progress_every_percent = 100
+resume = false
+
+[generation]
+record_format = "haitaka-packed-training-record-v3-72-byte"
+
+[generation.trajectory_evaluator]
+search_depth = 1
+
+[generation.trajectory_evaluator.evaluator]
+kind = "handcrafted"
+
+[generation.label_evaluator]
+search_budget = "depth"
+search_depth = 2
+target_semantics = "root-backed-up-v1"
+score_transform_version = "raw-score-v1"
+
+[generation.label_evaluator.evaluator]
+kind = "handcrafted"

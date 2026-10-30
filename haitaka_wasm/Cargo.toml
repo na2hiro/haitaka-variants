@@ -25,6 +25,7 @@ name = "nnue"
 harness = false
 
 [features]
+nnue-l1-256 = []
 annan = ["haitaka/annan"]
 anhoku = ["haitaka/anhoku"]
 antouzai = ["haitaka/antouzai"]

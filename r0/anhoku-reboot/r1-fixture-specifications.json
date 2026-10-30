@@ -1,0 +1,81 @@
+{
+  "schema": "haitaka-r1-fixture-specifications-v1",
+  "deterministic_parity_corpus": {
+    "schema": "haitaka-r1-parity-corpus-v1",
+    "deterministic_order": "UTF-8 fixture id ascending; no random generation, filtering, cycling, or sampling",
+    "required_position_classes": [
+      "Anhoku start position and both sides to move",
+      "every unpromoted board and hand piece type in donor and receiver roles",
+      "gold, tokin, and every promoted lance, knight, silver, bishop, and rook state",
+      "empty and maximum legal hands for both colors",
+      "check, double check, pinned donor, adjacent kings allowed by Anhoku, capture, promotion, drop, and terminal positions",
+      "positions that exercise each reachable feature row and both accumulator perspectives"
+    ],
+    "required_move_transitions": [
+      "quiet move",
+      "capture with demotion into hand",
+      "promotion",
+      "drop",
+      "king move requiring refresh",
+      "donor relationship gained, lost, and changed",
+      "receiver relationship gained, lost, and changed",
+      "make and unmake round trip for every transition"
+    ],
+    "required_oracles": [
+      "independent board-packing decoder",
+      "Python feature transformer",
+      "full-precision PyTorch prediction",
+      "serialized Python exact-integer prediction",
+      "Rust full-refresh prediction",
+      "Rust incremental prediction after every move and unmove"
+    ],
+    "pass_rule": "Every fixture has a stable id and expected packed bytes/features. Packing and active features match the independent oracle exactly; serialized Python and Rust full-refresh/incremental integer outputs are bit-exact for both perspectives; make/unmake restores bytes, features, accumulators, and scores exactly."
+  },
+  "sentinel_network": {
+    "schema": "haitaka-r1-sentinel-network-v1",
+    "construction": "Generate deterministically from source code, not training: assign unique bounded integer signatures to selected feature rows, alternating signs and using asymmetric layer weights/biases so perspective swaps, row collisions, sign inversions, clipping, rounding, and byte-order errors produce distinct expected outputs.",
+    "required_patterns": [
+      "zero network and bias-only network",
+      "one-hot positive and negative feature rows",
+      "distinct donor/receiver and black/white row signatures",
+      "values immediately below, at, and above every clamp boundary",
+      "ties-to-even quantization cases",
+      "minimum and maximum representable serialized weights without accumulator overflow"
+    ],
+    "required_exports": [
+      "full-precision checkpoint with construction metadata",
+      "serialized NNUE bytes",
+      "machine-readable expected per-layer activations and final integer scores for every parity fixture",
+      "SHA-256 for generator source, metadata, checkpoint, NNUE, and expectations"
+    ],
+    "pass_rule": "Regeneration is byte-identical and every Python integer, Rust full-refresh, Rust incremental, native, and WASM result equals the frozen expected activation trace and score exactly."
+  },
+  "interruption_safe_search": {
+    "schema": "haitaka-r1-interruption-safe-search-v1",
+    "required_cases": [
+      "deadline before depth 1 begins",
+      "deadline during the first root move",
+      "deadline after at least one root move but before depth 1 completes",
+      "deadline between completed iterations",
+      "deadline during qsearch",
+      "node budget before and during the first completed iteration",
+      "terminal position with no legal move",
+      "replayed repetition history through usi-wasm-v1 position ... moves ...",
+      "native and shipped WASM Worker paths at the 100 ms target"
+    ],
+    "required_result_fields": [
+      "best_move",
+      "best_move_was_searched",
+      "completed_depth",
+      "completed_root_moves",
+      "interruption_reason",
+      "requested_budget",
+      "consumed_nodes",
+      "elapsed_ms",
+      "deadline_overrun_ms",
+      "emergency_fallbacks",
+      "position_history_identity"
+    ],
+    "pass_rule": "Every nonterminal search returns a legal root move that was actually searched, including interruption before a completed depth; terminal positions alone may return no move. Missing moves and unsearched emergency fallbacks are zero. Termination and interruption reasons are explicit, native/WASM results satisfy the same contract, and the frozen latency ceilings are enforced."
+  }
+}

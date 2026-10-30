@@ -148,6 +148,7 @@ pub use bitboard::*;
 pub use color::*;
 pub use dfpn::*;
 pub use file::*;
+pub use history::*;
 pub use piece::*;
 pub use rank::*;
 pub use shogi_move::*;
@@ -157,6 +158,7 @@ pub use square::*;
 pub mod attacks;
 pub mod board;
 pub mod dfpn;
+pub mod history;
 pub mod slider_moves;
 #[cfg(any(
     feature = "annan",

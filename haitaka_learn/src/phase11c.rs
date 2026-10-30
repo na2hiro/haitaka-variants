@@ -370,20 +370,22 @@ fn run_checkpoint_helper(args: &Phase11cArgs, output: &Path) -> Result<()> {
     let mut loaded = LoadedConfig::from_path(&args.trainer_config)?;
     loaded.config.paths.trainer_checkout = Some(args.trainer_checkout.clone());
     loaded.config.paths.python = args.python.display().to_string();
-    let _guard = PreparedTrainer::new_without_build(&loaded, &args.trainer_checkout)?;
+    let prepared = PreparedTrainer::new_without_build(&loaded, &args.trainer_checkout)?;
     let status = Command::new(&args.python)
         .arg(&args.helper)
         .arg("--checkpoint")
         .arg(&args.v2_checkpoint)
         .arg("--trainer-checkout")
         .arg(&args.trainer_checkout)
+        .arg("--trainer-context")
+        .arg(prepared.path())
         .arg("--reviewed-patch")
         .arg(&args.reviewed_patch)
         .arg("--applied-diff")
         .arg(&args.applied_diff)
         .arg("--output")
         .arg(output)
-        .current_dir(&args.trainer_checkout)
+        .current_dir(prepared.path())
         .status()
         .context("run Phase 11-C checkpoint helper")?;
     ensure!(status.success(), "Phase 11-C checkpoint helper failed");

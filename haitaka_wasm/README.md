@@ -45,6 +45,21 @@ Build Annan shogi:
 wasm-pack build haitaka_wasm --target web --out-dir pkg --release --features annan
 ```
 
+Build an NNUE runtime with the compact 256-value transformer width:
+
+```bash
+wasm-pack build haitaka_wasm --target web --out-dir pkg --release \
+  --features anhoku,nnue-l1-256
+```
+
+`nnue-l1-256` changes only the compile-time transformer width (L1) from 512
+to 256. Feature geometry, hidden-layer geometry, and the NNUE file version stay
+unchanged. The width-derived network and section hashes are intentionally
+different, so the runtime only accepts models serialized with the matching L1.
+The selected values are available to native consumers as
+`NNUE_TRANSFORMER_WIDTH`, `NNUE_TRANSFORMER_OUTPUT_WIDTH`, and
+`NNUE_OUTPUT_LAYER_HASH`.
+
 The generated package is written to:
 
 ```text
@@ -114,6 +129,7 @@ For package metadata details, see
 ```bash
 cargo test -p haitaka_wasm
 cargo test -p haitaka_wasm --features annan
+cargo test -p haitaka_wasm --features anhoku,nnue-l1-256
 cargo bench -p haitaka_wasm --bench nnue -- --noplot
 ```
 

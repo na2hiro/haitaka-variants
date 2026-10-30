@@ -1,0 +1,89 @@
+{
+  "schema": "haitaka-historical-contamination-v1",
+  "counts": [
+    {
+      "id": "phase8d-candidate-vs-handcrafted",
+      "kind": "no-move-loss-path",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/handcrafted-benchmark/7437671b62b61397/self-play-games.jsonl", "bytes": 1969479, "sha256": "aa4b9f4ac805a3ba3587da38a195710023ab8fb6434e7f124b862865dc815663" }
+      ],
+      "affected_games": 330,
+      "total_games": 1024,
+      "fallback_moves": null,
+      "counting_rule": "incompleteIterations == plies + 1"
+    },
+    {
+      "id": "phase8d-c16-retention",
+      "kind": "no-move-loss-path",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/c16-vs-candidate-20260829/self-play-games.jsonl", "bytes": 1958033, "sha256": "84530c3492aec2114d2fcc038cc4c3601344c60a04761a1d00c0ae8791556d1b" }
+      ],
+      "affected_games": 381,
+      "total_games": 1024,
+      "fallback_moves": null,
+      "counting_rule": "incompleteIterations == plies + 1"
+    },
+    {
+      "id": "phase8d-phase8b-retention",
+      "kind": "no-move-loss-path",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/phase8b-root-vs-candidate-20260829/batch-1024/self-play-games.jsonl", "bytes": 1961896, "sha256": "ea2e0a2402a483ccbb961f85c0b69549ecb842a46346ed70a3ccb7cb7816a022" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/retention-gate/phase8b-root-vs-candidate-20260829/batch-3072/self-play-games.jsonl", "bytes": 5878831, "sha256": "24f536708731a33889fbefd12395452e121aba6ac3592e6b5ed4bf3141bcb0d9" }
+      ],
+      "affected_games": 1771,
+      "total_games": 4096,
+      "fallback_moves": null,
+      "counting_rule": "incompleteIterations == plies + 1"
+    },
+    {
+      "id": "phase8d-anchored-checkpoint-ranking",
+      "kind": "no-move-loss-path",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000000/self-play-games.jsonl", "bytes": 126735, "sha256": "7af97dab6d175350e320db979bd7e4c47a4eb09356c5fde0a72cb4e4155976a1" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000032/self-play-games.jsonl", "bytes": 487070, "sha256": "657107bc8b1e2563581b8c54e3c1b28215336e4d4dbdd2c844e4bf903c69dc8f" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000160/self-play-games.jsonl", "bytes": 482710, "sha256": "eba4caccedf20545f509be1472c98d9a42e2979a9b2d56e6f6f421044c34bc80" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000288/self-play-games.jsonl", "bytes": 489299, "sha256": "507996cfc4edc3edc98ce0e0a67cf045c6207cc4e3acb131e63366b4aaa8b488" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000416/self-play-games.jsonl", "bytes": 488172, "sha256": "62599ae4caf12a9019909d16dcfb7ffd5ff26fdbe5c93135e73ff39f82358436" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000544/self-play-games.jsonl", "bytes": 493389, "sha256": "a077dd2e93a67945f2ff57996a58c7ab73e856a33b2faefbc82e971fa3f1924c" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000672/self-play-games.jsonl", "bytes": 486560, "sha256": "e0d73f6692841aa7e004fbbce868b730e3c4d1885604cc5c14687255fa8cb4f4" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000800/self-play-games.jsonl", "bytes": 495754, "sha256": "f50a81b7b37158ca8da124848b3b7b26278ad80f440db34f1b3533bd2530a3c5" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-000928/self-play-games.jsonl", "bytes": 493753, "sha256": "7bbbacb83da24ada8b7930ea63bc51c48f860ee6ce028d02271785f36e007b2f" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001056/self-play-games.jsonl", "bytes": 487535, "sha256": "c36543191b82449bff09fc5bc566bb9f0ab15d56802bede30c5180df5a374669" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001184/self-play-games.jsonl", "bytes": 490469, "sha256": "940fe52552ea72a81c0d3e1a9ca68b7491a59ea8fe753a8cd34613e57ed76179" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001312/self-play-games.jsonl", "bytes": 490125, "sha256": "f70bfcbe8e3211e66f41b4298623144c85f197b2a23c241c2980dbee9bed9c52" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001440/self-play-games.jsonl", "bytes": 484278, "sha256": "14192dedce8812b8bc647ec5e4293727786bb33b7e1a4d70f692d6d2f68b3e95" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001568/self-play-games.jsonl", "bytes": 484754, "sha256": "e1d5e3288579af10fd5b22f3d1c427766b1c57ab4535a9722595552a1b6def2b" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001696/self-play-games.jsonl", "bytes": 491186, "sha256": "42605176edd7c8e48b1667ed2228a003ddafe906ede71a87d01f948bb4713809" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001824/self-play-games.jsonl", "bytes": 490708, "sha256": "f6a3e6542f3ba58b63ca097b74bd71c2e85679ec1450de8b45cc0216511be694" },
+        { "path": "out/anhoku-v0.6-phase8d-b-root-262k/artifacts/selection/matches/anchored-ranking/7437671b62b61397/batch-001952/self-play-games.jsonl", "bytes": 367946, "sha256": "616bc3ab52797b2ddaf9043c29016c133aeccfcb7d3503225d192338707fe47d" }
+      ],
+      "affected_games": 1795,
+      "total_games": 4096,
+      "fallback_moves": null,
+      "counting_rule": "incompleteIterations == plies + 1"
+    },
+    {
+      "id": "phase11-v2-vs-v1",
+      "kind": "no-move-loss-path",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.7-phase11b-seed80-v2/artifacts/phase11b-gate/seed80/batch-1024/self-play-games.jsonl", "bytes": 1950761, "sha256": "6c8421ef91f83fbcaf0082a2eccd75a131132b38aea7696d271a405c6aea0ad4" },
+        { "path": "out/anhoku-v0.7-phase11b-seed80-v2/artifacts/phase11b-gate/seed80/batch-3072/self-play-games.jsonl", "bytes": 5835899, "sha256": "b558808257bc9e1343c06482a15f52fb1a5b9c4a39cd4d674bac7eb578ca5f0a" }
+      ],
+      "affected_games": 1822,
+      "total_games": 4096,
+      "fallback_moves": null,
+      "counting_rule": "incompleteIterations == plies + 1"
+    },
+    {
+      "id": "phase8r-equal-node-fallbacks",
+      "kind": "emergency-fallback",
+      "source_artifacts": [
+        { "path": "out/anhoku-v0.6-phase8r/decision/self-play-games.jsonl", "bytes": 4148248, "sha256": "fd4ae3fb779a114faa6a5e06787f80d8dc8ccec8af80bd679155dcda930da162" }
+      ],
+      "affected_games": 42,
+      "total_games": 2048,
+      "fallback_moves": 342,
+      "counting_rule": "fallbacks > 0; fallback_moves = sum(fallbacks)"
+    }
+  ]
+}

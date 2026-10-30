@@ -19,15 +19,45 @@ jobs:
       matrix:
         include:
           - name: build
+            packages: "--workspace"
             features: ""
           - name: build (Annan)
+            packages: "--workspace"
             features: "--features annan"
           - name: build (Anhoku)
+            packages: "--workspace"
             features: "--features anhoku"
+          - name: build (Anhoku NNUE 256)
+            packages: "-p haitaka_wasm"
+            features: "--features anhoku,nnue-l1-256"
 
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --workspace ${{ matrix.features }} --verbose
+      run: cargo build ${{ matrix.packages }} ${{ matrix.features }} --verbose
     - name: Run tests
-      run: cargo test --workspace ${{ matrix.features }} --verbose
+      run: cargo test ${{ matrix.packages }} ${{ matrix.features }} --verbose
+
+  python:
+    name: Python R5 regressions
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install CPU test dependency
+      run: python -m pip install numpy==2.2.6
+    - name: Run R5 regression tests
+      run: PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s scripts/tests -v
+
+  browser-worker:
+    name: Browser worker regressions
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+    - name: Run browser worker regression tests
+      run: node --test scripts/tests/r1d3-browser-worker.test.mjs

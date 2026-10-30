@@ -7,9 +7,11 @@ use std::time::SystemTime;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use tempfile::TempDir;
 
 use crate::config::{
-    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, LoadedConfig, Ruleset, TEACHER_MOVE_ENCODING,
+    FEATURE_SET_DONOR_RECEIVER_PAIR_V2, FullPrecisionStatePolicy, InitialCheckpoint, LoadedConfig,
+    LoadedTrainingConfig, Ruleset, TEACHER_MOVE_ENCODING,
 };
 use crate::dataset::ENTRY_BYTES;
 use crate::dataset_audit::audit_dataset;
@@ -47,6 +49,14 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
     loaded: &LoadedConfig,
     output: &Path,
 ) -> Result<TrainerFeatureParityReport> {
+    verify_receiver_pair_v2_trainer_parity_with_preparer(loaded, output, PreparedTrainer::new_inner)
+}
+
+fn verify_receiver_pair_v2_trainer_parity_with_preparer(
+    loaded: &LoadedConfig,
+    output: &Path,
+    prepare_trainer: impl FnOnce(&LoadedConfig, &Path, bool) -> Result<PreparedTrainer>,
+) -> Result<TrainerFeatureParityReport> {
     if loaded.training_features() != FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
         bail!("trainer parity requires training.features={FEATURE_SET_DONOR_RECEIVER_PAIR_V2}");
     }
@@ -54,7 +64,7 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
     let donor_overlay = overlay_donor_features_py_contents();
     let loader_overlay = overlay_training_data_loader_cpp_contents();
     // This gate certifies the C++ loader, even when ordinary training reuses a build.
-    let _guard = PreparedTrainer::new_inner(loaded, &trainer_checkout, true)?;
+    let prepared = prepare_trainer(loaded, &trainer_checkout, true)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -74,7 +84,7 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
             )
             .to_string(),
         ],
-        &trainer_checkout,
+        prepared.path(),
         "validate DonorReceiverPairV2 Python feature specification",
     )?;
 
@@ -82,7 +92,7 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
         schema: "haitaka-anhoku-phase11a-trainer-parity",
         schema_version: 1,
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(&trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         feature_set: FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string(),
         feature_set_hash: "0xb38efce1".to_string(),
         real_features: 167_103,
@@ -113,53 +123,60 @@ struct DatasetCompletionManifest {
     teacher_move_encoding: String,
 }
 
-pub fn train(loaded: &LoadedConfig, resume_override: Option<bool>) -> Result<PathBuf> {
+pub fn train(loaded: &LoadedTrainingConfig, resume_override: Option<bool>) -> Result<PathBuf> {
+    verify_declared_dataset_manifests(loaded)?;
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
     ensure_training_inputs_ready(loaded)?;
 
-    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
-    let args = training_args(loaded, resume_override, &trainer_checkout)?;
+    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let args = training_args(loaded, resume_override, prepared.path())?;
 
     run_command(
         &loaded.config.paths.python,
         &args,
-        &trainer_checkout,
+        prepared.path(),
         "haitaka-variant-nnue-pytorch training",
     )?;
 
-    find_latest_valid_checkpoint(
+    let checkpoint = find_latest_valid_checkpoint(
         &artifacts.logs_dir,
         &loaded.config.paths.python,
-        &trainer_checkout,
+        prepared.path(),
     )?
     .ok_or_else(|| {
         anyhow!(
             "training finished but no valid checkpoint was found under {}",
             artifacts.logs_dir.display()
         )
-    })
+    })?;
+    crate::r0::write_training_manifest(loaded, &checkpoint, None)?;
+    Ok(checkpoint)
 }
 
 /// Materialize the configured warm-start as a trainer checkpoint while doing
 /// no optimization. In particular, this exercises the V1-to-V2 migration and
 /// the real PyTorch deserializer before an hourly GPU run is authorized.
-pub fn prepare_bootstrap(loaded: &LoadedConfig) -> Result<PathBuf> {
+pub fn prepare_bootstrap(loaded: &LoadedTrainingConfig) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
-    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
-    materialize_bootstrap_pt(loaded, &trainer_checkout)?.ok_or_else(|| {
-        anyhow!("paths.bootstrap_nnue is required to prepare a bootstrap checkpoint")
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
+    materialize_bootstrap_pt(loaded, prepared.path())?.ok_or_else(|| {
+        anyhow!("training.initial_checkpoint must not be scratch to prepare a checkpoint")
     })
 }
 
-pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Result<PathBuf> {
+pub fn export(
+    loaded: &LoadedTrainingConfig,
+    source_checkpoint: Option<PathBuf>,
+) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
 
     let checkpoint = if let Some(path) = source_checkpoint {
         path
@@ -167,7 +184,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
         find_latest_valid_checkpoint(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
-            &trainer_checkout,
+            prepared.path(),
         )?
         .ok_or_else(|| {
             anyhow!(
@@ -178,7 +195,6 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
     };
     ensure_file_exists(&checkpoint, "checkpoint")?;
 
-    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -190,7 +206,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
             "--description".to_string(),
             loaded.config.export.description.clone(),
         ],
-        &trainer_checkout,
+        prepared.path(),
         "haitaka-variant-nnue-pytorch export",
     )?;
 
@@ -200,6 +216,7 @@ pub fn export(loaded: &LoadedConfig, source_checkpoint: Option<PathBuf>) -> Resu
         &checkpoint,
         &artifacts.exported_nnue,
     )?;
+    crate::r0::write_training_manifest(loaded, &checkpoint, Some(&artifacts.exported_nnue))?;
 
     Ok(artifacts.exported_nnue)
 }
@@ -228,7 +245,7 @@ pub fn evaluate_checkpoint(
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
-    let _guard = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -247,7 +264,7 @@ pub fn evaluate_checkpoint(
             "--output".to_string(),
             output.display().to_string(),
         ],
-        &trainer_checkout,
+        prepared.path(),
         "haitaka-variant-nnue-pytorch offline checkpoint evaluation",
     )?;
     Ok(output)
@@ -284,22 +301,40 @@ pub(crate) fn ensure_training_inputs_ready(loaded: &LoadedConfig) -> Result<()> 
 }
 
 pub(crate) fn training_args(
-    loaded: &LoadedConfig,
+    loaded: &LoadedTrainingConfig,
     resume_override: Option<bool>,
     trainer_checkout: &Path,
 ) -> Result<Vec<String>> {
     let artifacts = loaded.artifact_paths();
     let should_resume = resume_override.unwrap_or(loaded.config.training.resume);
-    let resume_checkpoint = if should_resume {
-        find_latest_valid_checkpoint(
-            &artifacts.logs_dir,
-            &loaded.config.paths.python,
-            trainer_checkout,
-        )?
+    let existing_checkpoint = find_latest_valid_checkpoint(
+        &artifacts.logs_dir,
+        &loaded.config.paths.python,
+        trainer_checkout,
+    )?;
+    if !should_resume && existing_checkpoint.is_some() {
+        bail!(
+            "fresh training refuses {}; an existing checkpoint is present, so use the explicit `resume-train` command or a new output directory",
+            artifacts.logs_dir.display()
+        );
+    }
+    let resume_checkpoint = existing_checkpoint.filter(|_| should_resume);
+    let declared_full_resume = if resume_checkpoint.is_none() {
+        match loaded.resolved_initial_checkpoint() {
+            InitialCheckpoint::FullPrecision {
+                path,
+                sha256,
+                state_policy: FullPrecisionStatePolicy::FullResume,
+            } => {
+                ensure_artifact_sha256(&path, &sha256, "full-resume initial checkpoint")?;
+                Some(path)
+            }
+            _ => None,
+        }
     } else {
         None
     };
-    let bootstrap_model = if resume_checkpoint.is_none() {
+    let bootstrap_model = if resume_checkpoint.is_none() && declared_full_resume.is_none() {
         materialize_bootstrap_pt(loaded, trainer_checkout)?
     } else {
         None
@@ -346,7 +381,7 @@ pub(crate) fn training_args(
         args.push("--ood-validation".to_string());
         args.push(ood.display().to_string());
     }
-    if let Some(checkpoint) = resume_checkpoint {
+    if let Some(checkpoint) = resume_checkpoint.or(declared_full_resume) {
         println!("resuming training from {}", checkpoint.display());
         args.push("--resume_from_checkpoint".to_string());
         args.push(checkpoint.display().to_string());
@@ -359,22 +394,13 @@ pub(crate) fn training_args(
 }
 
 pub(crate) fn spawn_training(
-    loaded: &LoadedConfig,
-    trainer_checkout: &Path,
-    resume_override: Option<bool>,
+    _loaded: &LoadedConfig,
+    _trainer_checkout: &Path,
+    _resume_override: Option<bool>,
 ) -> Result<Child> {
-    ensure_training_inputs_ready(loaded)?;
-    let args = training_args(loaded, resume_override, trainer_checkout)?;
-    Command::new(&loaded.config.paths.python)
-        .args(args)
-        .current_dir(trainer_checkout)
-        .spawn()
-        .with_context(|| {
-            format!(
-                "failed to start haitaka-variant-nnue-pytorch training using `{}`",
-                loaded.config.paths.python
-            )
-        })
+    bail!(
+        "train-select is disabled for ambiguous legacy all-purpose configs after R0; use the strict training command and register evaluation separately"
+    )
 }
 
 pub(crate) fn export_checkpoint_to(
@@ -415,7 +441,7 @@ pub(crate) fn write_export_metadata(
         exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
@@ -429,21 +455,32 @@ pub(crate) fn write_export_metadata(
     Ok(())
 }
 
+pub(crate) const PINNED_TRAINER_REVISION: &str = "61666d9e3653e4df9881b14c23f8fdcc4bf7779b";
+
+/// An immutable, disposable trainer build context.
+///
+/// The configured checkout is used only as an object database for the pinned
+/// commit.  No file in that checkout is read from its working tree or changed.
+/// This makes the exact trainer input reviewable and prevents an unrelated
+/// dirty sibling checkout from changing a training run.
 pub(crate) struct PreparedTrainer {
-    backups: Vec<FileBackup>,
+    _temp_dir: TempDir,
+    path: PathBuf,
 }
 
 impl PreparedTrainer {
+    /// Prepare a dataset-consuming operation with a loader built in its pinned context.
     pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
-        Self::new_inner(
-            loaded,
-            trainer_checkout,
-            loaded.config.training.build_data_loader,
-        )
+        if !loaded.config.training.build_data_loader {
+            bail!(
+                "dataset-consuming operations require training.build_data_loader=true: immutable trainer contexts need their own compiled loader"
+            );
+        }
+        Self::new_inner(loaded, trainer_checkout, true)
     }
 
-    /// Install the exact Python/variant overlays while deliberately skipping
-    /// the C++ loader build. Phase 11-C only deserializes a frozen checkpoint.
+    /// Prepare source-only checkpoint import/export or Phase 11-C deserialization
+    /// with the exact Python/variant overlays and no C++ data-loader build.
     pub(crate) fn new_without_build(
         loaded: &LoadedConfig,
         trainer_checkout: &Path,
@@ -463,36 +500,94 @@ impl PreparedTrainer {
             );
         }
 
-        let variant_py = trainer_checkout.join("variant.py");
-        let variant_h = trainer_checkout.join("variant.h");
-        let feature_set_py = trainer_checkout.join("feature_set.py");
-        let features_py = trainer_checkout.join("features.py");
-        let donor_features_py = trainer_checkout.join("donor_features.py");
-        let training_data_loader_cpp = trainer_checkout.join("training_data_loader.cpp");
-        let mut prepared = Self {
-            backups: Vec::new(),
-        };
-        prepared.write_with_backup(&variant_py, variant_py_contents(loaded))?;
-        prepared.write_with_backup(&variant_h, variant_h_contents(loaded))?;
-        prepared.write_with_backup(&feature_set_py, overlay_feature_set_py_contents())?;
-        prepared.write_with_backup(&features_py, overlay_features_py_contents())?;
-        prepared.write_with_backup(&donor_features_py, overlay_donor_features_py_contents())?;
-        prepared.write_with_backup(
-            &training_data_loader_cpp,
+        ensure_pinned_trainer_commit(trainer_checkout)?;
+        let temp_dir = tempfile::Builder::new()
+            .prefix("haitaka-r2-trainer-")
+            .tempdir()
+            .context("failed to create immutable trainer build context")?;
+        let path = temp_dir.path().join("context");
+        fs::create_dir(&path)?;
+        let archive = temp_dir.path().join("trainer.tar");
+        run_command(
+            "git",
+            &[
+                "-C".into(),
+                trainer_checkout.display().to_string(),
+                "archive".into(),
+                "--format=tar".into(),
+                format!("--output={}", archive.display()),
+                PINNED_TRAINER_REVISION.into(),
+            ],
+            temp_dir.path(),
+            "archive pinned trainer revision",
+        )?;
+        run_command(
+            "tar",
+            &[
+                "-xf".into(),
+                archive.display().to_string(),
+                "-C".into(),
+                path.display().to_string(),
+            ],
+            temp_dir.path(),
+            "extract pinned trainer revision",
+        )?;
+
+        let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("haitaka_learn must be inside the workspace")
+            .to_path_buf();
+        let phase7_patch =
+            workspace_root.join("trainer-patches/variant-nnue-pytorch-phase7.1.patch");
+        run_command(
+            "patch",
+            &[
+                "--batch".into(),
+                "--fuzz=3".into(),
+                "-p1".into(),
+                "-i".into(),
+                phase7_patch.display().to_string(),
+            ],
+            &path,
+            "apply reviewed trainer integration patch",
+        )?;
+        fs::copy(
+            workspace_root.join("trainer-patches/evaluate.py"),
+            path.join("evaluate.py"),
+        )?;
+
+        fs::write(path.join("variant.py"), variant_py_contents(loaded))?;
+        fs::write(path.join("variant.h"), variant_h_contents(loaded))?;
+        fs::write(
+            path.join("feature_set.py"),
+            overlay_feature_set_py_contents(),
+        )?;
+        fs::write(path.join("features.py"), overlay_features_py_contents())?;
+        fs::write(
+            path.join("donor_features.py"),
+            overlay_donor_features_py_contents(),
+        )?;
+        fs::write(
+            path.join("training_data_loader.cpp"),
             overlay_training_data_loader_cpp_contents(),
         )?;
+
+        let prepared = Self {
+            _temp_dir: temp_dir,
+            path,
+        };
 
         if build_data_loader {
             run_command(
                 &loaded.config.paths.cmake,
                 &["-S".into(), ".".into(), "-B".into(), "build".into()],
-                trainer_checkout,
+                prepared.path(),
                 "configure trainer data loader",
             )?;
             run_command(
                 &loaded.config.paths.cmake,
                 &["--build".into(), "build".into()],
-                trainer_checkout,
+                prepared.path(),
                 "build trainer data loader",
             )?;
             run_command(
@@ -503,7 +598,7 @@ impl PreparedTrainer {
                     "--prefix".into(),
                     ".".into(),
                 ],
-                trainer_checkout,
+                prepared.path(),
                 "install trainer data loader",
             )?;
         }
@@ -511,49 +606,63 @@ impl PreparedTrainer {
         Ok(prepared)
     }
 
-    fn write_with_backup(&mut self, path: &Path, contents: String) -> Result<()> {
-        let previous = fs::read(path).ok();
-        fs::write(path, contents.as_bytes())
-            .with_context(|| format!("failed to write {}", path.display()))?;
-        self.backups.push(FileBackup {
-            path: path.to_path_buf(),
-            previous,
-        });
-        Ok(())
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
     }
 }
 
-impl Drop for PreparedTrainer {
-    fn drop(&mut self) {
-        for backup in self.backups.drain(..).rev() {
-            match backup.previous {
-                Some(bytes) => {
-                    let _ = fs::write(&backup.path, bytes);
-                }
-                None => {
-                    let _ = fs::remove_file(&backup.path);
-                }
-            }
-        }
+fn ensure_pinned_trainer_commit(checkout: &Path) -> Result<()> {
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(checkout)
+        .args([
+            "cat-file",
+            "-e",
+            &format!("{PINNED_TRAINER_REVISION}^{{commit}}"),
+        ])
+        .status()
+        .context("failed to inspect pinned trainer commit")?;
+    if !status.success() {
+        bail!(
+            "trainer checkout {} does not contain pinned commit {}",
+            checkout.display(),
+            PINNED_TRAINER_REVISION
+        );
     }
-}
-
-struct FileBackup {
-    path: PathBuf,
-    previous: Option<Vec<u8>>,
+    Ok(())
 }
 
 fn materialize_bootstrap_pt(
-    loaded: &LoadedConfig,
+    loaded: &LoadedTrainingConfig,
     trainer_checkout: &Path,
 ) -> Result<Option<PathBuf>> {
-    let Some(bootstrap_nnue) = loaded.bootstrap_nnue() else {
-        return Ok(None);
+    let initial = loaded.resolved_initial_checkpoint();
+    let (bootstrap_nnue, expected_sha256, source_features) = match initial {
+        InitialCheckpoint::Scratch => return Ok(None),
+        InitialCheckpoint::FullPrecision { path, sha256, .. } => {
+            ensure_artifact_sha256(&path, &sha256, "full-precision initial checkpoint")?;
+            return Ok(Some(path));
+        }
+        InitialCheckpoint::QuantizedImportDiagnostic {
+            path,
+            sha256,
+            source_feature_family,
+            ..
+        } => (path, sha256, source_feature_family),
     };
-    ensure_file_exists(&bootstrap_nnue, "bootstrap NNUE")?;
+    ensure_artifact_sha256(
+        &bootstrap_nnue,
+        &expected_sha256,
+        "quantized diagnostic initial network",
+    )?;
 
     let artifacts = loaded.artifact_paths();
     let mut import_features = bootstrap_import_features(&bootstrap_nnue)?;
+    if import_features != source_features {
+        bail!(
+            "quantized diagnostic initial network declares {source_features}, but its header identifies {import_features}"
+        );
+    }
     let training_features = loaded.training_features();
     let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2
         && import_features == "HalfKAv2^+DonorSingleEff"
@@ -660,6 +769,33 @@ fn ensure_file_exists(path: &Path, label: &str) -> Result<()> {
     }
 }
 
+fn ensure_artifact_sha256(path: &Path, expected: &str, label: &str) -> Result<()> {
+    ensure_file_exists(path, label)?;
+    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let actual = format!("{:x}", Sha256::digest(&bytes));
+    if actual != expected {
+        bail!(
+            "{label} {} has sha256 {actual}, expected {expected}",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+fn verify_declared_dataset_manifests(loaded: &LoadedTrainingConfig) -> Result<()> {
+    let artifacts = loaded.artifact_paths();
+    ensure_artifact_sha256(
+        &artifacts.train_manifest,
+        &loaded.dataset.train_manifest_sha256,
+        "training dataset manifest",
+    )?;
+    ensure_artifact_sha256(
+        &artifacts.validation_manifest,
+        &loaded.dataset.validation_manifest_sha256,
+        "validation dataset manifest",
+    )
+}
+
 fn ensure_training_board_minimum(
     loaded: &LoadedConfig,
     bin_path: &Path,
@@ -740,19 +876,6 @@ fn ensure_training_dataset_ready(
         );
     }
     Ok(())
-}
-
-fn detect_git_revision(repo_root: &Path) -> Option<String> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 pub(crate) fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
@@ -915,6 +1038,20 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn dataset_operations_reject_disabled_loader_before_preparing_context() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
+        loaded.config.training.build_data_loader = false;
+        let error = PreparedTrainer::new(&loaded, temp.path()).err().unwrap();
+        assert!(
+            error
+                .to_string()
+                .contains("training.build_data_loader=true")
+        );
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 0);
+    }
+
+    #[test]
     #[cfg(unix)]
     fn parity_requires_a_successful_loader_build_when_training_skips_it() {
         let temp = tempdir().unwrap();
@@ -927,7 +1064,19 @@ mod tests {
         fs::write(&overlay, "original overlay").unwrap();
         let output = temp.path().join("parity.json");
 
-        let error = verify_receiver_pair_v2_trainer_parity(&loaded, &output).unwrap_err();
+        let error = verify_receiver_pair_v2_trainer_parity_with_preparer(
+            &loaded,
+            &output,
+            |_, checkout, build_data_loader| {
+                assert_eq!(checkout, temp.path());
+                assert!(
+                    build_data_loader,
+                    "parity must build even when training skips it"
+                );
+                bail!("configure trainer data loader failed");
+            },
+        )
+        .unwrap_err();
         assert!(
             error
                 .to_string()
@@ -1016,6 +1165,10 @@ mod tests {
         assert!(overlay_features_py_contents().contains("donor_features"));
         assert!(overlay_feature_set_py_contents().contains("_calculate_features_hash"));
         assert!(overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorSingleEff"));
+        assert!(
+            overlay_training_data_loader_cpp_contents()
+                .contains("HalfKAv2+DonorSingleEff-R1Oracle")
+        );
         assert!(
             overlay_training_data_loader_cpp_contents().contains("HalfKAv2^+DonorReceiverPairV2")
         );

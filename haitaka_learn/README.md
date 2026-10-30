@@ -1,5 +1,115 @@
 # haitaka_learn
 
+## R0 stage separation
+
+New execution uses strict, stage-specific TOML schemas. `generate-data`,
+`merge-data`, `trajectory-audit`, `calibrate-labels`, and `validate-openings`
+accept only a combined generation config such as
+`haitaka_learn.anhoku-reboot-r0.generation.toml`. It declares trajectory and
+label evaluators independently and cannot represent training initialization.
+Unknown or legacy cross-stage fields are errors.
+
+`train`, `prepare-bootstrap`, and `export` accept only a training config such as
+`haitaka_learn.anhoku-reboot-r0.training.example.toml`. Training consumes
+explicit dataset-manifest locators and hashes and declares
+`training.initial_checkpoint` as scratch, full precision, or a marked
+quantized-import diagnostic. The `pipeline` command requires separate
+`--generation-config` and `--training-config` files.
+
+As of R2, `train` is always a fresh command and refuses an output directory
+containing a valid checkpoint. Continuing an output requires the explicit
+`resume-train --config ...` command. Training-config defaults also disable
+resume and random record skipping.
+
+Successful generation and training/export commands publish stage manifests in
+the run's `artifacts/` directory. `r0-gate` validates the experiment registry,
+historical claim quarantine, frozen artifacts, and production execution spec:
+
+```console
+cargo run -p haitaka_learn --features anhoku -- r0-gate \
+  --bundle r0/anhoku-reboot
+```
+
+Historical all-purpose TOMLs remain audit inputs only; execution commands do
+not guess how `paths.bootstrap_nnue` was intended.
+
+Strict generation and merge also fail closed on identity mismatches. The
+legacy `--ignore-identity-mismatch` escape hatch is rejected; mismatched shards
+must be regenerated from the registered config and code identity.
+
+## R1 correctness gates
+
+`r1a-gate` materializes the fixed 10,240-position board/feature/sign corpus.
+`r1b-gate` consumes that passing corpus, generates a deterministic
+full-precision PyTorch sentinel checkpoint, repeats its export, independently
+emulates the serialized integer graph in Python, and compares every activation
+with Rust full-refresh and incremental inference:
+
+```console
+cargo build --release -p haitaka_learn --features anhoku
+target/release/haitaka_learn r1a-gate \
+  --config haitaka_learn.anhoku-reboot-r1a.training.toml \
+  --output-dir out/anhoku-reboot-r1a
+target/release/haitaka_learn r1b-gate \
+  --r1a-dir out/anhoku-reboot-r1a \
+  --output-dir out/anhoku-reboot-r1b \
+  --limits r0/anhoku-reboot/r1b-quantization-limits.json \
+  --python ../engine/variant-nnue-pytorch/.venv/bin/python
+```
+
+The R1-B report includes absolute full-precision-to-quantized score and loss
+degradation by deterministic split and reference-score bucket. The limits are
+frozen in source and the gate fails on any integer score/activation mismatch,
+incremental mismatch, repeat-export byte difference, serializer weight clamp,
+or accumulator overflow. These are CPU-only correctness gates; they do not
+train a model or authorize a strength claim.
+
+## R2 deterministic trainer gate
+
+`r2-gate` runs all CPU-valid deterministic loader/trainer checks and stops
+before CUDA. It builds the production C++ loader in a disposable context from
+the pinned trainer commit, runs same-seed and explicit-resume debug training,
+checks finite validation and partial-batch accounting, and writes a
+self-contained Vast.ai bundle:
+
+```console
+cargo build -p haitaka_learn --features anhoku
+target/debug/haitaka_learn r2-gate
+```
+
+The successful pre-GPU report is
+`out/anhoku-reboot-r2/r2-pre-gpu-gate-report.json`. Its `passed` field remains
+false until the bundle's CUDA gate runs. Upload
+`out/anhoku-reboot-r2/anhoku-r2-vast-bundle.tgz`; on a CUDA PyTorch host:
+
+```console
+tar -xzf anhoku-r2-vast-bundle.tgz
+cd vast-bundle
+python3 -m pip install -r r2-gpu-requirements.txt
+bash run-r2-gpu.sh
+```
+
+The CUDA gate requires the CPU batch schedule exactly and checks every
+prediction and declared metric against the frozen cross-hardware tolerance.
+
+## R3 teacher and target calibration
+
+`r3-gate` consumes the hash-frozen R1-A corpus and the passing R2 CUDA report,
+then opens a 48-board stratified teacher probe exactly once. It compares
+geometric handcrafted budgets to a five-times-deeper independent handcrafted
+reference, records C/16 only as a diagnostic control, compares root/leaf/mate
+target semantics, audits the inherited score transform, and publishes the R4
+label-cost forecast:
+
+```console
+cargo build --release -p haitaka_learn --features anhoku
+target/release/haitaka_learn r3-gate
+```
+
+The command refuses a non-empty `out/anhoku-reboot-r3` so the one-shot decision
+block cannot be silently reopened. It generates no production corpus and plays
+no strength games.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data
@@ -31,6 +141,12 @@ The example config expects the modified trainer checkout at:
 `../haitaka-variant-nnue-pytorch`
 
 The example config at [/haitaka_learn.toml](../haitaka_learn.toml) already points there.
+
+Trainer operations use fresh, pinned build contexts. Dataset-consuming commands
+(`train`, `train-select`, `evaluate-checkpoint`, R1-A, and R2) require
+`training.build_data_loader = true` so the loader is built in that context.
+Bootstrap preparation, checkpoint export, and Phase 11-C checkpoint inspection
+use source-only contexts and skip the C++ loader build.
 
 Important environment note:
 
@@ -159,7 +275,8 @@ Key fields:
     shard's identity differs from the current run (e.g. a local patch that doesn't affect
     data generation, or a comment-only config edit), `generate-data` reports how much is affected
     and prompts: abort, resume reusing the mismatched shards, or discard and regenerate them.
-    Pass `--ignore-identity-mismatch` to reuse them non-interactively (e.g. on sharded/CI runs).
+    Strict R0 generation rejects `--ignore-identity-mismatch`; regenerate the
+    mismatched shards instead.
     Throughput (`speed`) and `eta` are computed from freshly generated games only, so restored
     shards no longer distort them.
 - `[training]`
@@ -334,10 +451,10 @@ Merge shard outputs copied back from multiple machines:
 cargo merge haitaka_learn.toml --input path/to/machine-a-output --input path/to/machine-b-output
 ```
 
-`merge-data` fails if shards disagree on the git revision or config hash. When that mismatch is
-expected (e.g. a logic-neutral local patch or comment-only config edit), re-run with
-`--ignore-identity-mismatch` to skip identity checks. Sampling-policy and teacher-move
-contract mismatches are also rejected unless this explicit override is supplied.
+`merge-data` fails if shards disagree on the git revision or config hash and
+does not expose an identity override. Sampling-policy and teacher-move contract
+mismatches are also rejected. Regenerate mismatched shards rather than merging
+unregistered identities.
 Self-play move policy, split policy/seed, assigned opening groups, shuffle policy/seed,
 and chunk size are checked in the same way.
 

@@ -1,0 +1,43 @@
+# CPU-only R2 trainer/loader identity. The r2-gate command consumes the frozen
+# R1-A corpus directly; these dataset references are intentionally never opened
+# by an ordinary `train` command.
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-reboot-r2/trainer"
+trainer_checkout = "../engine/variant-nnue-pytorch"
+python = "../engine/variant-nnue-pytorch/.venv/bin/python"
+cmake = "cmake"
+
+[dataset]
+train_games = 1
+validation_games = 1
+train_bin = "out/anhoku-reboot-r2/trainer/datasets/train.bin"
+validation_bin = "out/anhoku-reboot-r2/trainer/datasets/validation.bin"
+train_manifest = "out/anhoku-reboot-r2/trainer/datasets/train.json"
+validation_manifest = "out/anhoku-reboot-r2/trainer/datasets/validation.json"
+train_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+validation_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+initial_checkpoint = { kind = "scratch" }
+resume = false
+num_workers = 1
+batch_size = 257
+lambda = 1.0
+random_fen_skipping = 0
+epoch_size = 10240
+validation_size = 10240
+initial_learning_rate = 0.045
+checkpoint_interval_steps = 1
+validation_interval_steps = 96
+max_steps = 96
+max_epochs = 3
+build_data_loader = true
+teacher_move_consumers = false
+
+[export]
+output_name = "unused-r2-debug.nnue"
+description = "R2 deterministic loader/debug-trainer gate; not a strength candidate"

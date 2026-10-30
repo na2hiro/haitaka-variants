@@ -4,6 +4,19 @@ mod dataset_audit;
 mod openings;
 mod phase11a;
 mod phase11c;
+mod r0;
+mod r1a;
+mod r1b;
+mod r1c;
+mod r1d1;
+mod r1d2;
+mod r1d3;
+mod r1evidence;
+mod r2;
+mod r3;
+mod r4;
+mod r4f;
+mod r4replacement;
 mod selection;
 mod trainer;
 mod verify;
@@ -13,7 +26,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand};
-use config::LoadedConfig;
+use config::{LoadedConfig, LoadedGenerationConfig, LoadedTrainingConfig};
 
 #[derive(Debug, Parser)]
 #[command(name = "haitaka_learn")]
@@ -26,6 +39,18 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 #[allow(clippy::large_enum_variant)] // Phase11cAudit intentionally exposes every frozen input.
 enum Command {
+    /// Freeze the committed, rebuild-complete source and external-trainer identity used by R1.
+    R1SourceIdentity {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1-source-identity-policy.json"
+        )]
+        policy: PathBuf,
+        #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
+        external_trainer: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
     /// Expand an Anhoku DonorSingleEff network into the functionally identical
     /// DonorReceiverPairV2 initialization without training.
     MigrateDonorReceiverPairV2 {
@@ -110,6 +135,261 @@ enum Command {
         #[arg(long)]
         output: PathBuf,
     },
+    /// Validate the frozen R0 registry, historical evidence, artifact hashes,
+    /// and production execution contract without generating data.
+    R0Gate {
+        #[arg(long, default_value = "r0/anhoku-reboot")]
+        bundle: PathBuf,
+    },
+    /// Build and execute the complete deterministic R1-A board, feature, sign,
+    /// C++ loader, and incremental-accumulator oracle gate.
+    R1aGate {
+        #[arg(long, default_value = "haitaka_learn.anhoku-reboot-r1a.training.toml")]
+        config: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Generate the deterministic full-precision sentinel and run the complete
+    /// Python-integer/export/Rust full-refresh/incremental R1-B parity gate.
+    R1bGate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1b-quantization-limits.json")]
+        limits: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Train the frozen CPU-only exactly-representable and 8,192-position
+    /// deployment learnability oracles, then verify serialized Rust parity.
+    R1cGate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        output_dir: PathBuf,
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1c-learnability-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1b-quantization-limits.json")]
+        limits: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Run the frozen deterministic interrupted-root-result and combined-node
+    /// accounting gate. This command never plays games or changes adjudication.
+    R1d1Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        r1c_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d1-search-contract.json")]
+        contract: PathBuf,
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r1d1-forced-interruption-fixtures.json"
+        )]
+        fixtures: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Run the frozen history, repetition, TT, qsearch, DFPN, and adjudication gate.
+    /// This command never plays match-equivalence games.
+    R1d2Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        r1d1_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d2")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d2-history-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Validate the frozen production-WASM null, timing, complete-pair, order-
+    /// reversal, and native-equivalence qualification and write the R1 closeout.
+    R1d3Gate {
+        #[arg(long, default_value = "out/anhoku-reboot-r1a")]
+        r1a_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b")]
+        r1b_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1c")]
+        r1c_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d1")]
+        r1d1_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d2")]
+        r1d2_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3")]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d3-match-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r1d3-openings.tsv")]
+        openings: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/browser-trace.json")]
+        browser_trace: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/pkg/haitaka_wasm.js")]
+        wasm_js: PathBuf,
+        #[arg(
+            long,
+            default_value = "out/anhoku-reboot-r1d3/pkg/haitaka_wasm_bg.wasm"
+        )]
+        wasm: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1b/zero.nnue")]
+        model: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        source_identity: PathBuf,
+    },
+    /// Run every Phase R2 gate that is valid on CPU and emit a CUDA handoff.
+    /// This command deliberately leaves the aggregate R2 `passed` field false.
+    R2Gate {
+        #[arg(long, default_value = "haitaka_learn.anhoku-reboot-r2.training.toml")]
+        config: PathBuf,
+        #[arg(long, default_value = "r0/anhoku-reboot/r2-trainer-contract.json")]
+        contract: PathBuf,
+        #[arg(
+            long,
+            default_value = "out/anhoku-reboot-r1d3/r1-closeout-manifest.json"
+        )]
+        r1_closeout: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a/parity-corpus.bin")]
+        corpus_bin: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r1a/parity-corpus.jsonl")]
+        corpus_jsonl: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r2")]
+        output_dir: PathBuf,
+        #[arg(
+            long,
+            default_value = "../engine/variant-nnue-pytorch/.venv/bin/python"
+        )]
+        python: PathBuf,
+    },
+    /// Run the preregistered R3 teacher, target-semantics, and score-calibration probe.
+    /// This command opens the one-shot decision block and therefore refuses reuse.
+    R3Gate {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r3-teacher-probe-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r3")]
+        output_dir: PathBuf,
+    },
+    /// Generate one deterministic R4 position-only shard. No label search is run.
+    R4GeneratePositions {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long)]
+        shard_index: u32,
+    },
+    /// Globally canonicalize, color-swap-deduplicate, split, and shard R4 positions.
+    R4AssemblePositions {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+    },
+    /// Label one immutable R4 pilot or deep-core input shard.
+    R4LabelShard {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Regenerate one position shard and prove byte-identical board/metadata hashes.
+    R4VerifyRegeneration {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Assemble trainer payloads, full sidecars, audits, cost forecasts, and the R4 gate.
+    R4Finalize {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-data-contract.json")]
+        contract: PathBuf,
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        output_dir: PathBuf,
+        #[arg(long, required = true)]
+        regeneration_proof: Vec<PathBuf>,
+    },
+    /// Recompute the failed R4 label evidence and publish the canonical unused pool.
+    R4fAnalyze {
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        output_dir: PathBuf,
+    },
+    /// Run the preregistered bounded R4-F replay/confirmation/reference probe.
+    R4fProbe {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r4f-label-completeness-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Run the fresh R3 requalification selected by a valid R4-F closeout.
+    R4fR3Requalify {
+        #[arg(
+            long,
+            default_value = "r0/anhoku-reboot/r4f-r3-requalification-contract.json"
+        )]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        r4f_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f-r3")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
+    /// Execute and close the separately authorized replacement R4 finite cohort.
+    R4Replacement {
+        #[arg(long, default_value = "r0/anhoku-reboot/r4-replacement-contract.json")]
+        contract: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4")]
+        original_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4f")]
+        r4f_dir: PathBuf,
+        #[arg(long, default_value = "out/anhoku-reboot-r4-replacement")]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+    },
     ValidateOpenings {
         #[arg(long)]
         config: PathBuf,
@@ -166,14 +446,18 @@ enum Command {
         config: PathBuf,
         #[arg(long, required = true)]
         input: Vec<PathBuf>,
-        #[arg(long)]
-        ignore_identity_mismatch: bool,
     },
     Train {
         #[arg(long)]
         config: PathBuf,
-        #[arg(long)]
+        /// Deprecated compatibility flag; fresh training is now unconditional.
+        #[arg(long, hide = true)]
         no_resume: bool,
+    },
+    /// Explicitly resume a training output from its newest valid checkpoint.
+    ResumeTrain {
+        #[arg(long)]
+        config: PathBuf,
     },
     /// Convert and validate the configured NNUE bootstrap without starting
     /// training. This is useful as a final remote GPU-host preflight.
@@ -231,7 +515,9 @@ enum Command {
     },
     Pipeline {
         #[arg(long)]
-        config: PathBuf,
+        generation_config: PathBuf,
+        #[arg(long)]
+        training_config: PathBuf,
         #[arg(long)]
         no_resume: bool,
     },
@@ -255,6 +541,440 @@ fn generate_options(no_resume: bool) -> dataset::GenerateOptions {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Command::R1SourceIdentity {
+            policy,
+            external_trainer,
+            output,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap()
+                .to_path_buf();
+            r1evidence::write_source_identity(
+                &workspace_root,
+                &external_trainer,
+                &policy,
+                &output,
+            )?;
+            println!("R1 source identity written to {}", output.display());
+        }
+        Command::R0Gate { bundle } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            r0::validate_bundle(&bundle, &workspace_root)?;
+            println!("R0 gate passed: {}", bundle.display());
+        }
+        Command::R1aGate {
+            config,
+            output_dir,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1a::run(&config, &output_dir, &source_identity, &workspace_root)?;
+            println!(
+                "R1-A gate written to {}: {} ({} positions, {} transitions)",
+                output_dir.join("r1a-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+                report.corpus_positions,
+                report.transitions_checked,
+            );
+            ensure!(report.passed, "R1-A gate failed");
+        }
+        Command::R1bGate {
+            r1a_dir,
+            output_dir,
+            limits,
+            python,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1b::run(
+                &r1a_dir,
+                &output_dir,
+                &limits,
+                &python,
+                &source_identity,
+                &workspace_root,
+            )?;
+            println!(
+                "R1-B gate written to {}: {}",
+                output_dir.join("r1b-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-B gate failed");
+        }
+        Command::R1cGate {
+            r1a_dir,
+            r1b_dir,
+            output_dir,
+            contract,
+            limits,
+            python,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1c::run(r1c::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                limits_path: &limits,
+                python: &python,
+                source_identity_path: &source_identity,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-C gate written to {}: {}",
+                output_dir.join("r1c-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-C gate failed");
+        }
+        Command::R1d1Gate {
+            r1a_dir,
+            r1b_dir,
+            r1c_dir,
+            output_dir,
+            contract,
+            fixtures,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d1::run(r1d1::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                r1c_dir: &r1c_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                fixtures_path: &fixtures,
+                source_identity_path: &source_identity,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D1 gate written to {}: {}",
+                output_dir.join("r1d1-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D1 gate failed");
+        }
+        Command::R1d2Gate {
+            r1d1_dir,
+            output_dir,
+            contract,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d2::run(r1d2::RunArgs {
+                r1d1_dir: &r1d1_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                source_identity_path: &source_identity,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D2 gate written to {}: {}",
+                output_dir.join("r1d2-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D2 gate failed");
+        }
+        Command::R1d3Gate {
+            r1a_dir,
+            r1b_dir,
+            r1c_dir,
+            r1d1_dir,
+            r1d2_dir,
+            output_dir,
+            contract,
+            openings,
+            browser_trace,
+            wasm_js,
+            wasm,
+            model,
+            source_identity,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r1d3::run(r1d3::RunArgs {
+                r1a_dir: &r1a_dir,
+                r1b_dir: &r1b_dir,
+                r1c_dir: &r1c_dir,
+                r1d1_dir: &r1d1_dir,
+                r1d2_dir: &r1d2_dir,
+                output_dir: &output_dir,
+                contract_path: &contract,
+                openings_path: &openings,
+                browser_trace_path: &browser_trace,
+                wasm_js_path: &wasm_js,
+                wasm_path: &wasm,
+                model_path: &model,
+                source_identity_path: &source_identity,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R1-D3 gate written to {}: {}",
+                output_dir.join("r1d3-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+            );
+            ensure!(report.passed, "R1-D3 gate failed");
+        }
+        Command::R2Gate {
+            config,
+            contract,
+            r1_closeout,
+            corpus_bin,
+            corpus_jsonl,
+            output_dir,
+            python,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let report = r2::run(r2::RunArgs {
+                config_path: &config,
+                contract_path: &contract,
+                r1_closeout_path: &r1_closeout,
+                corpus_bin: &corpus_bin,
+                corpus_jsonl: &corpus_jsonl,
+                output_dir: &output_dir,
+                python: &python,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R2 CPU gates written to {}: {}; GPU boundary reached (authorized={})",
+                output_dir.join("r2-pre-gpu-gate-report.json").display(),
+                if report.cpu_gates_passed {
+                    "PASS"
+                } else {
+                    "FAIL"
+                },
+                report.gpu_authorized,
+            );
+            ensure!(report.cpu_gates_passed && !report.passed);
+        }
+        Command::R3Gate {
+            contract,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("haitaka_learn is a workspace member")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let report = r3::run(r3::RunArgs {
+                contract_path: &contract,
+                output_dir: &output_dir,
+                executable_path: &executable,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R3 gate written to {}: {} (teacher={} nodes={} R4-authorized={})",
+                output_dir.join("r3-gate-report.json").display(),
+                if report.passed { "PASS" } else { "FAIL" },
+                report.selected_teacher,
+                report.selected_node_budget,
+                report.r4_authorized,
+            );
+            ensure!(report.passed, "R3 gate failed; R4 remains unauthorized");
+        }
+        Command::R4GeneratePositions {
+            contract,
+            output_dir,
+            shard_index,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::generate_positions(r4::GenerateArgs {
+                contract_path: &contract,
+                output_dir: &output_dir,
+                shard_index,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 position shard written to {}", path.display());
+        }
+        Command::R4AssemblePositions {
+            contract,
+            input,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4::assemble_positions(r4::AssembleArgs {
+                contract_path: &contract,
+                inputs: &input,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+            })?;
+            println!(
+                "R4 immutable label inputs written; assembly report: {}",
+                path.display()
+            );
+        }
+        Command::R4LabelShard {
+            contract,
+            input,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::label_shard(r4::LabelArgs {
+                contract_path: &contract,
+                input: &input,
+                output_dir: &output_dir,
+                jobs,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 labeled shard written to {}", path.display());
+        }
+        Command::R4VerifyRegeneration {
+            contract,
+            manifest,
+            output,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4::verify_regeneration(r4::RegenerationArgs {
+                contract_path: &contract,
+                manifest_path: &manifest,
+                output: &output,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+            })?;
+            println!("R4 regeneration proof written to {}", path.display());
+        }
+        Command::R4Finalize {
+            contract,
+            input,
+            output_dir,
+            regeneration_proof,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4::finalize(r4::FinalizeArgs {
+                contract_path: &contract,
+                inputs: &input,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                regeneration_proofs: &regeneration_proof,
+            })?;
+            println!("R4 gate passed: {}", path.display());
+        }
+        Command::R4fAnalyze {
+            original_dir,
+            output_dir,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let path = r4f::analyze(r4f::AnalyzeArgs {
+                original_dir: &original_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+            })?;
+            println!("R4-F analysis written to {}", path.display());
+        }
+        Command::R4fProbe {
+            contract,
+            original_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4f::probe(r4f::ProbeArgs {
+                contract_path: &contract,
+                original_dir: &original_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("R4-F gate report written to {}", path.display());
+        }
+        Command::R4fR3Requalify {
+            contract,
+            r4f_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4f::r3_requalify(r4f::R3RequalifyArgs {
+                contract_path: &contract,
+                r4f_dir: &r4f_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("Replacement R3 gate report written to {}", path.display());
+        }
+        Command::R4Replacement {
+            contract,
+            original_dir,
+            r4f_dir,
+            output_dir,
+            jobs,
+        } => {
+            let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .expect("workspace")
+                .to_path_buf();
+            let executable = std::env::current_exe()?;
+            let path = r4replacement::replacement_r4(r4replacement::ReplacementArgs {
+                contract_path: &contract,
+                original_dir: &original_dir,
+                r4f_dir: &r4f_dir,
+                output_dir: &output_dir,
+                workspace_root: &workspace_root,
+                executable_path: &executable,
+                jobs,
+            })?;
+            println!("Replacement R4 gate report written to {}", path.display());
+        }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =
                 fs::read(&input).with_context(|| format!("failed to read {}", input.display()))?;
@@ -369,7 +1089,7 @@ fn main() -> Result<()> {
             ensure!(report.passed, "DonorReceiverPairV2 trainer parity failed");
         }
         Command::ValidateOpenings { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             loaded.ruleset_requires_matching_engine()?;
             let (suite_id, positions, sha256) = openings::validate_configured_suite(&loaded)?;
             println!(
@@ -395,7 +1115,7 @@ fn main() -> Result<()> {
             shard_count,
             output,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let report = dataset::audit_trajectories(
                 &loaded,
                 dataset::TrajectoryAuditOptions {
@@ -409,7 +1129,7 @@ fn main() -> Result<()> {
             println!("trajectory audit written to {}", path.display());
         }
         Command::CalibrateLabels { config, output } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let report = dataset::calibrate_labels(&loaded)?;
             let path = dataset::write_label_calibration_report(&loaded, &report, output)?;
             println!("label calibration written to {}", path.display());
@@ -423,7 +1143,7 @@ fn main() -> Result<()> {
             shard_count,
             ignore_identity_mismatch,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
             let output = dataset::generate_data_with_options(
                 &loaded,
                 dataset::GenerateOptions {
@@ -442,13 +1162,9 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::MergeData {
-            config,
-            input,
-            ignore_identity_mismatch,
-        } => {
-            let loaded = LoadedConfig::from_path(&config)?;
-            let output = dataset::merge_data(&loaded, &input, ignore_identity_mismatch)?;
+        Command::MergeData { config, input } => {
+            let loaded = LoadedGenerationConfig::from_path(&config)?;
+            let output = dataset::merge_data(&loaded, &input, false)?;
             println!(
                 "merged {} training and {} validation samples into {}",
                 output.train_positions,
@@ -456,13 +1172,21 @@ fn main() -> Result<()> {
                 output.output_dir.display()
             );
         }
-        Command::Train { config, no_resume } => {
-            let loaded = LoadedConfig::from_path(&config)?;
-            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
+        Command::Train {
+            config,
+            no_resume: _,
+        } => {
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
+            let checkpoint = trainer::train(&loaded, Some(false))?;
             println!("training finished: {}", checkpoint.display());
         }
+        Command::ResumeTrain { config } => {
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
+            let checkpoint = trainer::train(&loaded, Some(true))?;
+            println!("resumed training finished: {}", checkpoint.display());
+        }
         Command::PrepareBootstrap { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let bootstrap = trainer::prepare_bootstrap(&loaded)?;
             println!("prepared bootstrap checkpoint: {}", bootstrap.display());
         }
@@ -505,7 +1229,7 @@ fn main() -> Result<()> {
             println!("existing candidates ranked: {}", selected.display());
         }
         Command::Export { config } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let exported = trainer::export(&loaded, None)?;
             println!("exported NNUE: {}", exported.display());
         }
@@ -514,10 +1238,10 @@ fn main() -> Result<()> {
             checkpoint,
             output,
         } => {
-            let loaded = LoadedConfig::from_path(&config)?;
+            let loaded = LoadedTrainingConfig::from_path(&config)?;
             let trainer_checkout = loaded.trainer_checkout()?;
-            let _guard = trainer::PreparedTrainer::new(&loaded, &trainer_checkout)?;
-            trainer::export_checkpoint_to(&loaded, &trainer_checkout, &checkpoint, &output)?;
+            let prepared = trainer::PreparedTrainer::new_without_build(&loaded, &trainer_checkout)?;
+            trainer::export_checkpoint_to(&loaded, prepared.path(), &checkpoint, &output)?;
             println!("exported NNUE: {}", output.display());
         }
         Command::EvaluateCheckpoint {
@@ -538,18 +1262,24 @@ fn main() -> Result<()> {
                 report.report_path.display()
             );
         }
-        Command::Pipeline { config, no_resume } => {
-            let loaded = LoadedConfig::from_path(&config)?;
-            let data = dataset::generate_data_with_options(&loaded, generate_options(no_resume))?;
+        Command::Pipeline {
+            generation_config,
+            training_config,
+            no_resume,
+        } => {
+            let generation = LoadedGenerationConfig::from_path(&generation_config)?;
+            let training = LoadedTrainingConfig::from_path(&training_config)?;
+            let data =
+                dataset::generate_data_with_options(&generation, generate_options(no_resume))?;
             println!(
                 "generated {} training and {} validation samples",
                 data.train_positions, data.validation_positions
             );
-            let checkpoint = trainer::train(&loaded, resume_override(no_resume))?;
+            let checkpoint = trainer::train(&training, resume_override(no_resume))?;
             println!("training finished: {}", checkpoint.display());
-            let exported = trainer::export(&loaded, Some(checkpoint.clone()))?;
+            let exported = trainer::export(&training, Some(checkpoint.clone()))?;
             println!("exported NNUE: {}", exported.display());
-            let report = verify::verify(&loaded)?;
+            let report = verify::verify(&training)?;
             println!(
                 "verified {} position(s); report written to {}",
                 report.positions.len(),

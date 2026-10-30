@@ -189,11 +189,12 @@ fn train_select_sprt(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resu
         .with_context(|| format!("failed to create {}", paths.matches.display()))?;
 
     let trainer_checkout = loaded.trainer_checkout()?;
-    let _guard = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let prepared = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let trainer_context = prepared.path();
     let mut state = load_or_create_state(loaded, &selection, &paths)?;
     let mut child = TrainingChild::new(trainer::spawn_training(
         loaded,
-        &trainer_checkout,
+        trainer_context,
         options.resume_override,
     )?);
     println!(
@@ -205,12 +206,12 @@ fn train_select_sprt(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resu
         let valid_checkpoints = eligible_checkpoints(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
-            &trainer_checkout,
+            trainer_context,
             Duration::from_secs(selection.stable_checkpoint_secs),
         )?;
         process_new_checkpoints(
             loaded,
-            &trainer_checkout,
+            trainer_context,
             &options.self_play_bin,
             &selection,
             &paths,
@@ -227,12 +228,12 @@ fn train_select_sprt(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resu
     let final_checkpoints = eligible_checkpoints(
         &artifacts.logs_dir,
         &loaded.config.paths.python,
-        &trainer_checkout,
+        trainer_context,
         Duration::ZERO,
     )?;
     process_new_checkpoints(
         loaded,
-        &trainer_checkout,
+        trainer_context,
         &options.self_play_bin,
         &selection,
         &paths,
@@ -245,7 +246,7 @@ fn train_select_sprt(loaded: &LoadedConfig, options: TrainSelectOptions) -> Resu
         bail!("training failed with exit status {training_status}");
     }
 
-    let selected = finalize_selection(loaded, &trainer_checkout, &mut state)?;
+    let selected = finalize_selection(loaded, trainer_context, &mut state)?;
     apply_storage_saver(&selection, &mut state, final_checkpoints.last())?;
     save_state(&paths.state, &state)?;
     println!("selected NNUE: {}", selected.display());
@@ -979,11 +980,12 @@ fn train_select_anchored(loaded: &LoadedConfig, options: TrainSelectOptions) -> 
     fs::create_dir_all(&paths.candidates)?;
     fs::create_dir_all(&paths.matches)?;
     let trainer_checkout = loaded.trainer_checkout()?;
-    let _guard = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let prepared = trainer::PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let trainer_context = prepared.path();
     let mut state = load_or_create_state(loaded, &selection, &paths)?;
     let mut child = TrainingChild::new(trainer::spawn_training(
         loaded,
-        &trainer_checkout,
+        trainer_context,
         options.resume_override,
     )?);
     println!("training started; checkpoints are exported without self-play contention");
@@ -992,12 +994,12 @@ fn train_select_anchored(loaded: &LoadedConfig, options: TrainSelectOptions) -> 
         let checkpoints = eligible_checkpoints(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
-            &trainer_checkout,
+            trainer_context,
             Duration::from_secs(selection.stable_checkpoint_secs),
         )?;
         export_new_checkpoints_only(
             loaded,
-            &trainer_checkout,
+            trainer_context,
             &selection,
             &paths,
             &mut state,
@@ -1012,12 +1014,12 @@ fn train_select_anchored(loaded: &LoadedConfig, options: TrainSelectOptions) -> 
     let checkpoints = eligible_checkpoints(
         &artifacts.logs_dir,
         &loaded.config.paths.python,
-        &trainer_checkout,
+        trainer_context,
         Duration::ZERO,
     )?;
     export_new_checkpoints_only(
         loaded,
-        &trainer_checkout,
+        trainer_context,
         &selection,
         &paths,
         &mut state,

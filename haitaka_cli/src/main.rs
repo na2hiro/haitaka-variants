@@ -11,7 +11,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
-use haitaka::{Board, Color, GameStatus, Move, SFEN_STARTPOS};
+use haitaka::{
+    ANHOKU_HISTORY_RULES_VERSION, Board, Color, GameStatus, HistoryAdjudication, Move, Piece,
+    PositionHistory, SFEN_STARTPOS,
+};
 use haitaka_wasm::{
     NnueModel, SEARCH_NODE_BUDGET_MAX_DEPTH, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
     SearchWorkspace, UsiSession,
@@ -412,6 +415,13 @@ enum SearchBudget {
 #[derive(Debug, Clone, PartialEq)]
 struct EngineSearchResult {
     best_move: Option<String>,
+    play_move_was_searched: bool,
+    last_completed_iteration_value: Option<i32>,
+    completed_root_moves_in_interrupted_iteration: u32,
+    partial_root_state: bool,
+    interruption_reason: String,
+    emergency_fallback_used: bool,
+    missing_move: bool,
     total_nodes: u64,
     requested_budget_nodes: u64,
     consumed_budget_nodes: u64,
@@ -553,6 +563,7 @@ struct MatchStats {
 struct GameResult {
     a_color: Color,
     winner: Option<Seat>,
+    termination_reason: GameTerminationReason,
     plies: u16,
     total_nodes: u64,
     requested_budget_nodes: u64,
@@ -610,6 +621,12 @@ struct GameJsonRecord {
     moves: Vec<String>,
     result: String,
     winner: Option<String>,
+    #[serde(rename = "terminationSchema")]
+    termination_schema: &'static str,
+    #[serde(rename = "terminationReason")]
+    termination_reason: &'static str,
+    #[serde(rename = "historyRulesVersion")]
+    history_rules_version: &'static str,
     plies: u16,
     #[serde(rename = "totalNodes")]
     total_nodes: u64,
@@ -649,6 +666,34 @@ struct GameJsonRecord {
     b_breakdown: SearchBreakdown,
     #[serde(rename = "failureState")]
     failure_state: Option<String>,
+}
+
+const SELF_PLAY_TERMINATION_SCHEMA: &str = "haitaka-self-play-termination-v1";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GameTerminationReason {
+    KingCaptured,
+    NoLegalMove,
+    RepetitionDraw,
+    PerpetualCheckLoss,
+    #[allow(dead_code)] // Reserved for an explicit adjudicator; no automatic declaration exists.
+    JishogiDraw,
+    MaximumPlyCapped,
+    Unfinished,
+}
+
+impl GameTerminationReason {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::KingCaptured => "king-captured",
+            Self::NoLegalMove => "no-legal-move",
+            Self::RepetitionDraw => "repetition-draw",
+            Self::PerpetualCheckLoss => "perpetual-check-loss",
+            Self::JishogiDraw => "jishogi-draw",
+            Self::MaximumPlyCapped => "maximum-ply-capped",
+            Self::Unfinished => "unfinished",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -985,12 +1030,18 @@ fn engine_config(
     })
 }
 
-fn search_with_engine(board: &Board, engine: &EngineConfig) -> Result<EngineSearchResult> {
+fn search_with_engine(
+    board: &Board,
+    history: &PositionHistory,
+    engine: &EngineConfig,
+) -> Result<EngineSearchResult> {
     match &engine.evaluator {
-        EngineEvaluator::Handcrafted => search_in_process_handcrafted(board, engine.budget)
-            .map_err(|err| anyhow!("{} search failed: {err}", engine.label)),
+        EngineEvaluator::Handcrafted => {
+            search_in_process_handcrafted(board, history, engine.budget)
+                .map_err(|err| anyhow!("{} search failed: {err}", engine.label))
+        }
         EngineEvaluator::Nnue { model, .. } => {
-            search_in_process_nnue(board, engine.budget, model.clone())
+            search_in_process_nnue(board, history, engine.budget, model.clone())
                 .map_err(|err| anyhow!("{} NNUE search failed: {err}", engine.label))
         }
         EngineEvaluator::External { .. } => {
@@ -1001,13 +1052,24 @@ fn search_with_engine(board: &Board, engine: &EngineConfig) -> Result<EngineSear
 
 fn search_in_process_handcrafted(
     board: &Board,
+    history: &PositionHistory,
     budget: SearchBudget,
 ) -> Result<EngineSearchResult, String> {
     match budget {
         SearchBudget::Depth(depth) => {
-            let summary = haitaka_wasm::search_board_impl_handcrafted(board, depth)?;
+            let summary =
+                haitaka_wasm::search_board_impl_handcrafted_with_history(board, history, depth)?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1015,19 +1077,29 @@ fn search_in_process_handcrafted(
                 completed_depth: depth,
                 incomplete_iterations: 0,
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
         }
         SearchBudget::Movetime { max_depth, millis } => {
-            let summary = haitaka_wasm::search_board_iterative_deepening_impl(
+            let summary = haitaka_wasm::search_board_iterative_deepening_impl_with_history(
                 board,
+                history,
                 max_depth.unwrap_or(u8::MAX),
                 millis,
             )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1035,7 +1107,7 @@ fn search_in_process_handcrafted(
                 completed_depth: summary.completed_depth,
                 incomplete_iterations: u64::from(summary.timed_out),
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1043,32 +1115,44 @@ fn search_in_process_handcrafted(
         SearchBudget::Nodes(nodes) => {
             let mut workspace = SearchWorkspace::default();
             let summary =
-                haitaka_wasm::search_board_impl_handcrafted_with_node_budget_in_workspace(
+                haitaka_wasm::search_board_impl_handcrafted_with_node_budget_and_history_in_workspace(
                     board,
+                    history,
                     nodes,
                     SEARCH_NODE_BUDGET_MAX_DEPTH,
                     &mut workspace,
                 )?;
-            Ok(node_budget_engine_result(board, summary))
+            Ok(node_budget_engine_result(summary))
         }
     }
 }
 
 fn search_in_process_nnue(
     board: &Board,
+    history: &PositionHistory,
     budget: SearchBudget,
     model: Arc<NnueModel>,
 ) -> Result<EngineSearchResult, String> {
     match budget {
         SearchBudget::Depth(depth) => {
-            let summary = haitaka_wasm::search_board_impl_with_eval_mode(
+            let summary = haitaka_wasm::search_board_impl_with_eval_mode_and_history(
                 board,
+                history,
                 depth,
                 model,
                 SearchEvalMode::Incremental,
             )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1076,21 +1160,32 @@ fn search_in_process_nnue(
                 completed_depth: depth,
                 incomplete_iterations: 0,
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
         }
         SearchBudget::Movetime { max_depth, millis } => {
-            let summary = haitaka_wasm::search_board_iterative_deepening_impl_with_eval_mode(
-                board,
-                max_depth.unwrap_or(u8::MAX),
-                millis,
-                model,
-                SearchEvalMode::Incremental,
-            )?;
+            let summary =
+                haitaka_wasm::search_board_iterative_deepening_impl_with_eval_mode_and_history(
+                    board,
+                    history,
+                    max_depth.unwrap_or(u8::MAX),
+                    millis,
+                    model,
+                    SearchEvalMode::Incremental,
+                )?;
             Ok(EngineSearchResult {
                 best_move: summary.best_move,
+                play_move_was_searched: summary.root_result.play_move_was_searched,
+                last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+                completed_root_moves_in_interrupted_iteration: summary
+                    .root_result
+                    .completed_root_moves_in_interrupted_iteration,
+                partial_root_state: summary.root_result.partial_root_state,
+                interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+                emergency_fallback_used: summary.root_result.emergency_fallback_used,
+                missing_move: summary.root_result.missing_move,
                 total_nodes: summary.states,
                 requested_budget_nodes: 0,
                 consumed_budget_nodes: 0,
@@ -1098,7 +1193,7 @@ fn search_in_process_nnue(
                 completed_depth: summary.completed_depth,
                 incomplete_iterations: u64::from(summary.timed_out),
                 node_budget_cap_hits: 0,
-                fallback_used: false,
+                fallback_used: summary.root_result.emergency_fallback_used,
                 elapsed_ms: summary.elapsed_ms,
                 qsearch: summary.qsearch_stats.into(),
             })
@@ -1106,29 +1201,34 @@ fn search_in_process_nnue(
         SearchBudget::Nodes(nodes) => {
             let mut workspace = SearchWorkspace::default();
             let summary =
-                haitaka_wasm::search_board_impl_with_eval_mode_and_node_budget_in_workspace(
+                haitaka_wasm::search_board_impl_with_eval_mode_and_node_budget_and_history_in_workspace(
                     board,
+                    history,
                     nodes,
                     SEARCH_NODE_BUDGET_MAX_DEPTH,
                     model,
                     SearchEvalMode::Incremental,
                     &mut workspace,
                 )?;
-            Ok(node_budget_engine_result(board, summary))
+            Ok(node_budget_engine_result(summary))
         }
     }
 }
 
-fn node_budget_engine_result(
-    board: &Board,
-    summary: haitaka_wasm::NodeBudgetSearchSummary,
-) -> EngineSearchResult {
-    let fallback_used = summary.best_move.is_none();
-    let best_move = summary
-        .best_move
-        .or_else(|| legal_moves(board).first().map(ToString::to_string));
+fn node_budget_engine_result(summary: haitaka_wasm::NodeBudgetSearchSummary) -> EngineSearchResult {
+    let fallback_used = summary.root_result.emergency_fallback_used;
+    let best_move = summary.best_move;
     EngineSearchResult {
         best_move,
+        play_move_was_searched: summary.root_result.play_move_was_searched,
+        last_completed_iteration_value: summary.root_result.last_completed_iteration_value,
+        completed_root_moves_in_interrupted_iteration: summary
+            .root_result
+            .completed_root_moves_in_interrupted_iteration,
+        partial_root_state: summary.root_result.partial_root_state,
+        interruption_reason: summary.root_result.interruption_reason.as_str().to_string(),
+        emergency_fallback_used: summary.root_result.emergency_fallback_used,
+        missing_move: summary.root_result.missing_move,
         total_nodes: summary.alpha_beta_nodes,
         requested_budget_nodes: summary.node_limit,
         consumed_budget_nodes: summary.total_nodes,
@@ -1138,10 +1238,7 @@ fn node_budget_engine_result(
         node_budget_cap_hits: summary.cap_hits,
         fallback_used,
         elapsed_ms: summary.elapsed_ms,
-        qsearch: QsearchTelemetry {
-            qnodes: summary.qsearch_nodes,
-            ..QsearchTelemetry::default()
-        },
+        qsearch: summary.qsearch_stats.into(),
     }
 }
 
@@ -1401,10 +1498,17 @@ impl<'a> GameEngine<'a> {
         }
     }
 
-    fn search(&mut self, board: &Board, budget: SearchBudget) -> Result<EngineSearchResult> {
+    fn search(
+        &mut self,
+        board: &Board,
+        history: &PositionHistory,
+        start_sfen: &str,
+        moves: &[String],
+        budget: SearchBudget,
+    ) -> Result<EngineSearchResult> {
         match self {
-            Self::InProcess(config) => search_with_engine(board, config),
-            Self::External(client) => client.search(board, budget),
+            Self::InProcess(config) => search_with_engine(board, history, config),
+            Self::External(client) => client.search(board, start_sfen, moves, budget),
         }
     }
 }
@@ -1460,6 +1564,13 @@ struct UsiInfoTelemetry {
     incomplete_iterations: u64,
     node_budget_cap_hits: u64,
     fallback_used: bool,
+    play_move_was_searched: bool,
+    last_completed_iteration_value: Option<i32>,
+    completed_root_moves_in_interrupted_iteration: u32,
+    partial_root_state: bool,
+    interruption_reason: Option<String>,
+    emergency_fallback_used: bool,
+    missing_move: bool,
     node_counting_version: Option<String>,
     qsearch: QsearchTelemetry,
 }
@@ -1541,9 +1652,20 @@ impl UsiEngineClient {
         Ok(client)
     }
 
-    fn search(&mut self, board: &Board, budget: SearchBudget) -> Result<EngineSearchResult> {
+    fn search(
+        &mut self,
+        _board: &Board,
+        start_sfen: &str,
+        moves: &[String],
+        budget: SearchBudget,
+    ) -> Result<EngineSearchResult> {
         let started_at = Instant::now();
-        self.send_command(&format!("position sfen {board}"))?;
+        let move_suffix = if moves.is_empty() {
+            String::new()
+        } else {
+            format!(" moves {}", moves.join(" "))
+        };
+        self.send_command(&format!("position sfen {start_sfen}{move_suffix}"))?;
         self.send_command(&go_command(budget))?;
         let timeout = search_timeout(budget);
         let (bestmove, telemetry) = self.read_bestmove(timeout)?;
@@ -1574,6 +1696,16 @@ impl UsiEngineClient {
         };
         Ok(EngineSearchResult {
             best_move: bestmove,
+            play_move_was_searched: telemetry.play_move_was_searched,
+            last_completed_iteration_value: telemetry.last_completed_iteration_value,
+            completed_root_moves_in_interrupted_iteration: telemetry
+                .completed_root_moves_in_interrupted_iteration,
+            partial_root_state: telemetry.partial_root_state,
+            interruption_reason: telemetry
+                .interruption_reason
+                .unwrap_or_else(|| "unspecified".to_string()),
+            emergency_fallback_used: telemetry.emergency_fallback_used,
+            missing_move: telemetry.missing_move,
             total_nodes: alpha_beta_nodes,
             requested_budget_nodes: telemetry.requested_budget_nodes,
             consumed_budget_nodes: telemetry.consumed_budget_nodes,
@@ -1581,7 +1713,7 @@ impl UsiEngineClient {
             completed_depth: telemetry.completed_depth,
             incomplete_iterations: telemetry.incomplete_iterations,
             node_budget_cap_hits: telemetry.node_budget_cap_hits,
-            fallback_used: telemetry.fallback_used,
+            fallback_used: telemetry.fallback_used || telemetry.emergency_fallback_used,
             elapsed_ms: started_at.elapsed().as_secs_f64() * 1_000.0,
             qsearch: telemetry.qsearch,
         })
@@ -1745,6 +1877,48 @@ fn merge_usi_info_telemetry(telemetry: &mut UsiInfoTelemetry, line: &str) {
                     telemetry.fallback_used = value != 0;
                 }
             }
+            "rootResultSchema" => {
+                let _ = tokens.next();
+            }
+            "playMoveWasSearched" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.play_move_was_searched = value != 0;
+                }
+            }
+            "lastCompletedIterationValue" => {
+                telemetry.last_completed_iteration_value = tokens
+                    .next()
+                    .filter(|value| *value != "null")
+                    .and_then(|value| value.parse::<i32>().ok());
+            }
+            "completedIterationDepth" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.completed_depth = value;
+                }
+            }
+            "completedRootMovesInInterruptedIteration" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u32>().ok()) {
+                    telemetry.completed_root_moves_in_interrupted_iteration = value;
+                }
+            }
+            "partialRootState" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.partial_root_state = value != 0;
+                }
+            }
+            "interruptionReason" => {
+                telemetry.interruption_reason = tokens.next().map(str::to_string);
+            }
+            "emergencyFallbackUsed" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.emergency_fallback_used = value != 0;
+                }
+            }
+            "missingMove" => {
+                if let Some(value) = tokens.next().and_then(|value| value.parse::<u8>().ok()) {
+                    telemetry.missing_move = value != 0;
+                }
+            }
             "nodeCountingVersion" => {
                 telemetry.node_counting_version = tokens.next().map(str::to_string);
             }
@@ -1805,11 +1979,46 @@ fn search_timeout(budget: SearchBudget) -> Duration {
     }
 }
 
-fn terminal_winner(board: &Board, a_color: Color) -> Option<Seat> {
-    (board.status() != GameStatus::Ongoing).then_some(if board.side_to_move() == a_color {
-        Seat::B
-    } else {
-        Seat::A
+fn seat_for_color(color: Color, a_color: Color) -> Seat {
+    if color == a_color { Seat::A } else { Seat::B }
+}
+
+fn terminal_adjudication(
+    board: &Board,
+    history: &PositionHistory,
+    a_color: Color,
+) -> Option<(Option<Seat>, GameTerminationReason)> {
+    debug_assert!(history.matches_current(board));
+    let black_king = board.has(Color::Black, Piece::King);
+    let white_king = board.has(Color::White, Piece::King);
+    if !black_king || !white_king {
+        let winner = match (black_king, white_king) {
+            (true, false) => Some(seat_for_color(Color::Black, a_color)),
+            (false, true) => Some(seat_for_color(Color::White, a_color)),
+            (false, false) => None,
+            (true, true) => unreachable!(),
+        };
+        return Some((winner, GameTerminationReason::KingCaptured));
+    }
+
+    match history.adjudication() {
+        HistoryAdjudication::RepetitionDraw => {
+            return Some((None, GameTerminationReason::RepetitionDraw));
+        }
+        HistoryAdjudication::PerpetualCheckLoss(loser) => {
+            return Some((
+                Some(seat_for_color(!loser, a_color)),
+                GameTerminationReason::PerpetualCheckLoss,
+            ));
+        }
+        HistoryAdjudication::Ongoing => {}
+    }
+
+    (board.status() != GameStatus::Ongoing).then(|| {
+        (
+            Some(seat_for_color(!board.side_to_move(), a_color)),
+            GameTerminationReason::NoLegalMove,
+        )
     })
 }
 
@@ -1824,8 +2033,10 @@ fn play_self_play_game(
     let pair_index = game_index / 2;
     let (mut board, opening) = game_opening(base_board, openings, args, pair_index)?;
     let start_sfen = board.to_string();
+    let mut history = PositionHistory::new(board.clone());
     let a_color = game_a_color(game_index);
     let mut winner = None;
+    let mut termination_reason = GameTerminationReason::Unfinished;
     let mut plies = 0;
     let mut total_nodes = 0;
     let mut requested_budget_nodes = 0;
@@ -1864,8 +2075,9 @@ fn play_self_play_game(
         .map_err(|err| anyhow!("failed to start engine B in game {}: {err}", game_index + 1))?;
 
     for ply in 0..args.max_plies {
-        if let Some(seat) = terminal_winner(&board, a_color) {
-            winner = Some(seat);
+        if let Some((terminal_winner, reason)) = terminal_adjudication(&board, &history, a_color) {
+            winner = terminal_winner;
+            termination_reason = reason;
             break;
         }
 
@@ -1880,7 +2092,9 @@ fn play_self_play_game(
             &mut runtime_b
         };
         let current_sfen = board.to_string();
-        let summary = runtime.search(&board, config.budget).map_err(|err| {
+        let summary = runtime
+            .search(&board, &history, &start_sfen, &moves, config.budget)
+            .map_err(|err| {
             anyhow!(
                 "search failed in game {} on ply {} with {} to move (engine {}, sfen: {}, moves: {}): {err}",
                 game_index + 1,
@@ -1890,7 +2104,7 @@ fn play_self_play_game(
                 current_sfen,
                 moves.join(" ")
             )
-        })?;
+            })?;
         total_nodes += summary.total_nodes;
         requested_budget_nodes += summary.requested_budget_nodes;
         consumed_budget_nodes += summary.consumed_budget_nodes;
@@ -1925,12 +2139,18 @@ fn play_self_play_game(
             b_qsearch.add(summary.qsearch);
         }
         let Some(best_move) = summary.best_move else {
-            winner = Some(if config.label == "A" {
-                Seat::B
-            } else {
-                Seat::A
-            });
-            break;
+            bail!(
+                "nonterminal engine-missing-move is a match harness error in game {} on ply {} \
+                 (engine {}, searched={}, emergency={}, interruption={}, sfen: {}, moves: {})",
+                game_index + 1,
+                ply + 1,
+                config.label,
+                summary.play_move_was_searched,
+                summary.emergency_fallback_used,
+                summary.interruption_reason,
+                current_sfen,
+                moves.join(" ")
+            );
         };
         let mv = Move::from_str(&best_move)
             .map_err(|err| anyhow!("engine returned invalid move {best_move}: {err}"))?;
@@ -1947,15 +2167,27 @@ fn play_self_play_game(
             )
         })?;
         moves.push(best_move);
+        history.push(board.clone());
         plies = ply + 1;
+        if let Some((terminal_winner, reason)) = terminal_adjudication(&board, &history, a_color) {
+            winner = terminal_winner;
+            termination_reason = reason;
+            break;
+        }
     }
-    if winner.is_none() {
-        winner = terminal_winner(&board, a_color);
+    if termination_reason == GameTerminationReason::Unfinished {
+        if let Some((terminal_winner, reason)) = terminal_adjudication(&board, &history, a_color) {
+            winner = terminal_winner;
+            termination_reason = reason;
+        } else if plies >= args.max_plies {
+            termination_reason = GameTerminationReason::MaximumPlyCapped;
+        }
     }
 
     Ok(GameResult {
         a_color,
         winner,
+        termination_reason,
         plies,
         total_nodes,
         requested_budget_nodes,
@@ -2029,11 +2261,16 @@ fn seat_name(seat: Seat) -> &'static str {
     }
 }
 
-fn result_name(winner: Option<Seat>) -> &'static str {
+fn result_name(winner: Option<Seat>, termination_reason: GameTerminationReason) -> &'static str {
     match winner {
         Some(Seat::A) => "a-win",
         Some(Seat::B) => "b-win",
-        None => "draw",
+        None => match termination_reason {
+            GameTerminationReason::RepetitionDraw | GameTerminationReason::JishogiDraw => "draw",
+            GameTerminationReason::MaximumPlyCapped => "capped",
+            GameTerminationReason::Unfinished => "unfinished",
+            _ => "draw",
+        },
     }
 }
 
@@ -2525,7 +2762,7 @@ fn restore_pair_scores(stats: &mut MatchStats, games_path: &Path, games: u32) ->
 fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
     GameJsonRecord {
         schema: "haitaka-self-play-game",
-        schema_version: 2,
+        schema_version: 3,
         game_index: game_index + 1,
         pair_index: game_index / 2,
         a_color: color_name(result.a_color).to_string(),
@@ -2533,8 +2770,11 @@ fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
         opening: result.opening.clone(),
         start_sfen: result.start_sfen.clone(),
         moves: result.moves.clone(),
-        result: result_name(result.winner).to_string(),
+        result: result_name(result.winner, result.termination_reason).to_string(),
         winner: result.winner.map(seat_name).map(str::to_string),
+        termination_schema: SELF_PLAY_TERMINATION_SCHEMA,
+        termination_reason: result.termination_reason.as_str(),
+        history_rules_version: ANHOKU_HISTORY_RULES_VERSION,
         plies: result.plies,
         total_nodes: result.total_nodes,
         requested_budget_nodes: result.requested_budget_nodes,
@@ -4309,9 +4549,10 @@ mod tests {
     #[test]
     fn in_process_node_search_has_exact_budget_accounting_and_repeats_deterministically() {
         let board = Board::startpos();
-        let first = search_in_process_handcrafted(&board, SearchBudget::Nodes(5_000))
+        let history = PositionHistory::new(board.clone());
+        let first = search_in_process_handcrafted(&board, &history, SearchBudget::Nodes(5_000))
             .expect("handcrafted node search should succeed");
-        let second = search_in_process_handcrafted(&board, SearchBudget::Nodes(5_000))
+        let second = search_in_process_handcrafted(&board, &history, SearchBudget::Nodes(5_000))
             .expect("repeated handcrafted node search should succeed");
 
         assert_eq!(first.requested_budget_nodes, 5_000);
@@ -4330,13 +4571,21 @@ mod tests {
     #[test]
     fn in_process_node_search_uses_a_legal_fallback_at_low_budget() {
         let board = Board::startpos();
-        let result = search_in_process_handcrafted(&board, SearchBudget::Nodes(1))
+        let history = PositionHistory::new(board.clone());
+        let result = search_in_process_handcrafted(&board, &history, SearchBudget::Nodes(1))
             .expect("low-budget handcrafted search should return a fallback");
 
         let best_move = result.best_move.as_deref().expect("fallback move");
         let mv = Move::from_str(best_move).expect("fallback should be a USI move");
         assert!(board.is_legal(mv));
         assert!(result.fallback_used);
+        assert!(result.emergency_fallback_used);
+        assert!(!result.play_move_was_searched);
+        assert_eq!(result.last_completed_iteration_value, None);
+        assert_eq!(result.completed_root_moves_in_interrupted_iteration, 0);
+        assert!(!result.partial_root_state);
+        assert_eq!(result.interruption_reason, "node-budget");
+        assert!(!result.missing_move);
         assert_eq!(result.requested_budget_nodes, 1);
         assert_eq!(result.consumed_budget_nodes, 1);
         assert_eq!(
@@ -4603,7 +4852,7 @@ mod tests {
     #[test]
     fn usi_info_parser_captures_qsearch_telemetry() {
         let telemetry = parse_usi_info_telemetry(
-            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 string ignored",
+            "info depth 5 score cp 12 nodes 12345 nps 999 hashfull 7 qnodes 456 qsearchMaxPly 3 qsearchCapHits 2 qsearchCheckMoveTries 8 qsearchDeltaPrunes 9 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 lastCompletedIterationValue 12 completedIterationDepth 4 completedRootMovesInInterruptedIteration 3 partialRootState 1 interruptionReason deadline emergencyFallbackUsed 0 missingMove 0 string ignored",
         );
 
         assert_eq!(telemetry.total_nodes, 12_345);
@@ -4612,6 +4861,14 @@ mod tests {
         assert_eq!(telemetry.qsearch.qsearch_cap_hits, 2);
         assert_eq!(telemetry.qsearch.qsearch_check_move_tries, 8);
         assert_eq!(telemetry.qsearch.qsearch_delta_prunes, 9);
+        assert!(telemetry.play_move_was_searched);
+        assert_eq!(telemetry.last_completed_iteration_value, Some(12));
+        assert_eq!(telemetry.completed_depth, 4);
+        assert_eq!(telemetry.completed_root_moves_in_interrupted_iteration, 3);
+        assert!(telemetry.partial_root_state);
+        assert_eq!(telemetry.interruption_reason.as_deref(), Some("deadline"));
+        assert!(!telemetry.emergency_fallback_used);
+        assert!(!telemetry.missing_move);
 
         let missing = parse_usi_info_telemetry("info depth 1 nodes 9 nps 1000");
         assert_eq!(missing.total_nodes, 9);
@@ -4773,10 +5030,50 @@ mod tests {
     }
 
     #[test]
+    fn terminal_adjudication_handles_repetition_and_final_ply_terminal() {
+        let mut board: Board = "4k4/9/9/9/9/9/9/9/4K4 b - 1".parse().unwrap();
+        let mut history = PositionHistory::new(board.clone());
+        for text in ["5i4i", "5a4a", "4i5i", "4a5a"].repeat(3) {
+            board.try_play(text.parse().unwrap()).unwrap();
+            history.push(board.clone());
+        }
+        assert_eq!(
+            terminal_adjudication(&board, &history, Color::Black),
+            Some((None, GameTerminationReason::RepetitionDraw))
+        );
+
+        let mut mate: Board = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1".parse().unwrap();
+        let mut mate_history = PositionHistory::new(mate.clone());
+        mate.try_play("R*1b".parse().unwrap()).unwrap();
+        mate_history.push(mate.clone());
+        assert_eq!(
+            terminal_adjudication(&mate, &mate_history, Color::Black),
+            Some((Some(Seat::A), GameTerminationReason::NoLegalMove))
+        );
+    }
+
+    #[test]
+    fn capped_unfinished_and_draw_results_are_distinct() {
+        assert_eq!(
+            result_name(None, GameTerminationReason::RepetitionDraw),
+            "draw"
+        );
+        assert_eq!(
+            result_name(None, GameTerminationReason::MaximumPlyCapped),
+            "capped"
+        );
+        assert_eq!(
+            result_name(None, GameTerminationReason::Unfinished),
+            "unfinished"
+        );
+    }
+
+    #[test]
     fn game_json_record_serializes_opening_and_moves() {
         let result = GameResult {
             a_color: Color::Black,
             winner: Some(Seat::A),
+            termination_reason: GameTerminationReason::KingCaptured,
             plies: 2,
             total_nodes: 10,
             requested_budget_nodes: 20,
@@ -4844,6 +5141,10 @@ mod tests {
         let json = serde_json::to_value(game_json_record(6, &result)).expect("serialize record");
 
         assert_eq!(json["schema"], "haitaka-self-play-game");
+        assert_eq!(json["schemaVersion"], 3);
+        assert_eq!(json["terminationSchema"], SELF_PLAY_TERMINATION_SCHEMA);
+        assert_eq!(json["terminationReason"], "king-captured");
+        assert_eq!(json["historyRulesVersion"], ANHOKU_HISTORY_RULES_VERSION);
         assert_eq!(json["gameIndex"], 7);
         assert_eq!(json["pairIndex"], 3);
         assert_eq!(json["aColor"], "black");

@@ -1,0 +1,27 @@
+{
+  "schema": "haitaka-r1b-quantization-limits-v1",
+  "frozen_at": "2026-09-01T00:00:00+09:00",
+  "score_units": "runtime integer evaluation units",
+  "loss": "mean squared error between sigmoid(prediction / 410) and sigmoid(reference_label / 410)",
+  "splits": {
+    "even-fixture-id": "numeric fixture id modulo 2 equals 0",
+    "odd-fixture-id": "numeric fixture id modulo 2 equals 1"
+  },
+  "score_buckets": [
+    { "id": "lt-minus-500", "minimum_inclusive": null, "maximum_inclusive": -501 },
+    { "id": "minus-500-to-minus-101", "minimum_inclusive": -500, "maximum_inclusive": -101 },
+    { "id": "minus-100-to-100", "minimum_inclusive": -100, "maximum_inclusive": 100 },
+    { "id": "101-to-500", "minimum_inclusive": 101, "maximum_inclusive": 500 },
+    { "id": "gt-500", "minimum_inclusive": 501, "maximum_inclusive": null }
+  ],
+  "limits": {
+    "mean_absolute_score_delta": 8.0,
+    "p99_absolute_score_delta": 16.0,
+    "maximum_absolute_score_delta": 32.0,
+    "maximum_positive_loss_degradation": 0.005,
+    "serializer_clamped_weights": 0,
+    "accumulator_overflows": 0
+  },
+  "decision_rule": "PASS iff every nonempty declared split and score bucket independently satisfies every absolute delta and loss limit, both repeat exports and their metadata are byte-identical, integer emulation has zero Rust score/activation mismatches, full refresh has zero incremental accumulator/score mismatches, and clamping/overflow counters are zero.",
+  "scope": "Frozen before the R1-B Python oracle or generated sentinel checkpoint was executed; these are absolute limits, not percentages of a measured gain."
+}

@@ -7,7 +7,9 @@ use haitaka::{Board, Color, Move, Piece};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::config::{LoadedConfig, OpeningPolicy, SplitPolicy, ValidationOpeningSchedule};
+use crate::config::{
+    LoadedGenerationConfig as LoadedConfig, OpeningPolicy, SplitPolicy, ValidationOpeningSchedule,
+};
 
 pub const ANHOKU_COLOR_SWAP_V1: &str = "anhoku-rotate180-color-swap-v1";
 pub const NO_OPENING_TRANSFORMATION: &str = "none";
@@ -658,7 +660,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6.toml");
-        let loaded = LoadedConfig::from_path(&config).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config).unwrap();
         let source = OpeningSource::from_config(&loaded, &loaded.opening_sfen().unwrap()).unwrap();
         let split = source
             .split_openings(
@@ -703,7 +705,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6-phase8-root.toml");
-        let phase8_loaded = LoadedConfig::from_path(&phase8_config).unwrap();
+        let phase8_loaded = LoadedConfig::from_legacy_test_path(&phase8_config).unwrap();
         let phase8_source =
             OpeningSource::from_config(&phase8_loaded, &phase8_loaded.opening_sfen().unwrap())
                 .unwrap();
@@ -726,7 +728,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6-phase8d-a2.toml");
-        let phase8d_a2 = LoadedConfig::from_path(&phase8d_a2_config).unwrap();
+        let phase8d_a2 = LoadedConfig::from_legacy_test_path(&phase8d_a2_config).unwrap();
         let phase8d_a2_source =
             OpeningSource::from_config(&phase8d_a2, &phase8d_a2.opening_sfen().unwrap()).unwrap();
         let phase8d_a2_split = phase8d_a2_source
@@ -749,7 +751,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6-phase8d-b-root-262k.toml");
-        let phase8d_b = LoadedConfig::from_path(&phase8d_b_config).unwrap();
+        let phase8d_b = LoadedConfig::from_legacy_test_path(&phase8d_b_config).unwrap();
         assert_eq!(phase8d_b.config.data.label_search_nodes, Some(50_000));
         assert_eq!(phase8d_b.config.data.max_positions_per_game, 64);
         assert_eq!(phase8d_b.config.data.max_label_attempts_per_game, Some(72));
@@ -768,7 +770,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6-phase8c-root-1m.data.toml");
-        let loaded = LoadedConfig::from_path(&config).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config).unwrap();
         let source = OpeningSource::from_config(&loaded, &loaded.opening_sfen().unwrap()).unwrap();
         let split = source
             .split_openings(

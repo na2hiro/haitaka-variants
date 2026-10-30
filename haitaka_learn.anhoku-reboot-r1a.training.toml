@@ -1,0 +1,32 @@
+# Strict training-stage schema reused only to identify and build the pinned C++
+# feature loader for the CPU-only R1-A oracle. This config does not authorize
+# training and the placeholder dataset hashes are never opened by r1a-gate.
+[rules]
+ruleset = "anhoku"
+
+[paths]
+output_dir = "out/anhoku-reboot-r1a/trainer"
+trainer_checkout = "../engine/variant-nnue-pytorch"
+python = "python3"
+cmake = "cmake"
+
+[dataset]
+train_games = 1
+validation_games = 1
+train_bin = "out/anhoku-reboot-r1a/trainer/datasets/train.bin"
+validation_bin = "out/anhoku-reboot-r1a/trainer/datasets/validation.bin"
+train_manifest = "out/anhoku-reboot-r1a/trainer/datasets/train.json"
+validation_manifest = "out/anhoku-reboot-r1a/trainer/datasets/validation.json"
+train_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+validation_manifest_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[training]
+features = "HalfKAv2^+DonorSingleEff"
+initial_checkpoint = { kind = "scratch" }
+resume = false
+build_data_loader = true
+teacher_move_consumers = false
+
+[export]
+output_name = "unused-r1a.nnue"
+description = "R1-A loader identity only; no training or export"

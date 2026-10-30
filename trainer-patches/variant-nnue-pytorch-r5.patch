@@ -1,0 +1,28 @@
+diff --git a/model.py b/model.py
+--- a/model.py
++++ b/model.py
+@@ -1,3 +1,4 @@
++import os
+ import ranger
+ import torch
+ from torch import nn
+@@ -9,4 +10,15 @@
+-# 3 layer fully connected network
+-L1 = 512
+-L2 = 16
+-L3 = 32
++# 3 layer fully connected network
++def _width(name, default):
++  value = int(os.environ.get(name, default))
++  if value <= 0:
++    raise ValueError('{} must be positive'.format(name))
++  return value
++
++L1 = _width('HAITAKA_NNUE_L1', 512)
++L2 = _width('HAITAKA_NNUE_L2', 16)
++L3 = _width('HAITAKA_NNUE_L3', 32)
++
++# This is intentionally a process-level identity.  The serializer and the
++# runtime format must be built with the same profile; a model cannot silently
++# change width after import.
++WIDTH_PROFILE = '{}x{}x{}'.format(L1, L2, L3)

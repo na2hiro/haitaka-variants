@@ -30,7 +30,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::config::{
-    ArtifactPaths, IncompleteLabelPolicy, LabelRetryPolicy, LabelSearchBudget, LoadedConfig,
+    ArtifactPaths, EvaluatorConfig, EvaluatorKind, IncompleteLabelPolicy, LabelRetryPolicy,
+    LabelSearchBudget, LoadedGenerationConfig, LoadedGenerationConfig as LoadedConfig,
     PositionPolicy, Ruleset, SamplingPolicy, SelfPlayMovePolicy, ShufflePolicy,
     TEACHER_MOVE_ENCODING,
 };
@@ -67,6 +68,7 @@ pub struct GenerateOptions {
 }
 
 impl GenerateOptions {
+    #[cfg(test)]
     pub fn from_config(loaded: &LoadedConfig) -> Self {
         Self {
             jobs: Some(loaded.config.data.jobs),
@@ -1009,20 +1011,54 @@ enum Teacher {
     },
 }
 
-impl Teacher {
+#[derive(Debug, Clone)]
+struct GenerationTeachers {
+    trajectory: Teacher,
+    label: Teacher,
+}
+
+impl GenerationTeachers {
     fn from_config(loaded: &LoadedConfig) -> Result<Self> {
-        let Some(path) = loaded.bootstrap_nnue() else {
+        Ok(Self {
+            trajectory: Teacher::from_evaluator(loaded, &loaded.trajectory_evaluator().evaluator)?,
+            label: Teacher::from_evaluator(loaded, &loaded.label_evaluator().evaluator)?,
+        })
+    }
+}
+
+#[derive(Default)]
+struct GenerationSearchWorkspaces {
+    trajectory: SearchWorkspace,
+    label: SearchWorkspace,
+}
+
+impl Teacher {
+    fn from_evaluator(loaded: &LoadedConfig, evaluator: &EvaluatorConfig) -> Result<Self> {
+        if evaluator.kind == EvaluatorKind::Handcrafted {
             return Ok(Self::Handcrafted);
-        };
+        }
+        let path = loaded.resolve_path(
+            evaluator
+                .model
+                .as_deref()
+                .expect("validated NNUE evaluator model path"),
+        );
         let bytes = fs::read(&path).with_context(|| {
             format!(
-                "paths.bootstrap_nnue is configured but could not be read: {}",
+                "configured evaluator NNUE could not be read: {}",
                 path.display()
             )
         })?;
         let bootstrap_sha256 = hash_bytes_hex(&bytes);
+        ensure!(
+            evaluator.model_sha256.as_deref() == Some(&bootstrap_sha256),
+            "configured evaluator NNUE {} has sha256 {}, expected {}",
+            path.display(),
+            bootstrap_sha256,
+            evaluator.model_sha256.as_deref().unwrap_or("missing")
+        );
         let model = NnueModel::from_bytes(&bytes)
-            .map_err(|err| anyhow!("failed to load bootstrap NNUE {}: {err}", path.display()))?;
+            .map_err(|err| anyhow!("failed to load evaluator NNUE {}: {err}", path.display()))?;
         Ok(Self::Nnue {
             model: Arc::new(model),
             bootstrap_sha256,
@@ -1680,7 +1716,7 @@ struct LabelCalibrationDecision {
 }
 
 pub fn audit_trajectories(
-    loaded: &LoadedConfig,
+    loaded: &LoadedGenerationConfig,
     options: TrajectoryAuditOptions,
 ) -> Result<TrajectoryAuditReport> {
     loaded.ruleset_requires_matching_engine()?;
@@ -1708,7 +1744,7 @@ pub fn audit_trajectories(
         loaded.config.data.validation_opening_schedule,
         loaded.config.data.validation_opening_pairs_per_id,
     )?;
-    let teacher = Teacher::from_config(loaded)?;
+    let teacher = Teacher::from_evaluator(loaded, &loaded.trajectory_evaluator().evaluator)?;
     let selector = ShardSelector::new(
         options.shard_index,
         options.shard_index_end,
@@ -2518,7 +2554,7 @@ fn audit_trajectory_opening_coverage(
     }
 }
 
-pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport> {
+pub fn calibrate_labels(loaded: &LoadedGenerationConfig) -> Result<LabelCalibrationReport> {
     loaded.ruleset_requires_matching_engine()?;
     ensure!(
         loaded
@@ -2602,13 +2638,13 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             ]
         })
         .collect::<Vec<_>>();
-    let teacher = Teacher::from_config(loaded)?;
+    let teachers = GenerationTeachers::from_config(loaded)?;
     let jobs = resolve_jobs(loaded.config.data.jobs)?
         .min(calibration_tasks.len())
         .max(1);
     let trajectories = collect_calibration_trajectory_games(
         loaded,
-        &teacher,
+        &teachers.trajectory,
         &opening_source,
         &opening_split,
         &calibration_tasks,
@@ -2703,14 +2739,14 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             }
             (
                 calibrate_adaptive_label_split(
-                    &teacher,
+                    &teachers.label,
                     loaded.config.data.position_policy,
                     max_depth,
                     nodes,
                     &train_pairs,
                 )?,
                 calibrate_adaptive_label_split(
-                    &teacher,
+                    &teachers.label,
                     loaded.config.data.position_policy,
                     max_depth,
                     nodes,
@@ -2734,14 +2770,14 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
             }
             (
                 calibrate_label_split(
-                    &teacher,
+                    &teachers.label,
                     loaded.config.data.position_policy,
                     max_depth,
                     nodes,
                     &train_roots,
                 )?,
                 calibrate_label_split(
-                    &teacher,
+                    &teachers.label,
                     loaded.config.data.position_policy,
                     max_depth,
                     nodes,
@@ -2828,7 +2864,7 @@ pub fn calibrate_labels(loaded: &LoadedConfig) -> Result<LabelCalibrationReport>
         schema: LABEL_CALIBRATION_SCHEMA,
         source: trajectory_source_identity(
             loaded,
-            &teacher,
+            &teachers.trajectory,
             &opening_source,
             &opening_split,
             engine_revision,
@@ -3403,14 +3439,19 @@ fn apply_incomplete_label_policy(
     }
 }
 
-pub fn generate_data(loaded: &LoadedConfig) -> Result<DatasetOutput> {
+#[cfg(test)]
+pub fn generate_data(loaded: &LoadedGenerationConfig) -> Result<DatasetOutput> {
     generate_data_with_options(loaded, GenerateOptions::from_config(loaded))
 }
 
 pub fn generate_data_with_options(
-    loaded: &LoadedConfig,
+    loaded: &LoadedGenerationConfig,
     options: GenerateOptions,
 ) -> Result<DatasetOutput> {
+    ensure!(
+        !options.ignore_identity_mismatch,
+        "strict R0 generation forbids --ignore-identity-mismatch; import foreign shards through an explicitly historical, non-decisional workflow"
+    );
     let _graceful_stop = GracefulStopGuard::install()?;
     loaded.ruleset_requires_matching_engine()?;
     let opening_sfen = loaded.opening_sfen()?;
@@ -3427,7 +3468,7 @@ pub fn generate_data_with_options(
         loaded.config.data.validation_opening_pairs_per_id,
     )?;
 
-    let teacher = Teacher::from_config(loaded)?;
+    let teachers = GenerationTeachers::from_config(loaded)?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
 
@@ -3447,7 +3488,7 @@ pub fn generate_data_with_options(
     let allow_identity_mismatch = resolve_identity_mismatch(
         loaded,
         &artifacts,
-        &teacher,
+        &teachers,
         &opening_sfen,
         &opening_source,
         &opening_split,
@@ -3462,7 +3503,7 @@ pub fn generate_data_with_options(
         "train",
         loaded,
         &artifacts,
-        &teacher,
+        &teachers,
         &opening_sfen,
         &opening_source,
         &opening_split,
@@ -3494,7 +3535,7 @@ pub fn generate_data_with_options(
         "validation",
         loaded,
         &artifacts,
-        &teacher,
+        &teachers,
         &opening_sfen,
         &opening_source,
         &opening_split,
@@ -3520,6 +3561,7 @@ pub fn generate_data_with_options(
         );
     }
 
+    crate::r0::write_generation_manifest(loaded, &artifacts)?;
     Ok(DatasetOutput {
         output_dir: artifacts.output_dir,
         train_positions,
@@ -3613,7 +3655,7 @@ fn generate_split(
     dataset_name: &str,
     loaded: &LoadedConfig,
     artifacts: &ArtifactPaths,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
@@ -3650,7 +3692,7 @@ fn generate_split(
             let queue = Arc::clone(&queue);
             let results = Arc::clone(&results);
             let progress = Arc::clone(&progress);
-            let teacher = teacher.clone();
+            let teachers = teachers.clone();
             let loaded = loaded.clone();
             let artifacts = artifacts.clone();
             let opening_sfen = opening_sfen.to_string();
@@ -3668,7 +3710,7 @@ fn generate_split(
                         &dataset_name,
                         &loaded,
                         &artifacts,
-                        &teacher,
+                        &teachers,
                         &opening_sfen,
                         &opening_source,
                         &opening_split,
@@ -3763,7 +3805,7 @@ fn generate_split(
     } else {
         label_search_total_nodes as f64 / search_stats.label_searches as f64
     };
-    let build_mode = teacher_build_mode(loaded, teacher);
+    let build_mode = generation_teacher_build_mode(loaded, teachers);
     let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
         loaded,
         dataset_name,
@@ -3771,7 +3813,7 @@ fn generate_split(
         opening_source,
         opening_split,
         &build_mode,
-        teacher.bootstrap_sha256(),
+        generation_teacher_sha256(teachers).as_deref(),
         engine_revision.as_deref(),
     )?;
     let schedule_identity_sha256 =
@@ -3902,12 +3944,12 @@ fn generate_split(
         rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
         generation_cpu_seconds: search_stats.label_search_elapsed_seconds
             + search_stats.rollout_search_elapsed_seconds,
-        bootstrap_nnue: bootstrap_nnue_path(loaded),
-        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
+        bootstrap_nnue: None,
+        bootstrap_nnue_sha256: generation_teacher_sha256(teachers),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
         seed: loaded.config.data.seed,
-        feature_family: loaded.training_features().to_string(),
+        feature_family: loaded.record_format().to_string(),
         sampling_phase: loaded
             .config
             .data
@@ -3952,10 +3994,14 @@ fn next_shard_plan_with(
 }
 
 pub fn merge_data(
-    loaded: &LoadedConfig,
+    loaded: &LoadedGenerationConfig,
     input_dirs: &[PathBuf],
     ignore_identity_mismatch: bool,
 ) -> Result<DatasetOutput> {
+    ensure!(
+        !ignore_identity_mismatch,
+        "strict merge-data forbids --ignore-identity-mismatch; regenerate shards with matching identities"
+    );
     loaded.ruleset_requires_matching_engine()?;
     if input_dirs.is_empty() {
         bail!("merge-data requires at least one --input directory");
@@ -3965,7 +4011,7 @@ pub fn merge_data(
     artifacts.ensure_dirs()?;
     let opening_sfen = loaded.opening_sfen()?;
     let opening_source = OpeningSource::from_config(loaded, &opening_sfen)?;
-    let teacher = Teacher::from_config(loaded)?;
+    let teachers = GenerationTeachers::from_config(loaded)?;
     let engine_revision = detect_git_revision(loaded)?;
     let opening_split = opening_source.split_openings(
         loaded.config.data.split_policy,
@@ -3991,7 +4037,7 @@ pub fn merge_data(
         &opening_sfen,
         &opening_source,
         &opening_split,
-        &teacher,
+        &teachers,
         &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
@@ -4012,11 +4058,12 @@ pub fn merge_data(
         &opening_sfen,
         &opening_source,
         &opening_split,
-        &teacher,
+        &teachers,
         &engine_revision,
         generated_at_unix_ms,
         ignore_identity_mismatch,
     )?;
+    crate::r0::write_generation_manifest(loaded, &artifacts)?;
 
     Ok(DatasetOutput {
         output_dir: artifacts.output_dir,
@@ -4278,7 +4325,7 @@ fn generation_semantic_identity_sha256(
         rollout_score_margin: loaded.config.data.rollout_score_margin,
         rollout_temperature: loaded.config.data.rollout_temperature,
         rollout_rng_version: loaded.config.data.rollout_rng_version.clone(),
-        feature_family: loaded.training_features().to_string(),
+        feature_family: loaded.record_format().to_string(),
         teacher_build_mode: teacher_build_mode.to_string(),
         teacher_sha256: teacher_sha256.map(str::to_string),
         engine_revision: engine_revision.map(str::to_string),
@@ -4424,7 +4471,7 @@ fn generate_or_reuse_shard(
     dataset_name: &str,
     loaded: &LoadedConfig,
     artifacts: &ArtifactPaths,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
@@ -4447,7 +4494,7 @@ fn generate_or_reuse_shard(
             opening_sfen,
             opening_source,
             opening_split,
-            teacher,
+            teachers,
             engine_revision,
             plan,
             &bin_path,
@@ -4468,7 +4515,7 @@ fn generate_or_reuse_shard(
     let mut search_stats = SearchUseStats::default();
     let mut games = Vec::with_capacity(plan.game_count as usize);
     let mut opening_position_selection = BTreeMap::<String, PositionSelectionStats>::new();
-    let mut search_workspace = SearchWorkspace::default();
+    let mut search_workspaces = GenerationSearchWorkspaces::default();
     let mut candidate_identity_hasher = Sha256::new();
 
     for game_index in plan.game_start..plan.game_start + plan.game_count {
@@ -4478,8 +4525,8 @@ fn generate_or_reuse_shard(
         let game = generate_game_entries(
             dataset_name,
             loaded,
-            teacher,
-            &mut search_workspace,
+            teachers,
+            &mut search_workspaces,
             opening_source,
             opening_split,
             game_index,
@@ -4499,7 +4546,7 @@ fn generate_or_reuse_shard(
     writer.flush()?;
 
     let label_budget = loaded.config.data.label_search_budget()?;
-    let build_mode = teacher_build_mode(loaded, teacher);
+    let build_mode = generation_teacher_build_mode(loaded, teachers);
     let generation_semantic_identity_sha256 = generation_semantic_identity_sha256(
         loaded,
         dataset_name,
@@ -4507,7 +4554,7 @@ fn generate_or_reuse_shard(
         opening_source,
         opening_split,
         &build_mode,
-        teacher.bootstrap_sha256(),
+        generation_teacher_sha256(teachers).as_deref(),
         engine_revision.as_deref(),
     )?;
     let requested_game_count = match dataset_name {
@@ -4639,8 +4686,8 @@ fn generate_or_reuse_shard(
         rollout_selected_score_gap_max: search_stats.rollout_selected_score_gap_max,
         label_search_cpu_seconds: search_stats.label_search_elapsed_seconds,
         rollout_search_cpu_seconds: search_stats.rollout_search_elapsed_seconds,
-        bootstrap_nnue: bootstrap_nnue_path(loaded),
-        bootstrap_nnue_sha256: teacher.bootstrap_sha256().map(str::to_string),
+        bootstrap_nnue: None,
+        bootstrap_nnue_sha256: generation_teacher_sha256(teachers),
         engine_revision: engine_revision.clone(),
         config_hash: loaded.hash_hex.clone(),
         sampling_phase: loaded
@@ -4651,7 +4698,7 @@ fn generate_or_reuse_shard(
             .to_string(),
         sample_after_opening: loaded.config.data.sampling_policy.samples_after_opening(),
         teacher_move_encoding: TEACHER_MOVE_ENCODING.to_string(),
-        feature_family: loaded.training_features().to_string(),
+        feature_family: loaded.record_format().to_string(),
         generated_at_unix_ms,
         build_mode,
         entry_bytes: ENTRY_BYTES,
@@ -4677,7 +4724,7 @@ fn reusable_shard(
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     engine_revision: &Option<String>,
     plan: ShardPlan,
     bin_path: &Path,
@@ -4692,7 +4739,7 @@ fn reusable_shard(
             .with_context(|| format!("failed to read {}", manifest_path.display()))?,
     )
     .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
-    let build_mode = teacher_build_mode(loaded, teacher);
+    let build_mode = generation_teacher_build_mode(loaded, teachers);
     let expected_semantic_identity = generation_semantic_identity_sha256(
         loaded,
         dataset_name,
@@ -4700,7 +4747,7 @@ fn reusable_shard(
         opening_source,
         opening_split,
         &build_mode,
-        teacher.bootstrap_sha256(),
+        generation_teacher_sha256(teachers).as_deref(),
         engine_revision.as_deref(),
     )?;
     if !shard_manifest_matches(
@@ -4718,7 +4765,7 @@ fn reusable_shard(
     }
     if !shard_teacher_matches(
         loaded,
-        teacher,
+        teachers,
         engine_revision,
         &manifest,
         allow_identity_mismatch,
@@ -4822,9 +4869,9 @@ fn shard_manifest_matches(
                 && manifest.rollout_score_margin == loaded.config.data.rollout_score_margin
                 && manifest.rollout_temperature == loaded.config.data.rollout_temperature
                 && manifest.rollout_rng_version == loaded.config.data.rollout_rng_version
-                && manifest.feature_family == loaded.training_features()))
+                && manifest.feature_family == loaded.record_format()))
         && (manifest.feature_family.is_empty()
-            || manifest.feature_family == loaded.training_features())
+            || manifest.feature_family == loaded.record_format())
         && manifest.rollout_search_depth() == loaded.config.data.rollout_search_depth
         && (ignore_identity
             || manifest.self_play_move_policy
@@ -4841,15 +4888,15 @@ fn shard_manifest_matches(
 
 fn shard_teacher_matches(
     loaded: &LoadedConfig,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     engine_revision: &Option<String>,
     manifest: &ShardManifest,
     ignore_identity: bool,
 ) -> bool {
-    manifest.bootstrap_nnue == bootstrap_nnue_path(loaded)
-        && manifest.bootstrap_nnue_sha256 == teacher.bootstrap_sha256().map(str::to_string)
+    manifest.bootstrap_nnue.is_none()
+        && manifest.bootstrap_nnue_sha256 == generation_teacher_sha256(teachers)
         && (ignore_identity || manifest.engine_revision == *engine_revision)
-        && manifest.build_mode == teacher_build_mode(loaded, teacher)
+        && manifest.build_mode == generation_teacher_build_mode(loaded, teachers)
 }
 
 enum MismatchChoice {
@@ -4864,7 +4911,7 @@ enum MismatchChoice {
 fn resolve_identity_mismatch(
     loaded: &LoadedConfig,
     artifacts: &ArtifactPaths,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
@@ -4882,7 +4929,7 @@ fn resolve_identity_mismatch(
     let (mismatched_games, total_games) = detect_identity_mismatch(
         loaded,
         artifacts,
-        teacher,
+        teachers,
         opening_sfen,
         opening_source,
         opening_split,
@@ -4913,7 +4960,7 @@ fn resolve_identity_mismatch(
 fn detect_identity_mismatch(
     loaded: &LoadedConfig,
     artifacts: &ArtifactPaths,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
@@ -4928,7 +4975,7 @@ fn detect_identity_mismatch(
     ] {
         let shards_dir = artifacts.datasets_dir.join("shards").join(dataset_name);
         let plans = shard_plans(game_count, loaded.config.data.shard_games, shard_selector);
-        let build_mode = teacher_build_mode(loaded, teacher);
+        let build_mode = generation_teacher_build_mode(loaded, teachers);
         let expected_semantic_identity = generation_semantic_identity_sha256(
             loaded,
             dataset_name,
@@ -4936,7 +4983,7 @@ fn detect_identity_mismatch(
             opening_source,
             opening_split,
             &build_mode,
-            teacher.bootstrap_sha256(),
+            generation_teacher_sha256(teachers).as_deref(),
             engine_revision.as_deref(),
         )?;
         for plan in plans {
@@ -4969,7 +5016,7 @@ fn detect_identity_mismatch(
                     &manifest,
                     &expected_semantic_identity,
                     false,
-                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, false);
+                )? && shard_teacher_matches(loaded, teachers, engine_revision, &manifest, false);
             let relaxed =
                 shard_manifest_matches(
                     loaded,
@@ -4981,7 +5028,7 @@ fn detect_identity_mismatch(
                     &manifest,
                     &expected_semantic_identity,
                     true,
-                )? && shard_teacher_matches(loaded, teacher, engine_revision, &manifest, true);
+                )? && shard_teacher_matches(loaded, teachers, engine_revision, &manifest, true);
             if relaxed && !strict {
                 mismatched_games += plan.game_count;
             }
@@ -5028,8 +5075,8 @@ fn prompt_identity_mismatch_choice(percent: f64) -> Result<MismatchChoice> {
 fn generate_game_entries(
     dataset_name: &str,
     loaded: &LoadedConfig,
-    teacher: &Teacher,
-    search_workspace: &mut SearchWorkspace,
+    teachers: &GenerationTeachers,
+    search_workspaces: &mut GenerationSearchWorkspaces,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
     game_index: u32,
@@ -5091,11 +5138,11 @@ fn generate_game_entries(
                 played_plies,
                 &board,
             );
-            let summary = teacher.search_label(
+            let summary = teachers.label.search_label(
                 &board,
                 label_search_budget,
                 loaded.config.data.position_policy,
-                search_workspace,
+                &mut search_workspaces.label,
             )?;
             stats.record_label(&summary);
             let summary = apply_incomplete_label_policy(
@@ -5133,10 +5180,10 @@ fn generate_game_entries(
                 .self_play_move_policy
                 .is_searched_stochastic()
         {
-            let summary = teacher.search_depth(
+            let summary = teachers.trajectory.search_depth(
                 &board,
                 loaded.config.data.rollout_search_depth,
-                search_workspace,
+                &mut search_workspaces.trajectory,
             )?;
             stats.record_rollout(&summary);
             Some(summary)
@@ -5153,7 +5200,7 @@ fn generate_game_entries(
             Some(choose_searched_stochastic_rollout_move(
                 &board,
                 &legal_moves,
-                teacher,
+                &teachers.trajectory,
                 loaded.config.data.rollout_search_depth,
                 loaded.config.data.rollout_candidate_limit,
                 loaded.config.data.rollout_score_margin,
@@ -5163,7 +5210,7 @@ fn generate_game_entries(
                 game_index / 2,
                 played_plies,
                 &loaded.config.data.rollout_rng_version,
-                search_workspace,
+                &mut search_workspaces.trajectory,
                 &mut stats,
             )?)
         } else {
@@ -5566,13 +5613,13 @@ fn merge_split(
     opening_sfen: &str,
     opening_source: &OpeningSource,
     opening_split: &OpeningSplit,
-    teacher: &Teacher,
+    teachers: &GenerationTeachers,
     engine_revision: &Option<String>,
     generated_at_unix_ms: u128,
     ignore_identity_mismatch: bool,
 ) -> Result<u64> {
     let started = Instant::now();
-    let build_mode = teacher_build_mode(loaded, teacher);
+    let build_mode = generation_teacher_build_mode(loaded, teachers);
     let expected_generation_identity = generation_semantic_identity_sha256(
         loaded,
         dataset_name,
@@ -5580,7 +5627,7 @@ fn merge_split(
         opening_source,
         opening_split,
         &build_mode,
-        teacher.bootstrap_sha256(),
+        generation_teacher_sha256(teachers).as_deref(),
         engine_revision.as_deref(),
     )?;
     let mut by_start = BTreeMap::new();
@@ -5845,7 +5892,7 @@ fn merge_split(
             .and_then(|identity| identity.engine_revision.clone()),
         config_hash: loaded.hash_hex.clone(),
         seed: loaded.config.data.seed,
-        feature_family: loaded.training_features().to_string(),
+        feature_family: loaded.record_format().to_string(),
         sampling_phase: loaded
             .config
             .data
@@ -6155,14 +6202,31 @@ fn validate_shard_bin(bin_path: &Path, manifest: &ShardManifest) -> Result<()> {
     Ok(())
 }
 
-fn bootstrap_nnue_path(loaded: &LoadedConfig) -> Option<String> {
-    loaded
-        .bootstrap_nnue()
-        .map(|path| path.display().to_string())
-}
-
 fn teacher_build_mode(loaded: &LoadedConfig, teacher: &Teacher) -> String {
     format!("{}+teacher:{}", loaded.runtime_mode(), teacher.describe())
+}
+
+fn generation_teacher_build_mode(loaded: &LoadedConfig, teachers: &GenerationTeachers) -> String {
+    format!(
+        "{}+trajectory:{}+label:{}",
+        loaded.runtime_mode(),
+        teachers.trajectory.describe(),
+        teachers.label.describe()
+    )
+}
+
+fn generation_teacher_sha256(teachers: &GenerationTeachers) -> Option<String> {
+    let trajectory = teachers
+        .trajectory
+        .bootstrap_sha256()
+        .unwrap_or("handcrafted");
+    let label = teachers.label.bootstrap_sha256().unwrap_or("handcrafted");
+    if trajectory == "handcrafted" && label == "handcrafted" {
+        return None;
+    }
+    Some(hash_bytes_hex(
+        format!("trajectory={trajectory}\nlabel={label}\n").as_bytes(),
+    ))
 }
 
 fn hash_bytes_hex(bytes: &[u8]) -> String {
@@ -6654,7 +6718,9 @@ mod tests {
     use std::path::Path;
 
     use super::*;
-    use crate::config::LoadedConfig;
+    use crate::config::{
+        InitialCheckpoint, LoadedGenerationConfig as LoadedConfig, TrainingConfig,
+    };
     use tempfile::tempdir;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6718,6 +6784,115 @@ mod tests {
     #[test]
     fn packed_entry_size_matches_trainer_layout() {
         assert_eq!(ENTRY_BYTES, 72);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn r0_generation_is_byte_identical_across_separate_training_initializations() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("generation.toml");
+        fs::write(
+            &config_path,
+            r#"
+[rules]
+ruleset = "anhoku"
+[paths]
+output_dir = "run-a"
+[data]
+train_games = 1
+validation_games = 1
+max_plies = 2
+self_play_move_policy = "uniform-rollout-v1"
+opening_random_plies = 0
+sample_start_ply = 0
+sample_every_ply = 1
+max_positions_per_game = 2
+seed = 17
+jobs = 1
+shard_games = 1
+resume = false
+[generation]
+record_format = "haitaka-packed-training-record-v3-72-byte"
+[generation.trajectory_evaluator]
+search_depth = 1
+[generation.trajectory_evaluator.evaluator]
+kind = "handcrafted"
+[generation.label_evaluator]
+search_budget = "depth"
+search_depth = 1
+target_semantics = "root-backed-up-v1"
+score_transform_version = "raw-score-v1"
+[generation.label_evaluator.evaluator]
+kind = "handcrafted"
+"#,
+        )
+        .unwrap();
+        let first_training = TrainingConfig::default();
+        let mut second_training = TrainingConfig::default();
+        second_training.initial_checkpoint = InitialCheckpoint::QuantizedImportDiagnostic {
+            path: PathBuf::from("never-read.nnue"),
+            sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            source_feature_family: "HalfKAv2^+DonorSingleEff".to_string(),
+            import_transform_version: "serialize-py-quantized-import-v1".to_string(),
+        };
+
+        let orchestrate =
+            |training: &TrainingConfig, mut generation: LoadedConfig, output: &str| {
+                let _registered_initialization = &training.initial_checkpoint;
+                generation.config.paths.output_dir = PathBuf::from(output);
+                generate_data_with_options(
+                    &generation,
+                    GenerateOptions {
+                        jobs: Some(1),
+                        resume: Some(false),
+                        shard_index: None,
+                        shard_index_end: None,
+                        shard_count: None,
+                        ignore_identity_mismatch: false,
+                    },
+                )
+                .unwrap();
+                generation.artifact_paths()
+            };
+        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let first = orchestrate(&first_training, loaded.clone(), "run-a");
+        let second = orchestrate(&second_training, loaded, "run-b");
+        assert_eq!(
+            fs::read(first.train_bin).unwrap(),
+            fs::read(second.train_bin).unwrap()
+        );
+        assert_eq!(
+            fs::read(first.validation_bin).unwrap(),
+            fs::read(second.validation_bin).unwrap()
+        );
+        for name in ["train", "validation"] {
+            let left: serde_json::Value = serde_json::from_slice(
+                &fs::read(
+                    first
+                        .datasets_dir
+                        .join("shards")
+                        .join(name)
+                        .join("shard-000000.json"),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            let right: serde_json::Value = serde_json::from_slice(
+                &fs::read(
+                    second
+                        .datasets_dir
+                        .join("shards")
+                        .join(name)
+                        .join("shard-000000.json"),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                left["generation_semantic_identity_sha256"],
+                right["generation_semantic_identity_sha256"]
+            );
+        }
     }
 
     #[test]
@@ -6981,7 +7156,7 @@ run_search_smoke = false
         )
         .unwrap();
 
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let output = generate_data(&loaded).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
@@ -7002,14 +7177,9 @@ run_search_smoke = false
             "\nbootstrap_nnue = \"missing-bootstrap.nnue\"\n\n[data]",
         );
         fs::write(&config_path, config).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
-        let missing_bootstrap = loaded.bootstrap_nnue().unwrap();
-
-        let error = format!("{:#}", generate_data(&loaded).unwrap_err());
-
-        assert!(error.contains("paths.bootstrap_nnue is configured but could not be read"));
-        assert!(error.contains(&missing_bootstrap.display().to_string()));
-        assert!(!loaded.artifact_paths().output_dir.exists());
+        let error = format!("{:#}", LoadedConfig::from_path(&config_path).unwrap_err());
+        assert!(!error.is_empty());
+        assert!(!temp.path().join("out").exists());
     }
 
     #[test]
@@ -7042,8 +7212,8 @@ run_search_smoke = false
         fs::write(&config_one, deterministic_test_config(ruleset, "out-one")).unwrap();
         fs::write(&config_two, deterministic_test_config(ruleset, "out-two")).unwrap();
 
-        let one = LoadedConfig::from_path(&config_one).unwrap();
-        let two = LoadedConfig::from_path(&config_two).unwrap();
+        let one = LoadedConfig::from_legacy_test_path(&config_one).unwrap();
+        let two = LoadedConfig::from_legacy_test_path(&config_two).unwrap();
         generate_data_with_options(
             &one,
             GenerateOptions {
@@ -7085,7 +7255,7 @@ run_search_smoke = false
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("searched-stochastic.toml");
         fs::write(&config_path, adaptive_retry_test_config("out")).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let artifacts = loaded.artifact_paths();
         let options = |jobs, shard_index, shard_count| GenerateOptions {
             jobs: Some(jobs),
@@ -7149,7 +7319,7 @@ run_search_smoke = false
             suite_test_config("out", &suite.display().to_string()),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         generate_data(&loaded).unwrap();
 
         let manifest: serde_json::Value =
@@ -7189,8 +7359,8 @@ run_search_smoke = false
             suite_test_config("out-second", &suite.display().to_string()),
         )
         .unwrap();
-        let first = LoadedConfig::from_path(&first_config).unwrap();
-        let second = LoadedConfig::from_path(&second_config).unwrap();
+        let first = LoadedConfig::from_legacy_test_path(&first_config).unwrap();
+        let second = LoadedConfig::from_legacy_test_path(&second_config).unwrap();
         generate_data(&first).unwrap();
         generate_data(&second).unwrap();
 
@@ -7281,7 +7451,7 @@ run_search_smoke = false
             suite_test_config("out", &suite.display().to_string()),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         generate_data(&loaded).unwrap();
 
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
@@ -7315,13 +7485,13 @@ run_search_smoke = false
             suite_test_config("out", &suite.display().to_string()),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         generate_data(&loaded).unwrap();
 
         let mut changed = fs::read_to_string(&suite).unwrap();
         changed.push_str("# identity change\n");
         fs::write(&suite, changed).unwrap();
-        let changed_loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let changed_loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let error = format!("{:#}", generate_data(&changed_loaded).unwrap_err());
         assert!(error.contains("--ignore-identity-mismatch"));
 
@@ -7364,7 +7534,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         generate_data(&loaded).unwrap();
@@ -7382,7 +7552,7 @@ run_search_smoke = false
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-contract.toml");
         fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         generate_data(&loaded).unwrap();
 
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
@@ -7443,7 +7613,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
@@ -7485,7 +7655,7 @@ run_search_smoke = false
         let config = fixed_node_counter_test_config(active_test_ruleset(), "out")
             .replace("resume = false", "resume = true");
         fs::write(&config_path, config).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let mismatches = [
@@ -7548,7 +7718,7 @@ run_search_smoke = false
         let config = qsearch_leaf_test_config(active_test_ruleset(), "out")
             .replace("resume = false", "resume = true");
         fs::write(&config_path, config).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let mismatches = [
@@ -7607,7 +7777,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         mutate_first_shard_manifest(&loaded, "train", remove_explicit_search_depths);
@@ -7650,7 +7820,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
@@ -7686,7 +7856,7 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
-    fn resume_reuses_mismatched_shards_when_identity_ignored() {
+    fn strict_generation_rejects_identity_override() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("resume-ignore-identity.toml");
         fs::write(
@@ -7694,14 +7864,14 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         mutate_first_shard_manifest(&loaded, "train", |manifest| {
             manifest["config_hash"] = serde_json::Value::String("stale-config-hash".to_string());
             manifest["engine_revision"] = serde_json::Value::String("other-revision".to_string());
         });
-        generate_data_with_options(
+        let error = generate_data_with_options(
             &loaded,
             GenerateOptions {
                 jobs: Some(1),
@@ -7712,13 +7882,8 @@ run_search_smoke = false
                 ignore_identity_mismatch: true,
             },
         )
-        .unwrap();
-
-        let manifest: serde_json::Value =
-            serde_json::from_slice(&fs::read(loaded.artifact_paths().train_manifest).unwrap())
-                .unwrap();
-        assert!(manifest["resumed_shards"].as_u64().unwrap() > 0);
-        assert_eq!(manifest["generated_shards"].as_u64().unwrap(), 0);
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("forbids --ignore-identity-mismatch"));
     }
 
     #[test]
@@ -7751,11 +7916,11 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let artifacts = loaded.artifact_paths();
-        let teacher = Teacher::from_config(&loaded).unwrap();
+        let teachers = GenerationTeachers::from_config(&loaded).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
         let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
         let opening_split = opening_source
@@ -7775,7 +7940,7 @@ run_search_smoke = false
         let (before, total) = detect_identity_mismatch(
             &loaded,
             &artifacts,
-            &teacher,
+            &teachers,
             &opening_sfen,
             &opening_source,
             &opening_split,
@@ -7792,7 +7957,7 @@ run_search_smoke = false
         let (after, _) = detect_identity_mismatch(
             &loaded,
             &artifacts,
-            &teacher,
+            &teachers,
             &opening_sfen,
             &opening_source,
             &opening_split,
@@ -7813,7 +7978,7 @@ run_search_smoke = false
         let (after_bad_bin, _) = detect_identity_mismatch(
             &loaded,
             &artifacts,
-            &teacher,
+            &teachers,
             &opening_sfen,
             &opening_source,
             &opening_split,
@@ -7854,7 +8019,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data_with_options(
             &loaded,
@@ -7923,7 +8088,7 @@ run_search_smoke = false
             distributed_empty_lane_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data_with_options(
             &loaded,
@@ -7998,7 +8163,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8041,7 +8206,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8084,7 +8249,7 @@ run_search_smoke = false
             fixed_node_counter_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8128,7 +8293,7 @@ run_search_smoke = false
             qsearch_leaf_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8148,7 +8313,7 @@ run_search_smoke = false
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-contract.toml");
         fs::write(&config_path, deterministic_test_config("anhoku", "out")).unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
         fs::rename(loaded.artifact_paths().output_dir, &input).unwrap();
@@ -8215,7 +8380,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8250,7 +8415,7 @@ run_search_smoke = false
             feature = "anki"
         ))
     ))]
-    fn merge_ignores_identity_mismatch_with_flag() {
+    fn strict_merge_rejects_identity_mismatch_override() {
         let temp = tempdir().unwrap();
         let config_path = temp.path().join("merge-ignore-identity.toml");
         fs::write(
@@ -8258,7 +8423,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8274,9 +8439,8 @@ run_search_smoke = false
         assert!(err.contains("config_hash does not match"));
         assert!(err.contains("--ignore-identity-mismatch"));
 
-        let output = merge_data(&loaded, &[input], true).unwrap();
-        assert!(output.train_positions > 0);
-        assert!(output.validation_positions > 0);
+        let error = format!("{:#}", merge_data(&loaded, &[input], true).unwrap_err());
+        assert!(error.contains("strict merge-data forbids --ignore-identity-mismatch"));
     }
 
     #[test]
@@ -8309,7 +8473,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8356,7 +8520,7 @@ run_search_smoke = false
             distributed_empty_lane_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
         let input = temp.path().join("machine-a");
@@ -8419,7 +8583,7 @@ seed = 9
         )
         .unwrap();
 
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let output = generate_data(&loaded).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
@@ -8435,7 +8599,7 @@ seed = 9
         )
         .unwrap();
 
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         assert_eq!(loaded.config.data.rollout_search_depth, 1);
     }
@@ -8453,7 +8617,10 @@ seed = 9
         )
         .unwrap();
 
-        let err = format!("{:?}", LoadedConfig::from_path(&config_path).unwrap_err());
+        let err = format!(
+            "{:?}",
+            LoadedConfig::from_legacy_test_path(&config_path).unwrap_err()
+        );
 
         assert!(err.contains("data.rollout_search_depth must be at least 1"));
     }
@@ -8488,7 +8655,7 @@ seed = 9
             rollout_counter_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
 
@@ -8535,7 +8702,7 @@ seed = 9
             fixed_node_counter_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
 
@@ -8597,7 +8764,7 @@ seed = 9
             qsearch_leaf_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
 
         generate_data(&loaded).unwrap();
 
@@ -9233,7 +9400,7 @@ run_search_smoke = false
         )
         .unwrap();
 
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let output = generate_data(&loaded).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
@@ -9284,7 +9451,7 @@ run_search_smoke = false
         )
         .unwrap();
 
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let output = generate_data(&loaded).unwrap();
         assert!(output.train_positions > 0);
         assert!(output.validation_positions > 0);
@@ -9543,7 +9710,7 @@ run_search_smoke = false
             deterministic_test_config(active_test_ruleset(), "out"),
         )
         .unwrap();
-        let mut small = LoadedConfig::from_path(&config_path).unwrap();
+        let mut small = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         small.config.data.minimum_train_boards = Some(262_144);
         let mut large = small.clone();
         large.config.data.minimum_train_boards = Some(1_048_576);
@@ -9603,9 +9770,9 @@ run_search_smoke = false
         )
         .unwrap();
 
-        let first = LoadedConfig::from_path(&first_config).unwrap();
+        let first = LoadedConfig::from_legacy_test_path(&first_config).unwrap();
         generate_data(&first).unwrap();
-        let second = LoadedConfig::from_path(&second_config).unwrap();
+        let second = LoadedConfig::from_legacy_test_path(&second_config).unwrap();
         generate_data(&second).unwrap();
 
         let manifest: serde_json::Value =
@@ -9626,7 +9793,7 @@ run_search_smoke = false
             .parent()
             .unwrap()
             .join("haitaka_learn.anhoku-v0.6-phase8d-a.toml");
-        let loaded = LoadedConfig::from_path(&config_path).unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&config_path).unwrap();
         let opening_sfen = loaded.opening_sfen().unwrap();
         let opening_source = OpeningSource::from_config(&loaded, &opening_sfen).unwrap();
         let opening_split = opening_source
