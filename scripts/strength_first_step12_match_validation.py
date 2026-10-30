@@ -26,8 +26,11 @@ GAMES_PER_BLOCK = 64
 PAIRS_PER_BLOCK = 32
 SEED = 2026091607
 MAX_PLIES = 200
-TERMINATIONS = {"no-legal-move", "repetition-draw", "maximum-plies"}
-RESULTS = {"a-win", "b-win", "draw"}
+CAP_TERMINATIONS = {"maximum-ply-capped", "maximum-plies"}
+DRAW_TERMINATIONS = {"repetition-draw", "jishogi-draw"}
+TERMINATIONS = {"king-captured", "no-legal-move", "perpetual-check-loss"} | DRAW_TERMINATIONS | CAP_TERMINATIONS
+RESULT_SCORES = {"a-win": 1, "b-win": 0, "draw": 0.5, "capped": 0.5}
+RESULTS = set(RESULT_SCORES)
 
 
 class ValidationError(RuntimeError):
@@ -169,8 +172,16 @@ def validate(root: Path, cell: str, block: int, attempt_dir: Path) -> dict[str, 
         plies = game.get("plies")
         if not isinstance(plies, int) or plies < 1 or plies > MAX_PLIES or plies != len(moves):
             fail(f"plies mismatch or cap overrun at game {game_index}")
-        if termination == "maximum-plies":
+        if termination in CAP_TERMINATIONS:
+            expected_result = "capped" if termination == "maximum-ply-capped" else "draw"
+            if plies != MAX_PLIES or game["result"] != expected_result:
+                fail(f"capped result or ply count mismatch at game {game_index}")
             capped += 1
+        elif termination in DRAW_TERMINATIONS:
+            if game["result"] != "draw":
+                fail(f"draw termination has a decisive result at game {game_index}")
+        elif game["result"] not in {"a-win", "b-win"}:
+            fail(f"decisive termination has no winner at game {game_index}")
         wdl[game["result"]] += 1
     if seen != set(range(1, GAMES_PER_BLOCK + 1)):
         fail("game indexes are incomplete")
@@ -178,12 +189,12 @@ def validate(root: Path, cell: str, block: int, attempt_dir: Path) -> dict[str, 
         pair_games = games[pair * 2:pair * 2 + 2]
         if len(pair_games) != 2 or pair_games[0].get("pairIndex") != pair or pair_games[1].get("pairIndex") != pair:
             fail(f"pair {pair} is incomplete")
-        values = [{"result": item["result"], "score": {"a-win": 1, "draw": 0.5, "b-win": 0}[item["result"]], "capped": item.get("terminationReason") == "maximum-plies"} for item in pair_games]
+        values = [{"result": item["result"], "score": RESULT_SCORES[item["result"]], "capped": item.get("terminationReason") in CAP_TERMINATIONS} for item in pair_games]
         pair_scores.append({"pairIndex": block * PAIRS_PER_BLOCK + pair, "games": values, "score": sum(item["score"] for item in values) / 2})
     report_summary = report.get("summary", {})
     if report_summary.get("games") != GAMES_PER_BLOCK or report_summary.get("fallbacks") != 0:
         fail("report summary does not bind to the validated raw games")
-    if report_summary.get("aWins") != wdl["a-win"] or report_summary.get("bWins") != wdl["b-win"] or report_summary.get("draws") != wdl["draw"]:
+    if report_summary.get("aWins") != wdl["a-win"] or report_summary.get("bWins") != wdl["b-win"] or report_summary.get("draws") != wdl["draw"] + wdl["capped"]:
         fail("report WDL summary differs from raw games")
     result = {
         "schema": "haitaka-anhoku-strength-first-step12-block-validation-v1",
@@ -201,7 +212,7 @@ def validate(root: Path, cell: str, block: int, attempt_dir: Path) -> dict[str, 
         "network": {"path": str(network.relative_to(root)), "bytes": network.stat().st_size, "sha256": sha256(network)},
         "report": {"path": str(report_path.relative_to(root)), "bytes": report_path.stat().st_size, "sha256": sha256(report_path)},
         "games": {"path": str(games_path.relative_to(root)), "bytes": games_path.stat().st_size, "sha256": sha256(games_path)},
-        "wdl": {"aWins": wdl["a-win"], "draws": wdl["draw"], "bWins": wdl["b-win"]},
+        "wdl": {"aWins": wdl["a-win"], "draws": wdl["draw"] + wdl["capped"], "bWins": wdl["b-win"]},
         "cappedGames": capped,
         "pairScores": pair_scores,
         "strictChecks": {"orderedGames": True, "seatSwaps": True, "scheduleIdentity": True, "legalResults": True, "failureStateNull": True, "zeroFallbacks": True, "movesPresent": True, "maxPliesRespected": True, "summaryRecomputed": True},

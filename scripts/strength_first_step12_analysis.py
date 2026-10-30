@@ -15,6 +15,8 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from strength_first_step12_match_validation import CAP_TERMINATIONS
+
 
 EXPERIMENT_ID = "strength-first-step12-independent-replication-20260916-v1"
 CELLS = ("early-selected", "u2688-control")
@@ -68,7 +70,7 @@ def rational(value: Fraction) -> dict[str, Any]:
 
 
 def score(result: str) -> Fraction:
-    values = {"a-win": Fraction(1), "draw": HALF, "b-win": Fraction(0)}
+    values = {"a-win": Fraction(1), "draw": HALF, "capped": HALF, "b-win": Fraction(0)}
     if result not in values:
         fail(f"invalid result {result!r}")
     return values[result]
@@ -151,7 +153,7 @@ def collect(root: Path) -> tuple[dict[str, list[Fraction]], dict[str, list[dict[
                 if game.get("pairIndex") != local_index // 2:
                     fail(f"local pair index differs in {cell} block {block}")
                 value = score(game.get("result"))
-                capped = game.get("terminationReason") == "maximum-plies"
+                capped = game.get("terminationReason") in CAP_TERMINATIONS
                 game_by_pair[pair].append({"score": value, "capped": capped, "result": game["result"], "gameIndex": game.get("gameIndex")})
                 wdl[game["result"]] += 1
                 capped_games += int(capped)
@@ -166,7 +168,7 @@ def collect(root: Path) -> tuple[dict[str, list[Fraction]], dict[str, list[dict[
             bounds[cell]["lower"].append(lower)
             bounds[cell]["upper"].append(upper)
             pairs[cell].append({"pairIndex": pair, "score": rational(actual), "games": [{"gameIndex": game["gameIndex"], "result": game["result"], "score": rational(game["score"]), "capped": game["capped"]} for game in games], "cappedGames": sum(int(game["capped"]) for game in games)})
-        validations[cell] = {"blocks": blocks, "games": GAMES_PER_CELL, "pairs": PAIRS, "wdl": {"aWins": wdl["a-win"], "draws": wdl["draw"], "bWins": wdl["b-win"]}, "cappedGames": capped_games}
+        validations[cell] = {"blocks": blocks, "games": GAMES_PER_CELL, "pairs": PAIRS, "wdl": {"aWins": wdl["a-win"], "draws": wdl["draw"] + wdl["capped"], "bWins": wdl["b-win"]}, "cappedGames": capped_games}
     return scores, pairs, bounds, validation_refs
 
 
@@ -197,7 +199,7 @@ def capped_summary(scores: dict[str, list[Fraction]], bounds: dict[str, dict[str
     control_upper = sum(bounds["u2688-control"]["upper"], Fraction(0)) / PAIRS
     contrast_lower = sum((bounds["early-selected"]["lower"][i] - bounds["u2688-control"]["upper"][i] for i in range(PAIRS)), Fraction(0)) / PAIRS
     contrast_upper = sum((bounds["early-selected"]["upper"][i] - bounds["u2688-control"]["lower"][i] for i in range(PAIRS)), Fraction(0)) / PAIRS
-    return {"policy": "maximum-plies games are bounded to [0,1]; genuine results remain fixed", "boundsByCell": {"early-selected": {"lower": rational(early_lower), "upper": rational(early_upper)}, "u2688-control": {"lower": rational(control_lower), "upper": rational(control_upper)}}, "contrastBounds": {"lower": rational(contrast_lower), "upper": rational(contrast_upper)}, "earlySelectedAboveHalfActual": scores["early-selected"] and sum(scores["early-selected"], Fraction(0)) / PAIRS > HALF, "earlySelectedAboveHalfLower": early_lower > HALF, "earlySelectedAboveHalfUpper": early_upper > HALF, "earlySelectedAboveHalfDependsOnCappedGames": early_lower <= HALF < early_upper}
+    return {"policy": "ply-capped games are bounded to [0,1]; genuine results remain fixed", "boundsByCell": {"early-selected": {"lower": rational(early_lower), "upper": rational(early_upper)}, "u2688-control": {"lower": rational(control_lower), "upper": rational(control_upper)}}, "contrastBounds": {"lower": rational(contrast_lower), "upper": rational(contrast_upper)}, "earlySelectedAboveHalfActual": scores["early-selected"] and sum(scores["early-selected"], Fraction(0)) / PAIRS > HALF, "earlySelectedAboveHalfLower": early_lower > HALF, "earlySelectedAboveHalfUpper": early_upper > HALF, "earlySelectedAboveHalfDependsOnCappedGames": early_lower <= HALF < early_upper}
 
 
 def analyze(root: Path, output: Path) -> dict[str, Any]:
@@ -227,7 +229,7 @@ def analyze(root: Path, output: Path) -> dict[str, Any]:
         "experimentId": EXPERIMENT_ID,
         "scope": "exploratory-development-only",
         "schedule": {"cells": list(CELLS), "blocks": BLOCKS, "pairs": PAIRS, "games": 512, "matchSeed": 2026091607, "movetimeMs": 100, "maxPlies": 200},
-        "models": {cell: {"games": GAMES_PER_CELL, "pairs": PAIRS, "meanPairScore": rational(sum(scores[cell], Fraction(0)) / PAIRS), "wdl": {"aWins": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] == "a-win"), "draws": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] == "draw"), "bWins": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] == "b-win")}, "cappedGames": sum(pair["cappedGames"] for pair in pairs[cell]), "pairScores": pairs[cell]} for cell in CELLS},
+        "models": {cell: {"games": GAMES_PER_CELL, "pairs": PAIRS, "meanPairScore": rational(sum(scores[cell], Fraction(0)) / PAIRS), "wdl": {"aWins": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] == "a-win"), "draws": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] in {"draw", "capped"}), "bWins": sum(1 for pair in pairs[cell] for game in pair["games"] if game["result"] == "b-win")}, "cappedGames": sum(pair["cappedGames"] for pair in pairs[cell]), "pairScores": pairs[cell]} for cell in CELLS},
         "primaryContrast": {"name": "early-selected-minus-u2688-control", "point": rational(point), "interval95": {"lower": boot["lower95"], "upper": boot["upper95"]}, "classification": contrast_class, "threshold": rational(THRESHOLD)},
         "bootstrap": boot,
         "cappedSensitivity": caps,
