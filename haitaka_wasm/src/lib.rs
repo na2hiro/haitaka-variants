@@ -4859,7 +4859,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn ten_thousand_node_search_completes_a_root_child_before_pathological_qsearch() {
+        // This replay relies on Anhoku donor moves and is illegal under other variants.
         let mut board = Board::from_sfen(
             "l1n1k1snl/1r2gg1b1/ppsp1pp1p/2p1p2p1/8P/P5P2/1PPPPP1P1/LBGS1K1R1/1N3GSNL b - 17",
         )
