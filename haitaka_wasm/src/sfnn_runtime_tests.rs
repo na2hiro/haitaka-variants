@@ -1,4 +1,5 @@
 use super::*;
+use crate::sfnn::MICRO_ARCH;
 
 #[test]
 #[ignore = "requires micro; explicit P2 runtime verification"]
@@ -118,6 +119,45 @@ fn sfnn_runtime_contract() {
         .parse()
         .unwrap();
     assert!(session.board.is_legal(mv));
+    *evaluation_slot().write().unwrap() = EvaluationStrategy::Handcrafted;
+    search_tt_slot().write().unwrap().clear();
+}
+
+#[test]
+#[ignore = "requires both micro and mini; explicit P6 profile-switch verification"]
+fn sfnn_profile_switches_clear_tt_and_return_the_selected_arch() {
+    let micro = std::path::PathBuf::from(
+        std::env::var_os("HAITAKA_SFNN_MODEL_DIR").expect("micro directory required"),
+    );
+    let mini = std::path::PathBuf::from(
+        std::env::var_os("HAITAKA_SFNN_MINI_MODEL_DIR").expect("mini directory required"),
+    );
+    let mut session = UsiSession::default();
+    for (dir, arch) in [
+        (&micro, crate::sfnn::MICRO_ARCH),
+        (&mini, crate::sfnn::MINI_ARCH),
+        (&micro, crate::sfnn::MICRO_ARCH),
+    ] {
+        let nn = std::fs::read(dir.join("nn.bin")).unwrap();
+        let progress = std::fs::read(dir.join("progress.bin")).unwrap();
+        let probe = session.tt.probe(42, Color::Black);
+        session
+            .tt
+            .write(probe, 42, 123, false, Bound::Exact, 2, None, 123);
+        assert!(session.tt.probe(42, Color::Black).found);
+        assert_eq!(session.load_sfnn(&nn, &progress, arch).unwrap(), arch);
+        assert!(!session.tt.probe(42, Color::Black).found);
+        assert_eq!(load_sfnn_impl(&nn, &progress, arch).unwrap(), arch);
+        let result = session.handle_line("go depth 1");
+        let mv = result
+            .last()
+            .unwrap()
+            .strip_prefix("bestmove ")
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(session.board.is_legal(mv));
+    }
     *evaluation_slot().write().unwrap() = EvaluationStrategy::Handcrafted;
     search_tt_slot().write().unwrap().clear();
 }

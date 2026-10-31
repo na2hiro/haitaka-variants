@@ -1,0 +1,20 @@
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:447:4
+    |
+447 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.07s
+     Running tests/sfnn_reference.rs (target/release/deps/sfnn_reference-8996d3e630d7c07c)
+
+running 2 tests
+SFNN delta: nodes=2048 captures=349 drops=318 promotions=92 king_moves=187 bucket_changes=258
+matched 236 external reference positions exactly; real-file corruption checks passed
+test model_matches_external_reference_and_rejects_corruption ... ok
+test incremental_states_and_search_match_full_refresh ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+

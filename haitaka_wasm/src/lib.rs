@@ -2,10 +2,12 @@ mod movepick;
 mod nnue;
 #[doc(hidden)]
 pub mod nnue_kernels;
-/// Scalar SFNN model and incremental position state used by the search runtime.
+/// SFNN model and incremental position state used by the search runtime.
 pub mod sfnn;
 #[cfg(feature = "sfnn-diagnostics")]
 mod sfnn_diagnostics;
+#[doc(hidden)]
+pub mod sfnn_kernels;
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod sfnn_runtime_tests;
 mod tt;
@@ -30,7 +32,7 @@ pub use nnue::{
     donor_receiver_pair_v2_stats, migrate_donor_single_to_receiver_pair_v2,
     r1_donor_single_active_feature_indices,
 };
-use sfnn::{MICRO_ARCH, SfnnModel, SfnnPositionState};
+use sfnn::{SfnnModel, SfnnPositionState};
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
 
@@ -1261,7 +1263,7 @@ pub fn load_sfnn_impl(nn: &[u8], progress: &[u8], arch: &str) -> Result<String, 
         mode: SearchEvalMode::Incremental,
     };
     tt.clear();
-    Ok(MICRO_ARCH.to_string())
+    Ok(arch.to_string())
 }
 
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
@@ -1833,7 +1835,7 @@ impl UsiSession {
             mode: SearchEvalMode::Incremental,
         };
         self.tt.clear();
-        Ok(MICRO_ARCH.to_string())
+        Ok(arch.to_string())
     }
 
     pub fn handle_line(&mut self, line: &str) -> Vec<String> {

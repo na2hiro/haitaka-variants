@@ -93,15 +93,15 @@ def unpack_7z(path):
 
 
 def fetch():
-    archive = MODEL / 'micro.7z'
+    archive = MODEL / ('mini.7z' if PROV['arch'].find('4096') >= 0 else 'micro.7z')
     if not archive.exists():
         download(PROV['archiveUrl'], archive)
     if digest(archive) != PROV['archiveSha256']:
         raise ValueError('distribution archive SHA-256 mismatch')
     unpack_7z(archive)
     check_model()
-    shutil.copyfile(META / 'provenance.json', MODEL / 'provenance.json')
-    shutil.copyfile(META / 'MODEL-LICENSE.txt', MODEL / 'LICENSE.txt')
+    shutil.copyfile(META / ('mini-provenance.json' if PROFILE == 'mini' else 'provenance.json'), MODEL / 'provenance.json')
+    shutil.copyfile(META / ('MINI-MODEL-LICENSE.txt' if PROFILE == 'mini' else 'MODEL-LICENSE.txt'), MODEL / 'LICENSE.txt')
 
 
 def reference():
@@ -120,9 +120,10 @@ def reference():
         snippet = (ROOT / 'scripts/tuyouraou11-reference-command.inc').read_text()
         text = text.replace(marker, snippet + marker)
         path.write_text(text)
+    subprocess.run(['make', '-C', str(SOURCE / 'source'), 'clean'], check=True, stdout=subprocess.DEVNULL)
     command = ['make', '-C', str(SOURCE / 'source'), '-j4', 'normal', 'COMPILER=g++',
                'PYTHON=python3', 'TARGET_CPU=OTHER',
-               'YANEURAOU_EDITION=YANEURAOU_ENGINE_SFNN_ka2_2048_8_64_progress8']
+               'YANEURAOU_EDITION=YANEURAOU_ENGINE_' + PROV['arch']]
     with (WORK / 'reference/build-instrumented.log').open('w') as log:
         subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True)
     print('PASS: external reference built at', COMMIT, flush=True)
@@ -165,36 +166,49 @@ def fixtures():
                'model': {'id': PROV['id'], 'nnSha256': PROV['files']['nn']['sha256'],
                          'progressSha256': PROV['files']['progress']['sha256']},
                'reference': {'repository': PROV['reference']['repository'], 'commit': COMMIT,
-                             'command': ['python3', 'scripts/tuyouraou11.py', 'fixtures'],
+                             'command': ['python3', 'scripts/tuyouraou11.py', 'fixtures'] + (['--profile', 'mini'] if PROFILE == 'mini' else []),
                              'buildFlags': ['TARGET_CPU=OTHER', 'COMPILER=g++', 'PYTHON=python3',
-                                            'YANEURAOU_EDITION=YANEURAOU_ENGINE_SFNN_ka2_2048_8_64_progress8'],
+                                            'YANEURAOU_EDITION=YANEURAOU_ENGINE_' + PROV['arch']],
                              'fvScale': 24, 'generator': 'haitaka_wasm/examples/sfnn_positions.rs; LCG64 seed=1; sha256=' + digest(ROOT / 'haitaka_wasm/examples/sfnn_positions.rs')},
                'cases': cases}
     import jsonschema
     jsonschema.Draft202012Validator(json.loads((META / 'reference-fixture.schema.json').read_text())).validate(fixture)
-    (META / 'reference-fixture.json').write_text(json.dumps(fixture, ensure_ascii=False, indent=2)+'\n')
+    (META / ('mini-reference-fixture.json' if PROFILE == 'mini' else 'reference-fixture.json')).write_text(json.dumps(fixture, ensure_ascii=False, indent=2)+'\n')
     print('PASS: generated', len(cases), 'external reference positions', flush=True)
 
 
 def verify():
     check_model()
     import jsonschema
-    fixture = json.loads((META / 'reference-fixture.json').read_text())
+    fixture = json.loads((META / ('mini-reference-fixture.json' if PROFILE == 'mini' else 'reference-fixture.json')).read_text())
     jsonschema.Draft202012Validator(json.loads((META / 'reference-fixture.schema.json').read_text())).validate(fixture)
     if fixture['reference']['commit'] != COMMIT or fixture['model']['id'] != PROV['id']:
         raise ValueError('reference/provenance metadata mismatch')
     env = dict(os.environ, HAITAKA_SFNN_MODEL_DIR=str(MODEL),
-               HAITAKA_SFNN_CORPUS=str(WORK / 'p2-corpus.json'))
+               HAITAKA_SFNN_CORPUS=str(WORK / ('mini-corpus.json' if PROFILE == 'mini' else 'p2-corpus.json')),
+               HAITAKA_SFNN_PROFILE=PROFILE)
     subprocess.run(['cargo', 'test', '-p', 'haitaka_wasm', '--release', '--test', 'sfnn_reference',
                     '--', '--ignored', '--nocapture'], cwd=ROOT, env=env, check=True)
+    env['HAITAKA_SFNN_MODEL_DIR'] = str(WORK / 'model')
+    if (WORK / 'mini-model/nn.bin').exists():
+        env['HAITAKA_SFNN_MINI_MODEL_DIR'] = str(WORK / 'mini-model')
+    extra = [] if 'HAITAKA_SFNN_MINI_MODEL_DIR' in env else ['--skip', 'sfnn_profile_switches']
     subprocess.run(['cargo', 'test', '-p', 'haitaka_wasm', '--release', '--lib', 'sfnn_',
-                    '--', '--ignored', '--nocapture', '--test-threads=1'], cwd=ROOT, env=env, check=True)
+                    '--', '--ignored', '--nocapture', '--test-threads=1'] + extra, cwd=ROOT, env=env, check=True)
 
+
+PROFILE = 'micro'
 
 def main():
+    global PROFILE, PROV, MODEL
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['fetch', 'reference', 'fixtures', 'verify'])
+    parser.add_argument('--profile', choices=['micro', 'mini'], default='micro')
     args = parser.parse_args()
+    PROFILE = args.profile
+    if PROFILE == 'mini':
+        PROV = json.loads((META / 'mini-provenance.json').read_text())
+        MODEL = WORK / 'mini-model'
     WORK.mkdir(parents=True, exist_ok=True)
     globals()[args.action]()
 

@@ -3,6 +3,38 @@
 状態: P0確定。2026-10-30。変更時はLEADが変更理由とENGINE/WEBへの影響を記録する。
 親計画: ../tuyouraou11-browser-nnue.md。本書の初回スコープと型をH/S節の提案例より優先する。
 
+## 2026-10-31 P6 mini 追加と完了条件の更新
+
+ユーザーが残りの P6 を指定し、「mini追加。勝者１つだけを採用すると言うよりは、選択できるようになるといい」と確定。
+実機検証は今回「しない」と明示したため、今回の完了条件から除外する。P4 の実機結果を作成したとは扱わない。
+以下は旧契約の拡張で、P0/P1 の micro-only 記述と 10/30 の mini 対象外指定より優先する。
+
+- 受理 arch に `SFNN_ka2_4096_8_64_progress8` を追加。未知 arch と arch/ファイルの不一致は拒否する。
+- mini の出所・bytes/hash・MIT 許諾・同じ固定上流 commit を記録し、236 参照局面と差分更新を検証する。
+- `load_sfnn` の引数は維持し、成功時は読み込んだ arch を返す。micro/mini の取り違えを隠さない。
+- Web 選択値は既存 `sfnn`=micro、追加 `sfnn-mini`=mini、`handcrafted`=選択肢評価。
+  prepared.evaluator は両モデルとも `sfnn`、具体的なモデルは modelId/arch で識別する。
+- ルールページ/ノートの「設定」→「モデル」で選択。micro を既定に維持し、選んだモデルだけを取得する。
+  切替時は Worker を更新し、失敗時の説明/明示再試行と対応済み 18 ルールを維持する。
+- mini と micro の両方を提供する。一方だけへの絞り込みは行わない。
+  この選択方針は元P6の棋力検証を免除しない。24局は予備検証とし、後続のブラウザ本検証400局を実施済み（p6-strength.md）。
+
+## 2026-10-30 P6 拡張
+
+ユーザーが「P6 の SIMD 化」を明示指定。ENGINE→WEB→LEAD を実施し、mini/package v2 は含めない。
+下記の P0 初回スコープは履歴であり、P4 後に対応済みの平手・駒落ち 13 種・歩なし・将棋 120 系へ
+同じ micro モデルを使う現行仕様を維持する。P4 の実機検証はユーザー指示で保留したまま進める。
+
+- 計算値を変えずに accumulator 更新・積活性化・全結合層を SIMD 化する。scalar との整数完全一致を要求する。
+- standard の配信 Wasm を scalar と SIMD128 の二つにし、Worker 内で実モジュールを validate して選択する。
+  非対応/判定例外では scalar へ進み、モデル取得・検証失敗を従来評価へ隠さない。
+- load_sfnn、descriptor、モデル ID/hash、prepare-state、対応ルール、単一 Worker の契約を維持する。
+- 比較は P4 の固定局面・同じ CPU・200/1000/3000ms。P4 の raw 結果・予算は上書きしない。
+- 本番 E2E、非 SIMD 分岐、整数一致、性能/合法手を確認する。小規模 native 対局は追加回帰として扱い、
+  P4 の 200 局やブラウザでの勝率・棋力向上の証明と混同しない。実機未検証を全体完了とはしない。
+
+実装・結果は `p6-engine.md`、`p6-web.md`、`p6-lead.md` を参照。
+
 ## スコープと作業ブランチ
 
 - 両repoとも `feat/tuyouraou11-p0` から開始済み。開始点はhaitaka-variants `d0c29c0c7835f9dfed36323b59aceac06265f603`、shogitter-3 `c94a8d630ba879b59a098719e420e561128e7d49`。
@@ -13,7 +45,7 @@
 ## エンジン公開API
 
 ```ts
-type SfnnArch = 'SFNN_ka2_2048_8_64_progress8';
+type SfnnArch = 'SFNN_ka2_2048_8_64_progress8' | 'SFNN_ka2_4096_8_64_progress8';
 // wasm-bindgenのトップレベルexportおよびUsiEngineインスタンスの両方
 function load_sfnn(
   nn_bytes: Uint8Array,
@@ -28,7 +60,7 @@ function load_sfnn(
 
 | CODE | 条件 |
 |---|---|
-| SFNN_UNSUPPORTED_ARCH | 完全一致しないarch（miniを含む） |
+| SFNN_UNSUPPORTED_ARCH | 完全一致しないarch（未対応プロファイルを含む） |
 | SFNN_UNSUPPORTED_RULESET | 通常将棋以外のfeatureビルド |
 | SFNN_INVALID_NN | nn.binのヘッダ/section/次元/長さ/余剰等の不正 |
 | SFNN_INVALID_PROGRESS | progress.binの長さ/非有限値等の不正 |

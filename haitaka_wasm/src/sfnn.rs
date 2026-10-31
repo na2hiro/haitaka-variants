@@ -1,17 +1,16 @@
-//! Scalar SFNN micro evaluator. File-format and arithmetic interoperability only;
+//! SFNN micro/mini evaluator with exact scalar and SIMD integer kernels;
 //! independently implemented for Haitaka (MIT), not a port of YaneuraOu source.
 //! See docs/tuyouraou11-sfnn.md for the pinned reference and verification procedure.
+use crate::{nnue_kernels::AffineKernel, sfnn_kernels};
 use haitaka::{Board, Color, Move, Piece, Square};
 use std::fmt;
 
 pub const MICRO_ARCH: &str = "SFNN_ka2_2048_8_64_progress8";
-const WIDTH: usize = 2048;
+pub const MINI_ARCH: &str = "SFNN_ka2_4096_8_64_progress8";
 const FEATURES: usize = 1791;
 const BONA_NONKING: usize = 1548;
 const PROGRESS_COUNT: usize = 81 * BONA_NONKING;
 const THRESHOLDS: [i64; 7] = [-127527, -71999, -33477, 0, 33477, 71999, 127527];
-const DESCRIPTION: &str =
-    "ModelType=SFNNWithoutPsqt;Features=K-A2(Friend)[1791->2048x2],Network=SFNN-2048{LayerStack=8}";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SfnnError(pub String);
@@ -41,6 +40,7 @@ struct Affine {
     bias: Vec<i32>,
     weights: Vec<i8>,
     stride: usize,
+    kernel: AffineKernel,
 }
 impl Affine {
     fn read(r: &mut Reader<'_>, inputs: usize, outputs: usize) -> Result<Self, SfnnError> {
@@ -53,16 +53,15 @@ impl Affine {
             bias,
             weights,
             stride,
+            kernel: sfnn_kernels::affine_kernel(),
         })
     }
     fn forward<const N: usize>(&self, inputs: &[u8]) -> [i32; N] {
         assert_eq!(self.bias.len(), N);
-        std::array::from_fn(|row| {
-            let bias = self.bias[row];
-            inputs.iter().enumerate().fold(bias, |sum, (col, &v)| {
-                sum.wrapping_add(i32::from(v) * i32::from(self.weights[row * self.stride + col]))
-            })
-        })
+        let mut output = [0; N];
+        self.kernel
+            .forward_into(inputs, &self.weights, &self.bias, self.stride, &mut output);
+        output
     }
 }
 #[derive(Debug)]
@@ -79,7 +78,7 @@ pub struct SfnnPositionState {
     progress_sums_q16: [i64; 2],
 }
 
-/// Immutable shared weights for full-refresh and incremental scalar evaluation.
+/// Immutable shared weights for full-refresh and incremental integer evaluation.
 #[derive(Debug)]
 pub struct SfnnModel {
     biases: Vec<i16>,
@@ -88,11 +87,17 @@ pub struct SfnnModel {
     stacks: Vec<Stack>,
 }
 impl SfnnModel {
-    /// Strict micro-only loader. Error prefixes follow the P0 public contract.
+    /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
     pub fn from_bytes(nn: &[u8], progress: &[u8], arch: &str) -> Result<Self, SfnnError> {
-        if arch != MICRO_ARCH {
-            return Err(invalid("SFNN_UNSUPPORTED_ARCH: expected micro arch"));
-        }
+        let width = match arch {
+            MICRO_ARCH => 2048,
+            MINI_ARCH => 4096,
+            _ => {
+                return Err(invalid(
+                    "SFNN_UNSUPPORTED_ARCH: expected micro or mini arch",
+                ));
+            }
+        };
         if cfg!(any(
             feature = "annan",
             feature = "anhoku",
@@ -109,7 +114,8 @@ impl SfnnModel {
         )) {
             return Err(invalid("SFNN_UNSUPPORTED_RULESET: standard build required"));
         }
-        let parsed = Self::read_nn(nn).map_err(|e| invalid(format!("SFNN_INVALID_NN: {e}")))?;
+        let parsed =
+            Self::read_nn(nn, width).map_err(|e| invalid(format!("SFNN_INVALID_NN: {e}")))?;
         let progress =
             read_progress(progress).map_err(|e| invalid(format!("SFNN_INVALID_PROGRESS: {e}")))?;
         Ok(Self {
@@ -119,22 +125,25 @@ impl SfnnModel {
             progress,
         })
     }
-    fn read_nn(bytes: &[u8]) -> Result<(Vec<i16>, Vec<i16>, Vec<Stack>), SfnnError> {
+    fn read_nn(bytes: &[u8], width: usize) -> Result<(Vec<i16>, Vec<i16>, Vec<Stack>), SfnnError> {
         let mut r = Reader { bytes, pos: 0 };
         r.expect_u32(0x7af32f16)?;
         r.expect_u32(0x3c203b32)?;
         let len = r.u32()? as usize;
-        if r.take(len)? != DESCRIPTION.as_bytes() {
-            return Err(invalid("micro architecture description mismatch"));
+        let description = format!(
+            "ModelType=SFNNWithoutPsqt;Features=K-A2(Friend)[1791->{width}x2],Network=SFNN-{width}{{LayerStack=8}}"
+        );
+        if r.take(len)? != description.as_bytes() {
+            return Err(invalid("architecture description mismatch"));
         }
         r.expect_u32(0x5f134ab8)?;
-        let biases = r.leb_i16(WIDTH)?;
-        let weights = r.leb_i16(WIDTH * FEATURES)?;
+        let biases = r.leb_i16(width)?;
+        let weights = r.leb_i16(width * FEATURES)?;
         let mut stacks = Vec::with_capacity(8);
         for _ in 0..8 {
             r.expect_u32(0x6333718a)?;
             stacks.push(Stack {
-                first: Affine::read(&mut r, WIDTH, 8)?,
+                first: Affine::read(&mut r, width, 8)?,
                 second: Affine::read(&mut r, 16, 64)?,
                 output: Affine::read(&mut r, 64, 1)?,
             });
@@ -182,16 +191,12 @@ impl SfnnModel {
     }
 
     fn update_row(&self, accumulator: &mut [i16], index: usize, add: bool) {
-        for (a, &w) in accumulator
-            .iter_mut()
-            .zip(&self.weights[index * WIDTH..(index + 1) * WIDTH])
-        {
-            *a = if add {
-                a.wrapping_add(w)
-            } else {
-                a.wrapping_sub(w)
-            };
-        }
+        let width = self.biases.len();
+        sfnn_kernels::update(
+            accumulator,
+            &self.weights[index * width..(index + 1) * width],
+            add,
+        );
     }
 
     /// Requires a state built by this model for parent and a legal move to child.
@@ -295,18 +300,18 @@ impl SfnnModel {
         let sums = state.progress_sums_q16;
         let sum = sums[0] + sums[1];
         let bucket = progress_bucket(sum);
-        let mut transformed = [0u8; WIDTH];
+        let width = self.biases.len();
+        let mut buffer = [0u8; 4096];
+        let transformed = &mut buffer[..width];
         let stm = color_index(board.side_to_move());
         for (output_side, p) in [stm, 1 - stm].into_iter().enumerate() {
-            let acc = &state.accumulators[p];
-            for j in 0..WIDTH / 2 {
-                let a = i32::from(acc[j].clamp(0, 254));
-                let b = i32::from(acc[j + WIDTH / 2].clamp(0, 254));
-                transformed[output_side * (WIDTH / 2) + j] = ((a * b) >> 9) as u8;
-            }
+            sfnn_kernels::transform(
+                &state.accumulators[p],
+                &mut transformed[output_side * (width / 2)..(output_side + 1) * (width / 2)],
+            );
         }
         let stack = &self.stacks[bucket];
-        let first = stack.first.forward::<8>(&transformed);
+        let first = stack.first.forward::<8>(transformed);
         let mut activated = [0; 16];
         for j in 0..8 {
             activated[j] = ((i64::from(first[j]) * i64::from(first[j]) >> 19).min(127)) as u8;
@@ -526,24 +531,26 @@ mod tests {
                 .0
                 .starts_with("SFNN_UNSUPPORTED_ARCH:")
         );
-        let err = SfnnModel::from_bytes(&[], &[], MICRO_ARCH).err().unwrap();
-        if cfg!(any(
-            feature = "annan",
-            feature = "anhoku",
-            feature = "antouzai",
-            feature = "taimen",
-            feature = "haimen",
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        )) {
-            assert!(err.0.starts_with("SFNN_UNSUPPORTED_RULESET:"));
-        } else {
-            assert!(err.0.starts_with("SFNN_INVALID_NN:"));
+        for arch in [MICRO_ARCH, MINI_ARCH] {
+            let err = SfnnModel::from_bytes(&[], &[], arch).err().unwrap();
+            if cfg!(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "antouzai",
+                feature = "taimen",
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku",
+                feature = "anki"
+            )) {
+                assert!(err.0.starts_with("SFNN_UNSUPPORTED_RULESET:"));
+            } else {
+                assert!(err.0.starts_with("SFNN_INVALID_NN:"));
+            }
         }
     }
     #[test]

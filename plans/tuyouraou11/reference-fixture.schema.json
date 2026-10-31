@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:haitaka:tuyouraou11:reference-fixture:v1",
-  "title": "TuyouraOu11 micro reference fixture",
+  "title": "TuyouraOu11 micro/mini reference fixture",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
       "const": 1
     },
     "arch": {
-      "const": "SFNN_ka2_2048_8_64_progress8"
+      "enum": ["SFNN_ka2_2048_8_64_progress8", "SFNN_ka2_4096_8_64_progress8"]
     },
     "model": {
       "type": "object",

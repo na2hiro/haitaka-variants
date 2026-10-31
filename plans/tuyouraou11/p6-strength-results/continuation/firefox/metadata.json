@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "browser": "firefox",
+  "smoke": false,
+  "models": {
+    "micro": {
+      "kind": "sfnn-progress",
+      "id": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+      "arch": "SFNN_ka2_2048_8_64_progress8",
+      "fvScale": 24,
+      "nn": {
+        "url": "/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/nn.bin",
+        "bytes": 3864610,
+        "sha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb"
+      },
+      "progress": {
+        "url": "/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/progress.bin",
+        "bytes": 1003104,
+        "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+      }
+    },
+    "mini": {
+      "kind": "sfnn-progress",
+      "id": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463",
+      "arch": "SFNN_ka2_4096_8_64_progress8",
+      "fvScale": 24,
+      "nn": {
+        "url": "/engines/haitaka/tuyouraou11mini/tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463/nn.bin",
+        "bytes": 7711372,
+        "sha256": "45323c65135da65d6c2c364eea93a5af6a285c27ebfb07eab4afbe737ef74508"
+      },
+      "progress": {
+        "url": "/engines/haitaka/tuyouraou11mini/tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463/progress.bin",
+        "bytes": 1003104,
+        "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+      }
+    }
+  },
+  "wasmSha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3",
+  "glueSha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f",
+  "runtimeSha256": "7ee9962536dd62fd8720d98fd0f9adc88124c02916c0c9fa2d702963268c534c",
+  "capabilitySha256": "01b0be73a9f02dd30c08e158d31427415f06e25823d8e4b41885dac37b5add43",
+  "bridgeSha256": "6b37c929e8e924298d009fe45f611c94de6ac50e42627837258fd43255ade6ac",
+  "cliSha256": "5f82ca00c5387fa9341ab288122792fd7c5de6a2217e7be0828e34b00cadece4",
+  "openingsSha256": "ce6653c8790157159a44f30e375984451282318e2dce6870de5a65d30e75696c",
+  "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+  "os": "7.0.0-31-generic",
+  "affinity": "pid 2938240's current affinity list: 2,3,6,7",
+  "startedAt": "2026-10-31T08:22:45.576Z",
+  "workers": [
+    {
+      "slot": "mini-0",
+      "profile": "mini",
+      "prepared": {
+        "ruleId": 0,
+        "evaluator": "sfnn",
+        "modelId": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463",
+        "arch": "SFNN_ka2_4096_8_64_progress8"
+      },
+      "simd": true,
+      "memoryBytes": 127729664
+    },
+    {
+      "slot": "mini-1",
+      "profile": "mini",
+      "prepared": {
+        "ruleId": 0,
+        "evaluator": "sfnn",
+        "modelId": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463",
+        "arch": "SFNN_ka2_4096_8_64_progress8"
+      },
+      "simd": true,
+      "memoryBytes": 127729664
+    },
+    {
+      "slot": "micro-0",
+      "profile": "micro",
+      "prepared": {
+        "ruleId": 0,
+        "evaluator": "sfnn",
+        "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+        "arch": "SFNN_ka2_2048_8_64_progress8"
+      },
+      "simd": true,
+      "memoryBytes": 116523008
+    },
+    {
+      "slot": "micro-1",
+      "profile": "micro",
+      "prepared": {
+        "ruleId": 0,
+        "evaluator": "sfnn",
+        "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+        "arch": "SFNN_ka2_2048_8_64_progress8"
+      },
+      "simd": true,
+      "memoryBytes": 116523008
+    }
+  ],
+  "matches": [
+    {
+      "ms": 1000,
+      "args": [
+        "self-play",
+        "--games",
+        "68",
+        "--threads",
+        "2",
+        "--a-depth",
+        "64",
+        "--b-depth",
+        "64",
+        "--a-engine",
+        "/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node",
+        "--a-engine-arg",
+        "/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match-resume.mjs",
+        "--a-engine-arg",
+        "proxy",
+        "--a-engine-arg",
+        "mini",
+        "--b-engine",
+        "/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node",
+        "--b-engine-arg",
+        "/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match-resume.mjs",
+        "--b-engine-arg",
+        "proxy",
+        "--b-engine-arg",
+        "micro",
+        "--movetime-ms",
+        "1000",
+        "--openings",
+        "plans/tuyouraou11/p6-strength-remaining-openings.sfen",
+        "--opening-order",
+        "sequential",
+        "--seed",
+        "1",
+        "--max-plies",
+        "256",
+        "--report-dir",
+        "/home/na2hiro/proj/haitaka-variants/target/tuyouraou11/p6-strength-resume/firefox/match-1000"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "endedAt": "2026-10-31T09:24:12.434Z"
+    }
+  ],
+  "errors": [],
+  "version": "142.0.1",
+  "result": "PASS",
+  "endedAt": "2026-10-31T09:24:12.435Z",
+  "transcriptSha256": "0334eb3ba21bb09f5730bce710d2e80f5cc98abe839c54b46fa25a4509ac8b81"
+}

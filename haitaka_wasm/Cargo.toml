@@ -29,6 +29,8 @@ harness = false
 [features]
 # Test-only static/delta trace export; omit from production packages.
 sfnn-diagnostics = []
+# Verification oracle: disable SFNN's detected/compiled optimized kernels.
+sfnn-force-scalar = []
 nnue-l1-256 = []
 annan = ["haitaka/annan"]
 anhoku = ["haitaka/anhoku"]

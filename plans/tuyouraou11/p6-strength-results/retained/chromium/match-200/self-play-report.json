@@ -1,0 +1,136 @@
+{
+  "schema": "haitaka-self-play-report",
+  "schemaVersion": 3,
+  "generatedAtUnixSeconds": 1793433073,
+  "package": {
+    "name": "haitaka_cli",
+    "version": "0.1.0"
+  },
+  "git": {
+    "commit": "16381522f44a15441dda29198d1b703638f4adbd",
+    "dirty": true,
+    "executableSha256": "5f82ca00c5387fa9341ab288122792fd7c5de6a2217e7be0828e34b00cadece4"
+  },
+  "ruleset": "standard",
+  "command": {
+    "games": 100,
+    "threads": 2,
+    "aDepth": 64,
+    "bDepth": 64,
+    "movetimeMs": 200,
+    "nodesPerMove": null,
+    "sfen": null,
+    "openings": "plans/tuyouraou11/p4-openings.sfen",
+    "openingOrder": "sequential",
+    "openingRandomPlies": 0,
+    "seed": 1,
+    "maxPlies": 256
+  },
+  "engines": [
+    {
+      "label": "A",
+      "kind": "external-usi",
+      "budget": "movetime_ms=200 max_depth=64",
+      "command": "/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node",
+      "args": [
+        "/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match.mjs",
+        "proxy",
+        "mini"
+      ],
+      "nnue": null
+    },
+    {
+      "label": "B",
+      "kind": "external-usi",
+      "budget": "movetime_ms=200 max_depth=64",
+      "command": "/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node",
+      "args": [
+        "/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match.mjs",
+        "proxy",
+        "micro"
+      ],
+      "nnue": null
+    }
+  ],
+  "summary": {
+    "games": 100,
+    "aWins": 66,
+    "bWins": 33,
+    "draws": 1,
+    "decidedGames": 99,
+    "aScore": 66.5,
+    "scoreRate": 0.665,
+    "approxElo": 119.11073530650378,
+    "approxElo95Ci": [
+      50.72855763231302,
+      197.87793895948042
+    ],
+    "pairCount": 50,
+    "pairScoreBins": [
+      6,
+      0,
+      21,
+      1,
+      22
+    ],
+    "pairedElo": 119.11073530650378,
+    "pairedElo95Ci": [
+      45.38214638664232,
+      192.83932422636525
+    ],
+    "avgPlies": 107.58,
+    "totalNodes": 60333682,
+    "requestedBudgetNodes": 0,
+    "consumedBudgetNodes": 0,
+    "alphaBetaNodes": 60333682,
+    "completedDepth": 5,
+    "incompleteIterations": 0,
+    "nodeBudgetCapHits": 0,
+    "fallbacks": 23,
+    "totalElapsedMs": 2118784.6253080005,
+    "aggregateNps": 28475.608742549513,
+    "qnodes": 162935064,
+    "aggregateQnps": 76900.24840364068,
+    "qsearchMaxPly": 8,
+    "qsearchCapHits": 9916991,
+    "qsearchCheckMoveTries": 5028805,
+    "qsearchDeltaPrunes": 43458531,
+    "aBreakdown": {
+      "totalNodes": 24860644,
+      "requestedBudgetNodes": 0,
+      "consumedBudgetNodes": 0,
+      "alphaBetaNodes": 24860644,
+      "completedDepth": 5,
+      "incompleteIterations": 0,
+      "nodeBudgetCapHits": 0,
+      "fallbacks": 14,
+      "totalElapsedMs": 1050339.300912,
+      "aggregateNps": 23669.155270505187,
+      "qnodes": 66925595,
+      "aggregateQnps": 63718.07180964201,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 4300003,
+      "qsearchCheckMoveTries": 2123728,
+      "qsearchDeltaPrunes": 18503310
+    },
+    "bBreakdown": {
+      "totalNodes": 35473038,
+      "requestedBudgetNodes": 0,
+      "consumedBudgetNodes": 0,
+      "alphaBetaNodes": 35473038,
+      "completedDepth": 5,
+      "incompleteIterations": 0,
+      "nodeBudgetCapHits": 0,
+      "fallbacks": 9,
+      "totalElapsedMs": 1068445.3243960002,
+      "aggregateNps": 33200.6113836973,
+      "qnodes": 96009469,
+      "aggregateQnps": 89859.03799455048,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 5616988,
+      "qsearchCheckMoveTries": 2905077,
+      "qsearchDeltaPrunes": 24955221
+    },
+    "warnings": []
+  }
+}

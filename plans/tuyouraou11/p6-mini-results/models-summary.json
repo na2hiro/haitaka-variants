@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "summaries": [
+    {
+      "mode": "sfnn",
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "positionsHash": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12",
+      "host": {
+        "platform": "linux",
+        "os": "7.0.0-31-generic",
+        "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+        "governor": "powersave"
+      },
+      "preparation": {
+        "cold": {
+          "totalMs": {
+            "median": 226.64999985694885,
+            "max": 230
+          },
+          "roundtripMs": {
+            "median": 241.04999995231628,
+            "max": 252.7999997138977
+          },
+          "wasmMs": {
+            "median": 128.09999990463257,
+            "max": 130
+          },
+          "modelMs": {
+            "median": 98.85000014305115,
+            "max": 102
+          },
+          "memoryBytes": {
+            "median": 49414144.0,
+            "max": 49414144
+          },
+          "binaryBytes": {
+            "median": 4867714.0,
+            "max": 4867714
+          }
+        },
+        "warm": {
+          "totalMs": {
+            "median": 210.95000004768372,
+            "max": 224.90000009536743
+          },
+          "roundtripMs": {
+            "median": 225.54999995231628,
+            "max": 239.2000002861023
+          },
+          "wasmMs": {
+            "median": 126.50000023841858,
+            "max": 130
+          },
+          "modelMs": {
+            "median": 84.54999995231628,
+            "max": 97.40000009536743
+          },
+          "memoryBytes": {
+            "median": 49414144.0,
+            "max": 49414144
+          },
+          "binaryBytes": {
+            "median": 4867714.0,
+            "max": 4867714
+          }
+        }
+      },
+      "search": {
+        "200": {
+          "count": 60,
+          "engineOverrunMaxMs": -0.4000000000000057,
+          "roundtripOverrunMaxMs": 6.5,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 9239.839391671654,
+          "depthMedian": 2.0,
+          "mainTimerTicksMin": 18
+        },
+        "1000": {
+          "count": 60,
+          "engineOverrunMaxMs": -0.5,
+          "roundtripOverrunMaxMs": 4.400000095367432,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 6663.498095522313,
+          "depthMedian": 3.0,
+          "mainTimerTicksMin": 99
+        },
+        "3000": {
+          "count": 60,
+          "engineOverrunMaxMs": -0.49999999999954525,
+          "roundtripOverrunMaxMs": 5.899999618530273,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 10389.077813832031,
+          "depthMedian": 4.0,
+          "mainTimerTicksMin": 299
+        }
+      },
+      "wasmSha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3",
+      "rawSha256": "e49acb4fb9fc17dc71ea88066da3196dd5098886468a7e0bdc5be67262a95c0f",
+      "legality": "PASS: 180 browser replies are legal",
+      "budget": "PASS",
+      "profile": "micro",
+      "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463"
+    },
+    {
+      "mode": "sfnn",
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "positionsHash": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12",
+      "host": {
+        "platform": "linux",
+        "os": "7.0.0-31-generic",
+        "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+        "governor": "powersave"
+      },
+      "preparation": {
+        "cold": {
+          "totalMs": {
+            "median": 333.35000014305115,
+            "max": 355.19999980926514
+          },
+          "roundtripMs": {
+            "median": 359.19999980926514,
+            "max": 371.09999990463257
+          },
+          "wasmMs": {
+            "median": 145.15000009536743,
+            "max": 155.89999961853027
+          },
+          "modelMs": {
+            "median": 188.35000014305115,
+            "max": 215.7999997138977
+          },
+          "memoryBytes": {
+            "median": 60620800.0,
+            "max": 60620800
+          },
+          "binaryBytes": {
+            "median": 8714476.0,
+            "max": 8714476
+          }
+        },
+        "warm": {
+          "totalMs": {
+            "median": 375.0,
+            "max": 477.19999980926514
+          },
+          "roundtripMs": {
+            "median": 390.9500000476837,
+            "max": 510.90000009536743
+          },
+          "wasmMs": {
+            "median": 158.5,
+            "max": 209.09999990463257
+          },
+          "modelMs": {
+            "median": 230.099999666214,
+            "max": 268.09999990463257
+          },
+          "memoryBytes": {
+            "median": 60620800.0,
+            "max": 60620800
+          },
+          "binaryBytes": {
+            "median": 8714476.0,
+            "max": 8714476
+          }
+        }
+      },
+      "search": {
+        "200": {
+          "count": 60,
+          "engineOverrunMaxMs": 1.799999000000014,
+          "roundtripOverrunMaxMs": 8.800000190734863,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 1499.1013139669635,
+          "depthMedian": 2.0,
+          "mainTimerTicksMin": 18
+        },
+        "1000": {
+          "count": 60,
+          "engineOverrunMaxMs": -0.5,
+          "roundtripOverrunMaxMs": 9.700000286102295,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 4275.754835469079,
+          "depthMedian": 3.0,
+          "mainTimerTicksMin": 99
+        },
+        "3000": {
+          "count": 60,
+          "engineOverrunMaxMs": 3,
+          "roundtripOverrunMaxMs": 9.599999904632568,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 3017.3207143288364,
+          "depthMedian": 3.0,
+          "mainTimerTicksMin": 299
+        }
+      },
+      "wasmSha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3",
+      "rawSha256": "863e8a8c24e30bc59e612bb9acc0a38bb3e39d5b3ef0345c708654dba0143e12",
+      "legality": "PASS: 180 browser replies are legal",
+      "budget": "PASS",
+      "profile": "mini",
+      "modelId": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463"
+    },
+    {
+      "mode": "sfnn",
+      "browser": "firefox",
+      "version": "142.0.1",
+      "positionsHash": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12",
+      "host": {
+        "platform": "linux",
+        "os": "7.0.0-31-generic",
+        "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+        "governor": "powersave"
+      },
+      "preparation": {
+        "cold": {
+          "totalMs": {
+            "median": 426.5,
+            "max": 553
+          },
+          "roundtripMs": {
+            "median": 451.5,
+            "max": 583
+          },
+          "wasmMs": {
+            "median": 227.5,
+            "max": 294
+          },
+          "modelMs": {
+            "median": 203.5,
+            "max": 291
+          },
+          "memoryBytes": {
+            "median": 49414144.0,
+            "max": 49414144
+          },
+          "binaryBytes": {
+            "median": 4867714.0,
+            "max": 4867714
+          }
+        },
+        "warm": {
+          "totalMs": {
+            "median": 413.0,
+            "max": 480
+          },
+          "roundtripMs": {
+            "median": 435.0,
+            "max": 511
+          },
+          "wasmMs": {
+            "median": 213.5,
+            "max": 243
+          },
+          "modelMs": {
+            "median": 198.5,
+            "max": 237
+          },
+          "memoryBytes": {
+            "median": 49414144.0,
+            "max": 49414144
+          },
+          "binaryBytes": {
+            "median": 4867714.0,
+            "max": 4867714
+          }
+        }
+      },
+      "search": {
+        "200": {
+          "count": 60,
+          "engineOverrunMaxMs": 1,
+          "roundtripOverrunMaxMs": 2,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 552.7638190954774,
+          "depthMedian": 1.0,
+          "mainTimerTicksMin": 16
+        },
+        "1000": {
+          "count": 60,
+          "engineOverrunMaxMs": 0,
+          "roundtripOverrunMaxMs": 2,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 501.50150150150154,
+          "depthMedian": 2.0,
+          "mainTimerTicksMin": 98
+        },
+        "3000": {
+          "count": 60,
+          "engineOverrunMaxMs": 0,
+          "roundtripOverrunMaxMs": 3,
+          "memoryMaxBytes": 55771136,
+          "npsMedian": 1241.6823385572968,
+          "depthMedian": 3.0,
+          "mainTimerTicksMin": 296
+        }
+      },
+      "wasmSha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3",
+      "rawSha256": "b1f6b738f91f9f7e7500c6653f1939552874ace0abc84c5672f66316a4e02c45",
+      "legality": "PASS: 180 browser replies are legal",
+      "budget": "PASS",
+      "profile": "micro",
+      "modelId": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463"
+    },
+    {
+      "mode": "sfnn",
+      "browser": "firefox",
+      "version": "142.0.1",
+      "positionsHash": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12",
+      "host": {
+        "platform": "linux",
+        "os": "7.0.0-31-generic",
+        "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+        "governor": "powersave"
+      },
+      "preparation": {
+        "cold": {
+          "totalMs": {
+            "median": 834.0,
+            "max": 1120
+          },
+          "roundtripMs": {
+            "median": 869.5,
+            "max": 1179
+          },
+          "wasmMs": {
+            "median": 304.5,
+            "max": 420
+          },
+          "modelMs": {
+            "median": 506.5,
+            "max": 700
+          },
+          "memoryBytes": {
+            "median": 60620800.0,
+            "max": 60620800
+          },
+          "binaryBytes": {
+            "median": 8714476.0,
+            "max": 8714476
+          }
+        },
+        "warm": {
+          "totalMs": {
+            "median": 607.5,
+            "max": 739
+          },
+          "roundtripMs": {
+            "median": 633.0,
+            "max": 764
+          },
+          "wasmMs": {
+            "median": 216.0,
+            "max": 281
+          },
+          "modelMs": {
+            "median": 377.5,
+            "max": 458
+          },
+          "memoryBytes": {
+            "median": 60620800.0,
+            "max": 60620800
+          },
+          "binaryBytes": {
+            "median": 8714476.0,
+            "max": 8714476
+          }
+        }
+      },
+      "search": {
+        "200": {
+          "count": 60,
+          "engineOverrunMaxMs": 0,
+          "roundtripOverrunMaxMs": 3,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 454.77386934673365,
+          "depthMedian": 1.0,
+          "mainTimerTicksMin": 16
+        },
+        "1000": {
+          "count": 60,
+          "engineOverrunMaxMs": 0,
+          "roundtripOverrunMaxMs": 4,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 201.09109109109107,
+          "depthMedian": 1.0,
+          "mainTimerTicksMin": 95
+        },
+        "3000": {
+          "count": 60,
+          "engineOverrunMaxMs": 0,
+          "roundtripOverrunMaxMs": 6,
+          "memoryMaxBytes": 60620800,
+          "npsMedian": 207.86401022563075,
+          "depthMedian": 2.0,
+          "mainTimerTicksMin": 288
+        }
+      },
+      "wasmSha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3",
+      "rawSha256": "fcc2522200275d04251a8817b0b62ea224b68d1464eb90f66f29232a99c08d7f",
+      "legality": "PASS: 180 browser replies are legal",
+      "budget": "PASS",
+      "profile": "mini",
+      "modelId": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463"
+    }
+  ],
+  "comparisons": [
+    {
+      "browser": "chromium",
+      "movetimeMs": 200,
+      "miniOverMicroNpsMedian": 0.44784358691019477,
+      "samples": 60
+    },
+    {
+      "browser": "chromium",
+      "movetimeMs": 1000,
+      "miniOverMicroNpsMedian": 0.41454850771760504,
+      "samples": 60
+    },
+    {
+      "browser": "chromium",
+      "movetimeMs": 3000,
+      "miniOverMicroNpsMedian": 0.388977742172683,
+      "samples": 60
+    },
+    {
+      "browser": "firefox",
+      "movetimeMs": 200,
+      "miniOverMicroNpsMedian": 0.6560768063908071,
+      "samples": 60
+    },
+    {
+      "browser": "firefox",
+      "movetimeMs": 1000,
+      "miniOverMicroNpsMedian": 0.5411956554908568,
+      "samples": 60
+    },
+    {
+      "browser": "firefox",
+      "movetimeMs": 3000,
+      "miniOverMicroNpsMedian": 0.5751593374749924,
+      "samples": 60
+    }
+  ],
+  "result": "PASS"
+}

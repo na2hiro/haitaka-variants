@@ -1,22 +1,33 @@
 //! Explicit real-model verification: never silently passes without model files.
 #![cfg(not(target_arch = "wasm32"))]
 use haitaka::Board;
-use haitaka_wasm::sfnn::{MICRO_ARCH, SfnnModel};
+use haitaka_wasm::sfnn::{MICRO_ARCH, MINI_ARCH, SfnnModel};
 use sha2::{Digest, Sha256};
 use std::{path::PathBuf, str::FromStr};
 
+fn profile() -> (&'static str, &'static str) {
+    if std::env::var("HAITAKA_SFNN_PROFILE").as_deref() == Ok("mini") {
+        (
+            MINI_ARCH,
+            include_str!("../../plans/tuyouraou11/mini-reference-fixture.json"),
+        )
+    } else {
+        (
+            MICRO_ARCH,
+            include_str!("../../plans/tuyouraou11/reference-fixture.json"),
+        )
+    }
+}
+
 #[test]
 #[ignore = "requires fetched micro model; run scripts/tuyouraou11.py verify"]
-fn micro_matches_external_reference_and_rejects_corruption() {
+fn model_matches_external_reference_and_rejects_corruption() {
     let dir = PathBuf::from(
         std::env::var_os("HAITAKA_SFNN_MODEL_DIR").expect("HAITAKA_SFNN_MODEL_DIR required"),
     );
     let nn = std::fs::read(dir.join("nn.bin")).expect("nn.bin required");
     let progress = std::fs::read(dir.join("progress.bin")).expect("progress.bin required");
-    let fixtures: serde_json::Value = serde_json::from_str(include_str!(
-        "../../plans/tuyouraou11/reference-fixture.json"
-    ))
-    .unwrap();
+    let fixtures: serde_json::Value = serde_json::from_str(profile().1).unwrap();
     assert_eq!(
         format!("{:x}", Sha256::digest(&nn)),
         fixtures["model"]["nnSha256"].as_str().unwrap()
@@ -25,7 +36,7 @@ fn micro_matches_external_reference_and_rejects_corruption() {
         format!("{:x}", Sha256::digest(&progress)),
         fixtures["model"]["progressSha256"].as_str().unwrap()
     );
-    let model = SfnnModel::from_bytes(&nn, &progress, MICRO_ARCH).unwrap();
+    let model = SfnnModel::from_bytes(&nn, &progress, profile().0).unwrap();
     let cases = fixtures["cases"].as_array().unwrap();
     assert!(cases.len() >= 64);
     for case in cases {
@@ -60,8 +71,22 @@ fn micro_matches_external_reference_and_rejects_corruption() {
             actual.raw_output
         );
     }
+    assert!(
+        SfnnModel::from_bytes(
+            &nn,
+            &progress,
+            if profile().0 == MICRO_ARCH {
+                MINI_ARCH
+            } else {
+                MICRO_ARCH
+            }
+        )
+        .unwrap_err()
+        .0
+        .starts_with("SFNN_INVALID_NN:")
+    );
     let reject_nn = |b: &[u8]| {
-        let e = SfnnModel::from_bytes(b, &progress, MICRO_ARCH)
+        let e = SfnnModel::from_bytes(b, &progress, profile().0)
             .err()
             .expect("must reject NN");
         assert!(e.0.starts_with("SFNN_INVALID_NN:"), "{e}");
@@ -76,7 +101,7 @@ fn micro_matches_external_reference_and_rejects_corruption() {
         reject_nn(&bad);
     }
     let reject_progress = |b: &[u8]| {
-        let e = SfnnModel::from_bytes(&nn, b, MICRO_ARCH)
+        let e = SfnnModel::from_bytes(&nn, b, profile().0)
             .err()
             .expect("must reject progress");
         assert!(e.0.starts_with("SFNN_INVALID_PROGRESS:"), "{e}");
@@ -91,7 +116,7 @@ fn micro_matches_external_reference_and_rejects_corruption() {
         bad[..8].copy_from_slice(&v.to_le_bytes());
         reject_progress(&bad);
     }
-    for arch in ["", "SFNN_ka2_4096_8_64_progress8", "HalfKAv2^"] {
+    for arch in ["", "SFNN_ka2_8192_8_64_progress8", "HalfKAv2^"] {
         assert!(
             SfnnModel::from_bytes(&nn, &progress, arch)
                 .err()
@@ -119,7 +144,7 @@ fn incremental_states_and_search_match_full_refresh() {
         SfnnModel::from_bytes(
             &std::fs::read(dir.join("nn.bin")).unwrap(),
             &std::fs::read(dir.join("progress.bin")).unwrap(),
-            MICRO_ARCH,
+            profile().0,
         )
         .unwrap(),
     );
@@ -194,10 +219,7 @@ fn incremental_states_and_search_match_full_refresh() {
     println!(
         "SFNN delta: nodes={nodes} captures={captures} drops={drops} promotions={promotions} king_moves={kings} bucket_changes={bucket_changes}"
     );
-    let fixture: serde_json::Value = serde_json::from_str(include_str!(
-        "../../plans/tuyouraou11/reference-fixture.json"
-    ))
-    .unwrap();
+    let fixture: serde_json::Value = serde_json::from_str(profile().1).unwrap();
     for index in [0, 8, 24, 100] {
         let sfen = fixture["cases"][index]["sfen"].as_str().unwrap();
         let full = search_impl_sfnn(sfen, 2, model.clone(), SearchEvalMode::FullRefresh).unwrap();

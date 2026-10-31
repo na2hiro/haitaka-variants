@@ -230,3 +230,36 @@ haitaka_cli self-play, providing `--a-engine-arg=--model-dir` and a second
 `--a-engine-arg` with the absolute model directory for micro. Do not pass the
 SFNN bin to the old CLI --nnue option. The P4 200-game paired experiment is still
 outstanding; the P2 harness only establishes a comparable evaluation path.
+
+## P6 exact SIMD kernels
+
+The micro evaluator now uses detected integer affine kernels (AVX2/NEON on native,
+SIMD128 in the SIMD Wasm build). Accumulator row updates and product activation
+also use SIMD128 in that build. The scalar Wasm is compiled with `-simd128` and
+remains the browser fallback. There are no relaxed SIMD instructions or new
+shared-memory requirements. `sfnn-force-scalar` is a verification-only Cargo
+feature for comparing the same native search with scalar affine kernels.
+
+Run `node scripts/tuyouraou11-simd.mjs --build --browser` with wasm-bindgen on PATH
+and the existing model/P2 corpus to verify 236 reference positions, 2,048 moves,
+and 20 fixed-depth searches in Node and Chromium/Firefox Workers. The browser
+trace timeout is 600 seconds for full-refresh diagnostics; movetime budgets
+remain unchanged. P6 records and adoption details: `plans/tuyouraou11/p6-lead.md`.
+
+
+## P6 mini profile
+
+The exact same K+A2/progress8 arithmetic also accepts the pinned mini profile
+`SFNN_ka2_4096_8_64_progress8`. Only the transformer/first-layer width changes
+(2048 to 4096); the description and all file boundaries are checked for the
+selected profile. Each model owns its biases, feature rows and affine strides.
+SIMD/scalar selection is independent of the profile. `load_sfnn` and USI session
+loading return the selected arch and clear only the relevant TT on success.
+
+`plans/tuyouraou11/mini-provenance.json` pins the archive, both parameter hashes
+and the same external reference commit. Use `scripts/tuyouraou11.py` with
+`--profile mini` for fetch/reference/fixtures/verify; builds clean the external
+reference first so changing the edition cannot reuse micro object files.
+`node scripts/tuyouraou11-simd.mjs --mini --build --browser` checks the mini
+fixtures, incremental traces and fixed-depth searches in both backends.
+Results and selection policy: `plans/tuyouraou11/p6-mini.md`.

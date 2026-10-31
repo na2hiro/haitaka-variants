@@ -1,16 +1,16 @@
 # 進捗・引継ぎ
 
-更新: 2026-10-30。実装契約: [contract.md](contract.md)。
+更新: 2026-10-31。実装契約: [contract.md](contract.md)。
 
-| 作業 | 担当   | 状態                                       | 成果物/依存                                                                         |
-| ---- | ------ | ------------------------------------------ | ----------------------------------------------------------------------------------- |
-| P0   | LEAD   | 完了                                       | contract.md、reference-fixture.schema.json、p0-lead.md                              |
-| P1   | ENGINE | 完了                                       | p1-engine.md、provenance.json、reference-fixture.json、scalar 評価器                |
-| P2   | ENGINE | 完了                                       | p2-engine.md、p2-artifacts.json、差分/探索/load_sfnn/実 Wasm 検証                   |
-| P3   | WEB    | 完了（WEB 報告、P4 統合待ち）              | p3-web.md 参照。P2 の実 Wasm を P4 で同期                                           |
-| P4   | LEAD   | ローカル検証完了・実機保留（全体は未完了） | p4-lead.md。実 Wasm/12 E2E/720 合法応答/200 局比較 PASS。実機はユーザー指示で後回し |
-| P5   | 各担当 | 未割当（任意）                             | package v2                                                                          |
-| P6   | 各担当 | 未割当（任意）                             | mini/SIMD                                                                           |
+| 作業 | 担当            | 状態                                       | 成果物/依存                                                                         |
+| ---- | --------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| P0   | LEAD            | 完了                                       | contract.md、reference-fixture.schema.json、p0-lead.md                              |
+| P1   | ENGINE          | 完了                                       | p1-engine.md、provenance.json、reference-fixture.json、scalar 評価器                |
+| P2   | ENGINE          | 完了                                       | p2-engine.md、p2-artifacts.json、差分/探索/load_sfnn/実 Wasm 検証                   |
+| P3   | WEB             | 完了（WEB 報告、P4 統合待ち）              | p3-web.md 参照。P2 の実 Wasm を P4 で同期                                           |
+| P4   | LEAD            | ローカル検証完了・実機保留（全体は未完了） | p4-lead.md。実 Wasm/12 E2E/720 合法応答/200 局比較 PASS。実機はユーザー指示で後回し |
+| P5   | 各担当          | 未割当（任意）                             | package v2                                                                          |
+| P6   | ENGINE→WEB→LEAD | 完了（SIMD・モデル選択・棋力400局、実機対象外）    | p6-strength.md（棋力400局）/ p6-mini.md（モデル選択）/ p6-lead.md（SIMD履歴）                                |
 
 ## ブランチと成果物の所在
 
