@@ -1,0 +1,4668 @@
+{
+  "schemaVersion": 1,
+  "arch": "SFNN_ka2_2048_8_64_progress8",
+  "model": {
+    "id": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+    "nnSha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
+    "progressSha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+  },
+  "reference": {
+    "repository": "https://github.com/yaneurao/YaneuraOu",
+    "commit": "7d9743646f1006ff6d84da45d6d6160048a5a416",
+    "command": [
+      "python3",
+      "scripts/tuyouraou11.py",
+      "fixtures"
+    ],
+    "buildFlags": [
+      "TARGET_CPU=OTHER",
+      "COMPILER=g++",
+      "PYTHON=python3",
+      "YANEURAOU_EDITION=YANEURAOU_ENGINE_SFNN_ka2_2048_8_64_progress8"
+    ],
+    "fvScale": 24,
+    "generator": "haitaka_wasm/examples/sfnn_positions.rs; LCG64 seed=1; sha256=3efb7a54e3d2becfef53183bf6f2cde6576f7cc241e7e022ec4f5e78d77d6798"
+  },
+  "cases": [
+    {
+      "id": "0:0",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-110710",
+          "white": "-110710"
+        },
+        "selectedSumQ16": "-221420",
+        "bucket": 0
+      },
+      "evalCp": 52
+    },
+    {
+      "id": "0:1",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B3G1R1/LNSGK1SNL w - 2",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-110006",
+          "white": "-108240"
+        },
+        "selectedSumQ16": "-218246",
+        "bucket": 0
+      },
+      "evalCp": 16
+    },
+    {
+      "id": "0:8",
+      "sfen": "ln1g1g1nl/1rsk1s1b1/p1ppppppp/1p7/9/2P4P1/PPBPPPP1P/5G1R1/LNSGK1SNL b - 9",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-101366",
+          "white": "-62019"
+        },
+        "selectedSumQ16": "-163385",
+        "bucket": 0
+      },
+      "evalCp": 170
+    },
+    {
+      "id": "0:9",
+      "sfen": "ln1g1g1nl/1rsk1s1b1/p1ppppppp/1p7/9/2P4P1/PPBPPPP1P/5G2R/LNSGK1SNL w - 10",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-99815",
+          "white": "-60558"
+        },
+        "selectedSumQ16": "-160373",
+        "bucket": 0
+      },
+      "evalCp": 76
+    },
+    {
+      "id": "0:16",
+      "sfen": "ln1gs2nl/1rskg2b1/p1pp1p2p/1p2p1+Bp1/9/2P4P1/PP1PPPP1P/2S2G2R/LN1GK1SNL b P 17",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-79076",
+          "white": "-46899"
+        },
+        "selectedSumQ16": "-125975",
+        "bucket": 1
+      },
+      "evalCp": 631
+    },
+    {
+      "id": "0:17",
+      "sfen": "ln1gs2nl/1rskg2b1/p1pp1p2p/1p2p1+Bp1/9/2P4P1/PPNPPPP1P/2S2G2R/L2GK1SNL w P 18",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-75813",
+          "white": "-45004"
+        },
+        "selectedSumQ16": "-120817",
+        "bucket": 1
+      },
+      "evalCp": -635
+    },
+    {
+      "id": "0:24",
+      "sfen": "ln1gs2nl/1rskg2b1/p2p1p2p/1pp1p1+B2/7p1/P1P1P2P1/1PNP1PP1P/2SK1G2R/L2G2SNL b P 25",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-42017",
+          "white": "-40527"
+        },
+        "selectedSumQ16": "-82544",
+        "bucket": 1
+      },
+      "evalCp": 448
+    },
+    {
+      "id": "0:25",
+      "sfen": "ln1gs2nl/1rskg2b1/p2p1p1+Bp/1pp1p4/7p1/P1P1P2P1/1PNP1PP1P/2SK1G2R/L2G2SNL w P 26",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-44646",
+          "white": "-39640"
+        },
+        "selectedSumQ16": "-84286",
+        "bucket": 1
+      },
+      "evalCp": -317
+    },
+    {
+      "id": "0:32",
+      "sfen": "1n1gs2nl/lrsk5/p2pgp2p/1pp1p+B3/7p1/P1P1P2PP/1PNP1PP2/2SK1G2R/L2G2SNL b BP 33",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-36756",
+          "white": "-29550"
+        },
+        "selectedSumQ16": "-66306",
+        "bucket": 2
+      },
+      "evalCp": 968
+    },
+    {
+      "id": "0:33",
+      "sfen": "1n1gs2nl/lrsk5/p2pgp2p/1pp1p+B3/7p1/P1P1P2PP/1PNP1PP2/1BSK1G2R/L2G2SNL w P 34",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-40842",
+          "white": "-34178"
+        },
+        "selectedSumQ16": "-75020",
+        "bucket": 1
+      },
+      "evalCp": -342
+    },
+    {
+      "id": "0:40",
+      "sfen": "1n2s2n1/lr1kg3l/p2pgp2p/1ppsp1+B2/3N3p1/P1P1P2PP/1P1P1PP2/1BSK1G1R1/L2G2SNL b P 41",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-33013",
+          "white": "-27028"
+        },
+        "selectedSumQ16": "-60041",
+        "bucket": 2
+      },
+      "evalCp": 1247
+    },
+    {
+      "id": "0:41",
+      "sfen": "1n2s2n1/lr1kg2+Bl/p2pgp2p/1ppsp1+B2/3N3p1/P1P1P2PP/1P1P1PP2/2SK1G1R1/L2G2SNL w P 42",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-30879",
+          "white": "-19967"
+        },
+        "selectedSumQ16": "-50846",
+        "bucket": 2
+      },
+      "evalCp": -1338
+    },
+    {
+      "id": "0:48",
+      "sfen": "1n2s2n1/lr1k1g1+Bl/p2p1p2p/1p1s1g+B2/2pNP2p1/P1P4PP/1P1P1PP2/2SK1G2R/L1G3SNL b 2P 49",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-19981",
+          "white": "-10347"
+        },
+        "selectedSumQ16": "-30328",
+        "bucket": 3
+      },
+      "evalCp": 1254
+    },
+    {
+      "id": "0:49",
+      "sfen": "1n2s2n1/lr1k1g1+Bl/p2p1p2p/1p1s1g+B2/2pNP2p1/P1P4PP/1P1PKPP2/2S2G2R/L1G3SNL w 2P 50",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "3690",
+          "white": "-10347"
+        },
+        "selectedSumQ16": "-6657",
+        "bucket": 3
+      },
+      "evalCp": -878
+    },
+    {
+      "id": "0:56",
+      "sfen": "1n2sg3/l3k2+Bl/pr1p1pn1p/1p1s1+B3/P1pNP2p1/2P4PP/1P1PKPP2/2S2G1R1/L1G3SNL b G2P 57",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "3505",
+          "white": "-16177"
+        },
+        "selectedSumQ16": "-12672",
+        "bucket": 3
+      },
+      "evalCp": 1387
+    },
+    {
+      "id": "0:57",
+      "sfen": "1n2sg3/l3k2+Bl/pr1p1pn1p/1p1s1+B3/P1pNP2p1/1PP4PP/3PKPP2/2S2G1R1/L1G3SNL w G2P 58",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "4668",
+          "white": "-16901"
+        },
+        "selectedSumQ16": "-12233",
+        "bucket": 3
+      },
+      "evalCp": -1653
+    },
+    {
+      "id": "0:64",
+      "sfen": "1n2sg3/l3k2+Bl/3psp2p/pr4+B2/PppNP2p1/1PP4PP/3PKPPG1/2S2G1R1/L1G3SNL b N2P 65",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "7669",
+          "white": "-28033"
+        },
+        "selectedSumQ16": "-20364",
+        "bucket": 3
+      },
+      "evalCp": 1497
+    },
+    {
+      "id": "0:65",
+      "sfen": "1n2sg3/l3k2+Bl/3psp2p/pr4+B2/PppNP2p1/1PP4PP/1N1PKPPG1/2S2G1R1/L1G3SNL w 2P 66",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "7311",
+          "white": "-27930"
+        },
+        "selectedSumQ16": "-20619",
+        "bucket": 3
+      },
+      "evalCp": -1709
+    },
+    {
+      "id": "0:72",
+      "sfen": "5g3/l2sks1+Bl/2np1p2p/pr4+B2/PppNP4/1PPK3pP/1NSP1PPG1/5GSR1/L1G4NL b 2Pp 73",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "26644",
+          "white": "-34243"
+        },
+        "selectedSumQ16": "-7599",
+        "bucket": 3
+      },
+      "evalCp": 1210
+    },
+    {
+      "id": "0:73",
+      "sfen": "5g3/l2sks1+Bl/2np1p2p/pr4+B2/PppNP4/1PPK3pP/1NSP1PP1G/5GSR1/L1G4NL w 2Pp 74",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "18681",
+          "white": "-31791"
+        },
+        "selectedSumQ16": "-13110",
+        "bucket": 3
+      },
+      "evalCp": -1052
+    },
+    {
+      "id": "0:80",
+      "sfen": "2s3g2/l3ks1+Bl/2npNp2p/p1r6/Ppp1P4/1PPK+B2pP/1NSP1PPPG/5GSR1/L1G4NL b Pp 81",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "24033",
+          "white": "-16579"
+        },
+        "selectedSumQ16": "7454",
+        "bucket": 4
+      },
+      "evalCp": 1041
+    },
+    {
+      "id": "0:81",
+      "sfen": "2s3g2/l3ks2l/2npNp2+B/p1r6/Ppp1P4/1PPK+B2pP/1NSP1PPPG/5GSR1/L1G4NL w 2Pp 82",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "26701",
+          "white": "-24464"
+        },
+        "selectedSumQ16": "2237",
+        "bucket": 4
+      },
+      "evalCp": -819
+    },
+    {
+      "id": "0:88",
+      "sfen": "5kg2/ls3s2l/2n2p3/p1rpP4/Ppp6/1PPK+B2pP/1NSPpPPPG/3+B1GSR1/L1G4NL b 2Pn 89",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "24369",
+          "white": "-5418"
+        },
+        "selectedSumQ16": "18951",
+        "bucket": 4
+      },
+      "evalCp": 1067
+    },
+    {
+      "id": "0:89",
+      "sfen": "5kg2/ls3s2l/2n2p3/p1rpP4/Ppp6/1PPK+B2pP/1NSPpPPPG/3+B1G1R1/L1G2S1NL w 2Pn 90",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "24365",
+          "white": "894"
+        },
+        "selectedSumQ16": "25259",
+        "bucket": 4
+      },
+      "evalCp": -995
+    },
+    {
+      "id": "0:96",
+      "sfen": "6g2/l1ns1sk1l/2n2p3/p1rpP4/Ppp6/1PPK+B2pP/1NSPpPPPG/2G1+BG1R1/L4S1NL b 2P 97",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "8439",
+          "white": "10217"
+        },
+        "selectedSumQ16": "18656",
+        "bucket": 4
+      },
+      "evalCp": 1059
+    },
+    {
+      "id": "0:97",
+      "sfen": "6g2/l1ns1sk1l/2n2p3/P1rpP4/1pp6/1PPK+B2pP/1NSPpPPPG/2G1+BG1R1/L4S1NL w 3P 98",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "12565",
+          "white": "12139"
+        },
+        "selectedSumQ16": "24704",
+        "bucket": 4
+      },
+      "evalCp": -750
+    },
+    {
+      "id": "0:104",
+      "sfen": "9/l1ns1sk1l/4+Pp2g/P1rp5/1ppn5/1PPK+B2pP/1NSPGPPPG/3G+B2R1/L4S1NL b 4P 105",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "19944",
+          "white": "22488"
+        },
+        "selectedSumQ16": "42432",
+        "bucket": 5
+      },
+      "evalCp": 1286
+    },
+    {
+      "id": "0:105",
+      "sfen": "9/l1ns1sk1l/4+Pp2g/P1rp5/1ppn5/1PPK+B2pP/1NSPGPPPG/3G3R1/L2+B1S1NL w 4P 106",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "24203",
+          "white": "17513"
+        },
+        "selectedSumQ16": "41716",
+        "bucket": 5
+      },
+      "evalCp": -979
+    },
+    {
+      "id": "0:112",
+      "sfen": "9/l1n1Psk1l/1p2sp2g/P1rp5/1Ppn5/2PK+B2pP/1NSPGPPPG/3G2R2/L2+B1S1NL b 4P 113",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "39385",
+          "white": "24488"
+        },
+        "selectedSumQ16": "63873",
+        "bucket": 5
+      },
+      "evalCp": 1109
+    },
+    {
+      "id": "0:113",
+      "sfen": "9/l1n1Psk1l/1p2sp2g/P1rp5/1Ppn5/2PK+BP1pP/1NSPG1PPG/3G2R2/L2+B1S1NL w 4P 114",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "34780",
+          "white": "23802"
+        },
+        "selectedSumQ16": "58582",
+        "bucket": 5
+      },
+      "evalCp": -1017
+    },
+    {
+      "id": "0:120",
+      "sfen": "5k3/l1n1Psg1l/1p2sp3/P1rp3g1/1Pp6/1NPK+BP1pP/1NSPG1PPG/6R2/L2+B1S1NL b 4P 121",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "28228",
+          "white": "10015"
+        },
+        "selectedSumQ16": "38243",
+        "bucket": 5
+      },
+      "evalCp": 1054
+    },
+    {
+      "id": "0:121",
+      "sfen": "5k3/l1n1Psg1l/1p2sp3/P1rp3g+B/1Pp6/1NPK+BP1pP/1NSPG1PPG/6R2/L4S1NL w 4P 122",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "31371",
+          "white": "9822"
+        },
+        "selectedSumQ16": "41193",
+        "bucket": 5
+      },
+      "evalCp": -1029
+    },
+    {
+      "id": "0:128",
+      "sfen": "2r2k3/l3Psg2/1p2sp1+Bl/Pn1p3g+B/1Pp5P/1NPK1P3/1NSPG1PpG/8R/L4S1NL b 4Pp 129",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "29503",
+          "white": "13423"
+        },
+        "selectedSumQ16": "42926",
+        "bucket": 5
+      },
+      "evalCp": 797
+    },
+    {
+      "id": "0:129",
+      "sfen": "2r2k3/l3Psg2/1p2sp1+Bl/Pn1p3g+B/1Pp5P/1NPK1P3/1NSPG1PpG/4R4/L4S1NL w 4Pp 130",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "27543",
+          "white": "14292"
+        },
+        "selectedSumQ16": "41835",
+        "bucket": 5
+      },
+      "evalCp": -605
+    },
+    {
+      "id": "0:136",
+      "sfen": "1r3k3/l3Psg2/1p2sp1+Bl/PP1p4+B/2p3g1P/1NP1KP3/1NSPG1PpG/p3R4/LN3S1NL b 4P 137",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "37638",
+          "white": "2320"
+        },
+        "selectedSumQ16": "39958",
+        "bucket": 5
+      },
+      "evalCp": 1313
+    },
+    {
+      "id": "0:137",
+      "sfen": "1r3k3/l3Psg2/1p2sp1+Bl/PP1p4+B/2p3g1P/1NPGKP3/1NSP2PpG/p3R4/LN3S1NL w 4P 138",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "37753",
+          "white": "2101"
+        },
+        "selectedSumQ16": "39854",
+        "bucket": 5
+      },
+      "evalCp": -1120
+    },
+    {
+      "id": "0:144",
+      "sfen": "1r3k3/4Ps3/1P2sp1gl/3p3+B+B/2p1G1g1P/1NP1KP3/lNSP2P1G/p3R2+p1/LN3S1NL b 5Pp 145",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "46735",
+          "white": "14146"
+        },
+        "selectedSumQ16": "60881",
+        "bucket": 5
+      },
+      "evalCp": 1288
+    },
+    {
+      "id": "0:145",
+      "sfen": "1r3k3/4Ps3/1P2sp1gl/3p3+B+B/N1p1G1g1P/1NP1KP3/l1SP2P1G/p3R2+p1/LN3S1NL w 5Pp 146",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "45774",
+          "white": "16159"
+        },
+        "selectedSumQ16": "61933",
+        "bucket": 5
+      },
+      "evalCp": -1132
+    },
+    {
+      "id": "0:152",
+      "sfen": "1r3k3/4Ps2p/1P2sp+Bgl/3p4+B/N1P1p3P/1N1K1g3/l1SP2P1G/p3R2+p1/LN3S1NL b 6Pg 153",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "26305",
+          "white": "19227"
+        },
+        "selectedSumQ16": "45532",
+        "bucket": 5
+      },
+      "evalCp": 582
+    },
+    {
+      "id": "0:153",
+      "sfen": "1r3k3/4Ps2p/1P2sp+Bgl/3p4+B/N1P1p3P/1N1K1g3/l1SP2P1G/pR5+p1/LN3S1NL w 6Pg 154",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "31858",
+          "white": "20151"
+        },
+        "selectedSumQ16": "52009",
+        "bucket": 5
+      },
+      "evalCp": -205
+    },
+    {
+      "id": "0:160",
+      "sfen": "1r7/4ks+B1p/1P2s2gl/3p1p2+B/NpP1p3P/1N1K1g3/l1SP2PPG/p4R1+p1/LN1g1S1NL b 5P 161",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "21617",
+          "white": "33965"
+        },
+        "selectedSumQ16": "55582",
+        "bucket": 5
+      },
+      "evalCp": 1138
+    },
+    {
+      "id": "0:161",
+      "sfen": "1r7/4ks+B1p/1P2s2gl/N2p1p2+B/NpP1p3P/3K1g3/l1SP2PPG/p4R1+p1/LN1g1S1NL w 5P 162",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "27166",
+          "white": "35524"
+        },
+        "selectedSumQ16": "62690",
+        "bucket": 5
+      },
+      "evalCp": -870
+    },
+    {
+      "id": "0:168",
+      "sfen": "1r7/4k2sp/1P2s2g+B/N2p1p3/NpP1p3P/3K1g3/l1SP2P+pG/p4R2L/LNg2S1N1 b L5Pbp 169",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "26696",
+          "white": "21056"
+        },
+        "selectedSumQ16": "47752",
+        "bucket": 5
+      },
+      "evalCp": -355
+    },
+    {
+      "id": "0:169",
+      "sfen": "1r7/4k2sp/1P2s2g+B/N2p1p3/NpP1pP2P/3K1g3/l1SP2P+pG/p4R2L/LNg2S1N1 w L4Pbp 170",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "25901",
+          "white": "20543"
+        },
+        "selectedSumQ16": "46444",
+        "bucket": 5
+      },
+      "evalCp": 679
+    },
+    {
+      "id": "0:176",
+      "sfen": "1r7/P3k2sp/1P2s2g1/N1Pp1p3/Np2pP+B1b/3K5/l1SPg1P+pG/p4R2L/LNg2S1N1 b L3P2p 177",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "19997",
+          "white": "19859"
+        },
+        "selectedSumQ16": "39856",
+        "bucket": 5
+      },
+      "evalCp": 688
+    },
+    {
+      "id": "0:177",
+      "sfen": "1r7/P3k2sp/1P2s2g1/N1Pp1p3/Np2pP+B1b/3K5/l1SPg1P+pG/p6RL/LNg2S1N1 w L3P2p 178",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "17555",
+          "white": "18048"
+        },
+        "selectedSumQ16": "35603",
+        "bucket": 5
+      },
+      "evalCp": -465
+    },
+    {
+      "id": "0:184",
+      "sfen": "6r2/P3k2sp/1P+P1s2g1/N2p1p1P1/Np2KP+B1b/3g3+p1/l1S3P1G/p6RL/LNg2S1N1 b L3P3p 185",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "58921",
+          "white": "22109"
+        },
+        "selectedSumQ16": "81030",
+        "bucket": 6
+      },
+      "evalCp": 782
+    },
+    {
+      "id": "0:185",
+      "sfen": "6r2/P3k2sp/1P+P1s2gL/N2p1p1P1/Np2KP+B1b/3g3+p1/l1S3P1G/p6RL/LNg2S1N1 w 3P3p 186",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "65146",
+          "white": "23376"
+        },
+        "selectedSumQ16": "88522",
+        "bucket": 6
+      },
+      "evalCp": -271
+    },
+    {
+      "id": "0:192",
+      "sfen": "5kr2/P6sp/1P1+Ps2gL/N2p1ppP1/Np3P+Bpb/4K2+p1/l1S1P1P1G/p6RL/LNg2S1N1 b G2Pp 193",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "44785",
+          "white": "32387"
+        },
+        "selectedSumQ16": "77172",
+        "bucket": 6
+      },
+      "evalCp": 1146
+    },
+    {
+      "id": "0:193",
+      "sfen": "4Gkr2/P6sp/1P1+Ps2gL/N2p1ppP1/Np3P+Bpb/4K2+p1/l1S1P1P1G/p6RL/LNg2S1N1 w 2Pp 194",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "50648",
+          "white": "45360"
+        },
+        "selectedSumQ16": "96008",
+        "bucket": 6
+      },
+      "evalCp": -894
+    },
+    {
+      "id": "0:200",
+      "sfen": "2p1G1r2/P+N4ksp/1P2+P2gL/3p1p+BP1/Np3P1pb/4K4/l1S1P1+p1G/p6RL/LNg2S1N1 b S3Pp 201",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "50821",
+          "white": "49279"
+        },
+        "selectedSumQ16": "100100",
+        "bucket": 6
+      },
+      "evalCp": 1440
+    },
+    {
+      "id": "0:201",
+      "sfen": "2p1G1r2/P+N4ksp/1P2+P2gL/2Sp1p+BP1/Np3P1pb/4K4/l1S1P1+p1G/p6RL/LNg2S1N1 w 3Pp 202",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "53648",
+          "white": "44895"
+        },
+        "selectedSumQ16": "98543",
+        "bucket": 6
+      },
+      "evalCp": -1354
+    },
+    {
+      "id": "0:208",
+      "sfen": "2p1G1r1k/P+N1P3sp/1P2+P2+PL/2Sppp+B1g/Np3P1pb/4K4/l1S1P1+p1G/p3R3L/LNg2S1N1 b 2P 209",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "56050",
+          "white": "52031"
+        },
+        "selectedSumQ16": "108081",
+        "bucket": 6
+      },
+      "evalCp": 1234
+    },
+    {
+      "id": "0:209",
+      "sfen": "2p1G1r1k/P+N1P3sp/1P2+P2+PL/2Sppp+B1g/Np3P1pb/5K3/l1S1P1+p1G/p3R3L/LNg2S1N1 w 2P 210",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "45194",
+          "white": "52031"
+        },
+        "selectedSumQ16": "97225",
+        "bucket": 6
+      },
+      "evalCp": -930
+    },
+    {
+      "id": "0:216",
+      "sfen": "2p1G1r1k/P+N1P3sp/1P2+P1+B+Pg/2Spppl2/Np3P1p1/5K3/l1S1P3G/p4b2L/LNg2S1N1 b 3Pr 217",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "58963",
+          "white": "66410"
+        },
+        "selectedSumQ16": "125373",
+        "bucket": 6
+      },
+      "evalCp": 483
+    },
+    {
+      "id": "0:217",
+      "sfen": "2p1G1r1k/P+N1P3sp/1P3+P+B+Pg/2Spppl2/Np3P1p1/5K3/l1S1P3G/p4b2L/LNg2S1N1 w 3Pr 218",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "59057",
+          "white": "69722"
+        },
+        "selectedSumQ16": "128779",
+        "bucket": 7
+      },
+      "evalCp": -640
+    },
+    {
+      "id": "1:0",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-110710",
+          "white": "-110710"
+        },
+        "selectedSumQ16": "-221420",
+        "bucket": 0
+      },
+      "evalCp": 52
+    },
+    {
+      "id": "1:1",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B1G3R1/LNS1KGSNL w - 2",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-108150",
+          "white": "-106679"
+        },
+        "selectedSumQ16": "-214829",
+        "bucket": 0
+      },
+      "evalCp": 15
+    },
+    {
+      "id": "1:8",
+      "sfen": "lnsgkg1nl/4rs1b1/1ppppppp1/p7p/9/1P7/P1PPPPPPP/1BSG3RL/LN2KGSN1 b - 9",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-94181",
+          "white": "-95481"
+        },
+        "selectedSumQ16": "-189662",
+        "bucket": 0
+      },
+      "evalCp": -32
+    },
+    {
+      "id": "1:9",
+      "sfen": "lnsgkg1nl/4rs1b1/1ppppppp1/p7p/9/1P7/P1PPPPPPP/1BS1G2RL/LN2KGSN1 w - 10",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-94983",
+          "white": "-96464"
+        },
+        "selectedSumQ16": "-191447",
+        "bucket": 0
+      },
+      "evalCp": 157
+    },
+    {
+      "id": "1:16",
+      "sfen": "lnsgk2nl/r4sgb1/1ppppppp1/p7p/1P7/9/P1PPPPPPP/1BSG1R2L/LN2KGSN1 b - 17",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-86777",
+          "white": "-92381"
+        },
+        "selectedSumQ16": "-179158",
+        "bucket": 0
+      },
+      "evalCp": -314
+    },
+    {
+      "id": "1:17",
+      "sfen": "lnsgk2nl/r4sgb1/1ppppppp1/p7p/1P7/9/P1PPPPPPP/1BSG1RS1L/LN2KG1N1 w - 18",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-83388",
+          "white": "-90891"
+        },
+        "selectedSumQ16": "-174279",
+        "bucket": 0
+      },
+      "evalCp": 404
+    },
+    {
+      "id": "1:24",
+      "sfen": "lnsg2snl/r3k1gb1/1pppp1pp1/5p2p/pP7/9/P1PPPPPPP/LBS1GRS1L/1N1K1G1N1 b - 25",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-56781",
+          "white": "-60221"
+        },
+        "selectedSumQ16": "-117002",
+        "bucket": 1
+      },
+      "evalCp": -157
+    },
+    {
+      "id": "1:25",
+      "sfen": "lnsg2snl/r3k1gb1/1pppp1pp1/5p2p/pP7/9/P1PPPPPPP/LBS1GRS1L/1N1KG2N1 w - 26",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-53961",
+          "white": "-54029"
+        },
+        "selectedSumQ16": "-107990",
+        "bucket": 1
+      },
+      "evalCp": 322
+    },
+    {
+      "id": "1:32",
+      "sfen": "l1s3snl/r1g1k2b1/npppp1pp1/4gB2p/pP7/2P4P1/P2PPPP1P/L1S1GRS1L/1N1KG2N1 b P 33",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-44062",
+          "white": "-42102"
+        },
+        "selectedSumQ16": "-86164",
+        "bucket": 1
+      },
+      "evalCp": 86
+    },
+    {
+      "id": "1:33",
+      "sfen": "l1s3snl/r1g1k2b1/npppp1pp1/4gB2p/pP5P1/2P6/P2PPPP1P/L1S1GRS1L/1N1KG2N1 w P 34",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-44707",
+          "white": "-42030"
+        },
+        "selectedSumQ16": "-86737",
+        "bucket": 1
+      },
+      "evalCp": -15
+    },
+    {
+      "id": "1:40",
+      "sfen": "l1s2psnl/r1g1k2b1/1pp1p1Bp1/3pg4/pn5Pp/2PP5/PP2PPP1P/L1S1GRS1L/1N1KG2N1 b P 41",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-41443",
+          "white": "-30948"
+        },
+        "selectedSumQ16": "-72391",
+        "bucket": 1
+      },
+      "evalCp": -149
+    },
+    {
+      "id": "1:41",
+      "sfen": "l1s2psnl/r1g1k2b1/1pp1p1Bp1/3pg4/pn5Pp/2PP5/PP1SPPP1P/L3GRS1L/1N1KG2N1 w P 42",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-44188",
+          "white": "-31752"
+        },
+        "selectedSumQ16": "-75940",
+        "bucket": 1
+      },
+      "evalCp": 254
+    },
+    {
+      "id": "1:48",
+      "sfen": "l1s2psn1/r1g1k2b1/1p2p1Bp1/2pp4l/pn3g1Pp/2PP5/PP2PPP1P/L1S1GRS1L/1N1K2GN1 b P 49",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-34698",
+          "white": "-29610"
+        },
+        "selectedSumQ16": "-64308",
+        "bucket": 2
+      },
+      "evalCp": 346
+    },
+    {
+      "id": "1:49",
+      "sfen": "l1s2psn1/r1g1k2b1/1p2p2p1/2pp1B2l/pn3g1Pp/2PP5/PP2PPP1P/L1S1GRS1L/1N1K2GN1 w P 50",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-37018",
+          "white": "-30665"
+        },
+        "selectedSumQ16": "-67683",
+        "bucket": 2
+      },
+      "evalCp": -77
+    },
+    {
+      "id": "1:56",
+      "sfen": "l1s2psn1/r1g1k2b1/1p2p2p1/2pp1B2l/5g1Pp/p1PP5/PPn1PPP1P/L1S2RS1L/1N1K1G1N1 b Pg 57",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-29403",
+          "white": "-26656"
+        },
+        "selectedSumQ16": "-56059",
+        "bucket": 2
+      },
+      "evalCp": -337
+    },
+    {
+      "id": "1:57",
+      "sfen": "l1s2psn1/r1g1k2b1/1p2p2p1/2pp1B2l/5g1Pp/p1PP5/PPn1PPP1P/L1S2RS1L/1NK2G1N1 w Pg 58",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-27186",
+          "white": "-26656"
+        },
+        "selectedSumQ16": "-53842",
+        "bucket": 2
+      },
+      "evalCp": 1061
+    },
+    {
+      "id": "1:64",
+      "sfen": "l1s2p1n1/r1g1k1sb1/1p4+Bp1/2pp1g2l/3Ppg1Pp/p1P6/PPn1PPP1P/L1S2RS1L/1NK2G1N1 b P 65",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-33678",
+          "white": "-22720"
+        },
+        "selectedSumQ16": "-56398",
+        "bucket": 2
+      },
+      "evalCp": -467
+    },
+    {
+      "id": "1:65",
+      "sfen": "l1s2p1n1/r1g1k1+Bb1/1p5p1/2pp1g2l/3Ppg1Pp/p1P6/PPn1PPP1P/L1S2RS1L/1NK2G1N1 w SP 66",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-24983",
+          "white": "-12739"
+        },
+        "selectedSumQ16": "-37722",
+        "bucket": 2
+      },
+      "evalCp": -530
+    },
+    {
+      "id": "1:72",
+      "sfen": "l1s2p3/r3k2+B1/1p1g2np1/S1p2g2l/3pp2Pp/p1P2g3/PPN1PPP1P/L1S2RS1L/2K2G1N1 b BNPp 73",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-14980",
+          "white": "-139"
+        },
+        "selectedSumQ16": "-15119",
+        "bucket": 3
+      },
+      "evalCp": 1326
+    },
+    {
+      "id": "1:73",
+      "sfen": "l1s2p3/r3k2+B1/1p1gN1np1/S1p2g2l/3pp2Pp/p1P2g3/PPN1PPP1P/L1S2RS1L/2K2G1N1 w BPp 74",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-13463",
+          "white": "10239"
+        },
+        "selectedSumQ16": "-3224",
+        "bucket": 3
+      },
+      "evalCp": -1257
+    },
+    {
+      "id": "1:80",
+      "sfen": "l1sg1p3/4k2+B1/rp2N1np1/2pB1g2l/3pp2Pp/2P2g3/+pPN1PPP1P/L1S2RS1L/2K2G1N1 b Ps2p 81",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-14968",
+          "white": "2551"
+        },
+        "selectedSumQ16": "-12417",
+        "bucket": 3
+      },
+      "evalCp": 572
+    },
+    {
+      "id": "1:81",
+      "sfen": "l1sg1p3/4k2+B1/rp2N1np1/2pB1g2l/3pp2Pp/2P2g3/+pPN1PPP1P/L1SP1RS1L/2K2G1N1 w s2p 82",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-13401",
+          "white": "6677"
+        },
+        "selectedSumQ16": "-6724",
+        "bucket": 3
+      },
+      "evalCp": -160
+    },
+    {
+      "id": "1:88",
+      "sfen": "l1sg1p2+B/4k4/r3N1np1/1pp2g2l/3pp2Pp/+p1PB1gs2/1PN1PPP1P/L1SP1RS1L/2K2G1N1 b 2p 89",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-15600",
+          "white": "2282"
+        },
+        "selectedSumQ16": "-13318",
+        "bucket": 3
+      },
+      "evalCp": 501
+    },
+    {
+      "id": "1:89",
+      "sfen": "l1sg1p2+B/4k4/r3N1np1/1pp2g2l/3pp2Pp/+p1PB1Ps2/1PN1P1P1P/L1SP1RS1L/2K2G1N1 w G2p 90",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-18072",
+          "white": "1087"
+        },
+        "selectedSumQ16": "-16985",
+        "bucket": 3
+      },
+      "evalCp": -805
+    },
+    {
+      "id": "1:96",
+      "sfen": "l1sg1+N2+B/p2k5/r5np1/1pp2gp1l/3pps1Pp/+p1PBGP3/1PN1P1P1P/L1SP1RS1L/P1K2G1N1 b - 97",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-13750",
+          "white": "-6726"
+        },
+        "selectedSumQ16": "-20476",
+        "bucket": 3
+      },
+      "evalCp": 997
+    },
+    {
+      "id": "1:97",
+      "sfen": "l1sg1+N2+B/p2k5/r5np1/1pp2gp1l/3pps1Pp/+p1PBGPP2/1PN1P3P/L1SP1RS1L/P1K2G1N1 w - 98",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-15111",
+          "white": "-8820"
+        },
+        "selectedSumQ16": "-23931",
+        "bucket": 3
+      },
+      "evalCp": -1157
+    },
+    {
+      "id": "1:104",
+      "sfen": "l1sg+N3+B/p1k6/1r4np1/1pp1g1p1l/3ppP1Pp/1+pPBG1P2/1PN1P1S1P/L1SP1RS1L/P1K2G1N1 b - 105",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "4790",
+          "white": "-21746"
+        },
+        "selectedSumQ16": "-16956",
+        "bucket": 3
+      },
+      "evalCp": 1071
+    },
+    {
+      "id": "1:105",
+      "sfen": "l1sg+N4/p1k6/1r4+Bp1/1pp1g1p1l/3ppP1Pp/1+pPBG1P2/1PN1P1S1P/L1SP1RS1L/P1K2G1N1 w N 106",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "9982",
+          "white": "-15439"
+        },
+        "selectedSumQ16": "-5457",
+        "bucket": 3
+      },
+      "evalCp": -1583
+    },
+    {
+      "id": "1:112",
+      "sfen": "lrsg+N4/p1k6/1p2g1+Bp1/1Bp3p1l/3ppP1Pp/2+p1G1P2/1PN1P1S1P/L1SP1RS1L/PK1N1G1N1 b P 113",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "17867",
+          "white": "-16810"
+        },
+        "selectedSumQ16": "1057",
+        "bucket": 4
+      },
+      "evalCp": 1318
+    },
+    {
+      "id": "1:113",
+      "sfen": "lrsg+N4/p1k6/+Lp2g1+Bp1/1Bp3p1l/3ppP1Pp/2+p1G1P2/1PN1P1S1P/2SP1RS1L/PK1N1G1N1 w P 114",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "18227",
+          "white": "-9594"
+        },
+        "selectedSumQ16": "8633",
+        "bucket": 4
+      },
+      "evalCp": -1237
+    },
+    {
+      "id": "1:120",
+      "sfen": "lr1g+N4/p1ksg4/+Lp4+Bp1/1Bp2Pp1l/4p2Pp/3pG1P2/1PN+pP1SSP/2SPR3L/PK1N1G1N1 b P 121",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "17170",
+          "white": "-2181"
+        },
+        "selectedSumQ16": "14989",
+        "bucket": 4
+      },
+      "evalCp": 1506
+    },
+    {
+      "id": "1:121",
+      "sfen": "lr1g+N4/p1ksg4/+Lp4+Bp1/1Bp2PpPl/4p3p/3pG1P2/1PN+pP1SSP/2SPR3L/PK1N1G1N1 w P 122",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "18046",
+          "white": "-600"
+        },
+        "selectedSumQ16": "17446",
+        "bucket": 4
+      },
+      "evalCp": -1189
+    },
+    {
+      "id": "1:128",
+      "sfen": "lr2g4/p1ksg4/+Lp4+Bp1/1Bp2PpPl/2P1p4/3pG1P1p/1PN1+p1SSP/1KSP1G2L/P2N3N1 b rnp 129",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "20217",
+          "white": "9663"
+        },
+        "selectedSumQ16": "29880",
+        "bucket": 4
+      },
+      "evalCp": -163
+    },
+    {
+      "id": "1:129",
+      "sfen": "lr2g4/p1ksg4/+Lp4+Bp1/1Bp2PpPl/2P1p4/3p2P1p/1PN1G1SSP/1KSP1G2L/P2N3N1 w Prnp 130",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "12216",
+          "white": "1646"
+        },
+        "selectedSumQ16": "13862",
+        "bucket": 4
+      },
+      "evalCp": 67
+    },
+    {
+      "id": "1:136",
+      "sfen": "lr2+B4/+L1ksg4/1p3+P1pn/1Bp3pPl/2P1p4/3p2P1p/1PN1G1SSP/1KSP1r2L/P2N2gN1 b G2Pp 137",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "15560",
+          "white": "30988"
+        },
+        "selectedSumQ16": "46548",
+        "bucket": 5
+      },
+      "evalCp": 1637
+    },
+    {
+      "id": "1:137",
+      "sfen": "lr2+B4/+L1ksg4/1p3+P1pn/1Bp3pPl/2P1p4/3p2P1p/1PN1G1SSP/GKSP1r2L/P2N2gN1 w 2Pp 138",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "20416",
+          "white": "28498"
+        },
+        "selectedSumQ16": "48914",
+        "bucket": 5
+      },
+      "evalCp": -1213
+    },
+    {
+      "id": "1:144",
+      "sfen": "lr2+B4/+L1ksg4/1p3+P1pn/pBp3pPl/2PGp4/3p2P1p/GPN3SSP/1KS3g1L/P2N+r2N1 b 2Pp 145",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "29466",
+          "white": "42441"
+        },
+        "selectedSumQ16": "71907",
+        "bucket": 5
+      },
+      "evalCp": 1197
+    },
+    {
+      "id": "1:145",
+      "sfen": "lr2+B4/+L1ksg4/1p2+P2pn/pBp3pPl/2PGp4/3p2P1p/GPN3SSP/1KS3g1L/P2N+r2N1 w 2Pp 146",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "28785",
+          "white": "44745"
+        },
+        "selectedSumQ16": "73530",
+        "bucket": 6
+      },
+      "evalCp": -1226
+    },
+    {
+      "id": "1:152",
+      "sfen": "lrk1+B4/+L2sgn3/1p2+P2+Pn/pBp3p1l/2PGp4/3p2P2/GPN3SS+p/1KS3g1L/P2+r3N1 b 3P2p 153",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "30111",
+          "white": "50223"
+        },
+        "selectedSumQ16": "80334",
+        "bucket": 6
+      },
+      "evalCp": 1173
+    },
+    {
+      "id": "1:153",
+      "sfen": "lrk6/+L2s+Bn3/1p2+P2+Pn/pBp3p1l/2PGp4/3p2P2/GPN3SS+p/1KS3g1L/P2+r3N1 w G3P2p 154",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "36268",
+          "white": "65464"
+        },
+        "selectedSumQ16": "101732",
+        "bucket": 6
+      },
+      "evalCp": -1286
+    },
+    {
+      "id": "1:160",
+      "sfen": "+Lrk6/3s+Bn2p/1p2+P2+Pn/pBp3p2/2PGp3l/3pg1P2/GPN3SS+p/K1S3g1L/P3+r2N1 b L3Pp 161",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "65655",
+          "white": "61346"
+        },
+        "selectedSumQ16": "127001",
+        "bucket": 6
+      },
+      "evalCp": 1807
+    },
+    {
+      "id": "1:161",
+      "sfen": "+Lrk6/3+P+Bn2p/1p5+Pn/pBp3p2/2PGp3l/3pg1P2/GPN3SS+p/K1S3g1L/P3+r2N1 w SL3Pp 162",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "64952",
+          "white": "74911"
+        },
+        "selectedSumQ16": "139863",
+        "bucket": 7
+      },
+      "evalCp": -1764
+    },
+    {
+      "id": "1:168",
+      "sfen": "+Lr3p3/3+P+Bn2p/1pk4+Pn/pbp3p2/2PGp3l/3pg1PS1/GPN3SS+p/K1S3gLL/P3+r2N1 b 3P 169",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "77177",
+          "white": "57595"
+        },
+        "selectedSumQ16": "134772",
+        "bucket": 7
+      },
+      "evalCp": 1000
+    },
+    {
+      "id": "1:169",
+      "sfen": "+Lr3p3/3+P1n2p/1pk+B3+Pn/pbp3p2/2PGp3l/3pg1PS1/GPN3SS+p/K1S3gLL/P3+r2N1 w 3P 170",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "73248",
+          "white": "61369"
+        },
+        "selectedSumQ16": "134617",
+        "bucket": 7
+      },
+      "evalCp": -1337
+    },
+    {
+      "id": "1:176",
+      "sfen": "+Lr3p3/1k1b1n2p/1p1+B3+P1/p1p3p2/2PGp2nl/1G1pgPPSS/1PN3S1+p/K1S+r2gLL/P6N1 b 2Pp 177",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "65340",
+          "white": "49332"
+        },
+        "selectedSumQ16": "114672",
+        "bucket": 6
+      },
+      "evalCp": 519
+    },
+    {
+      "id": "1:177",
+      "sfen": "+Lr3p3/1k1b1n2p/1p1+B3+P1/p1p3p2/2PGpP1nl/1G1pg1PSS/1PN3S1+p/K1S+r2gLL/P6N1 w 2Pp 178",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "65836",
+          "white": "55001"
+        },
+        "selectedSumQ16": "120837",
+        "bucket": 6
+      },
+      "evalCp": -391
+    },
+    {
+      "id": "1:184",
+      "sfen": "+Lrb2p3/1k3n2p/1p1+B3+P1/p1p3pP1/2PGpP1nl/GP1pg1PSS/2N3S1+p/K1S+r3LL/P4g1N1 b Pp 185",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "82033",
+          "white": "59657"
+        },
+        "selectedSumQ16": "141690",
+        "bucket": 7
+      },
+      "evalCp": 154
+    },
+    {
+      "id": "1:185",
+      "sfen": "+Lrb2p3/1k3n1+Pp/1p1+B5/p1p3pP1/2PGpP1nl/GP1pg1PSS/2N3S1+p/K1S+r3LL/P4g1N1 w Pp 186",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "85980",
+          "white": "61614"
+        },
+        "selectedSumQ16": "147594",
+        "bucket": 7
+      },
+      "evalCp": -193
+    },
+    {
+      "id": "1:192",
+      "sfen": "+Lrb2p3/7+Pp/kp1+BP4/p1p1n1pPs/1GP1GP2l/1P1pg1PSS/2N3n1+p/K1S+r3LL/P4g1N1 b Pp 193",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "92738",
+          "white": "85275"
+        },
+        "selectedSumQ16": "178013",
+        "bucket": 7
+      },
+      "evalCp": 455
+    },
+    {
+      "id": "1:193",
+      "sfen": "+Lrb2p3/7+Pp/kp1+BP4/p1G1n1pPs/2P1GP2l/1P1pg1PSS/2N3n1+p/K1S+r3LL/P4g1N1 w 2Pp 194",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "92311",
+          "white": "85296"
+        },
+        "selectedSumQ16": "177607",
+        "bucket": 7
+      },
+      "evalCp": -265
+    },
+    {
+      "id": "1:200",
+      "sfen": "1+LR2p1p1/k6+Pp/3+BP4/ppG1n1pPs/2P1GP2l/1P1pg1PSS/2N3n1+p/K1S+r3LL/P5gN1 b B2P 201",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "84780",
+          "white": "144304"
+        },
+        "selectedSumQ16": "229084",
+        "bucket": 7
+      },
+      "evalCp": 1318
+    },
+    {
+      "id": "1:201",
+      "sfen": "1+LR2p1p1/k6+Pp/3+BP4/ppG1n1pPs/2P1GP2l/1P1pg1PSS/2N3n1+p/K1S+r3LL/P1B3gN1 w 2P 202",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "85192",
+          "white": "136413"
+        },
+        "selectedSumQ16": "221605",
+        "bucket": 7
+      },
+      "evalCp": -1548
+    },
+    {
+      "id": "1:208",
+      "sfen": "1+LR2p1p1/k6+Pp/3+BP2s1/p1G1n1pP1/1pP1GP2l/1P1pg1PSS/BKNS2n1+p/7LL/P4+rgN1 b 2P 209",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "64747",
+          "white": "139864"
+        },
+        "selectedSumQ16": "204611",
+        "bucket": 7
+      },
+      "evalCp": 1254
+    },
+    {
+      "id": "1:209",
+      "sfen": "1+LR2p1p1/k6+Pp/3+BP2s1/p1G1n1pP1/1pP1GP1Sl/1P1pg1P1S/BKNS2n1+p/7LL/P4+rgN1 w 2P 210",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "67424",
+          "white": "133378"
+        },
+        "selectedSumQ16": "200802",
+        "bucket": 7
+      },
+      "evalCp": -1517
+    },
+    {
+      "id": "1:216",
+      "sfen": "1+L3+R+Pp1/k7p/3+BP2s1/psG1n1pP1/1pP1GP1SP/1P1pg1P1l/BKNS2n1+p/7LL/P5g+r1 b 2Pn 217",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "74641",
+          "white": "113712"
+        },
+        "selectedSumQ16": "188353",
+        "bucket": 7
+      },
+      "evalCp": 1324
+    },
+    {
+      "id": "1:217",
+      "sfen": "1+L3+R+Pp1/k7p/3+BP2s1/psG1n1pP1/1pP1GP1SP/1P1pg1P1l/BKNS2n1+p/3P3LL/P5g+r1 w Pn 218",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "76403",
+          "white": "118022"
+        },
+        "selectedSumQ16": "194425",
+        "bucket": 7
+      },
+      "evalCp": -1318
+    },
+    {
+      "id": "1:224",
+      "sfen": "1+L1+R2+Pp1/k7p/4Pn1s1/1sG+Bn1pP1/ppP1GP1SP/1P1pg1P1l/B1NS2n1+p/2KP3L1/P5g1+r b Pl 225",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "56051",
+          "white": "124803"
+        },
+        "selectedSumQ16": "180854",
+        "bucket": 7
+      },
+      "evalCp": 1225
+    },
+    {
+      "id": "1:225",
+      "sfen": "1+L1+R2+Pp1/k7p/4Pn1s1/1sG+Bn1pP1/ppP1GP1SP/1P1pg1P1l/2NS2n1+p/1BKP3L1/P5g1+r w Pl 226",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "50497",
+          "white": "122436"
+        },
+        "selectedSumQ16": "172933",
+        "bucket": 7
+      },
+      "evalCp": -1454
+    },
+    {
+      "id": "1:232",
+      "sfen": "1+L3+R+Pp1/k7p/1sl1Pn1+P1/1sG+Bn1p2/ppP1GP1SP/1P2g1P1l/1KN1+p1n1+p/1B1P3L1/P5g1+r b SP 233",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "88277",
+          "white": "113668"
+        },
+        "selectedSumQ16": "201945",
+        "bucket": 7
+      },
+      "evalCp": 1601
+    },
+    {
+      "id": "1:233",
+      "sfen": "1+L3+R+Pp1/k7p/1sl1Pn1+P1/1sG+Bn1p2/ppP1GP1SP/1P2g1P1l/1KN1+p1n1+p/1B1P3L1/P4Sg1+r w P 234",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "93588",
+          "white": "112128"
+        },
+        "selectedSumQ16": "205716",
+        "bucket": 7
+      },
+      "evalCp": -1087
+    },
+    {
+      "id": "1:240",
+      "sfen": "1+L4+Pp1/k7p/1sG1P2+P1/1s1+Bn+Rp1L/p1P1nP1SP/1p2g1P1l/1KN3n1+p/1B1P+p2L+r/P4Sg2 b Pgp 241",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "94262",
+          "white": "113864"
+        },
+        "selectedSumQ16": "208126",
+        "bucket": 7
+      },
+      "evalCp": 1080
+    },
+    {
+      "id": "1:241",
+      "sfen": "1+L4+Pp1/k7p/1sG1P2+P1/1s1+Bn+Rp1L/p1P1nP1SP/1p2g1P1l/K1N3n1+p/1B1P+p2L+r/P4Sg2 w Pgp 242",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "71594",
+          "white": "113864"
+        },
+        "selectedSumQ16": "185458",
+        "bucket": 7
+      },
+      "evalCp": -428
+    },
+    {
+      "id": "1:248",
+      "sfen": "1+L1p2+Pp1/k7p/1sG1P1+R+P1/1s1+Bn1p1L/pNP2P1SP/1p2ggP1l/K5n1+p/1B1P+p2L+r/P3+nSg2 b P 249",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "78175",
+          "white": "135205"
+        },
+        "selectedSumQ16": "213380",
+        "bucket": 7
+      },
+      "evalCp": 1242
+    },
+    {
+      "id": "1:249",
+      "sfen": "1+L1p2+Pp1/k7p/1sG1P2+P1/1s1+Bn+Rp1L/pNP2P1SP/1p2ggP1l/K5n1+p/1B1P+p2L+r/P3+nSg2 w P 250",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "77670",
+          "white": "139497"
+        },
+        "selectedSumQ16": "217167",
+        "bucket": 7
+      },
+      "evalCp": -1103
+    },
+    {
+      "id": "2:0",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-110710",
+          "white": "-110710"
+        },
+        "selectedSumQ16": "-221420",
+        "bucket": 0
+      },
+      "evalCp": 52
+    },
+    {
+      "id": "2:1",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/1P7/P1PPPPPPP/1B5R1/LNSGKGSNL w - 2",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-109255",
+          "white": "-109191"
+        },
+        "selectedSumQ16": "-218446",
+        "bucket": 0
+      },
+      "evalCp": 157
+    },
+    {
+      "id": "2:8",
+      "sfen": "lns3snl/r1gk1g1b1/ppppppppp/9/9/1P3P3/P1PPP1PPP/1B5R1/LNSGKGSNL b - 9",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-98990",
+          "white": "-57724"
+        },
+        "selectedSumQ16": "-156714",
+        "bucket": 0
+      },
+      "evalCp": 176
+    },
+    {
+      "id": "2:9",
+      "sfen": "lns3snl/r1gk1g1b1/ppppppppp/9/9/1P3P3/P1PPP1PPP/1B1S3R1/LN1GKGSNL w - 10",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-100681",
+          "white": "-57969"
+        },
+        "selectedSumQ16": "-158650",
+        "bucket": 0
+      },
+      "evalCp": -16
+    },
+    {
+      "id": "2:16",
+      "sfen": "lns3s1l/r1gk2gb1/ppp1ppppn/3p1B2p/1P7/2P2P3/P2PP1PPP/3S3R1/LN1GKGSNL b - 17",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-89443",
+          "white": "-47171"
+        },
+        "selectedSumQ16": "-136614",
+        "bucket": 0
+      },
+      "evalCp": 115
+    },
+    {
+      "id": "2:17",
+      "sfen": "lns3s1l/r1gk2gb1/ppp1ppppn/3p1B2p/1P7/2P2P1P1/P2PP1P1P/3S3R1/LN1GKGSNL w - 18",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-87450",
+          "white": "-48268"
+        },
+        "selectedSumQ16": "-135718",
+        "bucket": 0
+      },
+      "evalCp": 426
+    },
+    {
+      "id": "2:24",
+      "sfen": "lns1k1s2/rg4gbl/ppp1+Bpppn/3p5/1P6p/2P2P1P1/P2PP1P1P/3S2SRL/LN1GKG1N1 b P 25",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-65499",
+          "white": "-57620"
+        },
+        "selectedSumQ16": "-123119",
+        "bucket": 1
+      },
+      "evalCp": 1036
+    },
+    {
+      "id": "2:25",
+      "sfen": "lns1k1s2/rg4gbl/ppp2pppn/3p5/1P4+B1p/2P2P1P1/P2PP1P1P/3S2SRL/LN1GKG1N1 w P 26",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-66604",
+          "white": "-68064"
+        },
+        "selectedSumQ16": "-134668",
+        "bucket": 0
+      },
+      "evalCp": -986
+    },
+    {
+      "id": "2:32",
+      "sfen": "lns1k1s2/rg3g1bl/1pp2ppp1/p8/1P1p2+Bnp/2P2P1P1/P2PP1PRP/L1GS2S1L/1N2KG1N1 b P 33",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-55473",
+          "white": "-54389"
+        },
+        "selectedSumQ16": "-109862",
+        "bucket": 1
+      },
+      "evalCp": 1291
+    },
+    {
+      "id": "2:33",
+      "sfen": "lns1k1s2/rg3g1bl/1pp2ppp1/p8/1P1p1P+Bnp/2P4P1/P2PP1PRP/L1GS2S1L/1N2KG1N1 w P 34",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-50496",
+          "white": "-54179"
+        },
+        "selectedSumQ16": "-104675",
+        "bucket": 1
+      },
+      "evalCp": -1784
+    },
+    {
+      "id": "2:40",
+      "sfen": "lns2gs2/rg2k2bl/1ppN1ppp1/p8/1P3P+BPp/2P6/P1G+pP1PRP/L2S2S1L/1N2KG1N1 b Pp 41",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-36560",
+          "white": "-21857"
+        },
+        "selectedSumQ16": "-58417",
+        "bucket": 2
+      },
+      "evalCp": 973
+    },
+    {
+      "id": "2:41",
+      "sfen": "lns2gs2/rg2k2bl/1ppN1ppp1/p8/1P3P+BPp/2PP5/P1G+pP1PRP/L2S2S1L/1N2KG1N1 w p 42",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-40550",
+          "white": "-21457"
+        },
+        "selectedSumQ16": "-62007",
+        "bucket": 2
+      },
+      "evalCp": -622
+    },
+    {
+      "id": "2:48",
+      "sfen": "l1sp1g2b/rg2ks2l/nppN1ppp1/p8/1P3P+BPp/2PP2P1P/P2GP2R1/L2S2S1L/1N2KG1N1 b P 49",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-26411",
+          "white": "-6320"
+        },
+        "selectedSumQ16": "-32731",
+        "bucket": 3
+      },
+      "evalCp": 1315
+    },
+    {
+      "id": "2:49",
+      "sfen": "l1sp1g2b/rg2ks2l/nppN1ppp1/p5+B2/1P3P1Pp/2PP2P1P/P2GP2R1/L2S2S1L/1N2KG1N1 w P 50",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-23848",
+          "white": "-8727"
+        },
+        "selectedSumQ16": "-32575",
+        "bucket": 3
+      },
+      "evalCp": -663
+    },
+    {
+      "id": "2:56",
+      "sfen": "l2psg3/rgs1k2b1/nppN1ppp1/p4+B2l/1P3P1Pp/2PP2P1P/P2GP2R1/L2S2S1L/1N2KG1N1 b P 57",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-25162",
+          "white": "-551"
+        },
+        "selectedSumQ16": "-25713",
+        "bucket": 3
+      },
+      "evalCp": 1354
+    },
+    {
+      "id": "2:57",
+      "sfen": "l2psg3/rgs1k2b1/nppN1ppp1/p4+B2l/1P3P1Pp/2PP2P1P/P2GP2R1/L2S1GS1L/1N2K2N1 w P 58",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-24458",
+          "white": "3325"
+        },
+        "selectedSumQ16": "-21133",
+        "bucket": 3
+      },
+      "evalCp": -913
+    },
+    {
+      "id": "2:64",
+      "sfen": "l2p1g3/rgs2k1b1/n1pNsppp1/pp6l/1P3P1Pp/2PPP1P+BP/P2G3RN/L2S1GS1L/1N2K4 b P 65",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-17759",
+          "white": "-8602"
+        },
+        "selectedSumQ16": "-26361",
+        "bucket": 3
+      },
+      "evalCp": 1314
+    },
+    {
+      "id": "2:65",
+      "sfen": "l2p1g3/rgs2k1b1/n1pNsppp1/pp5Pl/1P3P2p/2PPP1P+BP/P2G3RN/L2S1GS1L/1N2K4 w P 66",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-15005",
+          "white": "-3597"
+        },
+        "selectedSumQ16": "-18602",
+        "bucket": 3
+      },
+      "evalCp": -1551
+    },
+    {
+      "id": "2:72",
+      "sfen": "ls1pg4/rg3k1b1/n1pN1ppp1/pp3s1Pl/1P3P3/P1PPP1P1p/3G2R1N/L2S1GS1L/1N2K4 b Pbp 73",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-5619",
+          "white": "7578"
+        },
+        "selectedSumQ16": "1959",
+        "bucket": 4
+      },
+      "evalCp": 426
+    },
+    {
+      "id": "2:73",
+      "sfen": "ls1pg4/rg3k1b1/n1pN1ppp1/pp3s1Pl/1P3P3/P1PPP1P1p/3G2R1N/L2SG1S1L/1N2K4 w Pbp 74",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-5073",
+          "white": "8023"
+        },
+        "selectedSumQ16": "2950",
+        "bucket": 4
+      },
+      "evalCp": -240
+    },
+    {
+      "id": "2:80",
+      "sfen": "ls1pg4/rg3k1b1/n1pN1ppP1/pp2ps2l/nP3P3/P1PPP1P1P/2b1G1R1+p/L2SG1S1L/1N2K4 b P 81",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "10181",
+          "white": "14215"
+        },
+        "selectedSumQ16": "24396",
+        "bucket": 4
+      },
+      "evalCp": 615
+    },
+    {
+      "id": "2:81",
+      "sfen": "ls1pg4/rg3k1b1/n1pN1ppP1/pp2ps2l/nP3P2P/P1PPP1P2/2b1G1R1+p/L2SG1S1L/1N2K4 w P 82",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "10131",
+          "white": "16338"
+        },
+        "selectedSumQ16": "26469",
+        "bucket": 4
+      },
+      "evalCp": -740
+    },
+    {
+      "id": "2:88",
+      "sfen": "ls1p+N4/r6P1/ngp1kpp2/pp2p3l/1P3Ps1P/P1PPP1P2/1+nb1G1R1+p/L2S1GS1L/1N2K4 b BGP 89",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "27082",
+          "white": "43693"
+        },
+        "selectedSumQ16": "70775",
+        "bucket": 5
+      },
+      "evalCp": 1359
+    },
+    {
+      "id": "2:89",
+      "sfen": "ls1p+N4/r6P1/ngp1kpp2/pp2p3l/BP3Ps1P/P1PPP1P2/1+nb1G1R1+p/L2S1GS1L/1N2K4 w GP 90",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "29523",
+          "white": "41468"
+        },
+        "selectedSumQ16": "70991",
+        "bucket": 5
+      },
+      "evalCp": -1162
+    },
+    {
+      "id": "2:96",
+      "sfen": "l2p+N4/2s4r1/ngp1kpp2/pp2p3l/BP1P1Ps1P/PGP1P1P2/L+n2G1R1+p/1b1S1GS1L/1N2K4 b Pp 97",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "16137",
+          "white": "36364"
+        },
+        "selectedSumQ16": "52501",
+        "bucket": 5
+      },
+      "evalCp": 2
+    },
+    {
+      "id": "2:97",
+      "sfen": "l2p+N4/2s4r1/ngp1kpp2/pp2p3l/BP1P1Ps1P/PGP1P1P2/L+n3GR1+p/1b1S1GS1L/1N2K4 w Pp 98",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "17089",
+          "white": "32215"
+        },
+        "selectedSumQ16": "49304",
+        "bucket": 5
+      },
+      "evalCp": 116
+    },
+    {
+      "id": "2:104",
+      "sfen": "l2p+N3p/2s6/1gp1kpp2/pp2p2rl/Bn1PPPs1P/P+nP3P2/L4GR1+p/1b1S1GS1L/1N2K4 b Pgp 105",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "28528",
+          "white": "35776"
+        },
+        "selectedSumQ16": "64304",
+        "bucket": 5
+      },
+      "evalCp": -759
+    },
+    {
+      "id": "2:105",
+      "sfen": "l2p+N3p/2s6/1gp1kpp2/pp2p2rl/Bn1PPPs1P/P+nP3P2/L4GR1+p/1b1S2S1L/1N2KG3 w Pgp 106",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "27824",
+          "white": "35544"
+        },
+        "selectedSumQ16": "63368",
+        "bucket": 5
+      },
+      "evalCp": 1056
+    },
+    {
+      "id": "2:112",
+      "sfen": "l2p+N3p/1gs6/1pp1kpp2/pB2p2rl/1n1PPPs1P/P1P3P2/L1+n1gGR1+p/1b1S2S1L/1N2K1GP1 b P 113",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "38539",
+          "white": "30899"
+        },
+        "selectedSumQ16": "69438",
+        "bucket": 5
+      },
+      "evalCp": -630
+    },
+    {
+      "id": "2:113",
+      "sfen": "l2+N4p/1gs6/1pp1kpp2/pB2p2rl/1n1PPPs1P/P1P3P2/L1+n1gGR1+p/1b1S2S1L/1N2K1GP1 w 2P 114",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "31275",
+          "white": "22272"
+        },
+        "selectedSumQ16": "53547",
+        "bucket": 5
+      },
+      "evalCp": 1249
+    },
+    {
+      "id": "2:120",
+      "sfen": "l2+N4p/1gs6/1pp1kpp2/pB2ps1rl/Pn1PPP2P/2P3P2/L+n2g1R1+p/1b3GS1L/1NS1K1GP1 b 2P 121",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "25425",
+          "white": "28555"
+        },
+        "selectedSumQ16": "53980",
+        "bucket": 5
+      },
+      "evalCp": -560
+    },
+    {
+      "id": "2:121",
+      "sfen": "l2+N4p/1gs6/1pp1kpp2/pB2ps1rl/Pn1PPPP1P/2P6/L+n2g1R1+p/1b3GS1L/1NS1K1GP1 w 2P 122",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "27250",
+          "white": "28223"
+        },
+        "selectedSumQ16": "55473",
+        "bucket": 5
+      },
+      "evalCp": 555
+    },
+    {
+      "id": "2:128",
+      "sfen": "3+N4p/1gs1k4/lpp2pp2/p4s1rl/PnBPpPP1P/2P6/L1+n1gGR1L/1b4S2/1NS1K1GP1 b 3Pp 129",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "40592",
+          "white": "4426"
+        },
+        "selectedSumQ16": "45018",
+        "bucket": 5
+      },
+      "evalCp": -284
+    },
+    {
+      "id": "2:129",
+      "sfen": "3+N4p/1gs1k4/lpp2pp2/pP3s1rl/PnBPpPP1P/2P6/L1+n1gGR1L/1b4S2/1NS1K1GP1 w 2Pp 130",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "44261",
+          "white": "6130"
+        },
+        "selectedSumQ16": "50391",
+        "bucket": 5
+      },
+      "evalCp": 375
+    },
+    {
+      "id": "2:136",
+      "sfen": "3+N4p/1gs1k4/lpp2pp2/pP2s3l/PnBPpPP1P/2P1P4/L1N1gGR1L/1b4S2/2SNK1G+r1 b P2p 137",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "49689",
+          "white": "15581"
+        },
+        "selectedSumQ16": "65270",
+        "bucket": 5
+      },
+      "evalCp": 325
+    },
+    {
+      "id": "2:137",
+      "sfen": "3+N4p/1gs1k4/lpp2pp2/pP2s3l/PnBPpPP1P/2P1P4/L1N1gGR1L/1b7/2SNKSG+r1 w P2p 138",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "54320",
+          "white": "21693"
+        },
+        "selectedSumQ16": "76013",
+        "bucket": 6
+      },
+      "evalCp": -304
+    },
+    {
+      "id": "2:144",
+      "sfen": "1g1+N4p/2s1k4/l1p2pp2/pp2s3l/PnBPpPPpP/2P1P4/+b1N1g1R1L/5SG2/2SNK1G+r1 b Pl2p 145",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "40528",
+          "white": "10314"
+        },
+        "selectedSumQ16": "50842",
+        "bucket": 5
+      },
+      "evalCp": -197
+    },
+    {
+      "id": "2:145",
+      "sfen": "1g1+N4p/2s1k4/l1p2pp2/pp2s3l/PnBPpPPpP/2P1P1R2/+b1N1g3L/5SG2/2SNK1G+r1 w Pl2p 146",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "40758",
+          "white": "9489"
+        },
+        "selectedSumQ16": "50247",
+        "bucket": 5
+      },
+      "evalCp": 328
+    },
+    {
+      "id": "2:152",
+      "sfen": "3+N4p/g1s4l1/l1pk1pp2/pB1ps3l/Pn1PpPPpP/2P1P3R/+bPN1g3L/5SG2/2SNK1G+r1 b Pp 153",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "37454",
+          "white": "44055"
+        },
+        "selectedSumQ16": "81509",
+        "bucket": 6
+      },
+      "evalCp": -82
+    },
+    {
+      "id": "2:153",
+      "sfen": "3+N4p/g1s4l1/l1pk1pp2/pB1ps3l/PN1PpPPpP/2P1P3R/+bP2g3L/5SG2/2SNK1G+r1 w NPp 154",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "36544",
+          "white": "48682"
+        },
+        "selectedSumQ16": "85226",
+        "bucket": 6
+      },
+      "evalCp": 106
+    },
+    {
+      "id": "2:160",
+      "sfen": "3s4p/1g5l1/l1pk2p2/pB1psp2l/PNPP1PPpP/4p3R/+bP2g3L/2S2SG2/3NKNG+r1 b Pn2p 161",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "53460",
+          "white": "60978"
+        },
+        "selectedSumQ16": "114438",
+        "bucket": 6
+      },
+      "evalCp": -473
+    },
+    {
+      "id": "2:161",
+      "sfen": "3s4p/1g5l1/l1pk2p2/pB1psp2l/PNPP1PPpP/4p3R/+bP2g3L/2S2S1G1/3NKNG+r1 w Pn2p 162",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "58858",
+          "white": "64886"
+        },
+        "selectedSumQ16": "123744",
+        "bucket": 6
+      },
+      "evalCp": 482
+    },
+    {
+      "id": "2:168",
+      "sfen": "3s4p/2g3nl1/l1pk2p2/pB1psp2l/PN+bP1PPpP/4p3R/1P6L/2SK1SG2/3NGNG+r1 b P3p 169",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "31628",
+          "white": "64602"
+        },
+        "selectedSumQ16": "96230",
+        "bucket": 6
+      },
+      "evalCp": 632
+    },
+    {
+      "id": "2:169",
+      "sfen": "3s4p/2g3nl1/l1pk2p2/pB1psp2l/PN+bP1PPpP/4p3R/1P5PL/2SK1SG2/3NGNG+r1 w 3p 170",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "37376",
+          "white": "65996"
+        },
+        "selectedSumQ16": "103372",
+        "bucket": 6
+      },
+      "evalCp": -273
+    },
+    {
+      "id": "2:176",
+      "sfen": "3sn3p/2g3nl1/l1pk2p2/PB1psp2l/1N+bP1PPpP/6+r1R/1PN1p3L/2SK1SG2/4G1G2 b P4p 177",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "32616",
+          "white": "61726"
+        },
+        "selectedSumQ16": "94342",
+        "bucket": 6
+      },
+      "evalCp": 324
+    },
+    {
+      "id": "2:177",
+      "sfen": "3sn3p/2g3nl1/l1pk2p2/PB1psp2l/1N+bP1PPpP/6+r1R/1PN1p2PL/2SK1SG2/4G1G2 w 4p 178",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "38364",
+          "white": "63120"
+        },
+        "selectedSumQ16": "101484",
+        "bucket": 6
+      },
+      "evalCp": 20
+    },
+    {
+      "id": "2:184",
+      "sfen": "3sn3p/6n2/l1gk2pl1/P2psp2l/1N+bP1P+rpP/8R/1PNSp2PL/5SG2/2K1G1G2 b Pb5p 185",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "28966",
+          "white": "50635"
+        },
+        "selectedSumQ16": "79601",
+        "bucket": 6
+      },
+      "evalCp": -645
+    },
+    {
+      "id": "2:185",
+      "sfen": "3sn3p/6n2/l1gk2pl1/P2psp2l/1N+bP1P+rpP/8R/1PNSp2PL/5SG2/2K1G2G1 w Pb5p 186",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "32357",
+          "white": "50842"
+        },
+        "selectedSumQ16": "83199",
+        "bucket": 6
+      },
+      "evalCp": 820
+    },
+    {
+      "id": "2:192",
+      "sfen": "3s4p/1b4n2/l1Nk1n1l1/P2pspp1l/2+bP1P+r1P/7pR/1PNSp1GPL/5SG2/2K1G2G1 b P5p 193",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "35566",
+          "white": "45900"
+        },
+        "selectedSumQ16": "81466",
+        "bucket": 6
+      },
+      "evalCp": -988
+    },
+    {
+      "id": "2:193",
+      "sfen": "3s4p/1b4n2/l1Nk1n1l1/P2pspp1l/2+bP1P+r1P/2S4pR/1PN1p1GPL/5SG2/2K1G2G1 w P5p 194",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "34973",
+          "white": "47799"
+        },
+        "selectedSumQ16": "82772",
+        "bucket": 6
+      },
+      "evalCp": 490
+    },
+    {
+      "id": "2:200",
+      "sfen": "1+N1s4p/1b1pk1n2/l4n1l1/P2Pspp1l/2+b2P+r1P/1pS5R/1PN1p1G+pL/5SG2/2K1G3G b 2P4p 201",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "32647",
+          "white": "47062"
+        },
+        "selectedSumQ16": "79709",
+        "bucket": 6
+      },
+      "evalCp": -855
+    },
+    {
+      "id": "2:201",
+      "sfen": "1+N1s4p/1b1pk1n2/l4n1l1/P2Pspp1l/2+b2P+r1P/1pS1P3R/1PN1p1G+pL/5SG2/2K1G3G w P4p 202",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "31424",
+          "white": "47700"
+        },
+        "selectedSumQ16": "79124",
+        "bucket": 6
+      },
+      "evalCp": 1081
+    },
+    {
+      "id": "2:208",
+      "sfen": "1+N1s4p/1b1pk1n2/l4n1l1/P2PsppPl/1+b2GP+r1P/1pS1P3R/1PN1p2+pL/5SG2/2K1G3G b 4p 209",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "40737",
+          "white": "59040"
+        },
+        "selectedSumQ16": "99777",
+        "bucket": 6
+      },
+      "evalCp": -843
+    },
+    {
+      "id": "2:209",
+      "sfen": "1+N1s4p/1b1pk1n2/l4n1l1/P2PsppPl/1+b2GP+r1P/1pS1P3R/1PN1p2+pL/5S1G1/2K1G3G w 4p 210",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "49083",
+          "white": "63236"
+        },
+        "selectedSumQ16": "112319",
+        "bucket": 6
+      },
+      "evalCp": 861
+    },
+    {
+      "id": "2:216",
+      "sfen": "1+N1s4p/1b4n2/l2skn1l1/P4ppPl/1+b1PGP2P/1pS1P2+rR/1PN1p2+pL/2K2S1G1/4G3G b 5p 217",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "37752",
+          "white": "65571"
+        },
+        "selectedSumQ16": "103323",
+        "bucket": 6
+      },
+      "evalCp": -771
+    },
+    {
+      "id": "2:217",
+      "sfen": "1+N1s4p/1b4n2/l2skn1l1/P4ppPl/1+b1PGP2P/1pS1P2+rR/1PN1p2GL/2K2S3/4G3G w P5p 218",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "42494",
+          "white": "57254"
+        },
+        "selectedSumQ16": "99748",
+        "bucket": 6
+      },
+      "evalCp": 465
+    },
+    {
+      "id": "2:224",
+      "sfen": "1+N1s4p/1b4n2/l2skn3/P2p1ppll/1+b1PGP2P/1pS1P3R/1PN1p2G+r/p4S3/1KP1G2G1 b l4p 225",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "39168",
+          "white": "53330"
+        },
+        "selectedSumQ16": "92498",
+        "bucket": 6
+      },
+      "evalCp": -911
+    },
+    {
+      "id": "2:225",
+      "sfen": "1+N1s4p/1b4n2/l2skn3/P2p1ppll/1+b1PGP2P/1pS1P3R/1PN1p2G+r/p1P2S3/1K2G2G1 w l4p 226",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "40424",
+          "white": "50820"
+        },
+        "selectedSumQ16": "91244",
+        "bucket": 6
+      },
+      "evalCp": 964
+    },
+    {
+      "id": "2:232",
+      "sfen": "1+N1s4p/1b1k2n2/+P1ps1n3/3p1ppll/1+b1PGP2P/2S1P2pR/1pN1p1G1+r/p1P2S3/1K2G1LG1 b l3p 233",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "48477",
+          "white": "65898"
+        },
+        "selectedSumQ16": "114375",
+        "bucket": 6
+      },
+      "evalCp": -648
+    },
+    {
+      "id": "2:233",
+      "sfen": "1+N1s4p/1b1k2n2/+P1ps1n3/3p1ppll/1+b1PGP2P/2S1P2pR/1pN1p1G1+r/p1PG1S3/1K4LG1 w l3p 234",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "43843",
+          "white": "63261"
+        },
+        "selectedSumQ16": "107104",
+        "bucket": 6
+      },
+      "evalCp": 666
+    },
+    {
+      "id": "2:240",
+      "sfen": "1+N1s4p/1b1k2n2/+P1ps1n3/5Ppll/3pG3P/2S1P1GpR/+bpN1p3+r/p1PG1S1G1/1K4L2 b Pl4p 241",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "53275",
+          "white": "75804"
+        },
+        "selectedSumQ16": "129079",
+        "bucket": 7
+      },
+      "evalCp": -1093
+    },
+    {
+      "id": "2:241",
+      "sfen": "1+N1s4p/1b1k2n2/+P1ps1n3/P4Ppll/3pG3P/2S1P1GpR/+bpN1p3+r/p1PG1S1G1/1K4L2 w l4p 242",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "54866",
+          "white": "77214"
+        },
+        "selectedSumQ16": "132080",
+        "bucket": 7
+      },
+      "evalCp": 662
+    },
+    {
+      "id": "2:248",
+      "sfen": "b1+Ns4p/3k2n2/+P1pp1n3/P2s1Ppll/l2SG3P/4P1GpR/+bpN1p3+r/p1PG1S2G/1K4L2 b P3p 249",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "74611",
+          "white": "78203"
+        },
+        "selectedSumQ16": "152814",
+        "bucket": 7
+      },
+      "evalCp": -1031
+    },
+    {
+      "id": "2:249",
+      "sfen": "b1+Ns4p/3k2n2/+P1pp1n3/PP1s1Ppll/l2SG3P/4P1GpR/+bpN1p3+r/p1PG1S2G/1K4L2 w 3p 250",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "76150",
+          "white": "80669"
+        },
+        "selectedSumQ16": "156819",
+        "bucket": 7
+      },
+      "evalCp": 705
+    },
+    {
+      "id": "3:0",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-110710",
+          "white": "-110710"
+        },
+        "selectedSumQ16": "-221420",
+        "bucket": 0
+      },
+      "evalCp": 52
+    },
+    {
+      "id": "3:1",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B4SR1/LNSGKG1NL w - 2",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-107321",
+          "white": "-109220"
+        },
+        "selectedSumQ16": "-216541",
+        "bucket": 0
+      },
+      "evalCp": -47
+    },
+    {
+      "id": "3:8",
+      "sfen": "ln2kgsnl/2srg2b1/pppppppp1/8p/9/7P1/PPPPPPP1P/1B1K1GSR1/LNSG3NL b - 9",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-66614",
+          "white": "-98678"
+        },
+        "selectedSumQ16": "-165292",
+        "bucket": 0
+      },
+      "evalCp": 273
+    },
+    {
+      "id": "3:9",
+      "sfen": "ln2kgsnl/2srg2b1/pppppppp1/8p/9/5P1P1/PPPPP1P1P/1B1K1GSR1/LNSG3NL w - 10",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-66818",
+          "white": "-95602"
+        },
+        "selectedSumQ16": "-162420",
+        "bucket": 0
+      },
+      "evalCp": -151
+    },
+    {
+      "id": "3:16",
+      "sfen": "ln1skg1n1/3rgs1b1/pppp1pppl/4p3p/9/1P3P1P1/P1PPP1P1P/1B2KGS1R/LNSG3NL b - 17",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-56312",
+          "white": "-81596"
+        },
+        "selectedSumQ16": "-137908",
+        "bucket": 0
+      },
+      "evalCp": 284
+    },
+    {
+      "id": "3:17",
+      "sfen": "ln1skg1n1/3rgs1b1/pppp1pppl/4p3p/9/1P2PP1P1/P1PP2P1P/1B2KGS1R/LNSG3NL w - 18",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-53824",
+          "white": "-77598"
+        },
+        "selectedSumQ16": "-131422",
+        "bucket": 0
+      },
+      "evalCp": -186
+    },
+    {
+      "id": "3:24",
+      "sfen": "1n1sk2nb/l2rgsg2/p1pp1pppl/1p2p3p/9/1P1PPP1P1/P1P3P1P/1B1GKG2R/LNS2S1NL b - 25",
+      "tags": [
+        "black-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-44395",
+          "white": "-54334"
+        },
+        "selectedSumQ16": "-98729",
+        "bucket": 1
+      },
+      "evalCp": -6
+    },
+    {
+      "id": "3:25",
+      "sfen": "1n1sk2nb/l2rgsg2/p1pp1pppl/1p2p3p/9/1P1PPP1P1/P1P3P1P/1BSGKG2R/LN3S1NL w - 26",
+      "tags": [
+        "white-to-move",
+        "opening",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-38406",
+          "white": "-48402"
+        },
+        "selectedSumQ16": "-86808",
+        "bucket": 1
+      },
+      "evalCp": -46
+    },
+    {
+      "id": "3:32",
+      "sfen": "1n1sk2nb/l2rgs1g1/p1pp1ppp1/1p2p3l/3P1P2p/1P2P2P1/P1P3P1P/LBSGKG2R/1N3S1NL b - 33",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-31536",
+          "white": "-44488"
+        },
+        "selectedSumQ16": "-76024",
+        "bucket": 1
+      },
+      "evalCp": 211
+    },
+    {
+      "id": "3:33",
+      "sfen": "1n1sk2nb/l2rgs1g1/p1pp1ppp1/1p2p3l/3P1P2p/1P2P2P1/P1P2KP1P/LBSG1G2R/1N3S1NL w - 34",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-8312",
+          "white": "-44488"
+        },
+        "selectedSumQ16": "-52800",
+        "bucket": 2
+      },
+      "evalCp": -113
+    },
+    {
+      "id": "3:40",
+      "sfen": "1n2k2nb/l1srgs1g1/p2p1p1p+B/1p2p1p1l/2pP1P2p/1P2P2P1/P1P2KP1P/L1S2G2R/1N1G1S1NL b - 41",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-15463",
+          "white": "-49792"
+        },
+        "selectedSumQ16": "-65255",
+        "bucket": 2
+      },
+      "evalCp": -21
+    },
+    {
+      "id": "3:41",
+      "sfen": "1n2k2nb/l1srgs1g1/p2p1p1p1/1p2p1p1l/2pP1P2p/1P2P2P1/P1P2KP1P/L1S2G2R/1N+BG1S1NL w - 42",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-13689",
+          "white": "-49202"
+        },
+        "selectedSumQ16": "-62891",
+        "bucket": 2
+      },
+      "evalCp": -122
+    },
+    {
+      "id": "3:48",
+      "sfen": "1n1rk2nb/l2sgs1g1/3p1p1p1/pp2p1p1l/2pP1P2p/1PP1P2P1/P4KP1P/L1S2GS1R/1N+B1G2NL b - 49",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-22785",
+          "white": "-54253"
+        },
+        "selectedSumQ16": "-77038",
+        "bucket": 1
+      },
+      "evalCp": -24
+    },
+    {
+      "id": "3:49",
+      "sfen": "1n1rk2nb/l2sgs1g1/3p1p1p1/pp2p1p1l/2pP1P2p/1PP1P2P1/PS3KP1P/L4GS1R/1N+B1G2NL w - 50",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-25278",
+          "white": "-53808"
+        },
+        "selectedSumQ16": "-79086",
+        "bucket": 1
+      },
+      "evalCp": 54
+    },
+    {
+      "id": "3:56",
+      "sfen": "3rk3b/l2s1sg2/2npgp1pn/pp2p1p1l/2pP1P2p/1PP1P+B1P1/PS3KP1P/L4GS1R/1N1G3NL b - 57",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-18845",
+          "white": "-43978"
+        },
+        "selectedSumQ16": "-62823",
+        "bucket": 2
+      },
+      "evalCp": -85
+    },
+    {
+      "id": "3:57",
+      "sfen": "3rk3b/l2s1sg2/2npgp1pn/pp2p1p1l/2pP+BP2p/1PP1P2P1/PS3KP1P/L4GS1R/1N1G3NL w - 58",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-15939",
+          "white": "-41517"
+        },
+        "selectedSumQ16": "-57456",
+        "bucket": 2
+      },
+      "evalCp": 195
+    },
+    {
+      "id": "3:64",
+      "sfen": "3rk3b/l2s2g2/2np2sp1/pp1gppp1l/2pP+BP1np/1PP1P2P1/PSN2KPSP/L7R/3G1G1NL b - 65",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-9396",
+          "white": "-38418"
+        },
+        "selectedSumQ16": "-47814",
+        "bucket": 2
+      },
+      "evalCp": 245
+    },
+    {
+      "id": "3:65",
+      "sfen": "3rk3b/l2s2g2/2np2sp1/pp1gppp1l/2pP+BP1np/1PP1P2P1/PSN3PSP/L3K3R/3G1G1NL w - 66",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-20606",
+          "white": "-38418"
+        },
+        "selectedSumQ16": "-59024",
+        "bucket": 2
+      },
+      "evalCp": -203
+    },
+    {
+      "id": "3:72",
+      "sfen": "3rk3b/l2s2gs1/2np3p1/pp1gpp2l/1PpP+BPp2/2P1P2Pp/PSN3nSP/L2K4R/3GG2NL b p 73",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-11026",
+          "white": "-17882"
+        },
+        "selectedSumQ16": "-28908",
+        "bucket": 3
+      },
+      "evalCp": -35
+    },
+    {
+      "id": "3:73",
+      "sfen": "3rk3b/l2s2gs1/2np3p1/pP1gpp2l/2pP+BPp2/2P1P2Pp/PSN3nSP/L2K4R/3GG2NL w Pp 74",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-12886",
+          "white": "-11236"
+        },
+        "selectedSumQ16": "-24122",
+        "bucket": 3
+      },
+      "evalCp": -2
+    },
+    {
+      "id": "3:80",
+      "sfen": "3rk1s1b/l2s2g2/1p1p3p1/pP1+Bpp2l/1n1P1Pp2/S1p1P2Pp/P1N3nSP/L2K2P1R/3GG2NL b Gp 81",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-5985",
+          "white": "3773"
+        },
+        "selectedSumQ16": "-2212",
+        "bucket": 3
+      },
+      "evalCp": 250
+    },
+    {
+      "id": "3:81",
+      "sfen": "3rk1s1b/l2s2g2/1P1p3p1/p2+Bpp2l/1n1P1Pp2/S1p1P2Pp/P1N3nSP/L2K2P1R/3GG2NL w GPp 82",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-5681",
+          "white": "6234"
+        },
+        "selectedSumQ16": "553",
+        "bucket": 4
+      },
+      "evalCp": -44
+    },
+    {
+      "id": "3:88",
+      "sfen": "1p1rk1s1b/l2s1g3/1P5p1/p2ppp2l/1S1P1Pp2/2p1P2Pp/P1Nb2nSP/L5P1R/2KGG2NL b GNP 89",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "14787",
+          "white": "6917"
+        },
+        "selectedSumQ16": "21704",
+        "bucket": 4
+      },
+      "evalCp": -748
+    },
+    {
+      "id": "3:89",
+      "sfen": "1p1rk1s1b/l2s1g3/1P5p1/p2ppp2l/1S1P1Pp2/2p1P2Pp/P1Nb2nSP/L1G3P1R/2KGG2NL w NP 90",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "8996",
+          "white": "-2261"
+        },
+        "selectedSumQ16": "6735",
+        "bucket": 4
+      },
+      "evalCp": 590
+    },
+    {
+      "id": "3:96",
+      "sfen": "1p1rk1s1b/3s1g3/lP5p1/p2ppp2l/1S1P1Pp2/N1p4Pp/P1N1P1nSP/L1GG1+bP1R/2KG3NL b p 97",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "3488",
+          "white": "589"
+        },
+        "selectedSumQ16": "4077",
+        "bucket": 4
+      },
+      "evalCp": -821
+    },
+    {
+      "id": "3:97",
+      "sfen": "1p1rk1s1b/3s1g3/lP5p1/p2ppP2l/1S1P2p2/N1p4Pp/P1N1P1nSP/L1GG1+bP1R/2KG3NL w Pp 98",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "4660",
+          "white": "5983"
+        },
+        "selectedSumQ16": "10643",
+        "bucket": 4
+      },
+      "evalCp": 887
+    },
+    {
+      "id": "3:104",
+      "sfen": "1p1rs3b/4kg1s1/lP5p1/p2ppP2l/1S1P2pP1/N1p2p2p/P1NGP1nSP/L1G1G+bP1R/2K4NL b P 105",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-33",
+          "white": "-404"
+        },
+        "selectedSumQ16": "-437",
+        "bucket": 3
+      },
+      "evalCp": -390
+    },
+    {
+      "id": "3:105",
+      "sfen": "1p1rs3b/4kg1s1/lP5p1/p2ppP2l/1S1P2pP1/N1p2p2p/P1NGP1nSP/L1G2GP1R/2K4NL w BP 106",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "-4733",
+          "white": "-5989"
+        },
+        "selectedSumQ16": "-10722",
+        "bucket": 3
+      },
+      "evalCp": -864
+    },
+    {
+      "id": "3:112",
+      "sfen": "1p1rs3b/2P1k2s1/lP3g1p1/p2p1P2l/1S1Pp1pP1/NBp5p/P1NGP+p1SP/LKG2GP1R/7+nL b n 113",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "11702",
+          "white": "35"
+        },
+        "selectedSumQ16": "11737",
+        "bucket": 4
+      },
+      "evalCp": 123
+    },
+    {
+      "id": "3:113",
+      "sfen": "1p1rs3b/2P1k2s1/lP3g1p1/p2p1P2l/1S1Pp1pP1/NBp5p/P1NGP+p1SP/LKG2GPR1/7+nL w n 114",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "12044",
+          "white": "-2665"
+        },
+        "selectedSumQ16": "9379",
+        "bucket": 4
+      },
+      "evalCp": -144
+    },
+    {
+      "id": "3:120",
+      "sfen": "1p2s3b/2P1k2s1/lP1rg2p1/pN1p1P2l/1S1Pp1pP1/1BG5p/PnN1P+p1SP/LKG3PR1/5G1+nL b P 121",
+      "tags": [
+        "black-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "24831",
+          "white": "5357"
+        },
+        "selectedSumQ16": "30188",
+        "bucket": 4
+      },
+      "evalCp": 564
+    },
+    {
+      "id": "3:121",
+      "sfen": "1p2s3b/2P1k2s1/lP1rg2p1/pN1p1P2l/1S1Pp1pP1/1BG5p/PnN1P+pPSP/LKG4R1/5G1+nL w P 122",
+      "tags": [
+        "white-to-move",
+        "middlegame",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "23723",
+          "white": "919"
+        },
+        "selectedSumQ16": "24642",
+        "bucket": 4
+      },
+      "evalCp": -538
+    },
+    {
+      "id": "3:128",
+      "sfen": "1p2s1s2/2P1k4/lP1rg1bp1/1NSB1P2l/p2Pp1pP1/2G5p/P1N1P+pPSP/LKGR5/+n4G1+nL b 2P 129",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "30103",
+          "white": "7765"
+        },
+        "selectedSumQ16": "37868",
+        "bucket": 5
+      },
+      "evalCp": 1129
+    },
+    {
+      "id": "3:129",
+      "sfen": "+Bp2s1s2/2P1k4/lP1rg1bp1/1NS2P2l/p2Pp1pP1/2G5p/P1N1P+pPSP/LKGR5/+n4G1+nL w 2P 130",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "22845",
+          "white": "5082"
+        },
+        "selectedSumQ16": "27927",
+        "bucket": 4
+      },
+      "evalCp": -1302
+    },
+    {
+      "id": "3:136",
+      "sfen": "+Bp2s4/2P1kbs2/lP+Srg2p1/1N3P2l/p2Pp1pP1/2G3S2/P1N1P+pP1p/LKGR2G2/+n5+n1L b 2Pp 137",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "5430",
+          "white": "13072"
+        },
+        "selectedSumQ16": "18502",
+        "bucket": 4
+      },
+      "evalCp": 1000
+    },
+    {
+      "id": "3:137",
+      "sfen": "+Bp2s4/2P1kbs2/lP+Srg2p1/1N3P2l/pG1Pp1pP1/6S2/P1N1P+pP1p/LKGR2G2/+n5+n1L w 2Pp 138",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "5347",
+          "white": "15105"
+        },
+        "selectedSumQ16": "20452",
+        "bucket": 4
+      },
+      "evalCp": -622
+    },
+    {
+      "id": "3:144",
+      "sfen": "1+B2s4/+N1Prkbs2/lP+S1g2p1/5P3/pG1Pp1pPl/6S2/P1N1P+pP1p/L1GR1pG2/+n1K2+n2L b 3P 145",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "5950",
+          "white": "20721"
+        },
+        "selectedSumQ16": "26671",
+        "bucket": 4
+      },
+      "evalCp": 1016
+    },
+    {
+      "id": "3:145",
+      "sfen": "1+B2s4/+N+SPrkbs2/lP2g2p1/5P3/pG1Pp1pPl/6S2/P1N1P+pP1p/L1GR1pG2/+n1K2+n2L w 3P 146",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "4997",
+          "white": "21595"
+        },
+        "selectedSumQ16": "26592",
+        "bucket": 4
+      },
+      "evalCp": -200
+    },
+    {
+      "id": "3:152",
+      "sfen": "1+B2s4/+N+SPrk1s2/lP2gP1p1/7P1/pG1Pp1p1l/6S2/P1N1P+pP1p/L1GR1p3/+ngK3+n1L b B3P 153",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "16888",
+          "white": "30437"
+        },
+        "selectedSumQ16": "47325",
+        "bucket": 5
+      },
+      "evalCp": 362
+    },
+    {
+      "id": "3:153",
+      "sfen": "1+B2s4/+N+SPrk1s2/lP2gP1p1/7P1/pG1Pp1p1l/6S2/P1N1P+pP1p/L1GR1p3/+ng1K2+n1L w B3P 154",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "36814",
+          "white": "30437"
+        },
+        "selectedSumQ16": "67251",
+        "bucket": 5
+      },
+      "evalCp": -453
+    },
+    {
+      "id": "3:160",
+      "sfen": "+S+B2s4/+N1Prk3s/1P3P1+P1/l2g5/pG1Pp1p1l/6S2/P1N1P+pP1p/L1GR1p3/+ng1KB1+n1L b 4P 161",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "49346",
+          "white": "31747"
+        },
+        "selectedSumQ16": "81093",
+        "bucket": 6
+      },
+      "evalCp": 692
+    },
+    {
+      "id": "3:161",
+      "sfen": "+S+B2s4/+N1Prk3s/1P3P1+P1/l2g5/pG1Pp1p1l/6S2/PGN1P+pP1p/L2R1p3/+ng1KB1+n1L w 4P 162",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "52443",
+          "white": "33540"
+        },
+        "selectedSumQ16": "85983",
+        "bucket": 6
+      },
+      "evalCp": -285
+    },
+    {
+      "id": "3:168",
+      "sfen": "+S1+B1s4/+NPPrk4/5P3/l2g2s2/pGpPp1p1l/9/PGN1PSP1p/L2R1p+n2/+ng1KB3L b 5P 169",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "46753",
+          "white": "27477"
+        },
+        "selectedSumQ16": "74230",
+        "bucket": 6
+      },
+      "evalCp": 1057
+    },
+    {
+      "id": "3:169",
+      "sfen": "+S1+B1s4/+NPPrk4/5P3/l2g2s2/pGpPp1p1l/9/PGN1P1P1p/L2R1pS2/+ng1KB3L w N5P 170",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "42665",
+          "white": "21778"
+        },
+        "selectedSumQ16": "64443",
+        "bucket": 5
+      },
+      "evalCp": -1445
+    },
+    {
+      "id": "3:176",
+      "sfen": "+S1+B1s4/+NPPrk4/l4P3/G1g3s2/p1pPp1p1l/7N1/PGN1P1P1p/+ng1R1p3/3KB2SL b L5P 177",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "59481",
+          "white": "26329"
+        },
+        "selectedSumQ16": "85810",
+        "bucket": 6
+      },
+      "evalCp": 1266
+    },
+    {
+      "id": "3:177",
+      "sfen": "+S1+B1s4/+NPPrk4/l4P3/G1g3s2/p1pPp1p1l/7N1/PGNLP1P1p/+ng1R1p3/3KB2SL w 5P 178",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "64723",
+          "white": "26393"
+        },
+        "selectedSumQ16": "91116",
+        "bucket": 6
+      },
+      "evalCp": -1052
+    },
+    {
+      "id": "3:184",
+      "sfen": "+S1+B1s4/+NPPrk4/3g1P3/l1g6/p1pPp1psl/7N1/PGNLP1PP1/+n3Rp2p/3KB2SL b G4P 185",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "57464",
+          "white": "27100"
+        },
+        "selectedSumQ16": "84564",
+        "bucket": 6
+      },
+      "evalCp": 1346
+    },
+    {
+      "id": "3:185",
+      "sfen": "+S1+B1s4/+NPPrk4/3g1P3/l1g6/p1pPp1psl/G6N1/P1NLP1PP1/+n3Rp2p/3KB2SL w G4P 186",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "62524",
+          "white": "30521"
+        },
+        "selectedSumQ16": "93045",
+        "bucket": 6
+      },
+      "evalCp": -1098
+    },
+    {
+      "id": "3:192",
+      "sfen": "+S1+B1s4/+NPPr2G2/3gkP3/l1g6/p1pPp1ps1/G6Nl/P1NLP1PP1/+n2KRp2p/4B2SL b 3Pp 193",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "49264",
+          "white": "49617"
+        },
+        "selectedSumQ16": "98881",
+        "bucket": 6
+      },
+      "evalCp": 743
+    },
+    {
+      "id": "3:193",
+      "sfen": "+S1+B1s4/+NPPr2G2/3gkP3/l1g6/p1pPp1ps1/G5PNl/P1NLP2P1/+n2KRp2p/4B2SL w 3Pp 194",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "47881",
+          "white": "49956"
+        },
+        "selectedSumQ16": "97837",
+        "bucket": 6
+      },
+      "evalCp": -589
+    },
+    {
+      "id": "3:200",
+      "sfen": "1+S+B6/+NPPr1PG2/3gk4/l1g5s/p1pPp1p2/G5PNl/P+pNLP2P1/+n3Rp2p/2K1B2SL b S3P 201",
+      "tags": [
+        "black-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "63716",
+          "white": "41817"
+        },
+        "selectedSumQ16": "105533",
+        "bucket": 6
+      },
+      "evalCp": 784
+    },
+    {
+      "id": "3:201",
+      "sfen": "1+S+B6/+NPPr1PG2/3gk4/l1g5s/p1pPp1pS1/G5PNl/P+pNLP2P1/+n3Rp2p/2K1B2SL w 3P 202",
+      "tags": [
+        "white-to-move",
+        "late-legal-play",
+        "promoted-piece",
+        "hand",
+        "king-position"
+      ],
+      "progress": {
+        "sumsQ16": {
+          "black": "67444",
+          "white": "42251"
+        },
+        "selectedSumQ16": "109695",
+        "bucket": 6
+      },
+      "evalCp": -240
+    }
+  ]
+}

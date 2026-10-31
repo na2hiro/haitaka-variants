@@ -1,0 +1,126 @@
+   Compiling wasm-bindgen-shared v0.2.118
+   Compiling unicode-ident v1.0.24
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling rustversion v1.0.22
+   Compiling bumpalo v3.20.2
+   Compiling once_cell v1.21.4
+   Compiling cfg-if v1.0.4
+   Compiling haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/haitaka_types)
+   Compiling wasm-bindgen v0.2.118
+   Compiling syn v2.0.117
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling wasm-bindgen-macro-support v0.2.118
+   Compiling wasm-bindgen-macro v0.2.118
+   Compiling js-sys v0.3.95
+   Compiling web-sys v0.3.95
+   Compiling instant v0.1.13
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: variants `AfterRootChild`, `DuringRootChild`, and `AfterQnode` are never constructed
+   --> haitaka_wasm/src/lib.rs:292:5
+    |
+290 | enum ForcedInterruption {
+    |      ------------------ variants in this enum
+291 |     BeforeFirstRootChild,
+292 |     AfterRootChild(u32),
+    |     ^^^^^^^^^^^^^^
+293 |     DuringRootChild(u32),
+    |     ^^^^^^^^^^^^^^^
+294 |     AfterQnode(u64),
+    |     ^^^^^^^^^^
+    |
+    = note: `ForcedInterruption` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `search_board_with_node_budget_in_tt` is never used
+    --> haitaka_wasm/src/lib.rs:1594:4
+     |
+1594 | fn search_board_with_node_budget_in_tt(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:447:4
+    |
+447 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `haitaka_wasm` (lib) generated 3 warnings
+    Finished `release` profile [optimized] target(s) in 38.48s
+   Compiling wasm-bindgen-shared v0.2.118
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling once_cell v1.21.4
+   Compiling haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/haitaka_types)
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling wasm-bindgen v0.2.118
+   Compiling js-sys v0.3.95
+   Compiling web-sys v0.3.95
+   Compiling instant v0.1.13
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: variants `AfterRootChild`, `DuringRootChild`, and `AfterQnode` are never constructed
+   --> haitaka_wasm/src/lib.rs:292:5
+    |
+290 | enum ForcedInterruption {
+    |      ------------------ variants in this enum
+291 |     BeforeFirstRootChild,
+292 |     AfterRootChild(u32),
+    |     ^^^^^^^^^^^^^^
+293 |     DuringRootChild(u32),
+    |     ^^^^^^^^^^^^^^^
+294 |     AfterQnode(u64),
+    |     ^^^^^^^^^^
+    |
+    = note: `ForcedInterruption` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `search_board_with_node_budget_in_tt` is never used
+    --> haitaka_wasm/src/lib.rs:1594:4
+     |
+1594 | fn search_board_with_node_budget_in_tt(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:447:4
+    |
+447 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `haitaka_wasm` (lib) generated 3 warnings
+    Finished `release` profile [optimized] target(s) in 32.94s
+{"fixturePositions":236,"incrementalMoves":2048,"fixedDepthSearches":20,"hashes":{"scalar":"4cdd54c1b2c5bc92b6bf347d934262b38ed0abf606ab77a608918668a779e45d","simd":"69f3757ba7c7bdff0df369be2109c78aa1a2b4e2a2be474ab5dd8004c4ca125a"},"result":"PASS"}
+chromium: scalar reference cases: 0
+chromium: scalar reference cases: 32
+chromium: scalar reference cases: 64
+chromium: scalar reference cases: 96
+chromium: scalar reference cases: 128
+chromium: scalar reference cases: 160
+chromium: scalar reference cases: 192
+chromium: scalar reference cases: 224
+{"browser":"chromium","version":"153.0.8010.12","backend":"scalar","result":"PASS"}
+chromium: simd reference cases: 0
+chromium: simd reference cases: 32
+chromium: simd reference cases: 64
+chromium: simd reference cases: 96
+chromium: simd reference cases: 128
+chromium: simd reference cases: 160
+chromium: simd reference cases: 192
+chromium: simd reference cases: 224
+{"browser":"chromium","version":"153.0.8010.12","backend":"simd","result":"PASS"}
+firefox: scalar reference cases: 0
+firefox: scalar reference cases: 32
+firefox: scalar reference cases: 64
+firefox: scalar reference cases: 96
+firefox: scalar reference cases: 128
+firefox: scalar reference cases: 160
+firefox: scalar reference cases: 192
+firefox: scalar reference cases: 224
+{"browser":"firefox","version":"142.0.1","backend":"scalar","result":"PASS"}
+firefox: simd reference cases: 0
+firefox: simd reference cases: 32
+firefox: simd reference cases: 64
+firefox: simd reference cases: 96
+firefox: simd reference cases: 128
+firefox: simd reference cases: 160
+firefox: simd reference cases: 192
+firefox: simd reference cases: 224
+{"browser":"firefox","version":"142.0.1","backend":"simd","result":"PASS"}

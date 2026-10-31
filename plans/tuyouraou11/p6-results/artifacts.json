@@ -1,0 +1,37 @@
+{
+  "engineBase": "16381522f44a15441dda29198d1b703638f4adbd",
+  "webBase": "4fd0b35cf2f99314c0e60c149e4b4e35c3554eef",
+  "sourceSha256": {
+    "haitaka_wasm/src/sfnn.rs": "c794b64167debf1d2cf691d6fe172baab7aacdc3e843ae93de42dc7234030cf4",
+    "haitaka_wasm/src/sfnn_kernels.rs": "7f9a693d515fba272431e0f8a5dd29116e2d44dcecef866099d1bf9d5969b08b",
+    "haitaka_wasm/src/nnue_kernels.rs": "2f0d566608b77d6a647a11c4917ac273d6a731fbb6f5cc319c237221bd01b4c9",
+    "haitaka_wasm/Cargo.toml": "13a229d50a58505fc8bb3ebdbef8e68ec1a659628036e6883f0f52675e75d52a",
+    "scripts/tuyouraou11-simd.mjs": "a89bf2fe3a940c6c89eb4094065d07ae57d4a26364fc31436eadb89fcb5d0395",
+    "scripts/tuyouraou11-p6-summary.py": "f21e952aa1c202fc9b62448c9bc4f927fb1635fe108969292090e11accdfe6b2"
+  },
+  "production": {
+    "scalar": {
+      "sha256": "c098c5e256b43479522790296dca4685238e87785b630da0159e3d40eea166d8",
+      "bytes": 18494379,
+      "targetFeature": "-simd128"
+    },
+    "simd": {
+      "sha256": "58027b1f0c5706ad5ddd383e84cac269426826baa8007cedeb5f2e90406f3818",
+      "bytes": 18495377,
+      "targetFeature": "+simd128"
+    }
+  },
+  "native": {
+    "scalar": {
+      "sha256": "98be8b9ab63df448899fa95208e373f8ff0e343b70f2444277e0fec453d391bb",
+      "bytes": 9921176
+    },
+    "optimized": {
+      "sha256": "1e5d62f229d4dc4d0a0196a94741d3071ba9c5e4c56b22e87a4f44b8c286a823",
+      "bytes": 9923224
+    }
+  },
+  "threading": "single Worker / no SharedArrayBuffer",
+  "model": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+  "notes": "Working-tree build; do not identify base revisions as the final source state."
+}

@@ -1,0 +1,45 @@
+
+Running 32 tests using 1 worker
+
+(node:2582453) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2582453) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/tuyouraou11.spec.ts:69:3 › TuyouraOu11 real Wasm integration › loads only on AI selection, prepares SFNN, applies a legal reply, and keeps the UI responsive (10.4s)
+  ✓   2 [chromium] › tests/tuyouraou11.spec.ts:140:5 › TuyouraOu11 real Wasm integration › selects the real SIMD Wasm artifact and plays (8.4s)
+  ✓   3 [chromium] › tests/tuyouraou11.spec.ts:140:5 › TuyouraOu11 real Wasm integration › selects the real scalar fallback Wasm artifact and plays (12.7s)
+  ✓   4 [chromium] › tests/tuyouraou11.spec.ts:199:3 › TuyouraOu11 real Wasm integration › shows an actual HTTP failure and retries preparation in a fresh Worker (13.4s)
+  ✓   5 [chromium] › tests/tuyouraou11.spec.ts:289:3 › TuyouraOu11 real Wasm integration › NNUE selection persists and switches between handcrafted and the real model (11.9s)
+  ✓   6 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 本将棋(二枚落ち) (6.3s)
+  ✓   7 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 本将棋(銀落ち) (5.8s)
+  ✓   8 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in トンボ (7.8s)
+  ✓   9 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 歩なし将棋 (8.6s)
+  ✓  10 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋120 (6.0s)
+  ✓  11 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋2494800 (6.0s)
+  ✓  12 [chromium] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋79394515200 (6.1s)
+  ✓  13 [chromium] › tests/tuyouraou11.spec.ts:413:3 › TuyouraOu11 real Wasm integration › an unsupported variant uses handcrafted evaluation without model requests (4.4s)
+  ✓  14 [chromium] › tests/tuyouraou11.spec.ts:452:3 › TuyouraOu11 real Wasm integration › perft initializes real Wasm without fetching a model (2.5s)
+  ✓  15 [chromium] › tests/tuyouraou11.spec.ts:482:3 › TuyouraOu11 real Wasm integration › changing rules replaces the Worker and loads SFNN for a handicap (6.5s)
+  ✓  16 [chromium] › tests/tuyouraou11.spec.ts:524:3 › TuyouraOu11 real Wasm integration › rollback stops active Wasm search and prepares a new Worker before the next go (9.0s)
+(node:2585402) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2585402) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  17 [firefox] › tests/tuyouraou11.spec.ts:69:3 › TuyouraOu11 real Wasm integration › loads only on AI selection, prepares SFNN, applies a legal reply, and keeps the UI responsive (12.8s)
+  ✓  18 [firefox] › tests/tuyouraou11.spec.ts:140:5 › TuyouraOu11 real Wasm integration › selects the real SIMD Wasm artifact and plays (8.8s)
+  ✓  19 [firefox] › tests/tuyouraou11.spec.ts:140:5 › TuyouraOu11 real Wasm integration › selects the real scalar fallback Wasm artifact and plays (9.4s)
+  ✓  20 [firefox] › tests/tuyouraou11.spec.ts:199:3 › TuyouraOu11 real Wasm integration › shows an actual HTTP failure and retries preparation in a fresh Worker (9.7s)
+  ✓  21 [firefox] › tests/tuyouraou11.spec.ts:289:3 › TuyouraOu11 real Wasm integration › NNUE selection persists and switches between handcrafted and the real model (17.9s)
+  ✓  22 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 本将棋(二枚落ち) (9.6s)
+  ✓  23 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 本将棋(銀落ち) (8.9s)
+  ✓  24 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in トンボ (9.6s)
+  ✓  25 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 歩なし将棋 (8.9s)
+  ✓  26 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋120 (9.7s)
+  ✓  27 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋2494800 (8.9s)
+  ✓  28 [firefox] › tests/tuyouraou11.spec.ts:369:5 › TuyouraOu11 real Wasm integration › prepares SFNN and plays a legal first move in 将棋79394515200 (8.8s)
+  ✓  29 [firefox] › tests/tuyouraou11.spec.ts:413:3 › TuyouraOu11 real Wasm integration › an unsupported variant uses handcrafted evaluation without model requests (4.9s)
+  ✓  30 [firefox] › tests/tuyouraou11.spec.ts:452:3 › TuyouraOu11 real Wasm integration › perft initializes real Wasm without fetching a model (2.6s)
+  ✓  31 [firefox] › tests/tuyouraou11.spec.ts:482:3 › TuyouraOu11 real Wasm integration › changing rules replaces the Worker and loads SFNN for a handicap (8.3s)
+  ✓  32 [firefox] › tests/tuyouraou11.spec.ts:524:3 › TuyouraOu11 real Wasm integration › rollback stops active Wasm search and prepares a new Worker before the next go (10.1s)
+
+  32 passed (4.6m)

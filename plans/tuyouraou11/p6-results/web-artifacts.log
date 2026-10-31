@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/engines/haitakaModelSync.test.ts (8 tests) 368ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  23:15:29
+   Duration  1.01s (transform 83ms, setup 0ms, collect 80ms, tests 368ms, environment 0ms, prepare 155ms)
+

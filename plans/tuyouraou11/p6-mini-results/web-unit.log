@@ -1,0 +1,204 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/engines/wasmSimd.test.ts (2 tests) 7ms
+stdout | app/bot/bot.worker.test.ts > bot.worker > runs worker-owned iterative deepening and returns the deepest command
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > keeps the last completed command when a deeper search times out
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > runs ponder without posting a command and keeps the same bot for go
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > calls player stop and can search again without reinitializing
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > requires a matching prepared rule and reports preparation separately from init
+loading a bot from  haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > preloads once and keeps the ready worker for repeated ready calls
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > sends only shogi and a time budget for worker-owned search orchestration
+Initializing worker... haitaka
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > returns preparation failure as a retryable state without resigning
+loading a bot from  haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > rejects and restarts when a pending search is stopped
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > rejects and restarts when a pending search is stopped
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > rejects a pending search when disposed
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > sends ponder messages for possibilityist
+Initializing worker... possibilityist
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > stops possibilityist without restarting the worker
+Initializing worker... possibilityist
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > restarts an actively searching possibilityist and ignores its stale response
+Initializing worker... possibilityist
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > restarts an actively searching possibilityist and ignores its stale response
+Initializing worker... possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > discards a preparation response after disposal
+loading a bot from  haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > ignores a stale request ID from the current worker
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > deduplicates preparation and keeps import-ready separate from model-ready
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > holds go until preparation completes and preserves the entire time budget
+Initializing worker... haitaka
+
+ ✓ app/bot/bot.worker.test.ts (7 tests) 191ms
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > recreates even the shared standard wrapper when the rule changes
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > recreates even the shared standard wrapper when the rule changes
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > reprepares the new worker on busy go before posting a new search
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > reprepares the new worker on busy go before posting a new search
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > retains a preparation failure, then retries only in a new worker
+Initializing worker... haitaka
+
+ ✓ app/engines/wasmBindgenRuntime.test.ts (42 tests) 248ms
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > retains a preparation failure, then retries only in a new worker
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > does not report ready after a prepared worker crashes
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > settles pending preparation on stop and ignores late responses
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > settles pending preparation on stop and ignores late responses
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > settles pending preparation on dispose and ignores late responses
+Initializing worker... haitaka
+
+stdout | app/bot/WebWorkerBot.test.ts > WebWorkerBot > terminates a worker stuck in initialization after 60 seconds
+Initializing worker... haitaka
+
+ ✓ app/bot/WebWorkerBot.test.ts (17 tests) 477ms
+ ✓ app/engines/haitakaModelSync.test.ts (9 tests) 573ms
+stdout | app/components/shogi/SelfBotShogi.test.ts > SelfBotShogiService > subscribes to model preparation, exposes failure, and retries in a fresh worker
+Initializing worker... haitaka
+
+stdout | app/components/shogi/SelfBotShogi.test.ts > SelfBotShogiService > subscribes to model preparation, exposes failure, and retries in a fresh worker
+Initializing worker... haitaka
+
+stdout | app/components/shogi/SelfBotShogi.test.ts > SelfBotShogiService > recreates the worker when switching NNUE and carries the selection into initialization
+Initializing worker... haitaka
+Initializing worker... haitaka
+Initializing worker... haitaka
+
+stdout | app/components/shogi/SelfBotShogi.test.ts > SelfBotShogiService > reports loading and thinking while resuming a bot turn
+runCommand local bot { type: 'resign' } {
+  version: '0.0',
+  ruleVariant: undefined,
+  ruleConf: undefined,
+  meta: undefined,
+  status: { num: 1 },
+  ruleid: 0,
+  teban: 0,
+  turn: 0,
+  date: { start: '2026-10-30T22:43:47.315Z', end: undefined },
+  ban: [
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [Array],
+      [Array], [],
+      [],      [],
+      [Array], [Array],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ],
+    [
+      [Array], [Array],
+      [Array], [],
+      [],      [],
+      [Array], [Array],
+      [Array]
+    ],
+    [
+      [Array], [],
+      [Array], [],
+      [],      [],
+      [Array], [],
+      [Array]
+    ]
+  ],
+  moving: null,
+  players: [
+    { user: [Array], mochigoma: {} },
+    { user: [Array], mochigoma: {} }
+  ],
+  system: undefined,
+  kifu: [],
+  timeControl: undefined,
+  remainingPieces: undefined
+}
+[noop] Submit result 0 lose oneself 1
+
+ ✓ app/components/shogi/SelfBotShogi.test.ts (14 tests) 164ms
+
+ Test Files  6 passed (6)
+      Tests  91 passed (91)
+   Start at  07:43:42
+   Duration  4.78s (transform 2.69s, setup 0ms, collect 4.96s, tests 1.66s, environment 1ms, prepare 771ms)
+

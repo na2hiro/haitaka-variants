@@ -1,0 +1,753 @@
+A: external movetime_ms=1000 max_depth=64 command=/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node usi args=/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match-resume.mjs proxy mini
+B: external movetime_ms=1000 max_depth=64 command=/home/na2hiro/.nvm/versions/node/v24.12.0/bin/node usi args=/home/na2hiro/proj/shogitter-3/scripts/tuyouraou11-match-resume.mjs proxy micro
+self-play threads=2
+report dir=/home/na2hiro/proj/haitaka-variants/target/tuyouraou11/p6-strength-resume/firefox/match-1000 files=self-play-report.json, self-play-games.jsonl
+opening suite=plans/tuyouraou11/p6-strength-remaining-openings.sfen positions=34 order=Sequential
+game (1) done (new 1/68): A(Black) vs B(White) plies=103 result=A win eta=1h52m33s
+games: 1/68 (new 1/68)
+score: A 1 - B 0 - draws 0
+decided games: 1
+approx elo A-B: 798.3 (95% CI 235.4..798.3)
+avg plies: 103.0
+total nodes: 405525 (A 171982, B 233543)
+aggregate nps: 4030 (A 3485, B 4554)
+qnodes: 1021992 (A 400887, B 621105)
+aggregate qnps: 10156 (A 8124, B 12112)
+qsearch caps/checks/delta: caps 73382 (A 24307, B 49075) checks 20959 (A 9425, B 11534) delta 192600 (A 70344, B 122256)
+game (2) done (new 2/68): A(White) vs B(Black) plies=104 result=A win eta=56m32s
+games: 2/68 (new 2/68)
+score: A 2 - B 0 - draws 0
+decided games: 2
+approx elo A-B: 798.3 (95% CI 304.2..798.3)
+avg plies: 103.5
+total nodes: 714742 (A 295970, B 418772)
+aggregate nps: 3517 (A 2970, B 4042)
+qnodes: 2081913 (A 818067, B 1263846)
+aggregate qnps: 10244 (A 8210, B 12199)
+qsearch caps/checks/delta: caps 135187 (A 49097, B 86090) checks 46661 (A 17071, B 29590) delta 624018 (A 238970, B 385048)
+game (3) done (new 3/68): A(Black) vs B(White) plies=61 result=A win eta=57m53s
+games: 3/68 (new 3/68)
+score: A 3 - B 0 - draws 0
+decided games: 3
+approx elo A-B: 798.3 (95% CI 341.9..798.3)
+avg plies: 89.3
+total nodes: 956391 (A 396509, B 559882)
+aggregate nps: 3643 (A 3078, B 4186)
+qnodes: 2704598 (A 1064836, B 1639762)
+aggregate qnps: 10301 (A 8267, B 12260)
+qsearch caps/checks/delta: caps 158387 (A 58646, B 99741) checks 58165 (A 20252, B 37913) delta 677781 (A 256099, B 421682)
+game (4) done (new 4/68): A(White) vs B(Black) plies=89 result=B win eta=50m15s
+games: 4/68 (new 4/68)
+score: A 3 - B 1 - draws 0
+decided games: 4
+approx elo A-B: 190.8 (95% CI -126.5..798.3)
+avg plies: 89.2
+total nodes: 1220864 (A 506836, B 714028)
+aggregate nps: 3508 (A 2929, B 4080)
+qnodes: 3596040 (A 1435126, B 2160914)
+aggregate qnps: 10333 (A 8295, B 12347)
+qsearch caps/checks/delta: caps 234605 (A 85313, B 149292) checks 87238 (A 34541, B 52697) delta 925202 (A 378699, B 546503)
+game (5) done (new 5/68): A(Black) vs B(White) plies=93 result=A win eta=53m07s
+games: 5/68 (new 5/68)
+score: A 4 - B 1 - draws 0
+decided games: 5
+approx elo A-B: 240.8 (95% CI -35.3..798.3)
+avg plies: 90.0
+total nodes: 1575220 (A 650049, B 925171)
+aggregate nps: 3576 (A 2965, B 4182)
+qnodes: 4516613 (A 1806699, B 2709914)
+aggregate qnps: 10254 (A 8240, B 12249)
+qsearch caps/checks/delta: caps 271057 (A 96871, B 174186) checks 139188 (A 60117, B 79071) delta 1323567 (A 544394, B 779173)
+game (6) done (new 6/68): A(White) vs B(Black) plies=94 result=A win eta=48m14s
+games: 6/68 (new 6/68)
+score: A 5 - B 1 - draws 0
+decided games: 6
+approx elo A-B: 279.6 (95% CI 24.5..798.3)
+avg plies: 90.7
+total nodes: 2057396 (A 839775, B 1217621)
+aggregate nps: 3867 (A 3187, B 4535)
+qnodes: 5476302 (A 2174018, B 3302284)
+aggregate qnps: 10294 (A 8250, B 12300)
+qsearch caps/checks/delta: caps 294563 (A 108647, B 185916) checks 174298 (A 73276, B 101022) delta 1525228 (A 619370, B 905858)
+game (7) done (new 7/68): A(Black) vs B(White) plies=132 result=B win eta=55m53s
+games: 7/68 (new 7/68)
+score: A 5 - B 2 - draws 0
+decided games: 7
+approx elo A-B: 159.2 (95% CI -85.3..798.3)
+avg plies: 96.6
+total nodes: 2487714 (A 1010009, B 1477705)
+aggregate nps: 3749 (A 3062, B 4427)
+qnodes: 6830199 (A 2722825, B 4107374)
+aggregate qnps: 10292 (A 8255, B 12304)
+qsearch caps/checks/delta: caps 367813 (A 141499, B 226314) checks 231887 (A 95993, B 135894) delta 1899239 (A 787018, B 1112221)
+game (8) done (new 8/68): A(White) vs B(Black) plies=174 result=A win eta=56m24s
+games: 8/68 (new 8/68)
+score: A 6 - B 2 - draws 0
+decided games: 8
+approx elo A-B: 190.8 (95% CI -34.9..798.3)
+avg plies: 106.2
+total nodes: 2961431 (A 1174821, B 1786610)
+aggregate nps: 3549 (A 2843, B 4241)
+qnodes: 8585550 (A 3412802, B 5172748)
+aggregate qnps: 10288 (A 8258, B 12279)
+qsearch caps/checks/delta: caps 469982 (A 178511, B 291471) checks 335512 (A 132747, B 202765) delta 2553296 (A 1003499, B 1549797)
+game (9) done (new 9/68): A(Black) vs B(White) plies=139 result=A win eta=57m19s
+games: 9/68 (new 9/68)
+score: A 7 - B 2 - draws 0
+decided games: 9
+approx elo A-B: 217.6 (95% CI 4.3..798.3)
+avg plies: 109.9
+total nodes: 3563759 (A 1368818, B 2194941)
+aggregate nps: 3658 (A 2830, B 4474)
+qnodes: 10060254 (A 3994180, B 6066074)
+aggregate qnps: 10326 (A 8259, B 12365)
+qsearch caps/checks/delta: caps 547920 (A 208888, B 339032) checks 383497 (A 157451, B 226046) delta 2917242 (A 1189310, B 1727932)
+game (10) done (new 10/68): A(White) vs B(Black) plies=122 result=A win eta=54m14s
+games: 10/68 (new 10/68)
+score: A 8 - B 2 - draws 0
+decided games: 10
+approx elo A-B: 240.8 (95% CI 36.3..798.3)
+avg plies: 111.1
+total nodes: 3804807 (A 1450269, B 2354538)
+aggregate nps: 3510 (A 2726, B 4266)
+qnodes: 11256736 (A 4399497, B 6857239)
+aggregate qnps: 10385 (A 8270, B 12425)
+qsearch caps/checks/delta: caps 725062 (A 271882, B 453180) checks 408178 (A 165196, B 242982) delta 3390743 (A 1334619, B 2056124)
+game (12) done (new 11/68): A(White) vs B(Black) plies=63 result=B win eta=53m45s
+games: 11/68 (new 11/68)
+score: A 8 - B 3 - draws 0
+decided games: 11
+approx elo A-B: 170.4 (95% CI -25.0..798.3)
+avg plies: 106.7
+total nodes: 4181326 (A 1596885, B 2584441)
+aggregate nps: 3651 (A 2836, B 4440)
+qnodes: 11876221 (A 4655189, B 7221032)
+aggregate qnps: 10370 (A 8266, B 12406)
+qsearch caps/checks/delta: caps 732804 (A 274705, B 458099) checks 421801 (A 172657, B 249144) delta 3519565 (A 1398349, B 2121216)
+game (11) done (new 12/68): A(Black) vs B(White) plies=110 result=B win eta=49m02s
+games: 12/68 (new 12/68)
+score: A 8 - B 4 - draws 0
+decided games: 12
+approx elo A-B: 120.4 (95% CI -70.5..458.6)
+avg plies: 107.0
+total nodes: 4573949 (A 1749807, B 2824142)
+aggregate nps: 3657 (A 2829, B 4466)
+qnodes: 12977090 (A 5119445, B 7857645)
+aggregate qnps: 10375 (A 8278, B 12426)
+qsearch caps/checks/delta: caps 769281 (A 289915, B 479366) checks 475024 (A 200172, B 274852) delta 4061209 (A 1674946, B 2386263)
+game (13) done (new 13/68): A(Black) vs B(White) plies=65 result=A win eta=48m18s
+games: 13/68 (new 13/68)
+score: A 9 - B 4 - draws 0
+decided games: 13
+approx elo A-B: 140.9 (95% CI -40.9..488.1)
+avg plies: 103.8
+total nodes: 4961412 (A 1911301, B 3050111)
+aggregate nps: 3778 (A 2947, B 4590)
+qnodes: 13660103 (A 5382860, B 8277243)
+aggregate qnps: 10403 (A 8299, B 12456)
+qsearch caps/checks/delta: caps 776024 (A 291735, B 484289) checks 509667 (A 214290, B 295377) delta 4180871 (A 1710280, B 2470591)
+game (15) done (new 14/68): A(Black) vs B(White) plies=74 result=B win eta=48m26s
+games: 14/68 (new 14/68)
+score: A 9 - B 5 - draws 0
+decided games: 14
+approx elo A-B: 102.1 (95% CI -76.3..370.1)
+avg plies: 101.6
+total nodes: 5331768 (A 2076787, B 3254981)
+aggregate nps: 3859 (A 3028, B 4679)
+qnodes: 14330596 (A 5680335, B 8650261)
+aggregate qnps: 10373 (A 8283, B 12433)
+qsearch caps/checks/delta: caps 788723 (A 294969, B 493754) checks 549059 (A 231457, B 317602) delta 4367440 (A 1805810, B 2561630)
+game (14) done (new 15/68): A(White) vs B(Black) plies=171 result=B win eta=47m05s
+games: 15/68 (new 15/68)
+score: A 9 - B 6 - draws 0
+decided games: 15
+approx elo A-B: 70.4 (95% CI -106.0..298.5)
+avg plies: 106.3
+total nodes: 5766555 (A 2261324, B 3505231)
+aggregate nps: 3719 (A 2932, B 4499)
+qnodes: 16052182 (A 6378976, B 9673206)
+aggregate qnps: 10354 (A 8271, B 12415)
+qsearch caps/checks/delta: caps 988423 (A 362529, B 625894) checks 586677 (A 247852, B 338825) delta 4906454 (A 2055344, B 2851110)
+game (16) done (new 16/68): A(White) vs B(Black) plies=121 result=B win eta=47m21s
+games: 16/68 (new 16/68)
+score: A 9 - B 7 - draws 0
+decided games: 16
+approx elo A-B: 43.7 (95% CI -131.4..246.9)
+avg plies: 107.2
+total nodes: 6261652 (A 2428177, B 3833475)
+aggregate nps: 3747 (A 2920, B 4567)
+qnodes: 17327669 (A 6876724, B 10450945)
+aggregate qnps: 10370 (A 8270, B 12450)
+qsearch caps/checks/delta: caps 1049762 (A 400985, B 648777) checks 628861 (A 260295, B 368566) delta 5289758 (A 2176188, B 3113570)
+game (17) done (new 17/68): A(Black) vs B(White) plies=94 result=B win eta=44m36s
+games: 17/68 (new 17/68)
+score: A 9 - B 8 - draws 0
+decided games: 17
+approx elo A-B: 20.5 (95% CI -153.7..206.7)
+avg plies: 106.4
+total nodes: 6878684 (A 2682676, B 4196008)
+aggregate nps: 3901 (A 3053, B 4743)
+qnodes: 18268137 (A 7265079, B 11003058)
+aggregate qnps: 10360 (A 8268, B 12437)
+qsearch caps/checks/delta: caps 1057547 (A 404325, B 653222) checks 680963 (A 284936, B 396027) delta 5478499 (A 2264726, B 3213773)
+game (18) done (new 18/68): A(White) vs B(Black) plies=102 result=A win eta=45m08s
+games: 18/68 (new 18/68)
+score: A 10 - B 8 - draws 0
+decided games: 18
+approx elo A-B: 38.8 (95% CI -126.2..225.1)
+avg plies: 106.2
+total nodes: 7198938 (A 2799793, B 4399145)
+aggregate nps: 3862 (A 3017, B 4700)
+qnodes: 19303466 (A 7669024, B 11634442)
+aggregate qnps: 10357 (A 8264, B 12431)
+qsearch caps/checks/delta: caps 1116147 (A 430999, B 685148) checks 723427 (A 302056, B 421371) delta 5859400 (A 2406898, B 3452502)
+game (19) done (new 19/68): A(Black) vs B(White) plies=137 result=A win eta=44m13s
+games: 19/68 (new 19/68)
+score: A 11 - B 8 - draws 0
+decided games: 19
+approx elo A-B: 55.3 (95% CI -102.3..241.9)
+avg plies: 107.8
+total nodes: 7676306 (A 2990497, B 4685809)
+aggregate nps: 3837 (A 3002, B 4666)
+qnodes: 20704912 (A 8227219, B 12477693)
+aggregate qnps: 10350 (A 8258, B 12425)
+qsearch caps/checks/delta: caps 1145776 (A 442603, B 703173) checks 785918 (A 325262, B 460656) delta 6456489 (A 2648770, B 3807719)
+game (20) done (new 20/68): A(White) vs B(Black) plies=128 result=A win eta=43m57s
+games: 20/68 (new 20/68)
+score: A 12 - B 8 - draws 0
+decided games: 20
+approx elo A-B: 70.4 (95% CI -81.2..257.3)
+avg plies: 108.8
+total nodes: 8184665 (A 3197228, B 4987437)
+aggregate nps: 3853 (A 3029, B 4668)
+qnodes: 21967418 (A 8715223, B 13252195)
+aggregate qnps: 10342 (A 8256, B 12402)
+qsearch caps/checks/delta: caps 1175446 (A 453741, B 721705) checks 839013 (A 344681, B 494332) delta 6777835 (A 2753620, B 4024215)
+game (21) done (new 21/68): A(Black) vs B(White) plies=137 result=A win eta=43m27s
+games: 21/68 (new 21/68)
+score: A 13 - B 8 - draws 0
+decided games: 21
+approx elo A-B: 84.3 (95% CI -62.3..271.5)
+avg plies: 110.1
+total nodes: 8637317 (A 3365827, B 5271490)
+aggregate nps: 3822 (A 2997, B 4637)
+qnodes: 23366395 (A 9272517, B 14093878)
+aggregate qnps: 10340 (A 8257, B 12397)
+qsearch caps/checks/delta: caps 1247724 (A 484469, B 763255) checks 869314 (A 357447, B 511867) delta 7463517 (A 3042772, B 4420745)
+game (22) done (new 22/68): A(White) vs B(Black) plies=113 result=B win eta=42m09s
+games: 22/68 (new 22/68)
+score: A 13 - B 9 - draws 0
+decided games: 22
+approx elo A-B: 63.9 (95% CI -81.0..236.9)
+avg plies: 110.3
+total nodes: 9044694 (A 3522454, B 5522240)
+aggregate nps: 3816 (A 2987, B 4636)
+qnodes: 24486460 (A 9727285, B 14759175)
+aggregate qnps: 10330 (A 8249, B 12391)
+qsearch caps/checks/delta: caps 1295906 (A 504506, B 791400) checks 896446 (A 369318, B 527128) delta 7875371 (A 3211297, B 4664074)
+game (23) done (new 23/68): A(Black) vs B(White) plies=109 result=A win eta=41m26s
+games: 23/68 (new 23/68)
+score: A 14 - B 9 - draws 0
+decided games: 23
+approx elo A-B: 76.8 (95% CI -63.8..249.8)
+avg plies: 110.2
+total nodes: 9502318 (A 3700471, B 5801847)
+aggregate nps: 3838 (A 3007, B 4659)
+qnodes: 25605907 (A 10158050, B 15447857)
+aggregate qnps: 10342 (A 8255, B 12404)
+qsearch caps/checks/delta: caps 1313139 (A 511673, B 801466) checks 950846 (A 390485, B 560361) delta 8380856 (A 3393407, B 4987449)
+game (24) done (new 24/68): A(White) vs B(Black) plies=88 result=A win eta=39m36s
+games: 24/68 (new 24/68)
+score: A 15 - B 9 - draws 0
+decided games: 24
+approx elo A-B: 88.7 (95% CI -48.0..261.9)
+avg plies: 109.3
+total nodes: 9795425 (A 3824692, B 5970733)
+aggregate nps: 3823 (A 3005, B 4630)
+qnodes: 26499884 (A 10510361, B 15989523)
+aggregate qnps: 10342 (A 8258, B 12399)
+qsearch caps/checks/delta: caps 1376615 (A 528020, B 848595) checks 981644 (A 402150, B 579494) delta 8697205 (A 3518792, B 5178413)
+game (26) done (new 25/68): A(White) vs B(Black) plies=83 result=B win eta=39m30s
+games: 25/68 (new 25/68)
+score: A 15 - B 10 - draws 0
+decided games: 25
+approx elo A-B: 70.4 (95% CI -64.7..232.3)
+avg plies: 108.2
+total nodes: 10181407 (A 3981921, B 6199486)
+aggregate nps: 3851 (A 3030, B 4662)
+qnodes: 27347414 (A 10854995, B 16492419)
+aggregate qnps: 10344 (A 8261, B 12402)
+qsearch caps/checks/delta: caps 1393698 (A 534258, B 859440) checks 1045573 (A 431296, B 614277) delta 8946753 (A 3622938, B 5323815)
+game (25) done (new 26/68): A(Black) vs B(White) plies=118 result=B win eta=37m19s
+games: 26/68 (new 26/68)
+score: A 15 - B 11 - draws 0
+decided games: 26
+approx elo A-B: 53.9 (95% CI -79.9..206.8)
+avg plies: 108.6
+total nodes: 10621808 (A 4157105, B 6464703)
+aggregate nps: 3849 (A 3027, B 4664)
+qnodes: 28501051 (A 11331901, B 17169150)
+aggregate qnps: 10329 (A 8252, B 12386)
+qsearch caps/checks/delta: caps 1412104 (A 542462, B 869642) checks 1108927 (A 455712, B 653215) delta 9404274 (A 3818958, B 5585316)
+game (28) done (new 27/68): A(White) vs B(Black) plies=59 result=B win eta=36m34s
+games: 27/68 (new 27/68)
+score: A 15 - B 12 - draws 0
+decided games: 27
+approx elo A-B: 38.8 (95% CI -93.9..184.4)
+avg plies: 106.8
+total nodes: 10867857 (A 4247890, B 6619967)
+aggregate nps: 3857 (A 3029, B 4677)
+qnodes: 29112700 (A 11574343, B 17538357)
+aggregate qnps: 10332 (A 8253, B 12392)
+qsearch caps/checks/delta: caps 1437119 (A 551865, B 885254) checks 1117383 (A 459371, B 658012) delta 9628640 (A 3900215, B 5728425)
+game (27) done (new 28/68): A(Black) vs B(White) plies=143 result=A win eta=36m09s
+games: 28/68 (new 28/68)
+score: A 16 - B 12 - draws 0
+decided games: 28
+approx elo A-B: 50.0 (95% CI -79.1..195.3)
+avg plies: 108.1
+total nodes: 11255597 (A 4398455, B 6857142)
+aggregate nps: 3805 (A 2989, B 4613)
+qnodes: 30565897 (A 12150147, B 18415750)
+aggregate qnps: 10332 (A 8256, B 12388)
+qsearch caps/checks/delta: caps 1482940 (A 568227, B 914713) checks 1191048 (A 489057, B 701991) delta 10477471 (A 4238580, B 6238891)
+game (29) done (new 29/68): A(Black) vs B(White) plies=163 result=A win eta=36m01s
+games: 29/68 (new 29/68)
+score: A 17 - B 12 - draws 0
+decided games: 29
+approx elo A-B: 60.5 (95% CI -65.4..205.5)
+avg plies: 110.0
+total nodes: 11696373 (A 4568654, B 7127719)
+aggregate nps: 3749 (A 2943, B 4546)
+qnodes: 32202621 (A 12802951, B 19399670)
+aggregate qnps: 10321 (A 8248, B 12372)
+qsearch caps/checks/delta: caps 1611533 (A 621505, B 990028) checks 1220829 (A 500474, B 720355) delta 11484621 (A 4667890, B 6816731)
+game (30) done (new 30/68): A(White) vs B(Black) plies=140 result=A win eta=34m59s
+games: 30/68 (new 30/68)
+score: A 18 - B 12 - draws 0
+decided games: 30
+approx elo A-B: 70.4 (95% CI -52.7..215.2)
+avg plies: 111.0
+total nodes: 12133925 (A 4744085, B 7389840)
+aggregate nps: 3723 (A 2928, B 4511)
+qnodes: 33577248 (A 13345181, B 20232067)
+aggregate qnps: 10303 (A 8235, B 12349)
+qsearch caps/checks/delta: caps 1664912 (A 651234, B 1013678) checks 1244035 (A 510061, B 733974) delta 11855547 (A 4817413, B 7038134)
+game (31) done (new 31/68): A(Black) vs B(White) plies=99 result=A win eta=33m53s
+games: 31/68 (new 31/68)
+score: A 19 - B 12 - draws 0
+decided games: 31
+approx elo A-B: 79.8 (95% CI -40.9..224.3)
+avg plies: 110.6
+total nodes: 12536051 (A 4902543, B 7633508)
+aggregate nps: 3736 (A 2940, B 4523)
+qnodes: 34570250 (A 13730293, B 20839957)
+aggregate qnps: 10303 (A 8233, B 12349)
+qsearch caps/checks/delta: caps 1684698 (A 658283, B 1026415) checks 1284958 (A 528255, B 756703) delta 12239311 (A 4966957, B 7272354)
+game (32) done (new 32/68): A(White) vs B(Black) plies=95 result=B win eta=32m49s
+games: 32/68 (new 32/68)
+score: A 19 - B 13 - draws 0
+decided games: 32
+approx elo A-B: 65.9 (95% CI -53.5..204.0)
+avg plies: 110.1
+total nodes: 12896352 (A 5020691, B 7875661)
+aggregate nps: 3740 (A 2928, B 4545)
+qnodes: 35537198 (A 14122749, B 21414449)
+aggregate qnps: 10307 (A 8235, B 12358)
+qsearch caps/checks/delta: caps 1702729 (A 668020, B 1034709) checks 1320009 (A 543581, B 776428) delta 12604708 (A 5134639, B 7470069)
+game (33) done (new 33/68): A(Black) vs B(White) plies=78 result=B win eta=31m26s
+games: 33/68 (new 33/68)
+score: A 19 - B 14 - draws 0
+decided games: 33
+approx elo A-B: 53.1 (95% CI -65.3..185.7)
+avg plies: 109.1
+total nodes: 13289296 (A 5185838, B 8103458)
+aggregate nps: 3773 (A 2956, B 4583)
+qnodes: 36302773 (A 14451259, B 21851514)
+aggregate qnps: 10307 (A 8238, B 12359)
+qsearch caps/checks/delta: caps 1719331 (A 674205, B 1045126) checks 1341111 (A 555811, B 785300) delta 12816202 (A 5247015, B 7569187)
+game (34) done (new 34/68): A(White) vs B(Black) plies=92 result=A win eta=30m41s
+games: 34/68 (new 34/68)
+score: A 20 - B 14 - draws 0
+decided games: 34
+approx elo A-B: 62.0 (95% CI -54.1..194.3)
+avg plies: 108.6
+total nodes: 13758404 (A 5362227, B 8396177)
+aggregate nps: 3808 (A 2982, B 4628)
+qnodes: 37219872 (A 14806704, B 22413168)
+aggregate qnps: 10303 (A 8233, B 12354)
+qsearch caps/checks/delta: caps 1734932 (A 680858, B 1054074) checks 1365327 (A 564412, B 800915) delta 13127902 (A 5361431, B 7766471)
+game (35) done (new 35/68): A(Black) vs B(White) plies=69 result=A win eta=28m59s
+games: 35/68 (new 35/68)
+score: A 21 - B 14 - draws 0
+decided games: 35
+approx elo A-B: 70.4 (95% CI -43.5..202.4)
+avg plies: 107.5
+total nodes: 14007418 (A 5460596, B 8546822)
+aggregate nps: 3807 (A 2983, B 4624)
+qnodes: 37925406 (A 15076043, B 22849363)
+aggregate qnps: 10309 (A 8236, B 12362)
+qsearch caps/checks/delta: caps 1755609 (A 688115, B 1067494) checks 1387049 (A 572911, B 814138) delta 13386059 (A 5445166, B 7940893)
+game (37) done (new 36/68): A(Black) vs B(White) plies=97 result=A win eta=28m45s
+games: 36/68 (new 36/68)
+score: A 22 - B 14 - draws 0
+decided games: 36
+approx elo A-B: 78.5 (95% CI -33.6..210.3)
+avg plies: 107.2
+total nodes: 14338459 (A 5585192, B 8753267)
+aggregate nps: 3798 (A 2973, B 4615)
+qnodes: 38913315 (A 15466192, B 23447123)
+aggregate qnps: 10307 (A 8232, B 12362)
+qsearch caps/checks/delta: caps 1801080 (A 712965, B 1088115) checks 1419180 (A 585138, B 834042) delta 13697785 (A 5562739, B 8135046)
+game (36) done (new 37/68): A(White) vs B(Black) plies=198 result=A win eta=28m25s
+games: 37/68 (new 37/68)
+score: A 23 - B 14 - draws 0
+decided games: 37
+approx elo A-B: 86.2 (95% CI -24.1..217.7)
+avg plies: 109.6
+total nodes: 14857912 (A 5760200, B 9097712)
+aggregate nps: 3743 (A 2919, B 4558)
+qnodes: 40865277 (A 16210057, B 24655220)
+aggregate qnps: 10295 (A 8214, B 12351)
+qsearch caps/checks/delta: caps 2130516 (A 852243, B 1278273) checks 1478384 (A 606486, B 871898) delta 13924265 (A 5636290, B 8287975)
+game (38) done (new 38/68): A(White) vs B(Black) plies=112 result=A win eta=27m01s
+games: 38/68 (new 38/68)
+score: A 24 - B 14 - draws 0
+decided games: 38
+approx elo A-B: 93.6 (95% CI -15.2..224.9)
+avg plies: 109.7
+total nodes: 15384429 (A 5975163, B 9409266)
+aggregate nps: 3770 (A 2945, B 4585)
+qnodes: 41969909 (A 16648775, B 25321134)
+aggregate qnps: 10284 (A 8207, B 12337)
+qsearch caps/checks/delta: caps 2153924 (A 863057, B 1290867) checks 1521563 (A 623238, B 898325) delta 14278448 (A 5776839, B 8501609)
+game (39) done (new 39/68): A(Black) vs B(White) plies=75 result=A win eta=26m07s
+games: 39/68 (new 39/68)
+score: A 25 - B 14 - draws 0
+decided games: 39
+approx elo A-B: 100.7 (95% CI -6.6..231.8)
+avg plies: 108.8
+total nodes: 15796767 (A 6134896, B 9661871)
+aggregate nps: 3803 (A 2973, B 4624)
+qnodes: 42701173 (A 16936499, B 25764674)
+aggregate qnps: 10281 (A 8206, B 12330)
+qsearch caps/checks/delta: caps 2172629 (A 869201, B 1303428) checks 1552379 (A 635756, B 916623) delta 14416337 (A 5826059, B 8590278)
+game (40) done (new 40/68): A(White) vs B(Black) plies=104 result=A win eta=25m10s
+games: 40/68 (new 40/68)
+score: A 26 - B 14 - draws 0
+decided games: 40
+approx elo A-B: 107.5 (95% CI 1.5..238.5)
+avg plies: 108.7
+total nodes: 16424879 (A 6402841, B 10022038)
+aggregate nps: 3858 (A 3027, B 4679)
+qnodes: 43758442 (A 17354934, B 26403508)
+aggregate qnps: 10279 (A 8205, B 12328)
+qsearch caps/checks/delta: caps 2189697 (A 876322, B 1313375) checks 1581165 (A 647275, B 933890) delta 14730242 (A 5943331, B 8786911)
+game (41) done (new 41/68): A(Black) vs B(White) plies=131 result=A win eta=24m33s
+games: 41/68 (new 41/68)
+score: A 27 - B 14 - draws 0
+decided games: 41
+approx elo A-B: 114.1 (95% CI 9.3..244.9)
+avg plies: 109.2
+total nodes: 16829703 (A 6542041, B 10287662)
+aggregate nps: 3838 (A 3003, B 4661)
+qnodes: 45101655 (A 17883107, B 27218548)
+aggregate qnps: 10284 (A 8209, B 12332)
+qsearch caps/checks/delta: caps 2211435 (A 886175, B 1325260) checks 1687722 (A 695224, B 992498) delta 15704734 (A 6341650, B 9363084)
+game (42) done (new 42/68): A(White) vs B(Black) plies=86 result=A win eta=23m07s
+games: 42/68 (new 42/68)
+score: A 28 - B 14 - draws 0
+decided games: 42
+approx elo A-B: 120.4 (95% CI 16.8..251.0)
+avg plies: 108.7
+total nodes: 17159657 (A 6680253, B 10479404)
+aggregate nps: 3839 (A 3010, B 4657)
+qnodes: 45972859 (A 18219776, B 27753083)
+aggregate qnps: 10285 (A 8208, B 12333)
+qsearch caps/checks/delta: caps 2245604 (A 897748, B 1347856) checks 1700437 (A 702804, B 997633) delta 15826812 (A 6397027, B 9429785)
+game (44) done (new 43/68): A(White) vs B(Black) plies=64 result=A win eta=22m19s
+games: 43/68 (new 43/68)
+score: A 29 - B 14 - draws 0
+decided games: 43
+approx elo A-B: 126.5 (95% CI 23.9..257.0)
+avg plies: 107.7
+total nodes: 17529064 (A 6818261, B 10710803)
+aggregate nps: 3868 (A 3032, B 4693)
+qnodes: 46651721 (A 18473255, B 28178466)
+aggregate qnps: 10296 (A 8215, B 12346)
+qsearch caps/checks/delta: caps 2252300 (A 902255, B 1350045) checks 1732802 (A 713549, B 1019253) delta 16028879 (A 6472972, B 9555907)
+game (43) done (new 44/68): A(Black) vs B(White) plies=73 result=A win eta=20m59s
+games: 44/68 (new 44/68)
+score: A 30 - B 14 - draws 0
+decided games: 44
+approx elo A-B: 132.4 (95% CI 30.8..262.8)
+avg plies: 106.9
+total nodes: 17869114 (A 6957523, B 10911591)
+aggregate nps: 3882 (A 3046, B 4706)
+qnodes: 47390963 (A 18764930, B 28626033)
+aggregate qnps: 10296 (A 8216, B 12346)
+qsearch caps/checks/delta: caps 2261154 (A 907156, B 1353998) checks 1779694 (A 730181, B 1049513) delta 16201745 (A 6529042, B 9672703)
+game (45) done (new 45/68): A(Black) vs B(White) plies=71 result=A win eta=20m13s
+games: 45/68 (new 45/68)
+score: A 31 - B 14 - draws 0
+decided games: 45
+approx elo A-B: 138.1 (95% CI 37.4..268.3)
+avg plies: 106.1
+total nodes: 18089642 (A 7052382, B 11037260)
+aggregate nps: 3871 (A 3041, B 4689)
+qnodes: 48114992 (A 19051948, B 29063044)
+aggregate qnps: 10296 (A 8215, B 12347)
+qsearch caps/checks/delta: caps 2309504 (A 926435, B 1383069) checks 1800037 (A 735995, B 1064042) delta 16278905 (A 6560088, B 9718817)
+game (47) done (new 46/68): A(Black) vs B(White) plies=85 result=A win eta=19m35s
+games: 46/68 (new 46/68)
+score: A 32 - B 14 - draws 0
+decided games: 46
+approx elo A-B: 143.6 (95% CI 43.8..273.8)
+avg plies: 105.6
+total nodes: 18218362 (A 7104027, B 11114335)
+aggregate nps: 3831 (A 3011, B 4639)
+qnodes: 48990254 (A 19390670, B 29599584)
+aggregate qnps: 10302 (A 8219, B 12354)
+qsearch caps/checks/delta: caps 2384605 (A 953736, B 1430869) checks 1816160 (A 742040, B 1074120) delta 16713954 (A 6728433, B 9985521)
+game (46) done (new 47/68): A(White) vs B(Black) plies=156 result=A win eta=18m21s
+games: 47/68 (new 47/68)
+score: A 33 - B 14 - draws 0
+decided games: 47
+approx elo A-B: 149.0 (95% CI 49.9..279.0)
+avg plies: 106.7
+total nodes: 18718977 (A 7303640, B 11415337)
+aggregate nps: 3812 (A 2999, B 4613)
+qnodes: 50541189 (A 20007059, B 30534130)
+aggregate qnps: 10293 (A 8214, B 12340)
+qsearch caps/checks/delta: caps 2433613 (A 976510, B 1457103) checks 1869889 (A 766228, B 1103661) delta 17261670 (A 6950353, B 10311317)
+game (48) done (new 48/68): A(White) vs B(Black) plies=60 result=A win eta=17m26s
+games: 48/68 (new 48/68)
+score: A 34 - B 14 - draws 0
+decided games: 48
+approx elo A-B: 154.1 (95% CI 55.9..284.1)
+avg plies: 105.7
+total nodes: 18862997 (A 7354374, B 11508623)
+aggregate nps: 3800 (A 2991, B 4595)
+qnodes: 51114771 (A 20199932, B 30914839)
+aggregate qnps: 10298 (A 8215, B 12344)
+qsearch caps/checks/delta: caps 2472180 (A 987472, B 1484708) checks 1882831 (A 771022, B 1111809) delta 17521121 (A 7029175, B 10491946)
+game (49) done (new 49/68): A(Black) vs B(White) plies=72 result=B win eta=16m23s
+games: 49/68 (new 49/68)
+score: A 34 - B 15 - draws 0
+decided games: 49
+approx elo A-B: 142.2 (95% CI 45.3..266.9)
+avg plies: 105.0
+total nodes: 19122155 (A 7456373, B 11665782)
+aggregate nps: 3799 (A 2988, B 4595)
+qnodes: 51827698 (A 20497235, B 31330463)
+aggregate qnps: 10296 (A 8215, B 12341)
+qsearch caps/checks/delta: caps 2514892 (A 1005330, B 1509562) checks 1900862 (A 780164, B 1120698) delta 17689427 (A 7112393, B 10577034)
+game (50) done (new 50/68): A(White) vs B(Black) plies=77 result=B win eta=15m30s
+games: 50/68 (new 50/68)
+score: A 34 - B 16 - draws 0
+decided games: 50
+approx elo A-B: 130.9 (95% CI 35.4..251.1)
+avg plies: 104.5
+total nodes: 19433588 (A 7578068, B 11855520)
+aggregate nps: 3804 (A 2991, B 4604)
+qnodes: 52591623 (A 20809756, B 31781867)
+aggregate qnps: 10296 (A 8215, B 12343)
+qsearch caps/checks/delta: caps 2531402 (A 1012500, B 1518902) checks 1924504 (A 790002, B 1134502) delta 18104309 (A 7288997, B 10815312)
+game (51) done (new 51/68): A(Black) vs B(White) plies=158 result=B win eta=14m57s
+games: 51/68 (new 51/68)
+score: A 34 - B 17 - draws 0
+decided games: 51
+approx elo A-B: 120.4 (95% CI 26.0..236.6)
+avg plies: 105.5
+total nodes: 19767240 (A 7713652, B 12053588)
+aggregate nps: 3755 (A 2952, B 4546)
+qnodes: 54192262 (A 21465987, B 32726275)
+aggregate qnps: 10295 (A 8216, B 12344)
+qsearch caps/checks/delta: caps 2602983 (A 1034226, B 1568757) checks 2010584 (A 827381, B 1183203) delta 18899731 (A 7674981, B 11224750)
+game (52) done (new 52/68): A(White) vs B(Black) plies=132 result=A win eta=13m54s
+games: 52/68 (new 52/68)
+score: A 35 - B 17 - draws 0
+decided games: 52
+approx elo A-B: 125.4 (95% CI 31.8..241.5)
+avg plies: 106.0
+total nodes: 20398291 (A 7941666, B 12456625)
+aggregate nps: 3785 (A 2972, B 4584)
+qnodes: 55520470 (A 21955477, B 33564993)
+aggregate qnps: 10301 (A 8217, B 12351)
+qsearch caps/checks/delta: caps 2640873 (A 1053075, B 1587798) checks 2084452 (A 854483, B 1229969) delta 19395796 (A 7829239, B 11566557)
+game (53) done (new 53/68): A(Black) vs B(White) plies=127 result=A win eta=13m16s
+games: 53/68 (new 53/68)
+score: A 36 - B 17 - draws 0
+decided games: 53
+approx elo A-B: 130.3 (95% CI 37.4..246.2)
+avg plies: 106.4
+total nodes: 20629273 (A 8033980, B 12595293)
+aggregate nps: 3742 (A 2941, B 4529)
+qnodes: 56730838 (A 22417568, B 34313270)
+aggregate qnps: 10292 (A 8208, B 12339)
+qsearch caps/checks/delta: caps 2796871 (A 1117667, B 1679204) checks 2113611 (A 862603, B 1251008) delta 19646038 (A 7895843, B 11750195)
+game (54) done (new 54/68): A(White) vs B(Black) plies=110 result=A win eta=12m11s
+games: 54/68 (new 54/68)
+score: A 37 - B 17 - draws 0
+decided games: 54
+approx elo A-B: 135.1 (95% CI 42.8..250.8)
+avg plies: 106.5
+total nodes: 20965661 (A 8160592, B 12805069)
+aggregate nps: 3731 (A 2932, B 4515)
+qnodes: 57896478 (A 22866974, B 35029504)
+aggregate qnps: 10302 (A 8215, B 12351)
+qsearch caps/checks/delta: caps 2852331 (A 1137058, B 1715273) checks 2168071 (A 884024, B 1284047) delta 20323120 (A 8165137, B 12157983)
+game (55) done (new 55/68): A(Black) vs B(White) plies=92 result=B win eta=11m27s
+games: 55/68 (new 55/68)
+score: A 37 - B 18 - draws 0
+decided games: 55
+approx elo A-B: 125.2 (95% CI 34.0..237.3)
+avg plies: 106.2
+total nodes: 21190435 (A 8264059, B 12926376)
+aggregate nps: 3710 (A 2920, B 4486)
+qnodes: 58813125 (A 23240344, B 35572781)
+aggregate qnps: 10298 (A 8213, B 12346)
+qsearch caps/checks/delta: caps 3027740 (A 1192460, B 1835280) checks 2195697 (A 901660, B 1294037) delta 20426490 (A 8211329, B 12215161)
+game (56) done (new 56/68): A(White) vs B(Black) plies=88 result=A win eta=10m23s
+games: 56/68 (new 56/68)
+score: A 38 - B 18 - draws 0
+decided games: 56
+approx elo A-B: 129.8 (95% CI 39.3..241.8)
+avg plies: 105.9
+total nodes: 21572462 (A 8405771, B 13166691)
+aggregate nps: 3721 (A 2927, B 4501)
+qnodes: 59712472 (A 23582517, B 36129955)
+aggregate qnps: 10300 (A 8211, B 12350)
+qsearch caps/checks/delta: caps 3047839 (A 1204255, B 1843584) checks 2249969 (A 917230, B 1332739) delta 20700297 (A 8313677, B 12386620)
+game (57) done (new 57/68): A(Black) vs B(White) plies=139 result=A win eta=9m47s
+games: 57/68 (new 57/68)
+score: A 39 - B 18 - draws 0
+decided games: 57
+approx elo A-B: 134.3 (95% CI 44.4..246.2)
+avg plies: 106.5
+total nodes: 22033903 (A 8588044, B 13445859)
+aggregate nps: 3712 (A 2921, B 4490)
+qnodes: 61100423 (A 24139136, B 36961287)
+aggregate qnps: 10295 (A 8210, B 12342)
+qsearch caps/checks/delta: caps 3079275 (A 1214403, B 1864872) checks 2316341 (A 946793, B 1369548) delta 21245944 (A 8553276, B 12692668)
+game (58) done (new 58/68): A(White) vs B(Black) plies=146 result=A win eta=8m46s
+games: 58/68 (new 58/68)
+score: A 40 - B 18 - draws 0
+decided games: 58
+approx elo A-B: 138.7 (95% CI 49.4..250.5)
+avg plies: 107.2
+total nodes: 22434242 (A 8737502, B 13696740)
+aggregate nps: 3690 (A 2901, B 4464)
+qnodes: 62487209 (A 24687785, B 37799424)
+aggregate qnps: 10278 (A 8197, B 12320)
+qsearch caps/checks/delta: caps 3245704 (A 1298664, B 1947040) checks 2336543 (A 954088, B 1382455) delta 21410735 (A 8619468, B 12791267)
+game (59) done (new 59/68): A(Black) vs B(White) plies=71 result=A win eta=7m54s
+games: 59/68 (new 59/68)
+score: A 41 - B 18 - draws 0
+decided games: 59
+approx elo A-B: 143.0 (95% CI 54.2..254.6)
+avg plies: 106.5
+total nodes: 22524411 (A 8757615, B 13766796)
+aggregate nps: 3665 (A 2878, B 4436)
+qnodes: 63213140 (A 24952406, B 38260734)
+aggregate qnps: 10285 (A 8200, B 12329)
+qsearch caps/checks/delta: caps 3334137 (A 1343364, B 1990773) checks 2348316 (A 957223, B 1391093) delta 21707626 (A 8700519, B 13007107)
+game (60) done (new 60/68): A(White) vs B(Black) plies=92 result=A win eta=6m59s
+games: 60/68 (new 60/68)
+score: A 42 - B 18 - draws 0
+decided games: 60
+approx elo A-B: 147.2 (95% CI 59.0..258.7)
+avg plies: 106.3
+total nodes: 22742538 (A 8822254, B 13920284)
+aggregate nps: 3646 (A 2857, B 4420)
+qnodes: 64170172 (A 25325491, B 38844681)
+aggregate qnps: 10287 (A 8201, B 12333)
+qsearch caps/checks/delta: caps 3369525 (A 1356727, B 2012798) checks 2376369 (A 969221, B 1407148) delta 22181829 (A 8904044, B 13277785)
+game (62) done (new 61/68): A(White) vs B(Black) plies=67 result=B win eta=6m08s
+games: 61/68 (new 61/68)
+score: A 42 - B 19 - draws 0
+decided games: 61
+approx elo A-B: 137.8 (95% CI 50.6..246.0)
+avg plies: 105.7
+total nodes: 22988014 (A 8916190, B 14071824)
+aggregate nps: 3648 (A 2857, B 4424)
+qnodes: 64835589 (A 25602878, B 39232711)
+aggregate qnps: 10288 (A 8203, B 12334)
+qsearch caps/checks/delta: caps 3399275 (A 1364612, B 2034663) checks 2392034 (A 976648, B 1415386) delta 22291932 (A 8961389, B 13330543)
+game (61) done (new 62/68): A(Black) vs B(White) plies=157 result=A win eta=5m16s
+games: 62/68 (new 62/68)
+score: A 43 - B 19 - draws 0
+decided games: 62
+approx elo A-B: 141.9 (95% CI 55.2..250.0)
+avg plies: 106.5
+total nodes: 23568272 (A 9132368, B 14435904)
+aggregate nps: 3650 (A 2856, B 4429)
+qnodes: 66409844 (A 26222287, B 40187557)
+aggregate qnps: 10285 (A 8200, B 12331)
+qsearch caps/checks/delta: caps 3543666 (A 1439329, B 2104337) checks 2422560 (A 986962, B 1435598) delta 22540893 (A 9049928, B 13490965)
+game (64) done (new 63/68): A(White) vs B(Black) plies=132 result=A win eta=4m30s
+games: 63/68 (new 63/68)
+score: A 44 - B 19 - draws 0
+decided games: 63
+approx elo A-B: 145.9 (95% CI 59.7..253.9)
+avg plies: 106.9
+total nodes: 24136192 (A 9344766, B 14791426)
+aggregate nps: 3664 (A 2866, B 4448)
+qnodes: 67686540 (A 26718413, B 40968127)
+aggregate qnps: 10277 (A 8193, B 12320)
+qsearch caps/checks/delta: caps 3574082 (A 1452031, B 2122051) checks 2472950 (A 1007552, B 1465398) delta 22972030 (A 9217568, B 13754462)
+game (63) done (new 64/68): A(Black) vs B(White) plies=256 result=draw eta=3m37s
+games: 64/68 (new 64/68)
+score: A 44 - B 19 - draws 1
+decided games: 63
+approx elo A-B: 143.3 (95% CI 57.9..249.7)
+avg plies: 109.2
+total nodes: 24780679 (A 9609217, B 15171462)
+aggregate nps: 3621 (A 2835, B 4392)
+qnodes: 70147346 (A 27698798, B 42448548)
+aggregate qnps: 10250 (A 8172, B 12290)
+qsearch caps/checks/delta: caps 3738277 (A 1531164, B 2207113) checks 2547084 (A 1033003, B 1514081) delta 23749344 (A 9484883, B 14264461)
+game (65) done (new 65/68): A(Black) vs B(White) plies=75 result=A win eta=2m40s
+games: 65/68 (new 65/68)
+score: A 45 - B 19 - draws 1
+decided games: 64
+approx elo A-B: 147.2 (95% CI 62.2..253.5)
+avg plies: 108.7
+total nodes: 25099306 (A 9712358, B 15386948)
+aggregate nps: 3631 (A 2838, B 4407)
+qnodes: 70896990 (A 27968539, B 42928451)
+aggregate qnps: 10255 (A 8173, B 12296)
+qsearch caps/checks/delta: caps 3743849 (A 1532908, B 2210941) checks 2579523 (A 1045170, B 1534353) delta 24016797 (A 9588173, B 14428624)
+game (67) done (new 66/68): A(Black) vs B(White) plies=91 result=A win eta=1m48s
+games: 66/68 (new 66/68)
+score: A 46 - B 19 - draws 1
+decided games: 65
+approx elo A-B: 151.0 (95% CI 66.4..257.2)
+avg plies: 108.4
+total nodes: 25616444 (A 9906035, B 15710409)
+aggregate nps: 3659 (A 2859, B 4442)
+qnodes: 71815778 (A 28327407, B 43488371)
+aggregate qnps: 10257 (A 8175, B 12297)
+qsearch caps/checks/delta: caps 3753380 (A 1536463, B 2216917) checks 2619667 (A 1061672, B 1557995) delta 24240596 (A 9674790, B 14565806)
+game (68) done (new 67/68): A(White) vs B(Black) plies=130 result=A win eta=55s
+games: 67/68 (new 67/68)
+score: A 47 - B 19 - draws 1
+decided games: 66
+approx elo A-B: 154.7 (95% CI 70.6..260.8)
+avg plies: 108.7
+total nodes: 26037251 (A 10058952, B 15978299)
+aggregate nps: 3653 (A 2852, B 4436)
+qnodes: 73076912 (A 28816096, B 44260816)
+aggregate qnps: 10252 (A 8171, B 12289)
+qsearch caps/checks/delta: caps 3818015 (A 1577978, B 2240037) checks 2654102 (A 1076042, B 1578060) delta 24488773 (A 9766108, B 14722665)
+game (66) done (new 68/68): A(White) vs B(Black) plies=220 result=A win eta=0s
+games: 68/68 (new 68/68)
+score: A 48 - B 19 - draws 1
+decided games: 67
+approx elo A-B: 158.3 (95% CI 74.6..264.3)
+avg plies: 110.4
+total nodes: 26497700 (A 10237999, B 16259701)
+aggregate nps: 3607 (A 2817, B 4380)
+qnodes: 75215591 (A 29664484, B 45551107)
+aggregate qnps: 10239 (A 8163, B 12271)
+qsearch caps/checks/delta: caps 3951694 (A 1636770, B 2314924) checks 2724351 (A 1104965, B 1619386) delta 25157911 (A 10038656, B 15119255)

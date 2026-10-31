@@ -12,10 +12,12 @@ clients can run search, iterative deepening, perft, DFPN, and NNUE loading.
 - `perft(sfen, depth)`
 - `dfpn(sfen, max_nodes, max_time_ms, tt_megabytes, max_pv_moves)`
 - `load_nnue(bytes)`
+- `load_sfnn(nn_bytes, progress_bytes, arch)`
 - `UsiEngine`
   - `new()`
   - `send(line)`
   - `load_nnue(bytes)`
+  - `load_sfnn(nn_bytes, progress_bytes, arch)`
 
 The native Rust side also exposes hidden helper functions used by `haitaka_cli`
 and tests.
@@ -23,6 +25,19 @@ and tests.
 `UsiEngine` speaks USI command strings through JavaScript calls. It is intended
 for browser and Worker transports where stdin/stdout are not available. The
 initial API is synchronous: `send("go ...")` returns after search completes.
+
+## TuyouraOu11 micro
+
+`load_sfnn(nn_bytes, progress_bytes, arch)` installs the micro evaluator in the
+browser runtime; `UsiEngine.load_sfnn` installs it only in that engine instance.
+Both return `SFNN_ka2_2048_8_64_progress8` after validating the two files and clear
+their own search TT on success. Failed loads preserve the previous evaluator/TT.
+The existing `load_nnue` API still handles HalfKAv2 models.
+
+Native `sfnn::SfnnModel` exposes full-refresh and incremental evaluation. See
+[format, provenance, build and verification steps](../docs/tuyouraou11-sfnn.md).
+The optional `sfnn-diagnostics` feature is for verification only; omit it from
+production packages. Micro is accepted only by standard-shogi builds.
 
 ## Build For Browser Use
 

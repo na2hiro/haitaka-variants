@@ -1,0 +1,29 @@
+{
+  "games": 24,
+  "strata": {
+    "200": {
+      "wins": 7,
+      "losses": 5,
+      "draws": 0,
+      "scoreRate": 0.5833333333333334,
+      "rawSha256": "b65c378a095f98c578b3b333aae8c878dc8ea09d61b0703fa91d75f650092339"
+    },
+    "1000": {
+      "wins": 8,
+      "losses": 3,
+      "draws": 1,
+      "scoreRate": 0.7083333333333334,
+      "rawSha256": "0bf87a4fb740ff9e5e8a1e2a0970f3a2efc378ce79f8018fc3e8c44891e4a968"
+    }
+  },
+  "samplingUnit": "color-swapped opening pair, stratified by movetime",
+  "bootstrapSeed": 1,
+  "bootstrapSamples": 10000,
+  "scoreRate": 0.6458333333333334,
+  "ci95": [
+    0.5,
+    0.7916666666666666
+  ],
+  "regression": false,
+  "scope": "native scalar versus detected AVX2/NEON; exploratory, not a Wasm match or proof of strength gain"
+}

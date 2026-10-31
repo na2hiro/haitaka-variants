@@ -1,0 +1,19 @@
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:447:4
+    |
+447 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib test) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 22.79s
+     Running unittests src/lib.rs (target/release/deps/haitaka_wasm-658390ce37c9c60f)
+
+running 2 tests
+test sfnn::search_range_test::sfnn_score_stays_outside_search_mate_range ... ok
+test sfnn_runtime_tests::sfnn_runtime_contract ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 96 filtered out; finished in 0.13s
+

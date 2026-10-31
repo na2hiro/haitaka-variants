@@ -1,0 +1,263 @@
+{
+  "config": {
+    "configFile": "/home/na2hiro/proj/shogitter-3/playwright.tuyouraou11.config.ts",
+    "rootDir": "/home/na2hiro/proj/shogitter-3/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": ".tmp/p4/e2e.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/na2hiro/proj/shogitter-3/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "tuyouraou11.spec.ts"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/home/na2hiro/proj/shogitter-3/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "tuyouraou11.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "tuyouraou11.spec.ts",
+      "file": "tuyouraou11.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "TuyouraOu11 real Wasm integration",
+          "file": "tuyouraou11.spec.ts",
+          "line": 59,
+          "column": 6,
+          "specs": [
+            {
+              "title": "selects mini, applies a legal reply, and switches back to micro (SIMD)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 25340,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T22:44:41.251Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-5db66-witches-back-to-micro-SIMD--chromium/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16f4fbabfbac31903b2f-eff39dbed68a55b0a479",
+              "file": "tuyouraou11.spec.ts",
+              "line": 70,
+              "column": 5
+            },
+            {
+              "title": "selects mini, applies a legal reply, and switches back to micro (scalar)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 26456,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T22:45:07.880Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-2467b-tches-back-to-micro-scalar--chromium/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16f4fbabfbac31903b2f-bd7f0a0a9e37e4e9339c",
+              "file": "tuyouraou11.spec.ts",
+              "line": 70,
+              "column": 5
+            },
+            {
+              "title": "selects mini, applies a legal reply, and switches back to micro (SIMD)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 36273,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T22:45:36.044Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-5db66-witches-back-to-micro-SIMD--firefox/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16f4fbabfbac31903b2f-555bd01e57459d5047d5",
+              "file": "tuyouraou11.spec.ts",
+              "line": 70,
+              "column": 5
+            },
+            {
+              "title": "selects mini, applies a legal reply, and switches back to micro (scalar)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox",
+                  "projectName": "firefox",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 79652,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-30T22:46:16.011Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/na2hiro/proj/shogitter-3/.tmp/p4/e2e/tuyouraou11-TuyouraOu11-re-2467b-tches-back-to-micro-scalar--firefox/trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "16f4fbabfbac31903b2f-eb4927daeff4d3fd0c5a",
+              "file": "tuyouraou11.spec.ts",
+              "line": 70,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-30T22:44:40.234Z",
+    "duration": 180130.29200000002,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "seed": 1,
+  "bootstrapSamples": 10000,
+  "samplingUnit": "starting-position color-swapped pair",
+  "strata": {
+    "200": {
+      "wins": 92,
+      "draws": 0,
+      "losses": 8,
+      "scoreRate": 0.92,
+      "ci95": [
+        0.87,
+        0.97
+      ]
+    },
+    "1000": {
+      "wins": 96,
+      "draws": 0,
+      "losses": 4,
+      "scoreRate": 0.96,
+      "ci95": [
+        0.92,
+        0.99
+      ]
+    }
+  },
+  "scoreRate": 0.94,
+  "ci95": [
+    0.905,
+    0.97
+  ],
+  "regression": false
+}

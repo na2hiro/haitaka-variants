@@ -1,0 +1,136 @@
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:447:4
+    |
+447 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+warning: `haitaka_wasm` (lib test) generated 1 warning (1 duplicate)
+    Finished `release` profile [optimized] target(s) in 24.58s
+     Running unittests src/lib.rs (target/release/deps/haitaka_wasm-9588997c8a885c34)
+
+running 98 tests
+test movepick::tests::equal_material_gain_uses_higher_victim_value_first ... ok
+test movepick::tests::higher_material_gain_capture_sorts_first ... ok
+test movepick::tests::promotion_only_tactical_ordering_remains_stable ... ok
+test movepick::tests::quiet_drops_and_board_moves_use_distinct_history_keys ... ok
+test movepick::tests::equal_victim_value_uses_lower_attacker_value_first ... ok
+test nnue::tests::active_donor_family_matches_build ... ok
+test movepick::tests::killer_insertion_avoids_duplicates_and_keeps_two_slots ... ok
+test movepick::tests::non_capture_major_promotion_is_winning_tactical ... ok
+test nnue::tests::computes_expected_piece_constants ... ok
+test nnue::tests::deterministic_sequence_matches_full_from_handicap_position ... ok
+test movepick::tests::tt_move_is_first_only_when_legal ... ok
+test movepick::tests::tactical_capture_precedes_killer_and_quiet ... ok
+test nnue::tests::deterministic_sequence_matches_full_from_start_position ... ok
+test nnue::tests::incremental_matches_full_for_drop ... ok
+test nnue::tests::incremental_matches_full_for_capture ... ok
+test nnue::tests::incremental_matches_full_for_king_move ... ok
+test nnue::tests::incremental_matches_full_for_promotion ... ok
+test nnue::tests::incremental_matches_full_for_quiet_move ... ok
+test nnue::tests::knight8_donor_family_uses_clockwise_slot_order ... ok
+test nnue::tests::knight8_donor_family_uses_slot_major_stride ... ok
+test nnue::tests::knight8_donor_hash_is_accepted_only_by_anki_builds ... ok
+test nnue::tests::maps_shogi_squares_to_variant_indices ... ok
+test nnue::tests::orients_white_perspective_by_rank_flip ... ok
+test nnue::tests::pair_donor_family_uses_slot_major_stride ... ok
+test nnue::tests::phase6_100ms_nps_diagnostic ... ok
+test nnue::tests::random_rollouts_match_full_refresh ... ok
+test nnue::tests::real_donor_model_affine_layers_and_evaluation_match_scalar ... ok
+test nnue::tests::rejects_the_other_transformer_width_profile ... ok
+test nnue::tests::single_donor_hash_is_accepted_only_by_single_donor_builds ... ok
+test sfnn::search_range_test::sfnn_score_stays_outside_search_mate_range ... ignored, requires micro; explicit P2 score-range verification
+test nnue_kernels::tests::affine_rows_and_padding_match_scalar ... ok
+test sfnn::tests::leb128_checks ... ok
+test sfnn::tests::rejects_arch_and_build_before_parsing ... ok
+test sfnn_runtime_tests::sfnn_runtime_contract ... ignored, requires micro; explicit P2 runtime verification
+test sfnn_kernels::tests::kernels_match_scalar_at_wrap_clamp_and_tail_boundaries ... ok
+test tests::board_native_nnue_search_handles_live_check_positions ... ok
+test nnue_kernels::tests::detected_kernel_matches_scalar_for_random_and_boundary_inputs ... ok
+test tests::dfpn_rejects_invalid_sfen ... ok
+test sfnn::tests::progress_boundaries_and_rounding ... ok
+test tests::board_native_handcrafted_search_handles_live_check_positions ... ok
+test tests::fixed_node_search_reports_a_marked_emergency_move_before_any_child_finishes ... ok
+test tests::dfpn_matches_core_mate_result ... ok
+test tests::iterative_search_can_disable_dfpn_short_circuiting ... ok
+test tests::iterative_search_preserves_parse_error_when_dfpn_cannot_help ... ok
+test tests::fixed_node_search_respects_depth_cap_without_spending_the_budget ... ok
+test tests::iterative_search_reuses_tt_between_depths ... ok
+test tests::dfpn_matches_core_no_mate_result ... ok
+test tests::iterative_search_times_out_before_any_completed_iteration ... ok
+test tests::iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen ... ok
+test tests::loads_test_nnue_when_available ... ok
+test tests::nnue_search_modes_match_on_handicap_position ... ok
+test tests::nnue_search_modes_match_on_start_position ... ok
+test tests::iterative_search_reaches_requested_depth_when_time_allows ... ok
+test tests::nnue_search_modes_match_on_tactical_position ... ok
+test tests::prefers_capturing_a_hanging_rook_in_a_simple_tactical_position ... ok
+test tests::qsearch_caps_are_reported ... ok
+test tests::qsearch_check_budget_controls_quiet_check_search ... ok
+test tests::qsearch_delta_pruning_is_reported_for_narrow_windows ... ok
+test tests::iterative_search_uses_dfpn_for_standard_mate ... ok
+test tests::qsearch_limits_match_variant_family ... ok
+test tests::qsearch_in_check_searches_evasions_without_stand_pat ... ok
+test tests::qsearch_expands_tactical_captures ... ok
+test tests::qsearch_quiet_leaf_matches_static_eval ... ok
+test tests::fixed_node_search_is_exact_and_deterministic ... ok
+test tests::qsearch_root_qply_never_delta_prunes ... ok
+test tests::reports_search_statistics ... ok
+test tests::qsearch_training_trace_is_deterministic ... ok
+test tests::returns_legal_move_for_handicap_position ... ok
+test tests::returns_legal_move_for_start_position ... ok
+test tests::returns_none_when_side_to_move_has_no_legal_move ... ok
+test tests::qsearch_training_trace_follows_promotions_and_check_evasions ... ok
+test tests::tiny_hash_search_returns_legal_move ... ok
+test tests::tt_score_conversion_round_trips ... ok
+test tests::usi_go_movetime_depth_uses_depth_as_cap ... ok
+test tests::usi_go_nodes_parses_and_rejects_mixed_budgets ... ok
+test tests::usi_session_applies_startpos_moves ... ok
+test tests::usi_session_marks_terminal_resign_as_no_legal_move ... ok
+test tests::qsearch_tactical_fixture_suite_pins_best_moves_and_scores ... ok
+test tests::usi_session_rejects_bad_position_without_corrupting_board ... ok
+test tests::usi_session_reports_id_and_ready ... ok
+test tests::usi_session_accepts_hash_option ... ok
+test tests::usi_session_reports_unsupported_setoption ... ok
+test tests::usi_session_node_budget_returns_legal_deterministic_fallback ... ok
+test tests::usi_session_returns_legal_bestmove_for_depth_search ... ok
+test tt::tests::different_key_replaces_and_reports_collision ... ok
+test tt::tests::exact_bound_overwrites_shallower_entry ... ok
+test tt::tests::generation_aging_affects_replacement_choice ... ok
+test tt::tests::invalid_packed_moves_decode_to_none ... ok
+test tt::tests::packed_board_moves_round_trip ... ok
+test tt::tests::packed_drops_round_trip ... ok
+test tt::tests::same_key_empty_move_preserves_previous_best_move ... ok
+test tests::usi_session_tiny_movetime_falls_back_to_legal_move ... ok
+test tests::workspace_handcrafted_search_matches_global_search ... ok
+test tests::training_trace_does_not_change_fixed_node_search ... ok
+test tests::dfpn_parses_tsume_sfens ... ok
+test nnue::tests::donor_incremental_matches_full_refresh_random_rollouts ... ok
+test nnue::tests::donor_incremental_matches_full_refresh_deterministic ... ok
+test tests::fixed_depth_ordering_matches_reference_scores_on_representative_openings ... ok
+
+test result: ok. 96 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 2.47s
+
+     Running tests/nnue_wasm_simd.rs (target/release/deps/nnue_wasm_simd-cdb7cc01cbb33234)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/sfnn_reference.rs (target/release/deps/sfnn_reference-8996d3e630d7c07c)
+
+running 2 tests
+test incremental_states_and_search_match_full_refresh ... ignored, requires micro; explicit P2 verification
+test micro_matches_external_reference_and_rejects_corruption ... ignored, requires fetched micro model; run scripts/tuyouraou11.py verify
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests haitaka_wasm
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

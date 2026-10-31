@@ -1,0 +1,246 @@
+{
+  "fixturePositions": 236,
+  "incrementalMoves": 2048,
+  "fixedDepthSearches": 20,
+  "hashes": {
+    "scalar": "0d1bfc54a54d585f59df7b55c2547e279bc5fc05c6b587820de1cf74395d26d7",
+    "simd": "337f638a76db60bf83ff4bd46e3b2aadab02bd65c0be709ea8e30802ed7217d7"
+  },
+  "searches": {
+    "scalar": [
+      {
+        "bestMove": "7g7f",
+        "score": 56,
+        "states": 240
+      },
+      {
+        "bestMove": "3d5f",
+        "score": 1308,
+        "states": 157
+      },
+      {
+        "bestMove": "5h6h",
+        "score": 957,
+        "states": 218
+      },
+      {
+        "bestMove": "2c1d",
+        "score": -957,
+        "states": 280
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -965,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 443,
+        "states": 137
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1518,
+        "states": 307
+      },
+      {
+        "bestMove": "P*7c",
+        "score": 1543,
+        "states": 155
+      },
+      {
+        "bestMove": "9a8a",
+        "score": 1575,
+        "states": 241
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1064,
+        "states": 261
+      },
+      {
+        "bestMove": "3c3d",
+        "score": 1,
+        "states": 153
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1367,
+        "states": 257
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 867,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 651,
+        "states": 246
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1306,
+        "states": 303
+      },
+      {
+        "bestMove": "3c3d",
+        "score": -27,
+        "states": 131
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 148,
+        "states": 132
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 744,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -124,
+        "states": 41
+      },
+      {
+        "bestMove": "9h8h",
+        "score": 228,
+        "states": 232
+      }
+    ],
+    "simd": [
+      {
+        "bestMove": "7g7f",
+        "score": 56,
+        "states": 240
+      },
+      {
+        "bestMove": "3d5f",
+        "score": 1308,
+        "states": 157
+      },
+      {
+        "bestMove": "5h6h",
+        "score": 957,
+        "states": 218
+      },
+      {
+        "bestMove": "2c1d",
+        "score": -957,
+        "states": 280
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -965,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 443,
+        "states": 137
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1518,
+        "states": 307
+      },
+      {
+        "bestMove": "P*7c",
+        "score": 1543,
+        "states": 155
+      },
+      {
+        "bestMove": "9a8a",
+        "score": 1575,
+        "states": 241
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1064,
+        "states": 261
+      },
+      {
+        "bestMove": "3c3d",
+        "score": 1,
+        "states": 153
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1367,
+        "states": 257
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 867,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 651,
+        "states": 246
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1306,
+        "states": 303
+      },
+      {
+        "bestMove": "3c3d",
+        "score": -27,
+        "states": 131
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 148,
+        "states": 132
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 744,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -124,
+        "states": 41
+      },
+      {
+        "bestMove": "9h8h",
+        "score": 228,
+        "states": 232
+      }
+    ]
+  },
+  "result": "PASS",
+  "browsers": [
+    {
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "backend": "scalar",
+      "result": "PASS"
+    },
+    {
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "backend": "simd",
+      "result": "PASS"
+    },
+    {
+      "browser": "firefox",
+      "version": "142.0.1",
+      "backend": "scalar",
+      "result": "PASS"
+    },
+    {
+      "browser": "firefox",
+      "version": "142.0.1",
+      "backend": "simd",
+      "result": "PASS"
+    }
+  ],
+  "logSha256": {
+    "chromium": "7ca3fc5acd245652a9655a3a332958b909bf644a946fb63e4435d258bf8ab854",
+    "firefox": "27b5401d1a3ef9b023b234a1dc3a1776e9aa960f77dcc9342b86fd4af70a174b"
+  }
+}

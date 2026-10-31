@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "engineCommit": "b541db55c4b042d1d4b3ff55aaf2d45db05cba4b",
+  "webP3Commit": "5d62198d97271fbdffb2764606292c0f40b64cf4",
+  "sourceScope": "P2 engine code; P4 additions only examples/scripts/plans",
+  "simd128Required": false,
+  "nativeHarness": {
+    "bytes": 9920976,
+    "sha256": "7b63a04bd4e383b925e55e3f6b458715533d7f9939d851d8362e3d16ac23b0d4"
+  },
+  "openings": {
+    "bytes": 3536,
+    "sha256": "ce6653c8790157159a44f30e375984451282318e2dce6870de5a65d30e75696c"
+  },
+  "positions": {
+    "bytes": 4753,
+    "sha256": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12"
+  },
+  "variants": {
+    "anhoku": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 19066606,
+        "sha256": "f84b5354eb6bbebb1e5138ea80672fe83b0fd42c42d188f7b20bb086e2eddc07"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "anki": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18154112,
+        "sha256": "8ed5afff27ce7cda0e879ac1a44c7dc66b7b1117d8390f49b668a02b8f5ed6d5"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "annan": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 19064670,
+        "sha256": "39e421ad8b591e4fc86345bb9277b19c84063645901a433a121bcc6a1ef41ebf"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "antouzai": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 19247096,
+        "sha256": "218435ec3c8fb4ee84946b8149ae895ee1e93d4da9bcbf8ff9d84e5ee169da02"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "haimen": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18806286,
+        "sha256": "a54260d766ee6f48ed9acf22ffc87a2c7afd496a95419e5f678bec4e152a5c07"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "neko": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18116845,
+        "sha256": "fb9a39068ff8918aa94a10a4de01bac18ba14a105aa6d647c0a51d445d05e712"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "nekoneko": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18126125,
+        "sha256": "a063b18a9ff00c404c0dd7905e5a604249e2038fa3cff697863ef32c1794dede"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "standard": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18494814,
+        "sha256": "6ebd5a7fd2962e380252e035f88871486608ba30a4dcf9adb29d58d07a98fe87"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "taimen": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18808470,
+        "sha256": "9bb7f7d1efbb37f6043cdef1cd1273a734b6d418bd83b9d63a774916afd286fc"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "tenjiku": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18149599,
+        "sha256": "9064241770d7c031c216bed387e8b880647071b0b72c8c26b9fb9b810091c1d0"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "tenkyo": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18097080,
+        "sha256": "ffa64888f7b4878c43c9e55e2bb6f5fc3a3f5e406f57bf1bafff11f13f415ab4"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "yokoneko": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18115632,
+        "sha256": "609bd97ade6717041d71cdc562230eb56696ada2eb4279c22ad209c815356b0a"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    },
+    "yokonekoneko": {
+      "haitaka_engine.d.ts": {
+        "bytes": 13152,
+        "sha256": "b780797a9559f20836d60a702ddb8c54a7886b7b9cc1f021f2feb930112bc16e"
+      },
+      "haitaka_engine.js": {
+        "bytes": 38484,
+        "sha256": "c91ef86a1ed073ea0ba270f26195cffae364a812f0dfbdfd20629ceaf37ef87f"
+      },
+      "haitaka_engine_bg.wasm": {
+        "bytes": 18126598,
+        "sha256": "3d1264583046176ebbc149e26dcffe13c0ab143961f8fcfe14134394251d3ea8"
+      },
+      "haitaka_engine_bg.wasm.d.ts": {
+        "bytes": 7698,
+        "sha256": "5e542302f1b1b7f020d7758350fed49d2c41886a6bdfc1f33dee316902c3ffe2"
+      }
+    }
+  }
+}
