@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::SystemTime;
@@ -48,13 +49,22 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
     loaded: &LoadedConfig,
     output: &Path,
 ) -> Result<TrainerFeatureParityReport> {
+    verify_receiver_pair_v2_trainer_parity_with_preparer(loaded, output, PreparedTrainer::new_inner)
+}
+
+fn verify_receiver_pair_v2_trainer_parity_with_preparer(
+    loaded: &LoadedConfig,
+    output: &Path,
+    prepare_trainer: impl FnOnce(&LoadedConfig, &Path, bool) -> Result<PreparedTrainer>,
+) -> Result<TrainerFeatureParityReport> {
     if loaded.training_features() != FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
         bail!("trainer parity requires training.features={FEATURE_SET_DONOR_RECEIVER_PAIR_V2}");
     }
     let trainer_checkout = loaded.trainer_checkout()?;
     let donor_overlay = overlay_donor_features_py_contents();
     let loader_overlay = overlay_training_data_loader_cpp_contents();
-    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    // This gate certifies the C++ loader, even when ordinary training reuses a build.
+    let prepared = prepare_trainer(loaded, &trainer_checkout, true)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -82,7 +92,7 @@ pub(crate) fn verify_receiver_pair_v2_trainer_parity(
         schema: "haitaka-anhoku-phase11a-trainer-parity",
         schema_version: 1,
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(&trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         feature_set: FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string(),
         feature_set_hash: "0xb38efce1".to_string(),
         real_features: 167_103,
@@ -153,7 +163,7 @@ pub fn prepare_bootstrap(loaded: &LoadedTrainingConfig) -> Result<PathBuf> {
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
-    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
     materialize_bootstrap_pt(loaded, prepared.path())?.ok_or_else(|| {
         anyhow!("training.initial_checkpoint must not be scratch to prepare a checkpoint")
     })
@@ -166,6 +176,7 @@ pub fn export(
     let trainer_checkout = loaded.trainer_checkout()?;
     let artifacts = loaded.artifact_paths();
     artifacts.ensure_dirs()?;
+    let prepared = PreparedTrainer::new_without_build(loaded, &trainer_checkout)?;
 
     let checkpoint = if let Some(path) = source_checkpoint {
         path
@@ -173,7 +184,7 @@ pub fn export(
         find_latest_valid_checkpoint(
             &artifacts.logs_dir,
             &loaded.config.paths.python,
-            &trainer_checkout,
+            prepared.path(),
         )?
         .ok_or_else(|| {
             anyhow!(
@@ -184,7 +195,6 @@ pub fn export(
     };
     ensure_file_exists(&checkpoint, "checkpoint")?;
 
-    let prepared = PreparedTrainer::new(loaded, &trainer_checkout)?;
     run_command(
         &loaded.config.paths.python,
         &[
@@ -431,7 +441,7 @@ pub(crate) fn write_export_metadata(
         exported_nnue: exported_nnue.display().to_string(),
         source_checkpoint: checkpoint.display().to_string(),
         trainer_checkout: trainer_checkout.display().to_string(),
-        trainer_revision: detect_git_revision(trainer_checkout),
+        trainer_revision: Some(PINNED_TRAINER_REVISION.to_string()),
         features: loaded.training_features().to_string(),
         description: loaded.config.export.description.clone(),
         config_hash: loaded.hash_hex.clone(),
@@ -459,16 +469,18 @@ pub(crate) struct PreparedTrainer {
 }
 
 impl PreparedTrainer {
+    /// Prepare a dataset-consuming operation with a loader built in its pinned context.
     pub(crate) fn new(loaded: &LoadedConfig, trainer_checkout: &Path) -> Result<Self> {
-        Self::new_inner(
-            loaded,
-            trainer_checkout,
-            loaded.config.training.build_data_loader,
-        )
+        if !loaded.config.training.build_data_loader {
+            bail!(
+                "dataset-consuming operations require training.build_data_loader=true: immutable trainer contexts need their own compiled loader"
+            );
+        }
+        Self::new_inner(loaded, trainer_checkout, true)
     }
 
-    /// Install the exact Python/variant overlays while deliberately skipping
-    /// the C++ loader build. Phase 11-C only deserializes a frozen checkpoint.
+    /// Prepare source-only checkpoint import/export or Phase 11-C deserialization
+    /// with the exact Python/variant overlays and no C++ data-loader build.
     pub(crate) fn new_without_build(
         loaded: &LoadedConfig,
         trainer_checkout: &Path,
@@ -645,9 +657,16 @@ fn materialize_bootstrap_pt(
     )?;
 
     let artifacts = loaded.artifact_paths();
-    let import_features = source_features.as_str();
+    let mut import_features = bootstrap_import_features(&bootstrap_nnue)?;
+    if import_features != source_features {
+        bail!(
+            "quantized diagnostic initial network declares {source_features}, but its header identifies {import_features}"
+        );
+    }
     let training_features = loaded.training_features();
-    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2 {
+    let bootstrap_nnue = if training_features == FEATURE_SET_DONOR_RECEIVER_PAIR_V2
+        && import_features == "HalfKAv2^+DonorSingleEff"
+    {
         let source = fs::read(&bootstrap_nnue)
             .with_context(|| format!("failed to read {}", bootstrap_nnue.display()))?;
         let migrated =
@@ -660,10 +679,14 @@ fn materialize_bootstrap_pt(
                 artifacts.bootstrap_migrated_nnue.display()
             )
         })?;
+        import_features = FEATURE_SET_DONOR_RECEIVER_PAIR_V2;
         artifacts.bootstrap_migrated_nnue.clone()
     } else {
         bootstrap_nnue
     };
+    if import_features != training_features && import_features != "HalfKAv2^" {
+        bail!("cannot bootstrap {training_features} training from {import_features}");
+    }
     let imported_model_pt = if import_features == training_features {
         artifacts.bootstrap_model_pt.clone()
     } else {
@@ -701,13 +724,13 @@ fn materialize_bootstrap_pt(
     Ok(Some(artifacts.bootstrap_model_pt))
 }
 
-#[cfg(test)]
-fn bootstrap_import_features(loaded: &LoadedConfig) -> &str {
-    // A warm-start NNUE must be parsed with the exact family that produced its
-    // network hash.  The Phase 7.1 v0.5.1 anchor is already a donor-family
-    // network; importing it as plain HalfKAv2 makes serialize.py reject the
-    // header before any feature expansion can occur.
-    loaded.training_features()
+fn bootstrap_import_features(path: &Path) -> Result<&'static str> {
+    let mut header = [0u8; 8];
+    fs::File::open(path)
+        .and_then(|mut file| file.read_exact(&mut header))
+        .with_context(|| format!("failed to read bootstrap NNUE header {}", path.display()))?;
+    haitaka_wasm::NnueModel::feature_family_from_header(&header)
+        .map_err(|err| anyhow!("invalid bootstrap NNUE header {}: {err}", path.display()))
 }
 
 fn bootstrap_base_model_pt_path(path: &Path) -> PathBuf {
@@ -853,19 +876,6 @@ fn ensure_training_dataset_ready(
         );
     }
     Ok(())
-}
-
-fn detect_git_revision(repo_root: &Path) -> Option<String> {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 pub(crate) fn collect_checkpoints(root: &Path, out: &mut Vec<PathBuf>) {
@@ -1028,37 +1038,100 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn dataset_operations_reject_disabled_loader_before_preparing_context() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
+        loaded.config.training.build_data_loader = false;
+        let error = PreparedTrainer::new(&loaded, temp.path()).err().unwrap();
+        assert!(
+            error
+                .to_string()
+                .contains("training.build_data_loader=true")
+        );
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn parity_requires_a_successful_loader_build_when_training_skips_it() {
+        let temp = tempdir().unwrap();
+        let mut loaded = loaded_config_for_tests(Ruleset::Anhoku);
+        loaded.config.training.features = Some(FEATURE_SET_DONOR_RECEIVER_PAIR_V2.to_string());
+        loaded.config.training.build_data_loader = false;
+        loaded.config.paths.trainer_checkout = Some(temp.path().to_path_buf());
+        loaded.config.paths.cmake = "/bin/false".to_string();
+        let overlay = temp.path().join("donor_features.py");
+        fs::write(&overlay, "original overlay").unwrap();
+        let output = temp.path().join("parity.json");
+
+        let error = verify_receiver_pair_v2_trainer_parity_with_preparer(
+            &loaded,
+            &output,
+            |_, checkout, build_data_loader| {
+                assert_eq!(checkout, temp.path());
+                assert!(
+                    build_data_loader,
+                    "parity must build even when training skips it"
+                );
+                bail!("configure trainer data loader failed");
+            },
+        )
+        .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("configure trainer data loader failed")
+        );
+        assert!(!output.exists());
+        assert_eq!(fs::read_to_string(overlay).unwrap(), "original overlay");
+    }
+
+    #[test]
     fn checkpoint_validation_script_disables_weights_only_mode() {
         assert!(checkpoint_validation_script().contains("weights_only=False"));
     }
 
-    #[test]
-    fn donor_training_imports_bootstrap_with_exact_feature_family() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Antouzai);
-        loaded.config.training.features = Some("HalfKAv2^+DonorPairSlots".to_string());
-        assert_eq!(
-            bootstrap_import_features(&loaded),
-            "HalfKAv2^+DonorPairSlots"
-        );
+    fn write_bootstrap_header(path: &Path, hash: u32) {
+        let mut header = 0x7af32f20u32.to_le_bytes().to_vec();
+        header.extend(hash.to_le_bytes());
+        fs::write(path, header).unwrap();
+    }
 
-        loaded.config.training.features = Some("HalfKAv2^+DonorSingleEff".to_string());
+    #[test]
+    fn bootstrap_import_detects_base_network_for_donor_warm_starts() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("base.nnue");
+        write_bootstrap_header(&path, 0x3c103e72);
+        assert_eq!(bootstrap_import_features(&path).unwrap(), "HalfKAv2^");
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn bootstrap_import_detects_both_anhoku_donor_families() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("donor.nnue");
+        write_bootstrap_header(&path, 0x0d8f62a2);
         assert_eq!(
-            bootstrap_import_features(&loaded),
+            bootstrap_import_features(&path).unwrap(),
             "HalfKAv2^+DonorSingleEff"
         );
-
-        loaded.config.training.features = Some("HalfKAv2^+DonorKnight8Slots".to_string());
+        write_bootstrap_header(&path, 0xd0bd8e2b);
         assert_eq!(
-            bootstrap_import_features(&loaded),
-            "HalfKAv2^+DonorKnight8Slots"
+            bootstrap_import_features(&path).unwrap(),
+            FEATURE_SET_DONOR_RECEIVER_PAIR_V2
         );
     }
 
     #[test]
-    fn standard_training_imports_bootstrap_with_training_features() {
-        let mut loaded = loaded_config_for_tests(Ruleset::Standard);
-        loaded.config.training.features = Some("HalfKAv2^".to_string());
-        assert_eq!(bootstrap_import_features(&loaded), "HalfKAv2^");
+    fn bootstrap_import_rejects_invalid_headers() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("invalid.nnue");
+        fs::write(&path, [0; 4]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
+        write_bootstrap_header(&path, 0);
+        assert!(bootstrap_import_features(&path).is_err());
+        fs::write(&path, [0; 8]).unwrap();
+        assert!(bootstrap_import_features(&path).is_err());
     }
 
     #[test]

@@ -50,6 +50,10 @@ function parseSearch(outputs, requestedMs, dispatchAt, begunAt, endedAt) {
     missingMove: boolAfter(tokens, "missingMove") || (!gameover && bestMove === "resign"),
     alphaBetaNodes: numberAfter(tokens, "alphaBetaNodes") ?? numberAfter(tokens, "nodes") ?? 0,
     qnodes: numberAfter(tokens, "qnodes") ?? 0,
+    dfpnSelected: boolAfter(tokens, "dfpnSelected"),
+    dfpnNodes: numberAfter(tokens, "dfpnNodes") ?? 0,
+    dfpnStatus: valueAfter(tokens, "dfpnStatus"),
+    dfpnBestMove: valueAfter(tokens, "dfpnBestMove"),
     provenanceEnvelopeId: self.r1d3ProvenanceEnvelopeId,
   };
 }
@@ -69,13 +73,16 @@ function search(engine, startSfen, moves, go, requestedMs) {
   return parseSearch(outputs, requestedMs, dispatchAt, begunAt, endedAt);
 }
 
-function terminalFrom(searchResult, sideEngine) {
+function terminalFrom(searchResult, sideEngine, blackEngine, whiteEngine) {
   if (searchResult.bestMove !== "resign") return null;
   if (searchResult.gameover?.includes("repetition-draw")) {
     return { reason: "repetition-draw", winner: null };
   }
   if (searchResult.gameover?.includes("perpetual-check-loss")) {
-    return { reason: "perpetual-check-loss", winner: sideEngine === "A" ? "B" : "A" };
+    const match = searchResult.gameover.match(/perpetual-check-loss:(black|white)(?:\s|$)/);
+    if (!match) throw new Error(`missing perpetual-check losing color: ${searchResult.gameover}`);
+    const loser = match[1] === "black" ? blackEngine : whiteEngine;
+    return { reason: "perpetual-check-loss", winner: loser === "A" ? "B" : "A" };
   }
   if (searchResult.gameover?.includes("no-legal-move")) {
     return { reason: "no-legal-move", winner: sideEngine === "A" ? "B" : "A" };
@@ -95,6 +102,7 @@ function playGame(engine, lane, opening, pairIndex, secondGame, maxPlies) {
   const searches = [];
   let winner = null;
   let terminationReason = "maximum-ply-capped";
+  let terminalNotification = null;
   for (let ply = 0; ply < maxPlies; ply += 1) {
     const sideEngine = ply % 2 === 0 ? blackEngine : whiteEngine;
     const definition = lane[sideEngine.toLowerCase()];
@@ -104,11 +112,11 @@ function playGame(engine, lane, opening, pairIndex, secondGame, maxPlies) {
     trace.engine = sideEngine;
     trace.color = ply % 2 === 0 ? "black" : "white";
     trace.coldWarmState = "warm";
-    searches.push(trace);
-    const terminal = terminalFrom(trace, sideEngine);
+    const terminal = terminalFrom(trace, sideEngine, blackEngine, whiteEngine);
     if (terminal) {
       winner = terminal.winner;
       terminationReason = terminal.reason;
+      terminalNotification = trace;
       break;
     }
     if (trace.rootResultSchema !== ROOT_RESULT_SCHEMA) {
@@ -117,7 +125,28 @@ function playGame(engine, lane, opening, pairIndex, secondGame, maxPlies) {
     if (trace.emergencyFallbackUsed || trace.missingMove || !trace.playMoveWasSearched) {
       throw new Error(`unqualified move on ${lane.id} pair ${pairIndex}: ${JSON.stringify(trace)}`);
     }
+    searches.push(trace);
     moves.push(trace.bestMove);
+  }
+  if (terminationReason === "maximum-ply-capped") {
+    // The last allowed move can itself end the game. Adjudicate its child
+    // without performing an extra search or including it in timing metrics.
+    position(engine, opening.sfen, moves);
+    const now = performance.now();
+    const outputs = Array.from(engine.terminal_notifications(), String);
+    if (outputs.length) {
+      const trace = parseSearch(outputs, null, now, now, performance.now());
+      const sideEngine = moves.length % 2 === 0 ? blackEngine : whiteEngine;
+      trace.ply = moves.length + 1;
+      trace.engine = sideEngine;
+      trace.color = moves.length % 2 === 0 ? "black" : "white";
+      trace.coldWarmState = "warm";
+      const terminal = terminalFrom(trace, sideEngine, blackEngine, whiteEngine);
+      if (!terminal) throw new Error("terminal adjudication did not return a terminal result");
+      terminalNotification = trace;
+      winner = terminal.winner;
+      terminationReason = terminal.reason;
+    }
   }
   return {
     schema: "haitaka-r1d3-raw-game-v1",
@@ -138,6 +167,7 @@ function playGame(engine, lane, opening, pairIndex, secondGame, maxPlies) {
     emergencyFallbacks: searches.filter((item) => item.emergencyFallbackUsed).length,
     searchedPartialRootMoves: searches.filter((item) => item.partialRootState && item.playMoveWasSearched).length,
     searches,
+    terminalNotification,
   };
 }
 

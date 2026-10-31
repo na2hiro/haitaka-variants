@@ -2682,12 +2682,13 @@ fn prepare_self_play_report_merge_output(
     }
 
     fs::create_dir_all(report_dir)?;
-    let (existing_stats, game_index_offset) = load_existing_report_stats(
+    let (mut existing_stats, game_index_offset) = load_existing_report_stats(
         report_path,
         expected_ruleset,
         expected_command,
         expected_engines,
     )?;
+    restore_pair_scores(&mut existing_stats, games_path, game_index_offset)?;
     let games_writer = fs::OpenOptions::new()
         .append(true)
         .open(games_path)
@@ -2698,6 +2699,64 @@ fn prepare_self_play_report_merge_output(
         existing_stats,
         game_index_offset,
     })
+}
+
+// Rebuild paired statistics from the log, including pairs split across runs and
+// results delivered out of order by self-play workers. Older reports did not
+// persist their pending scores and may also have undercounted completed pairs.
+fn restore_pair_scores(stats: &mut MatchStats, games_path: &Path, games: u32) -> Result<()> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PairResult {
+        pair_index: u32,
+        winner: Option<String>,
+    }
+
+    let reader = BufReader::new(
+        fs::File::open(games_path).with_context(|| format!("open {}", games_path.display()))?,
+    );
+    let mut pairs = BTreeMap::<u32, Vec<f64>>::new();
+    let mut records = 0u32;
+    for (line_index, line) in reader.lines().enumerate() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let record: PairResult = serde_json::from_str(&line)
+            .with_context(|| format!("parse {} line {}", games_path.display(), line_index + 1))?;
+        let score = match record.winner.as_deref() {
+            Some("A") => 1.0,
+            Some("B") => 0.0,
+            None => 0.5,
+            Some(winner) => bail!("invalid winner `{winner}` in {}", games_path.display()),
+        };
+        pairs.entry(record.pair_index).or_default().push(score);
+        records += 1;
+    }
+    if records != games {
+        bail!(
+            "cannot merge: {} contains {records} games but the report summary contains {games}",
+            games_path.display()
+        );
+    }
+    stats.pair_score_bins = [0; 5];
+    stats.pending_pair_scores.clear();
+    for (pair_index, scores) in pairs {
+        match scores.as_slice() {
+            [first, second] => {
+                let bin = ((first + second) * 2.0).round() as usize;
+                stats.pair_score_bins[bin] += 1;
+            }
+            [_] => {
+                stats.pending_pair_scores.insert(pair_index, scores);
+            }
+            _ => bail!(
+                "pair {pair_index} in {} has more than two games",
+                games_path.display()
+            ),
+        }
+    }
+    Ok(())
 }
 
 fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
@@ -4908,6 +4967,30 @@ mod tests {
             !encoded.contains("/tmp/extracted-engine-123"),
             "report should not contain transient extraction paths: {encoded}"
         );
+    }
+
+    #[test]
+    fn restored_pairs_include_pending_results_and_repair_legacy_bins() {
+        let temp = unique_temp_dir("restore-pairs");
+        fs::create_dir_all(&temp).unwrap();
+        let games_path = temp.join(SELF_PLAY_GAMES_FILE);
+        fs::write(
+            &games_path,
+            concat!(
+                "{\"pairIndex\":0,\"winner\":\"A\"}\n",
+                "{\"pairIndex\":1,\"winner\":null}\n",
+                "{\"pairIndex\":0,\"winner\":\"B\"}\n",
+                "{\"pairIndex\":2,\"winner\":\"A\"}\n",
+            ),
+        )
+        .unwrap();
+        let mut stats = MatchStats::default();
+        restore_pair_scores(&mut stats, &games_path, 4).unwrap();
+        assert_eq!(stats.pair_score_bins, [0, 0, 1, 0, 0]);
+        assert_eq!(stats.pending_pair_scores.get(&1), Some(&vec![0.5]));
+        assert_eq!(stats.pending_pair_scores.get(&2), Some(&vec![1.0]));
+        assert!(restore_pair_scores(&mut stats, &games_path, 3).is_err());
+        fs::remove_dir_all(temp).unwrap();
     }
 
     #[test]

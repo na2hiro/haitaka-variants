@@ -376,6 +376,8 @@ fn run_checkpoint_helper(args: &Phase11cArgs, output: &Path) -> Result<()> {
         .arg("--checkpoint")
         .arg(&args.v2_checkpoint)
         .arg("--trainer-checkout")
+        .arg(&args.trainer_checkout)
+        .arg("--trainer-context")
         .arg(prepared.path())
         .arg("--reviewed-patch")
         .arg(&args.reviewed_patch)
@@ -1288,6 +1290,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn runtime_v2_activation_reports_both_perspective_rows() {
         let board = Board::startpos();
         let black = donor_receiver_pair_v2_active_rows(&board, Color::Black);

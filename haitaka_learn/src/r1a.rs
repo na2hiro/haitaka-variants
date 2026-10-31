@@ -122,6 +122,7 @@ pub(crate) fn run(
     source_identity_path: &Path,
     workspace_root: &Path,
 ) -> Result<R1aReport> {
+    ensure!(cfg!(feature = "anhoku"), "R1-A requires --features anhoku");
     let loaded = LoadedTrainingConfig::from_path(config_path)?;
     loaded.ruleset_requires_matching_engine()?;
     ensure!(
@@ -284,7 +285,7 @@ pub(crate) fn run(
         }))?,
     )?;
 
-    let sentinel = R1SentinelNetwork::donor_single();
+    let sentinel = donor_single_sentinel()?;
     let mut states = Vec::with_capacity(fixtures.len());
     let mut transitions_checked = 0usize;
     let mut restore_round_trips_checked = 0usize;
@@ -313,7 +314,7 @@ pub(crate) fn run(
 
     let trainer_checkout = loaded.trainer_checkout()?;
     let prepared = PreparedTrainer::new(&loaded, &trainer_checkout)?;
-    let loader_library = find_loader_library(prepared.path())?;
+    let loader_library = retain_loader_library(prepared.path(), output_dir)?;
     let helper = workspace_root.join("scripts/r1a-cpp-feature-oracle.py");
     let status = Command::new(&loaded.config.paths.python)
         .env("PYTHONDONTWRITEBYTECODE", "1")
@@ -432,6 +433,17 @@ fn feature_perspective(indices: &R1ActiveFeatureIndices) -> FeaturePerspective<'
     FeaturePerspective {
         base: &indices.base,
         donor: &indices.donor,
+    }
+}
+
+fn donor_single_sentinel() -> Result<R1SentinelNetwork> {
+    #[cfg(feature = "anhoku")]
+    {
+        Ok(R1SentinelNetwork::donor_single())
+    }
+    #[cfg(not(feature = "anhoku"))]
+    {
+        bail!("R1-A sentinel checks require building haitaka_learn with --features anhoku")
     }
 }
 
@@ -1023,6 +1035,20 @@ fn find_loader_library(checkout: &Path) -> Result<PathBuf> {
     )
 }
 
+// R1 evidence must remain readable after the disposable trainer context is dropped.
+fn retain_loader_library(checkout: &Path, output_dir: &Path) -> Result<PathBuf> {
+    let source = find_loader_library(checkout)?;
+    let destination = output_dir.join(source.file_name().context("loader has no filename")?);
+    fs::copy(&source, &destination).with_context(|| {
+        format!(
+            "failed to retain loader {} as {}",
+            source.display(),
+            destination.display()
+        )
+    })?;
+    Ok(destination)
+}
+
 fn artifact_identity(path: &Path) -> Result<ArtifactIdentity> {
     let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
     Ok(ArtifactIdentity {
@@ -1051,6 +1077,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn retained_loader_evidence_survives_disposable_context_cleanup() {
+        let context = tempfile::tempdir().unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let contents = b"frozen compiled loader";
+        fs::write(context.path().join("libtraining_data_loader.so"), contents).unwrap();
+        let loader = retain_loader_library(context.path(), output.path()).unwrap();
+        drop(context);
+        assert_eq!(fs::read(&loader).unwrap(), contents);
+        assert_eq!(
+            artifact_identity(&loader).unwrap().sha256,
+            sha256_bytes(contents)
+        );
+    }
+
+    #[test]
+    #[cfg(not(feature = "anhoku"))]
+    fn sentinel_requires_anhoku_build() {
+        let error = donor_single_sentinel().unwrap_err();
+        assert!(error.to_string().contains("--features anhoku"));
+    }
+
+    #[test]
     fn independent_signature_matches_start_position() {
         let board = Board::startpos();
         let packed = pack_board_for_training(&board).unwrap();
@@ -1061,6 +1109,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn curated_seeds_cover_every_output_bucket() {
         let seeds = curated_seeds().unwrap();
         let buckets = seeds
@@ -1071,6 +1120,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn corpus_is_deterministic_and_large_enough() {
         let first = build_corpus().unwrap();
         let second = build_corpus().unwrap();
@@ -1088,6 +1138,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "anhoku")]
     fn independent_handcrafted_oracle_matches_runtime() {
         for fixture in build_corpus().unwrap() {
             assert_eq!(

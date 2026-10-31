@@ -84,6 +84,19 @@ def verified_deep_core(
     }
 
 
+def verified_evaluation_splits(
+    contract: dict[str, Any], deep: dict[str, Any],
+) -> dict[str, tuple[Path, int]]:
+    pilot = contract["pilot"]["splits"]
+    static = contract["initialization"]["lanes"][1]["staticClone"]
+    sources = {"validation": pilot["validation"], "development": pilot["development"],
+               "static-clone": static, "deep-core": deep}
+    return {
+        name: (runner.verified_binary(source["binary"], source["records"], name), source["records"])
+        for name, source in sources.items()
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preflight-report", type=Path, required=True)
@@ -112,27 +125,13 @@ def main() -> int:
     width = contract["architecture"]["currentWidth" if args.width == "current" else "compactWidth"]
     workspace = ROOT
     deep, deep_identity = verified_deep_core(contract, workspace)
+    split_files = verified_evaluation_splits(contract, deep)
     original_cwd = Path.cwd()
     temp, context = runner.prepare_context(width, args.cmake)
     try:
         torch, features, model_module, nnue_dataset = runner.import_trainer(context)
         device = torch.device("cuda")
         feature_set = features.get_feature_set_from_name(runner.FEATURE_SET)
-        pilot = contract["pilot"]["splits"]
-        split_files = {
-            "validation": (workspace / pilot["validation"]["binary"]["path"], pilot["validation"]["records"]),
-            "development": (workspace / pilot["development"]["binary"]["path"], pilot["development"]["records"]),
-        }
-        static = contract["initialization"]["lanes"][1]["staticClone"]
-        split_files["static-clone"] = (
-            workspace / static["binary"]["path"],
-            static["records"],
-        )
-        split_files["deep-core"] = (
-            workspace / deep["binary"]["path"],
-            deep["records"],
-        )
-
         results: list[dict[str, Any]] = []
         for label, source in args.model:
             source = source if source.is_absolute() else workspace / source

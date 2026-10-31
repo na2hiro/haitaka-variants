@@ -1949,6 +1949,8 @@ pub struct TrainingConfig {
     pub max_steps: Option<u64>,
     #[serde(default = "default_max_epochs")]
     pub max_epochs: u32,
+    /// Dataset-consuming operations require a fresh loader build in their pinned context.
+    /// Checkpoint-only operations prepare source overlays without building the loader.
     #[serde(default = "default_build_data_loader")]
     pub build_data_loader: bool,
     #[serde(default)]

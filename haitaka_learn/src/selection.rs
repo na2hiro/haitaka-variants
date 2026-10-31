@@ -1051,6 +1051,7 @@ pub fn rank_existing(loaded: &LoadedConfig, options: RankExistingOptions) -> Res
         .with_context(|| format!("failed to read legacy state {}", paths.state.display()))?;
     let legacy: SelectionState = serde_json::from_slice(&bytes)
         .with_context(|| format!("failed to parse legacy state {}", paths.state.display()))?;
+    validate_legacy_ranking_protocol(loaded, &selection, &legacy)?;
     let budget = options.ranking_budget.unwrap_or(selection.max_total_games);
     rank_candidates(
         loaded,
@@ -1151,7 +1152,7 @@ fn rank_candidates(
     let anchor_sha256 = candidates[0].sha256.clone();
 
     let mut ranking = if ranking_path.exists() {
-        let saved: RankingState = serde_json::from_slice(&fs::read(&ranking_path)?)
+        let mut saved: RankingState = serde_json::from_slice(&fs::read(&ranking_path)?)
             .with_context(|| format!("failed to parse {}", ranking_path.display()))?;
         if saved.schema != RANKING_SCHEMA
             || saved.schema_version != RANKING_SCHEMA_VERSION
@@ -1163,10 +1164,18 @@ fn rank_candidates(
                 ranking_path.display()
             );
         }
+        reconcile_ranking_candidates(&mut saved, candidates);
         saved
     } else {
         if import_legacy {
-            import_legacy_pairs(paths, legacy, &anchor_sha256, &mut candidates)?;
+            import_legacy_pairs(
+                loaded,
+                selection,
+                paths,
+                legacy,
+                &anchor_sha256,
+                &mut candidates,
+            )?;
         }
         RankingState {
             schema: RANKING_SCHEMA.to_string(),
@@ -1189,6 +1198,9 @@ fn rank_candidates(
         );
     }
     ranking.budget_games = budget_games;
+    ranking.status = RankingStatus::Collecting;
+    ranking.selected_sha256 = None;
+    ranking.selected_nnue = None;
     refresh_estimates(&mut ranking);
     save_ranking_state(&ranking_path, &ranking)?;
 
@@ -1263,13 +1275,7 @@ fn rank_candidates(
         };
     }
     refresh_estimates(&mut ranking);
-    let selected_index = ranking
-        .candidates
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| a.rating.total_cmp(&b.rating))
-        .map(|(index, _)| index)
-        .expect("non-empty ranking");
+    let selected_index = best_ranked_candidate(&ranking).expect("ranking includes its anchor");
     let selected = &ranking.candidates[selected_index];
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
@@ -1365,7 +1371,94 @@ fn deduplicated_ranking_candidates(
     Ok(result)
 }
 
+// Preserve completed games while refreshing paths/aliases and adding new hashes.
+fn reconcile_ranking_candidates(ranking: &mut RankingState, candidates: Vec<RankingCandidate>) {
+    for candidate in candidates {
+        if let Some(saved) = ranking
+            .candidates
+            .iter_mut()
+            .find(|saved| saved.sha256 == candidate.sha256)
+        {
+            saved.nnue = candidate.nnue;
+            for checkpoint in candidate.checkpoints {
+                if !saved.checkpoints.contains(&checkpoint) {
+                    saved.checkpoints.push(checkpoint);
+                }
+            }
+            for alias in candidate.aliases {
+                if !saved.aliases.contains(&alias) {
+                    saved.aliases.push(alias);
+                }
+            }
+        } else {
+            ranking.candidates.push(candidate);
+        }
+    }
+}
+
+fn validate_legacy_ranking_protocol(
+    loaded: &LoadedConfig,
+    selection: &SelectionConfig,
+    legacy: &SelectionState,
+) -> Result<()> {
+    if legacy.schema != SELECTION_SCHEMA || legacy.schema_version != SELECTION_SCHEMA_VERSION {
+        bail!("unsupported legacy selection state schema");
+    }
+    if legacy.ruleset != loaded.config.rules.ruleset.as_str()
+        || legacy.feature_set != loaded.training_features()
+        || legacy.selection.movetime_ms != selection.movetime_ms
+        || legacy.selection.opening_random_plies != selection.opening_random_plies
+        || legacy.selection.seed != selection.seed
+    {
+        bail!(
+            "legacy selection state uses a different match protocol; reuse its rules, feature set, time control, opening random plies, and seed"
+        );
+    }
+    Ok(())
+}
+
+fn validate_legacy_match_report(
+    path: &Path,
+    loaded: &LoadedConfig,
+    selection: &SelectionConfig,
+    batch_index: usize,
+) -> Result<()> {
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(path).with_context(|| {
+            format!("failed to read legacy match protocol {}", path.display())
+        })?)?;
+    let command = &report["command"];
+    let expected = serde_json::json!({
+        "movetimeMs": selection.movetime_ms,
+        "openingRandomPlies": selection.opening_random_plies,
+        "sfen": loaded.opening_sfen()?,
+        "seed": selection.seed.wrapping_add(batch_index as u64),
+        "aDepth": null,
+        "bDepth": null,
+        "nodesPerMove": null,
+        "openings": null,
+        "openingOrder": "sequential",
+    });
+    if report["ruleset"] != loaded.config.rules.ruleset.as_str() {
+        bail!(
+            "legacy match report {} uses a different ruleset",
+            path.display()
+        );
+    }
+    for (field, value) in expected.as_object().expect("protocol is an object") {
+        if command[field] != *value {
+            bail!(
+                "legacy match report {} uses a different match protocol for {field}",
+                path.display()
+            );
+        }
+    }
+    Ok(())
+}
+
 fn import_legacy_pairs(
+    loaded: &LoadedConfig,
+    selection: &SelectionConfig,
     paths: &SelectionPaths,
     legacy: &SelectionState,
     anchor_sha256: &str,
@@ -1393,7 +1486,7 @@ fn import_legacy_pairs(
         if ranking[index].sha256 == anchor_sha256 {
             continue;
         }
-        for record in &candidate.matches {
+        for (batch_index, record) in candidate.matches.iter().enumerate() {
             if record.incumbent_checkpoint != anchor_checkpoint {
                 continue;
             }
@@ -1412,6 +1505,12 @@ fn import_legacy_pairs(
                     games_path.display()
                 );
             }
+            validate_legacy_match_report(
+                &report_dir.join("self-play-report.json"),
+                loaded,
+                selection,
+                batch_index,
+            )?;
             let parsed = parse_paired_games(&games_path)?;
             add_bins(&mut ranking[index].pair_score_bins, parsed.bins);
             ranking[index].imported_games += parsed.complete_games;
@@ -1550,15 +1649,28 @@ fn next_ranking_candidate(ranking: &RankingState, selection: &SelectionConfig) -
     })
 }
 
-fn is_decisive(ranking: &RankingState) -> bool {
-    let Some((leader_index, leader)) = ranking
+fn best_ranked_candidate(ranking: &RankingState) -> Option<usize> {
+    ranking
         .candidates
         .iter()
         .enumerate()
-        .max_by(|(_, a), (_, b)| a.rating.total_cmp(&b.rating))
-    else {
+        .filter(|(_, candidate)| {
+            candidate.sha256 == ranking.anchor_sha256
+                || candidate.pair_score_bins.iter().any(|&pairs| pairs > 0)
+        })
+        .max_by(|(_, a), (_, b)| {
+            a.rating.total_cmp(&b.rating).then_with(|| {
+                (a.sha256 == ranking.anchor_sha256).cmp(&(b.sha256 == ranking.anchor_sha256))
+            })
+        })
+        .map(|(index, _)| index)
+}
+
+fn is_decisive(ranking: &RankingState) -> bool {
+    let Some(leader_index) = best_ranked_candidate(ranking) else {
         return false;
     };
+    let leader = &ranking.candidates[leader_index];
     let games = if leader.sha256 == ranking.anchor_sha256 {
         ranking
             .candidates
@@ -1731,6 +1843,98 @@ mod tests {
             deletions: Vec::new(),
             warnings: Vec::new(),
         }
+    }
+
+    #[test]
+    fn legacy_ranking_protocol_allows_ranking_changes_but_rejects_match_changes() {
+        let loaded = loaded_config_for_tests("new-config-hash");
+        let legacy = empty_state_for_tests(&loaded, SelectionConfig::default());
+        let mut selection = legacy.selection.clone();
+        selection.max_total_games += 100;
+        selection.top_k += 1;
+        selection.explore_factor += 0.5;
+        validate_legacy_ranking_protocol(&loaded, &selection, &legacy).unwrap();
+        for change in 0..3 {
+            let mut incompatible = selection.clone();
+            match change {
+                0 => incompatible.movetime_ms += 1,
+                1 => incompatible.opening_random_plies += 1,
+                _ => incompatible.seed += 1,
+            }
+            assert!(validate_legacy_ranking_protocol(&loaded, &incompatible, &legacy).is_err());
+        }
+    }
+
+    #[test]
+    fn legacy_match_report_rejects_changed_opening_and_time_control() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("self-play-report.json");
+        let mut loaded = loaded_config_for_tests("config");
+        loaded.config.rules.ruleset =
+            serde_json::from_value(serde_json::json!(loaded.runtime_mode())).unwrap();
+        let selection = SelectionConfig::default();
+        let report = serde_json::json!({
+            "ruleset": loaded.config.rules.ruleset.as_str(),
+            "command": {
+                "movetimeMs": selection.movetime_ms,
+                "openingRandomPlies": selection.opening_random_plies,
+                "sfen": loaded.opening_sfen().unwrap(),
+                "seed": selection.seed + 2,
+                "openingOrder": "sequential",
+            },
+        });
+        fs::write(&path, serde_json::to_vec(&report).unwrap()).unwrap();
+        validate_legacy_match_report(&path, &loaded, &selection, 2).unwrap();
+        for (field, value) in [
+            ("sfen", serde_json::json!("different opening")),
+            ("movetimeMs", serde_json::json!(selection.movetime_ms + 1)),
+        ] {
+            let mut changed = report.clone();
+            changed["command"][field] = value;
+            fs::write(&path, serde_json::to_vec(&changed).unwrap()).unwrap();
+            assert!(validate_legacy_match_report(&path, &loaded, &selection, 2).is_err());
+        }
+    }
+
+    #[test]
+    fn budget_limited_ranking_never_exports_an_untested_candidate() {
+        let candidate = |hash: &str, bins| RankingCandidate {
+            sha256: hash.to_string(),
+            nnue: format!("{hash}.nnue"),
+            checkpoints: vec![],
+            aliases: vec![],
+            imported_games: 0,
+            fresh_games: 0,
+            pair_score_bins: bins,
+            rating: 0.0,
+            standard_error: 0.0,
+            confidence95: [0.0; 2],
+        };
+        let mut ranking = RankingState {
+            schema: RANKING_SCHEMA.to_string(),
+            schema_version: RANKING_SCHEMA_VERSION,
+            match_identity: "match".to_string(),
+            anchor_sha256: "anchor".to_string(),
+            budget_games: 2,
+            fresh_games: 2,
+            status: RankingStatus::BudgetLimited,
+            selected_sha256: None,
+            selected_nnue: None,
+            warnings: vec![],
+            candidates: vec![
+                candidate("anchor", [0; 5]),
+                candidate("tested", [1, 0, 0, 0, 0]),
+                candidate("new", [0; 5]),
+            ],
+        };
+        refresh_estimates(&mut ranking);
+        assert_eq!(best_ranked_candidate(&ranking), Some(0));
+        ranking.candidates[1].pair_score_bins = [0, 0, 1, 0, 0];
+        refresh_estimates(&mut ranking);
+        assert_eq!(best_ranked_candidate(&ranking), Some(0));
+        ranking.candidates[1].pair_score_bins = [0, 0, 0, 0, 1];
+        refresh_estimates(&mut ranking);
+        assert_eq!(best_ranked_candidate(&ranking), Some(1));
     }
 
     #[test]
@@ -1979,6 +2183,65 @@ mod tests {
         assert_eq!(ranking.candidates[0].rating, 0.0);
         assert!(ranking.candidates[1].rating > 0.0);
         assert!(ranking.candidates[1].standard_error > 0.0);
+    }
+
+    #[test]
+    fn resumed_ranking_adds_new_hashes_and_preserves_completed_matches() {
+        let candidate = |hash: &str| RankingCandidate {
+            sha256: hash.to_string(),
+            nnue: format!("{hash}.nnue"),
+            checkpoints: vec![format!("{hash}.ckpt")],
+            aliases: vec![hash.to_string()],
+            imported_games: 0,
+            fresh_games: 0,
+            pair_score_bins: [0; 5],
+            rating: 0.0,
+            standard_error: 0.0,
+            confidence95: [0.0; 2],
+        };
+        let mut old = candidate("old");
+        old.imported_games = 2;
+        old.fresh_games = 4;
+        old.pair_score_bins = [0, 0, 1, 1, 1];
+        let saved = RankingState {
+            schema: RANKING_SCHEMA.to_string(),
+            schema_version: RANKING_SCHEMA_VERSION,
+            match_identity: "match".to_string(),
+            anchor_sha256: "anchor".to_string(),
+            budget_games: 100,
+            fresh_games: 4,
+            status: RankingStatus::Decisive,
+            selected_sha256: Some("old".to_string()),
+            selected_nnue: Some("selected.nnue".to_string()),
+            candidates: vec![candidate("anchor"), old],
+            warnings: vec![],
+        };
+        let mut resumed: RankingState =
+            serde_json::from_slice(&serde_json::to_vec(&saved).unwrap()).unwrap();
+        let mut alias = candidate("old");
+        alias.nnue = "relocated.nnue".to_string();
+        alias.checkpoints.push("alias.ckpt".to_string());
+        alias.aliases.push("alias".to_string());
+        let current = vec![candidate("anchor"), alias, candidate("new")];
+        reconcile_ranking_candidates(&mut resumed, current.clone());
+        reconcile_ranking_candidates(&mut resumed, current);
+        refresh_estimates(&mut resumed);
+
+        assert_eq!(resumed.candidates.len(), 3);
+        assert_eq!(resumed.candidates[0].sha256, "anchor");
+        let old = &resumed.candidates[1];
+        assert_eq!(old.nnue, "relocated.nnue");
+        assert_eq!(old.imported_games, 2);
+        assert_eq!(old.fresh_games, 4);
+        assert_eq!(old.pair_score_bins, [0, 0, 1, 1, 1]);
+        assert_eq!(old.checkpoints, ["old.ckpt", "alias.ckpt"]);
+        assert_eq!(old.aliases, ["old", "alias"]);
+        assert_eq!(resumed.fresh_games, 4);
+        assert!(!is_decisive(&resumed));
+        assert_eq!(
+            next_ranking_candidate(&resumed, &SelectionConfig::default()),
+            Some(2)
+        );
     }
 
     fn args_as_strings(args: &[OsString]) -> Vec<String> {

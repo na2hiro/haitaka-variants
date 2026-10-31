@@ -111,6 +111,41 @@ def verify_preflight(report_path: Path, contract_path: Path) -> dict[str, Any]:
     return contract
 
 
+def verified_binary(record: dict[str, Any], records: int, label: str) -> Path:
+    """Check the exact bytes that this process is about to consume."""
+    try:
+        path = workspace_path(record["path"])
+        expected_bytes = record["bytes"]
+        expected_hash = record["sha256"]
+        actual_bytes = path.stat().st_size
+    except (KeyError, TypeError, OSError) as exc:
+        fail(f"cannot verify {label} binary: {exc}")
+    if expected_bytes != records * ENTRY_BYTES or actual_bytes != expected_bytes:
+        fail(f"{label} binary size does not match its frozen identity")
+    if sha256(path) != expected_hash:
+        fail(f"{label} binary hash does not match its frozen identity")
+    return path
+
+
+def record_training_completion(
+    output: Path, checkpoint: Path, stop_reason: str, updates: int, examples_seen: int,
+) -> None:
+    """Persist termination evidence before CPU conversion or export can fail."""
+    if stop_reason not in {"development-plateau", "maximum-updates"}:
+        fail(f"unknown training stop reason: {stop_reason}")
+    record = {
+        "schema": "haitaka-anhoku-r5-training-complete-v1",
+        "stopReason": stop_reason,
+        "checkpointSha256": sha256(checkpoint),
+        "optimizerUpdates": updates,
+        "examplesSeen": examples_seen,
+    }
+    path = output / "training-complete.json"
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def write_variant(context: Path) -> None:
     (context / "variant.py").write_text(
         '''RANKS = 9
@@ -278,6 +313,14 @@ def set_learning_rate(optimizer, base: float, update: int) -> float:
     return value
 
 
+def average_ranks(values: np.ndarray) -> np.ndarray:
+    """Assign the mean zero-based rank to every group of equal values."""
+    _, inverse, counts = np.unique(values, return_inverse=True, return_counts=True)
+    ends = np.cumsum(counts)
+    starts = ends - counts
+    return ((starts + ends - 1) / 2.0)[inverse]
+
+
 def metrics_from_predictions(np_predictions: np.ndarray, np_targets: np.ndarray) -> dict[str, Any]:
     error = (np_predictions - np_targets) / SCORE_CLIP
     absolute = np.abs(error)
@@ -288,8 +331,8 @@ def metrics_from_predictions(np_predictions: np.ndarray, np_targets: np.ndarray)
     )
     if len(np_predictions) > 1 and np.std(np_predictions) > 0 and np.std(np_targets) > 0:
         pearson = float(np.corrcoef(np_predictions, np_targets)[0, 1])
-        prediction_rank = np.argsort(np.argsort(np_predictions))
-        target_rank = np.argsort(np.argsort(np_targets))
+        prediction_rank = average_ranks(np_predictions)
+        target_rank = average_ranks(np_targets)
         spearman = float(np.corrcoef(prediction_rank, target_rank)[0, 1])
     else:
         pearson = None
@@ -400,8 +443,8 @@ def materialize_cpu_checkpoint(torch, source: Path, target: Path) -> str:
 
 
 def train_static_clone(torch, model_module, nnue_dataset, model, optimizer, static: dict[str, Any], device, output: Path, learning_rate: float) -> dict[str, Any]:
-    binary = workspace_path(static["binary"]["path"])
     records = static["records"]
+    binary = verified_binary(static["binary"], records, "static-clone")
     steps = static["pretrainingUpdates"]
     model.train()
     step = 0
@@ -450,15 +493,18 @@ def run_lane(
 ) -> dict[str, Any]:
     if output.exists():
         fail(f"fresh R5 recipe refuses existing output directory: {output}")
-    output.mkdir(parents=True)
     optimization = contract["optimization"]
     pilot = contract["pilot"]["splits"]
-    train_file = workspace_path(pilot["training"]["binary"]["path"])
-    validation_file = workspace_path(pilot["validation"]["binary"]["path"])
-    development_file = workspace_path(pilot["development"]["binary"]["path"])
     train_records = pilot["training"]["records"]
     validation_records = pilot["validation"]["records"]
     development_records = pilot["development"]["records"]
+    train_file = verified_binary(pilot["training"]["binary"], train_records, "training")
+    validation_file = verified_binary(pilot["validation"]["binary"], validation_records, "validation")
+    development_file = verified_binary(pilot["development"]["binary"], development_records, "development")
+    if lane["kind"] == "static-clone-full-precision":
+        static = lane["staticClone"]
+        verified_binary(static["binary"], static["records"], "static-clone")
+    output.mkdir(parents=True)
 
     seed_everything(torch, seed)
     feature_set = features.get_feature_set_from_name(FEATURE_SET)
@@ -638,6 +684,7 @@ def run_lane(
 
     if step < min_updates:
         fail(f"{lane['id']} stopped at {step} updates below minimum {min_updates}")
+    record_training_completion(output, checkpoint_path, last_reason, step, examples_seen)
     final_model = checkpoints / "final.pt"
     # Preserve the CUDA-resident resumable checkpoint and give the unchanged
     # pinned serializer a separately verified CPU artifact. Loading with
@@ -727,11 +774,30 @@ def recover_existing_export(
     if not rows:
         fail(f"cannot recover export from an empty metrics file: {metrics_path}")
     last = rows[-1]
+    checkpoint = last.get("checkpoint")
+    expected_hash = checkpoint.get("sha256") if isinstance(checkpoint, dict) else None
+    if not isinstance(expected_hash, str) or sha256(model_path) != expected_hash:
+        fail("recovery checkpoint does not match the final metrics row checkpoint hash")
+    if last.get("width") != width:
+        fail("recovery width does not match the final metrics row")
     lane_id = last.get("lane")
     lanes = {lane["id"]: lane for lane in contract["initialization"]["lanes"]}
     lane = lanes.get(lane_id)
     if lane is None:
         fail(f"checkpoint metrics contain an unknown lane: {lane_id!r}")
+
+    completion = load_json(output / "training-complete.json")
+    expected_completion = {
+        "schema": "haitaka-anhoku-r5-training-complete-v1",
+        "checkpointSha256": expected_hash,
+        "optimizerUpdates": last["optimizerUpdates"],
+        "examplesSeen": last["examplesSeen"],
+    }
+    if any(completion.get(key) != value for key, value in expected_completion.items()):
+        fail("training completion record does not match the final metrics row")
+    stop_reason = completion.get("stopReason")
+    if stop_reason not in {"development-plateau", "maximum-updates"}:
+        fail("training completion record has an unknown stop reason")
 
     final_model = output / "checkpoints" / "final.pt"
     try:
@@ -768,7 +834,7 @@ def recover_existing_export(
         "optimizerUpdates": last["optimizerUpdates"],
         "examplesSeen": last["examplesSeen"],
         "equivalentPasses": last["equivalentPasses"],
-        "stopReason": "recovered-after-export-failure",
+        "stopReason": stop_reason,
         "checkpointCount": len(rows),
         "staticPretraining": static_report,
         "finalValidation": last["validation"],
@@ -818,7 +884,7 @@ def main() -> int:
         "--export-existing",
         type=Path,
         default=None,
-        help="recover only the export/report from an existing last.pt checkpoint",
+        help="recover export/report from last.pt and its bound training-complete.json",
     )
     parser.add_argument("--cmake", default="cmake")
     args = parser.parse_args()

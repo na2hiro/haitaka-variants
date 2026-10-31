@@ -44,6 +44,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=pathlib.Path, required=True)
     parser.add_argument("--trainer-checkout", type=pathlib.Path, required=True)
+    parser.add_argument("--trainer-context", type=pathlib.Path,
+                        help="immutable Python source context; defaults to trainer-checkout")
     parser.add_argument("--reviewed-patch", type=pathlib.Path, required=True)
     parser.add_argument("--applied-diff", type=pathlib.Path, required=True)
     parser.add_argument("--output", type=pathlib.Path, required=True)
@@ -62,6 +64,11 @@ def main() -> None:
         raise RuntimeError(
             f"trainer revision mismatch: expected {EXPECTED_TRAINER_REVISION}, got {revision}"
         )
+
+    # Git provenance belongs to the source checkout, while deserialization must
+    # import the reviewed modules from the disposable, prepared context.
+    context = args.trainer_context or args.trainer_checkout
+    sys.path.insert(0, str(context.resolve()))
 
     # Explicitly retain weights_only=False: this is a frozen, trusted checkpoint
     # and Lightning checkpoint metadata contains trainer-defined Python objects.

@@ -1763,6 +1763,19 @@ impl Default for UsiSession {
     }
 }
 
+fn usi_dfpn_fields(summary: Option<&DfpnSummary>) -> String {
+    let Some(summary) = summary else {
+        return "dfpnSelected 0 dfpnNodes 0 dfpnStatus none dfpnBestMove null".to_string();
+    };
+    format!(
+        "dfpnSelected {} dfpnNodes {} dfpnStatus {} dfpnBestMove {}",
+        u8::from(summary.selected),
+        summary.nodes,
+        summary.status,
+        summary.best_move.as_deref().unwrap_or("null")
+    )
+}
+
 fn usi_info_line(
     depth: u8,
     elapsed_ms: f64,
@@ -1928,7 +1941,8 @@ impl UsiSession {
         Ok(())
     }
 
-    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+    /// Return a terminal notification without starting a search or changing history.
+    pub fn terminal_notifications(&self) -> Vec<String> {
         let history_result = self.history.adjudication();
         if history_result != HistoryAdjudication::Ongoing {
             return vec![
@@ -1948,6 +1962,15 @@ impl UsiSession {
                 ),
                 "bestmove resign".to_string(),
             ];
+        }
+
+        Vec::new()
+    }
+
+    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+        let terminal = self.terminal_notifications();
+        if !terminal.is_empty() {
+            return terminal;
         }
 
         match budget {
@@ -2002,7 +2025,7 @@ impl UsiSession {
                         .unwrap_or_else(|| "resign".to_string());
                     vec![
                         format!(
-                            "{} {}",
+                            "{} {} {}",
                             usi_info_line(
                                 summary.completed_depth,
                                 summary.elapsed_ms,
@@ -2012,6 +2035,7 @@ impl UsiSession {
                                 summary.qsearch_stats,
                             ),
                             usi_root_result_fields(&summary.root_result),
+                            usi_dfpn_fields(summary.dfpn.as_ref()),
                         ),
                         format!("bestmove {best_move}"),
                     ]
@@ -3487,6 +3511,15 @@ impl UsiEngine {
             .map_err(|err| JsValue::from_str(&err))
     }
 
+    /// Adjudicate the current position without consuming a search budget.
+    pub fn terminal_notifications(&self) -> js_sys::Array {
+        self.session
+            .terminal_notifications()
+            .into_iter()
+            .map(JsValue::from)
+            .collect()
+    }
+
     pub fn send(&mut self, line: &str) -> js_sys::Array {
         self.session
             .handle_line(line)
@@ -4541,16 +4574,44 @@ mod tests {
     }
 
     #[test]
+    fn usi_timed_mate_reports_dfpn_selection_evidence() {
+        let mut session = UsiSession::default();
+        assert!(
+            session
+                .handle_line(&format!("position sfen {DFPN_MATE_SFEN}"))
+                .is_empty()
+        );
+        let outputs = session.handle_line("go movetime 1000");
+        let tokens = outputs[0].split_whitespace().collect::<Vec<_>>();
+        let field = |name| {
+            tokens
+                .windows(2)
+                .find(|pair| pair[0] == name)
+                .map(|pair| pair[1])
+                .unwrap()
+        };
+        assert_eq!(field("dfpnSelected"), "1");
+        assert_eq!(field("dfpnStatus"), "mate");
+        assert!(field("dfpnNodes").parse::<u64>().unwrap() > 0);
+        assert_eq!(outputs[1], format!("bestmove {}", field("dfpnBestMove")));
+        assert_eq!(field("playMoveWasSearched"), "1");
+    }
+
+    #[test]
     fn usi_session_marks_terminal_resign_as_no_legal_move() {
         // Avoid an adjacent rook: in NekoNeko it would give the king rook moves.
         let mut session = UsiSession::default();
+        assert!(session.terminal_notifications().is_empty());
         assert!(
             session
                 .handle_line("position sfen 8k/6G2/9/9/9/9/9/9/K8 b R 1 moves R*1d")
                 .is_empty()
         );
+        let terminal = session.terminal_notifications();
+        assert_eq!(session.handle_line("go depth 1"), terminal);
+        assert_eq!(session.terminal_notifications(), terminal);
         assert_eq!(
-            session.handle_line("go depth 1"),
+            terminal,
             vec![
                 format!(
                     "info string gameover no-legal-move rules {}",

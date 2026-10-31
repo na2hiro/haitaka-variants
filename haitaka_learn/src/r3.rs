@@ -1057,24 +1057,35 @@ fn observation_from_summary(
 
 fn reference_move_ranking(board: &Board, contract: &Contract) -> Result<Vec<RankedMove>> {
     let moves = legal_moves(board);
+    ensure!(
+        !moves.is_empty(),
+        "reference move ranking requires a nonterminal root"
+    );
     let per_move = (contract.teachers.move_ranking_total_nodes / moves.len() as u64).max(256);
     let mut ranking = Vec::with_capacity(moves.len());
     let mut workspace = SearchWorkspace::new();
     for mv in moves {
         let mut child = board.clone();
         child.play_unchecked(mv);
-        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
-            &child,
-            per_move,
-            contract.teachers.maximum_depth,
-            &mut workspace,
-        )
-        .map_err(anyhow::Error::msg)?;
-        if let Some(score) = summary.best_score {
+        let (score, child_node_limit) = match child.status() {
+            GameStatus::Won => (Some(29_999), 0),
+            GameStatus::Drawn => (Some(0), 0),
+            GameStatus::Ongoing => {
+                let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+                    &child,
+                    per_move,
+                    contract.teachers.maximum_depth,
+                    &mut workspace,
+                )
+                .map_err(anyhow::Error::msg)?;
+                (summary.best_score.map(|score| -score), per_move)
+            }
+        };
+        if let Some(score) = score {
             ranking.push(RankedMove {
                 move_: mv.to_string(),
-                score: -score,
-                child_node_limit: per_move,
+                score,
+                child_node_limit,
             });
         }
     }
@@ -1695,6 +1706,37 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "anhoku")]
+    fn reference_ranking_includes_immediate_mates_without_searching_terminal_children() {
+        let board = Board::from_sfen("4k4/9/3LGL3/9/9/9/9/9/4K4 b R 1").unwrap();
+        let mut contract = test_contract();
+        contract.teachers.maximum_depth = 1;
+        contract.teachers.move_ranking_total_nodes = 256;
+        let mates = legal_moves(&board)
+            .into_iter()
+            .filter(|&mv| {
+                let mut child = board.clone();
+                child.play_unchecked(mv);
+                child.status() == GameStatus::Won
+            })
+            .collect::<Vec<_>>();
+        assert!(!mates.is_empty());
+        let ranking = reference_move_ranking(&board, &contract).unwrap();
+        assert_eq!(ranking[0].score, 29_999);
+        for mv in mates {
+            let ranked = ranking
+                .iter()
+                .find(|item| item.move_ == mv.to_string())
+                .unwrap();
+            assert_eq!(ranked.score, 29_999);
+            assert_eq!(ranked.child_node_limit, 0);
+            let mut terminal = board.clone();
+            terminal.play_unchecked(mv);
+            assert!(reference_move_ranking(&terminal, &contract).is_err());
+        }
+    }
+
+    #[test]
     fn ranks_average_ties() {
         assert_eq!(ranks(&[10.0, 20.0, 20.0, 30.0]), vec![0.0, 1.5, 1.5, 3.0]);
     }
@@ -1728,7 +1770,106 @@ mod tests {
         assert!((410.0..=10_000.0).contains(&scale));
     }
 
+    fn test_contract() -> Contract {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        read_json(&root.join("r0/anhoku-reboot/r3-teacher-probe-contract.json")).unwrap()
+    }
+
     #[test]
+    fn probe_selection_covers_required_strata_without_generated_artifacts() {
+        let contract = test_contract();
+        let required = &contract.probe.required_strata;
+        for (subset, count) in [
+            ("tuning", contract.probe.tuning_positions),
+            ("decision", contract.probe.decision_positions),
+        ] {
+            let pool = (0..96)
+                .map(|index| ProbePosition {
+                    id: format!("unit-{subset}-{index:03}"),
+                    subset: subset.to_string(),
+                    sfen: haitaka::SFEN_STARTPOS.to_string(),
+                    source: required.source[index % required.source.len()].clone(),
+                    trajectory_policy: "unit-fixture".to_string(),
+                    phase: required.phase[index % required.phase.len()].clone(),
+                    material: required.material[index % required.material.len()].clone(),
+                    proxy_score: required.proxy_score[index % required.proxy_score.len()].clone(),
+                    position_types: vec![
+                        required.position_type[index % required.position_type.len()].clone(),
+                    ],
+                    proxy_score_value: 0,
+                })
+                .collect::<Vec<_>>();
+            let selected = greedy_select(pool.clone(), count, subset, &contract).unwrap();
+            let keys = selected
+                .iter()
+                .flat_map(selection_keys)
+                .collect::<BTreeSet<_>>();
+            assert_eq!(selected.len(), count);
+            for key in required_keys(&contract) {
+                assert!(keys.contains(&key), "missing {subset} {key}");
+            }
+            let reversed = greedy_select(
+                pool.iter().rev().cloned().collect(),
+                count,
+                subset,
+                &contract,
+            )
+            .unwrap();
+            assert_eq!(
+                selected.iter().map(|p| &p.id).collect::<Vec<_>>(),
+                reversed.iter().map(|p| &p.id).collect::<Vec<_>>()
+            );
+            let missing = pool
+                .into_iter()
+                .filter(|p| !p.position_types.contains(&"donor-sensitive".to_string()))
+                .collect();
+            assert!(greedy_select(missing, count, subset, &contract).is_err());
+        }
+    }
+
+    #[test]
+    fn probe_selection_checks_frozen_schedule_with_local_fixture() {
+        let mut contract = test_contract();
+        contract.probe.tuning_positions = 1;
+        contract.probe.decision_positions = 1;
+        contract.probe.maximum_unique_boards = 2;
+        contract.probe.required_strata = RequiredStrata {
+            source: vec!["startpos-tree".to_string()],
+            phase: vec!["early".to_string()],
+            material: vec!["balanced".to_string()],
+            proxy_score: vec!["near-zero".to_string()],
+            position_type: vec!["quiet".to_string()],
+        };
+        contract.probe.selected_id_schedule_sha256 =
+            "327d89171bb64192301550b1f52e462693d66c9b58f71f8f394372002b769031".to_string();
+        let startpos = Board::startpos();
+        let mut child = startpos.clone();
+        child.try_play("7g7f".parse().unwrap()).unwrap();
+        let records = [("unit-probe-0", startpos), ("unit-probe-2", child)]
+            .into_iter()
+            .map(|(id, board)| CorpusRecord {
+                id: id.to_string(),
+                sfen: board.to_string(),
+                seed_class: None,
+                label_score_side_to_move: 0,
+                origin: String::new(),
+            })
+            .collect::<Vec<_>>();
+        let selected = select_probe(&records, &contract).unwrap();
+        assert_eq!(
+            selected
+                .iter()
+                .map(|p| (p.subset.as_str(), p.id.as_str()))
+                .collect::<Vec<_>>(),
+            [("tuning", "unit-probe-2"), ("decision", "unit-probe-0")]
+        );
+        contract.probe.selected_id_schedule_sha256 = "invalid".to_string();
+        assert!(select_probe(&records, &contract).is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    #[ignore = "requires the frozen R1-A and Phase 8D corpus artifacts under out/"]
     fn frozen_probe_selector_covers_every_required_stratum() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let contract: Contract =

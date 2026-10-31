@@ -156,6 +156,8 @@ struct RawGame {
     emergency_fallbacks: u32,
     searched_partial_root_moves: u32,
     searches: Vec<SearchTrace>,
+    #[serde(default)]
+    terminal_notification: Option<SearchTrace>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -178,6 +180,14 @@ struct SearchTrace {
     missing_move: bool,
     alpha_beta_nodes: u64,
     qnodes: u64,
+    #[serde(default)]
+    dfpn_selected: bool,
+    #[serde(default)]
+    dfpn_nodes: u64,
+    #[serde(default)]
+    dfpn_status: Option<String>,
+    #[serde(default)]
+    dfpn_best_move: Option<String>,
     #[serde(default)]
     engine: Option<String>,
     #[serde(default)]
@@ -698,7 +708,11 @@ fn validate_provenance(browser: &BrowserTrace, contract: &Value, args: &RunArgs<
     }
     for lane in &browser.lanes {
         for game in &lane.games {
-            for search in &game.searches {
+            for search in game
+                .searches
+                .iter()
+                .chain(game.terminal_notification.iter())
+            {
                 ensure!(
                     search.provenance_envelope_id == envelope.envelope_id,
                     "per-search provenance reference mismatch"
@@ -837,11 +851,12 @@ fn analyze_lane(
         emergency_fallbacks += game.emergency_fallbacks;
         searched_partial_root_moves += game.searched_partial_root_moves;
         explicit_terminations &= TERMINATION_REASONS.contains(&game.termination_reason.as_str());
+        validate_terminal_notification(game)?;
         for search in &game.searches {
             ensure!(search.cold_warm_state.as_deref() == Some("warm"));
             ensure!(search.root_result_schema.as_deref() == Some(ROOT_RESULT_SCHEMA));
             ensure!(!search.interruption_reason.is_empty());
-            ensure!(search.alpha_beta_nodes + search.qnodes > 0);
+            validate_search_node_evidence(search)?;
             ensure!(!search.best_move.is_empty() && !search.outputs.is_empty());
             if search.partial_root_state {
                 ensure!(search.play_move_was_searched);
@@ -907,6 +922,83 @@ fn analyze_lane(
         searched_partial_root_moves,
         explicit_terminations,
     })
+}
+
+fn validate_search_node_evidence(trace: &SearchTrace) -> Result<()> {
+    if trace.dfpn_selected {
+        ensure!(
+            trace.dfpn_nodes > 0 && trace.dfpn_status.as_deref() == Some("mate"),
+            "DFPN-selected move is missing mate proof/node evidence"
+        );
+        ensure!(
+            trace.dfpn_best_move.as_deref() == Some(trace.best_move.as_str())
+                && trace.play_move_was_searched
+                && trace.best_move != "resign",
+            "DFPN-selected move differs from the searched best move"
+        );
+    } else {
+        ensure!(
+            trace.alpha_beta_nodes > 0 || trace.qnodes > 0,
+            "search has neither alpha-beta/qsearch nodes nor verified DFPN selection"
+        );
+    }
+    Ok(())
+}
+
+fn validate_terminal_notification(game: &RawGame) -> Result<()> {
+    let Some(trace) = &game.terminal_notification else {
+        ensure!(
+            game.termination_reason == "maximum-ply-capped",
+            "completed browser game is missing its terminal notification"
+        );
+        return Ok(());
+    };
+    ensure!(trace.best_move == "resign" && trace.root_result_schema.is_none());
+    ensure!(!trace.emergency_fallback_used && !trace.missing_move);
+    ensure!(trace.alpha_beta_nodes == 0 && trace.qnodes == 0);
+    ensure!(trace.cold_warm_state.as_deref() == Some("warm"));
+    ensure!(trace.outputs.iter().any(|line| line == "bestmove resign"));
+    let reason = trace
+        .outputs
+        .iter()
+        .find_map(|line| line.strip_prefix("info string gameover "))
+        .context("terminal notification is missing a gameover reason")?;
+    let reason = reason
+        .split_whitespace()
+        .next()
+        .context("empty gameover reason")?;
+    let loser = match reason {
+        "repetition-draw" => {
+            ensure!(game.termination_reason == "repetition-draw" && game.winner.is_none());
+            return Ok(());
+        }
+        "perpetual-check-loss:black" => {
+            ensure!(game.termination_reason == "perpetual-check-loss");
+            game.black_engine.as_str()
+        }
+        "perpetual-check-loss:white" => {
+            ensure!(game.termination_reason == "perpetual-check-loss");
+            game.white_engine.as_str()
+        }
+        "no-legal-move" => {
+            ensure!(game.termination_reason == "no-legal-move");
+            trace
+                .engine
+                .as_deref()
+                .context("terminal notification is missing its engine")?
+        }
+        _ => anyhow::bail!("unsupported terminal notification: {reason}"),
+    };
+    let winner = match loser {
+        "A" => "B",
+        "B" => "A",
+        _ => anyhow::bail!("invalid losing engine: {loser}"),
+    };
+    ensure!(
+        game.winner.as_deref() == Some(winner),
+        "terminal winner differs from notification"
+    );
+    Ok(())
 }
 
 fn analyze_timing(
@@ -1078,6 +1170,12 @@ fn parse_native_trace(outputs: &[String]) -> Result<SearchTrace> {
         missing_move: token_after(&tokens, "missingMove") == Some("1"),
         alpha_beta_nodes: 0,
         qnodes: 0,
+        dfpn_selected: token_after(&tokens, "dfpnSelected") == Some("1"),
+        dfpn_nodes: token_after(&tokens, "dfpnNodes")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0),
+        dfpn_status: token_after(&tokens, "dfpnStatus").map(str::to_string),
+        dfpn_best_move: token_after(&tokens, "dfpnBestMove").map(str::to_string),
         engine: None,
         cold_warm_state: None,
         provenance_envelope_id: String::new(),
@@ -1282,6 +1380,71 @@ fn command_succeeds(program: &str, args: &[&str]) -> bool {
 #[cfg(test)]
 mod provenance_tests {
     use super::*;
+
+    #[test]
+    fn dfpn_selection_requires_matching_mate_and_node_evidence() {
+        let mut trace = parse_native_trace(&[
+            format!("info depth 0 rootResultSchema {ROOT_RESULT_SCHEMA} playMoveWasSearched 1 dfpnSelected 1 dfpnNodes 5 dfpnStatus mate dfpnBestMove R*1b"),
+            "bestmove R*1b".to_string(),
+        ]).unwrap();
+        validate_search_node_evidence(&trace).unwrap();
+        trace.dfpn_nodes = 0;
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_nodes = 5;
+        trace.dfpn_status = Some("unknown".to_string());
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_status = Some("mate".to_string());
+        trace.dfpn_best_move = Some("7g7f".to_string());
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.dfpn_selected = false;
+        assert!(validate_search_node_evidence(&trace).is_err());
+        trace.alpha_beta_nodes = 1;
+        validate_search_node_evidence(&trace).unwrap();
+    }
+
+    #[test]
+    fn terminal_notifications_are_validated_without_search_node_requirements() {
+        for (reason, termination, winner) in [
+            ("repetition-draw", "repetition-draw", None),
+            (
+                "perpetual-check-loss:black",
+                "perpetual-check-loss",
+                Some("A"),
+            ),
+            (
+                "perpetual-check-loss:white",
+                "perpetual-check-loss",
+                Some("B"),
+            ),
+            ("no-legal-move", "no-legal-move", Some("B")),
+        ] {
+            let value = serde_json::json!({
+                "schema": "haitaka-r1d3-raw-game-v1", "lane": "unit",
+                "gameIndex": 1, "pairIndex": 0, "openingId": "start",
+                "startSfen": haitaka::SFEN_STARTPOS, "aColor": "white",
+                "blackEngine": "B", "whiteEngine": "A", "result": "draw",
+                "winner": winner, "scoreA": 0.5, "terminationReason": termination,
+                "missingMoves": 0, "emergencyFallbacks": 0, "searchedPartialRootMoves": 0,
+                "searches": [], "terminalNotification": {
+                    "outputs": [format!("info string gameover {reason} rules anhoku"), "bestmove resign".to_string()],
+                    "bestMove": "resign", "requestedMs": null, "elapsedMs": 0.0,
+                    "deadlineLatenessMs": 0.0, "schedulerDelayMs": 0.0, "rootResultSchema": null,
+                    "playMoveWasSearched": false, "lastCompletedIterationValue": null,
+                    "completedIterationDepth": 0, "completedRootMovesInInterruptedIteration": 0,
+                    "partialRootState": false, "interruptionReason": "terminal",
+                    "emergencyFallbackUsed": false, "missingMove": false,
+                    "alphaBetaNodes": 0, "qnodes": 0, "engine": "A",
+                    "coldWarmState": "warm", "provenanceEnvelopeId": "unit",
+                },
+            });
+            let mut game: RawGame = serde_json::from_value(value).unwrap();
+            validate_terminal_notification(&game).unwrap();
+            game.winner = Some(if winner == Some("A") { "B" } else { "A" }.to_string());
+            assert!(validate_terminal_notification(&game).is_err());
+            game.terminal_notification = None;
+            assert!(validate_terminal_notification(&game).is_err());
+        }
+    }
 
     #[test]
     fn every_trace_input_hash_and_same_size_replacement_fail_closed() {
