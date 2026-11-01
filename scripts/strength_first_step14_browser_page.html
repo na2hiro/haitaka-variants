@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Anhoku Step 14 browser finalist worker</title>
+<script type="module">
+const hex = bytes => Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, "0")).join("");
+const post = async (path, value) => {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(value),
+  });
+  if (!response.ok) throw new Error(`${path} acknowledgement failed: ${response.status}`);
+  return response;
+};
+const configResponse = await fetch("/config.json", {cache: "no-store"});
+if (!configResponse.ok) throw new Error(`config fetch failed: ${configResponse.status}`);
+const config = await configResponse.json();
+
+async function verifyPage(config) {
+  const route = config?.provenance?.routes?.page;
+  const expected = config?.provenance?.files?.page;
+  if (!route || !expected) throw new Error("page provenance binding is missing");
+  const response = await fetch(route, {cache: "no-store"});
+  if (!response.ok) throw new Error(`page provenance fetch failed: ${response.status}`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  if (bytes.byteLength !== expected.bytes || hex(digest) !== expected.sha256) throw new Error("page provenance mismatch");
+  return {bytes: bytes.byteLength, sha256: hex(digest), route};
+}
+
+const worker = new Worker("/worker.js", {type: "module"});
+worker.onmessage = async ({data}) => {
+  try {
+    if (data.type === "provenance") {
+      const page = await verifyPage(config);
+      await post("/provenance", {...data.acknowledgement, page, userAgent: navigator.userAgent});
+      worker.postMessage({type: "provenance-ack", kind: "provenance", index: 0, ok: true});
+    } else if (data.type === "game") {
+      await post("/raw-game", {index: data.index, game: data.game});
+      worker.postMessage({type: "game-ack", kind: "game", index: data.index, ok: true});
+    } else if (data.type === "progress") {
+      await post("/progress", data);
+    } else if (data.type === "result") {
+      await post("/result", {...data.result, userAgent: navigator.userAgent});
+    } else if (data.type === "error") {
+      try { await post("/error", {errorCategory: data.errorCategory || "browser-worker-error"}); } catch (_) {}
+    }
+  } catch (error) {
+    try { await post("/error", {errorCategory: "browser-page-error"}); } catch (_) {}
+    worker.postMessage({type: data.type === "provenance" ? "provenance-ack" : "game-ack", kind: data.type === "provenance" ? "provenance" : "game", index: data.index ?? 0, ok: false});
+  }
+};
+worker.onerror = async () => {
+  try { await post("/error", {errorCategory: "browser-worker-error"}); } catch (_) {}
+};
+worker.postMessage(config);
+</script>
+<p>Step 14 browser worker running.</p>

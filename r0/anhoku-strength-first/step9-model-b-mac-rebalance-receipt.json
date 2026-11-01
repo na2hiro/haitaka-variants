@@ -1,0 +1,123 @@
+{
+  "schema": "haitaka-anhoku-strength-first-model-b-mac-rebalance-v1",
+  "createdAt": "2026-09-12T04:54:39+09:00",
+  "supersedes": {
+    "path": "r0/anhoku-strength-first/step9-model-b-mac-split-receipt.json",
+    "sha256": "2ebccc67935de1df9cc6a1ed102ca5e9e0fa225ceb65a37a734cb6757309af78"
+  },
+  "reason": "The MBP finished its original lane while the MBA had 626 of 883 training shards complete. Rebalance the exact unfinished inventory across both idle capacity pools.",
+  "sourceRevision": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c",
+  "configSha256": "36a8521f1dde00e94db687a34c7b716060847aa78a1095c1cda3920586a2311e",
+  "executableSha256": "83ff0eac62ea340f37b9fa64d0006cd12f0f9ff8575e67989d4d1f186e6eed5c",
+  "preservedBeforeRebalance": {
+    "mbpTrainingShards": 2117,
+    "mbpValidationShards": 142,
+    "mbaTrainingShards": 626,
+    "mbaValidationShards": 0
+  },
+  "stop": {
+    "requestedSignal": "SIGINT",
+    "sigintCount": 1,
+    "completedShardsPreserved": true,
+    "lingeringSupersededWorkers": 3,
+    "lingeringWorkerAction": "SIGTERM after the single graceful SIGINT stopped dispatch but did not promptly finish three active shards",
+    "unfinishedActiveShardsAreResumable": true
+  },
+  "partition": {
+    "laneCount": 170,
+    "mbp": {
+      "endpoint": "192.168.0.12",
+      "relativeCpuPower": 10,
+      "jobsArgumentOmitted": true,
+      "detectedLogicalCpus": 18,
+      "laneIndexRangeInclusive": [
+        160,
+        169
+      ],
+      "trainingShardRange": [
+        2823,
+        3000
+      ],
+      "unfinishedTrainingShardsAtLaunch": 177,
+      "validationShardRange": [
+        190,
+        202
+      ],
+      "unfinishedValidationShardsAtLaunch": 12
+    },
+    "mba": {
+      "endpoint": "192.168.0.5",
+      "relativeCpuPower": 7,
+      "jobsArgumentOmitted": true,
+      "detectedLogicalCpus": 10,
+      "laneIndexRangeInclusive": [
+        120,
+        159
+      ],
+      "trainingShardRange": [
+        2117,
+        2823
+      ],
+      "unfinishedTrainingShardsAtLaunch": 80,
+      "validationShardRange": [
+        142,
+        190
+      ],
+      "unfinishedValidationShardsAtLaunch": 48
+    },
+    "rangeConvention": "zero-based half-open",
+    "overlap": false,
+    "completeCoverageWithPreservedShards": true
+  },
+  "automaticCompletion": {
+    "joinService": "anhoku-step9-model-b-mac-join.service",
+    "collectorService": "anhoku-step9-model-b-collector.service",
+    "strictMerge": true,
+    "audits": true,
+    "exactFreeze": true
+  },
+  "estimatedRemainingWallHoursAtLaunch": 2.0,
+  "completion": {
+    "completedAt": "2026-09-12T07:52:44+09:00",
+    "mbaLaneCompletedAt": "2026-09-12T07:04:28+09:00",
+    "mergedTrainingRecords": 1274121,
+    "mergedValidationRecords": 86608,
+    "trainAuditPassed": true,
+    "validationAuditPassed": true,
+    "frozenTrainingRecords": 880000,
+    "frozenValidationRecords": 60000,
+    "modelACanonicalFamiliesExcluded": 1000000,
+    "frozenCorpusPassed": true,
+    "collectedLocally": true,
+    "sha256ManifestSha256": "d085e2b66b8d3d7af57243718b7230de60894858a3ac89ac8877cacf26f0d144",
+    "freezeExecutableSha256": "b8eadd6d573f176b328fd9706be66818f86c1f2888b52713b14afc43f1feaaf2",
+    "pipelineCorrections": [
+      "Audit strict manifests without the legacy --config fallback.",
+      "Canonicalize unpacked packed-training board families with Board::from_training_sfen because the packed ABI coalesces promoted minor-piece identities into the gold slot.",
+      "Materialize deterministic per-record training and validation diagnostic sidecars required by the pinned strength-first trainer."
+    ],
+    "sidecarExtension": {
+      "implementation": {
+        "path": "haitaka_learn/src/strength_first_model_b.rs",
+        "sha256": "30a474ecde43ae991bcbcb7816d5dc6233fdd6f8662bd3c506e373a75827e4af"
+      },
+      "joinScript": {
+        "path": "scripts/strength_first_step9_join_macs.sh",
+        "sha256": "b4b089e2285bae8100c6a3a94dc74a72fb4b7a9754644eb7087b9c73035dd423"
+      },
+      "executionHost": "192.168.0.12",
+      "architecture": "arm64",
+      "training": {
+        "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+        "bytes": 149594430,
+        "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+      },
+      "validation": {
+        "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+        "bytes": 10123281,
+        "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+      }
+    }
+  },
+  "status": "complete"
+}

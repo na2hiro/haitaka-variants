@@ -1,0 +1,3333 @@
+{
+  "audit": {
+    "configurationComparison": {
+      "actualFeatureFamily": {
+        "A": "HalfKAv2^+DonorSingleEff",
+        "B": "HalfKAv2^+DonorSingleEff"
+      },
+      "actualObjective": {
+        "A": {
+          "huberDeltaNormalized": 0.1,
+          "kind": "robust-clipped-huber-v1",
+          "lambda": 1.0,
+          "modelOutputToRuntimeScore": 600.0,
+          "normalizedScoreScale": 12000.0,
+          "resultLossEnabled": false,
+          "targetScoreClip": 12000.0,
+          "teacherOnly": true
+        },
+        "B": {
+          "huberDeltaNormalized": 0.1,
+          "kind": "robust-clipped-huber-v1",
+          "lambda": 1.0,
+          "modelOutputToRuntimeScore": 600.0,
+          "normalizedScoreScale": 12000.0,
+          "resultLossEnabled": false,
+          "targetScoreClip": 12000.0,
+          "teacherOnly": true
+        }
+      },
+      "actualOptimizer": {
+        "A": {
+          "betas": [
+            0.9,
+            0.999
+          ],
+          "epsilon": 1e-07,
+          "gradientCentralizationConvOnly": false,
+          "gradientCentralizationEnabled": false,
+          "gradientCentralizationLocation": false,
+          "kind": "Ranger",
+          "lookaheadAlpha": 0.5,
+          "lookaheadK": 6,
+          "nSmaThreshold": 5,
+          "parameterGroupLearningRateMultipliers": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.1,
+            0.1
+          ],
+          "parameterGroupNames": [
+            "feature-transformer",
+            "l1-factor-weight",
+            "l1-weight",
+            "l1-bias",
+            "l2-weight",
+            "l2-bias",
+            "output-weight",
+            "output-bias"
+          ],
+          "weightDecay": 0.0,
+          "weightProjection": "pinned-model-_clip_weights-before-and-after-update-v1"
+        },
+        "B": {
+          "betas": [
+            0.9,
+            0.999
+          ],
+          "epsilon": 1e-07,
+          "gradientCentralizationConvOnly": false,
+          "gradientCentralizationEnabled": false,
+          "gradientCentralizationLocation": false,
+          "kind": "Ranger",
+          "lookaheadAlpha": 0.5,
+          "lookaheadK": 6,
+          "nSmaThreshold": 5,
+          "parameterGroupLearningRateMultipliers": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.1,
+            0.1
+          ],
+          "parameterGroupNames": [
+            "feature-transformer",
+            "l1-factor-weight",
+            "l1-weight",
+            "l1-bias",
+            "l2-weight",
+            "l2-bias",
+            "output-weight",
+            "output-bias"
+          ],
+          "weightDecay": 0.0,
+          "weightProjection": "pinned-model-_clip_weights-before-and-after-update-v1"
+        }
+      },
+      "actualOutputScale": {
+        "A": 600.0,
+        "B": 600.0
+      },
+      "actualSchedule": {
+        "A": {
+          "baseLearningRate": 0.0015,
+          "finalUpdateLearningRate": 5e-05,
+          "firstUpdateLearningRate": 2.34375e-05,
+          "kind": "linear-warmup-then-cosine-by-optimizer-update-v1",
+          "maximumUpdates": 4096,
+          "minimumLearningRate": 5e-05,
+          "warmupEndpointLearningRate": 0.0015,
+          "warmupUpdates": 64
+        },
+        "B": {
+          "baseLearningRate": 0.0015,
+          "finalUpdateLearningRate": 5e-05,
+          "firstUpdateLearningRate": 2.34375e-05,
+          "kind": "linear-warmup-then-cosine-by-optimizer-update-v1",
+          "maximumUpdates": 4096,
+          "minimumLearningRate": 5e-05,
+          "warmupEndpointLearningRate": 0.0015,
+          "warmupUpdates": 64
+        }
+      },
+      "actualUpdateCount": {
+        "A": 4096,
+        "B": 4096
+      },
+      "actualWidth": {
+        "A": {
+          "l1": 256,
+          "l2": 16,
+          "l3": 32
+        },
+        "B": {
+          "l1": 256,
+          "l2": 16,
+          "l3": 32
+        }
+      },
+      "allCommonFieldsMatch": false,
+      "commonFields": {
+        "diagnostics": true,
+        "export": false,
+        "featureFamily": true,
+        "loader": true,
+        "objective": true,
+        "optimizer": true,
+        "schedule": true,
+        "width": true
+      },
+      "dataOrderingAndExposure": {
+        "A": {
+          "loader": {
+            "batchSize": 16384,
+            "cyclic": false,
+            "filtered": false,
+            "finiteFinalPartialBatch": true,
+            "randomFenSkipping": 0,
+            "trainingOrder": "pcg64dxsm-seed-epoch-record-permutation-v1",
+            "validationOrder": "fixed-source-order-once-per-evaluation-v1",
+            "workers": 1
+          },
+          "run": {
+            "bestValidation": {
+              "checkpoint": {
+                "bytes": 163439003,
+                "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+                "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+              },
+              "loss": 0.012593777974446614,
+              "update": 2688
+            },
+            "complete": true,
+            "dataCursor": {
+              "epoch": 75,
+              "record": 753664
+            },
+            "equivalentPasses": 75.85643636363636,
+            "examplesSeen": 66753664,
+            "optimizerUpdates": 4096,
+            "stopReason": "maximum-updates",
+            "timingSeconds": {
+              "checkpointSeconds": 52.05829522758722,
+              "exportSeconds": 39.040467254817486,
+              "shuffleSeconds": 11.365307100117207,
+              "trainingSeconds": 122.16246401146054,
+              "validationSeconds": 43.68711647391319
+            }
+          }
+        },
+        "B": {
+          "loader": {
+            "batchSize": 16384,
+            "cyclic": false,
+            "filtered": false,
+            "finiteFinalPartialBatch": true,
+            "randomFenSkipping": 0,
+            "trainingOrder": "pcg64dxsm-seed-epoch-record-permutation-v1",
+            "validationOrder": "fixed-source-order-once-per-evaluation-v1",
+            "workers": 1
+          },
+          "run": {
+            "bestValidation": {
+              "checkpoint": {
+                "bytes": 163438977,
+                "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+                "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+              },
+              "loss": 0.0010183314323425293,
+              "update": 768
+            },
+            "complete": true,
+            "dataCursor": {
+              "epoch": 75,
+              "record": 753664
+            },
+            "equivalentPasses": 75.85643636363636,
+            "examplesSeen": 66753664,
+            "optimizerUpdates": 4096,
+            "stopReason": "maximum-updates",
+            "timingSeconds": {
+              "checkpointSeconds": 50.61187014868483,
+              "exportSeconds": 43.62056714692153,
+              "shuffleSeconds": 10.754318196792156,
+              "trainingSeconds": 124.69029835122637,
+              "validationSeconds": 36.8934326977469
+            }
+          }
+        }
+      },
+      "exporters": {
+        "A": {
+          "path": "scripts/strength_first_seed_replication_trainer.py",
+          "sha256": "2879df5b893a31b06a7ae417574ef3fd6f9583b00f0f0a48da0acb4ae1263369"
+        },
+        "B": {
+          "path": "scripts/strength_first_model_b_trainer.py",
+          "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+        }
+      },
+      "recipeDifferences": {
+        "checkpointSchedule": {
+          "A": {
+            "atomicLastState": true,
+            "lastStateEveryEvaluation": true,
+            "portableFullPrecision": true,
+            "retainBestValidation": true,
+            "retainFinal": true,
+            "scheduledUpdates": [
+              256,
+              1024,
+              2048,
+              4096
+            ],
+            "throughputProbeUpdate": 128
+          },
+          "B": {
+            "atomicLastState": true,
+            "lastStateEveryEvaluation": true,
+            "portableFullPrecision": true,
+            "retainBestValidation": true,
+            "retainFinal": true,
+            "scheduledUpdates": [
+              256,
+              1024,
+              2048,
+              2688,
+              4096
+            ],
+            "throughputProbeUpdate": 128
+          }
+        },
+        "experimentAndOutput": {
+          "A": {
+            "experimentId": "strength-first-step8-compact-seed-replication-20260910-v1",
+            "output": {
+              "directory": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1",
+              "freshRunRefusesExistingState": true,
+              "receiptsCopiedIntoRun": true,
+              "resolvedConfigCopiedBeforeTraining": true
+            }
+          },
+          "B": {
+            "experimentId": "strength-first-step9-model-b-training-20260912-v1",
+            "output": {
+              "directory": "out/anhoku-strength-first/step9-model-b-training-20260912-v1",
+              "freshRunRefusesExistingState": true,
+              "receiptsCopiedIntoRun": true,
+              "resolvedConfigCopiedBeforeTraining": true
+            }
+          }
+        },
+        "initialization": {
+          "A": "fresh-scratch",
+          "B": "fresh-scratch"
+        },
+        "strengthScheduleId": {
+          "A": "anhoku-strength-first-development-seed-replication-128-pairs-v1",
+          "B": "anhoku-strength-first-model-b-development-gates-v1"
+        },
+        "trainerRunner": {
+          "A": {
+            "path": "scripts/strength_first_seed_replication_trainer.py",
+            "sha256": "2879df5b893a31b06a7ae417574ef3fd6f9583b00f0f0a48da0acb4ae1263369"
+          },
+          "B": {
+            "path": "scripts/strength_first_model_b_trainer.py",
+            "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+          }
+        },
+        "trainingCorpus": {
+          "A": {
+            "binary": {
+              "bytes": 63360000,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/training.bin",
+              "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+            },
+            "entryBytes": 72,
+            "manifest": {
+              "bytes": 959,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/training.json",
+              "sha256": "9684f34a8c5eb9dc8edc91140466990b347fbc9a8da866bcfece902c799ec5da"
+            },
+            "records": 880000,
+            "sidecar": {
+              "bytes": 1552979382,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/training.jsonl",
+              "sha256": "f3928363815244a79eb06e83fd2b0da397fe32b34d7d380c761b47670bf081d8"
+            }
+          },
+          "B": {
+            "binary": {
+              "bytes": 63360000,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+              "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+            },
+            "entryBytes": 72,
+            "manifest": {
+              "bytes": 1384,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.json",
+              "sha256": "89f976b5fdfde9198fa9b671e8a6024758b1d638cceedecf9316371865cb0c55"
+            },
+            "records": 880000,
+            "sidecar": {
+              "bytes": 149594430,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+              "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+            }
+          }
+        },
+        "trainingSeed": {
+          "A": 2026091002,
+          "B": 2026091108
+        },
+        "validationCorpus": {
+          "A": {
+            "binary": {
+              "bytes": 4320000,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/validation.bin",
+              "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+            },
+            "entryBytes": 72,
+            "manifest": {
+              "bytes": 962,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/validation.json",
+              "sha256": "51bcc2ea425858ba849ab0690747644d186161512db2a46b14c019d1d09331f5"
+            },
+            "records": 60000,
+            "sidecar": {
+              "bytes": 105984150,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/validation.jsonl",
+              "sha256": "10ffbcb690a0fcb4781fdd7e8d4efaf079dc3875d6577d77409617b52ff35a4a"
+            }
+          },
+          "B": {
+            "binary": {
+              "bytes": 4320000,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+              "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+            },
+            "entryBytes": 72,
+            "manifest": {
+              "bytes": 1389,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.json",
+              "sha256": "e72d1119554bc7bcfb2b56487217d5af6801e0892c7532197b539a6b330755bf"
+            },
+            "records": 60000,
+            "sidecar": {
+              "bytes": 10123281,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+              "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+            }
+          }
+        }
+      },
+      "recursiveRecipeDifferencePaths": [
+        "recipe.checkpoints.scheduledUpdates",
+        "recipe.data.training.binary.path",
+        "recipe.data.training.binary.sha256",
+        "recipe.data.training.manifest.bytes",
+        "recipe.data.training.manifest.path",
+        "recipe.data.training.manifest.sha256",
+        "recipe.data.training.sidecar.bytes",
+        "recipe.data.training.sidecar.path",
+        "recipe.data.training.sidecar.sha256",
+        "recipe.data.validation.binary.path",
+        "recipe.data.validation.binary.sha256",
+        "recipe.data.validation.manifest.bytes",
+        "recipe.data.validation.manifest.path",
+        "recipe.data.validation.manifest.sha256",
+        "recipe.data.validation.sidecar.bytes",
+        "recipe.data.validation.sidecar.path",
+        "recipe.data.validation.sidecar.sha256",
+        "recipe.export.automaticScheduledUpdates",
+        "recipe.realCpuFixture.outputDirectory",
+        "recipe.seed"
+      ],
+      "runtimes": {
+        "frozenRuntime": {
+          "bytes": 11372128,
+          "path": "target/release/haitaka_cli",
+          "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+        },
+        "preservedRuntime": {
+          "bytes": 11372128,
+          "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+          "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+        }
+      },
+      "seeds": {
+        "A": 2026091002,
+        "B": 2026091108
+      }
+    },
+    "corpus": {
+      "A": {
+        "training": {
+          "binary": {
+            "bytes": 63360000,
+            "path": "/Users/na2hiro/tmp/anhoku-step9-diagnosis-inputs-20260914-v1/model-a/training.bin",
+            "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+          },
+          "categories": {
+            "donorState": {
+              "active": 9991,
+              "none": 9
+            },
+            "inCheck": {
+              "False": 9579,
+              "True": 421
+            },
+            "materialBucket": {
+              "balanced": 1660,
+              "large": 5580,
+              "moderate": 2760
+            },
+            "openingGroup": {
+              "anhoku-v3-001": 217,
+              "anhoku-v3-002": 247,
+              "anhoku-v3-003": 225,
+              "anhoku-v3-004": 212,
+              "anhoku-v3-005": 203,
+              "anhoku-v3-006": 231,
+              "anhoku-v3-007": 202,
+              "anhoku-v3-008": 225,
+              "anhoku-v3-009": 256,
+              "anhoku-v3-010": 210,
+              "anhoku-v3-011": 246,
+              "anhoku-v3-012": 192,
+              "anhoku-v3-013": 264,
+              "anhoku-v3-014": 217,
+              "anhoku-v3-015": 219,
+              "anhoku-v3-016": 213,
+              "anhoku-v3-017": 193,
+              "anhoku-v3-018": 244,
+              "anhoku-v3-019": 236,
+              "anhoku-v3-020": 191,
+              "anhoku-v3-021": 217,
+              "anhoku-v3-022": 251,
+              "anhoku-v3-023": 274,
+              "anhoku-v3-024": 183,
+              "anhoku-v3-025": 217,
+              "anhoku-v3-026": 219,
+              "anhoku-v3-027": 250,
+              "anhoku-v3-028": 172,
+              "anhoku-v3-029": 228,
+              "anhoku-v3-030": 200,
+              "anhoku-v3-031": 243,
+              "anhoku-v3-032": 222,
+              "anhoku-v3-033": 212,
+              "anhoku-v3-034": 208,
+              "anhoku-v3-035": 221,
+              "anhoku-v3-036": 241,
+              "anhoku-v3-037": 228,
+              "anhoku-v3-038": 224,
+              "anhoku-v3-039": 266,
+              "anhoku-v3-040": 186,
+              "anhoku-v3-041": 217,
+              "anhoku-v3-042": 249,
+              "anhoku-v3-043": 216,
+              "anhoku-v3-044": 215,
+              "anhoku-v3-045": 198
+            },
+            "phase": {
+              "early": 1547,
+              "late": 3050,
+              "middle": 4910,
+              "terminal-adjacent": 493
+            },
+            "sideToMove": {
+              "black": 4826,
+              "white": 5174
+            },
+            "source": {
+              "handcrafted-selfplay-1024-nodes-v1": 1160,
+              "handcrafted-selfplay-256-nodes-v1": 1710,
+              "searched-near-best-uniform-candidates-v1": 4341,
+              "uniform-legal-perturbation-v1": 2789
+            },
+            "tactical": {
+              "False": 1263,
+              "True": 8737
+            }
+          },
+          "labels": {
+            "atOrAboveMateThreshold": 0,
+            "atOrAboveTargetClip": 1556,
+            "binaryLayout": "repository write_training_entry: packed[0:64], score i16le[64:66], teacher_move u16le[66:68], game_ply u16le[68:70], game_result i8[70], reserved[71]",
+            "gamePlyQuantiles": {
+              "0.0": 14.0,
+              "0.5": 70.0,
+              "1.0": 179.0
+            },
+            "gameResult": {
+              "0": 10000
+            },
+            "mean": 1955.5386,
+            "meanAbsolute": 3150.8402,
+            "negative": 3621,
+            "positive": 6340,
+            "quantiles": {
+              "0.0": -12000.0,
+              "0.01": -6480.24,
+              "0.1": -2112.3999999999996,
+              "0.25": -470.5,
+              "0.5": 456.0,
+              "0.75": 2676.0,
+              "0.9": 12000.0,
+              "0.99": 12000.0,
+              "1.0": 12000.0
+            },
+            "teacherMoveNonzero": 0,
+            "zero": 39
+          },
+          "records": 880000,
+          "sampleCap": 10000,
+          "sampleFirstIndex": 0,
+          "sampleLastIndex": 879999,
+          "sampleRecords": 10000,
+          "sampleRule": "evenly-spaced-record-index-v1",
+          "sidecar": {
+            "bytes": 1552979382,
+            "path": "/Users/na2hiro/tmp/anhoku-step9-diagnosis-inputs-20260914-v1/model-a/training.jsonl",
+            "sha256": "f3928363815244a79eb06e83fd2b0da397fe32b34d7d380c761b47670bf081d8"
+          },
+          "sourceGroups": {
+            "duplicateSampledSourceIndexRecords": null,
+            "sourceIndexAvailable": false,
+            "uniqueSampledSourceIndexes": null
+          },
+          "split": "A training",
+          "unavailableFields": [
+            "sourceIndex"
+          ]
+        },
+        "validation": {
+          "binary": {
+            "bytes": 4320000,
+            "path": "/Users/na2hiro/tmp/anhoku-step9-diagnosis-inputs-20260914-v1/model-a/validation.bin",
+            "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+          },
+          "categories": {
+            "donorState": {
+              "active": 9993,
+              "none": 7
+            },
+            "inCheck": {
+              "False": 9514,
+              "True": 486
+            },
+            "materialBucket": {
+              "balanced": 1778,
+              "large": 5374,
+              "moderate": 2848
+            },
+            "openingGroup": {
+              "anhoku-v3-046": 3385,
+              "anhoku-v3-047": 3094,
+              "anhoku-v3-048": 3521
+            },
+            "phase": {
+              "early": 1503,
+              "late": 3020,
+              "middle": 4984,
+              "terminal-adjacent": 493
+            },
+            "sideToMove": {
+              "black": 5039,
+              "white": 4961
+            },
+            "source": {
+              "handcrafted-selfplay-1024-nodes-v1": 1227,
+              "handcrafted-selfplay-256-nodes-v1": 1649,
+              "searched-near-best-uniform-candidates-v1": 4210,
+              "uniform-legal-perturbation-v1": 2914
+            },
+            "tactical": {
+              "False": 1307,
+              "True": 8693
+            }
+          },
+          "labels": {
+            "atOrAboveMateThreshold": 0,
+            "atOrAboveTargetClip": 1366,
+            "binaryLayout": "repository write_training_entry: packed[0:64], score i16le[64:66], teacher_move u16le[66:68], game_ply u16le[68:70], game_result i8[70], reserved[71]",
+            "gamePlyQuantiles": {
+              "0.0": 14.0,
+              "0.5": 70.0,
+              "1.0": 179.0
+            },
+            "gameResult": {
+              "0": 10000
+            },
+            "mean": 1738.0242,
+            "meanAbsolute": 2907.3554,
+            "negative": 3582,
+            "positive": 6378,
+            "quantiles": {
+              "0.0": -12000.0,
+              "0.01": -6316.16,
+              "0.1": -1994.0,
+              "0.25": -450.5,
+              "0.5": 394.0,
+              "0.75": 2326.0,
+              "0.9": 12000.0,
+              "0.99": 12000.0,
+              "1.0": 12000.0
+            },
+            "teacherMoveNonzero": 0,
+            "zero": 40
+          },
+          "records": 60000,
+          "sampleCap": 10000,
+          "sampleFirstIndex": 0,
+          "sampleLastIndex": 59999,
+          "sampleRecords": 10000,
+          "sampleRule": "evenly-spaced-record-index-v1",
+          "sidecar": {
+            "bytes": 105984150,
+            "path": "/Users/na2hiro/tmp/anhoku-step9-diagnosis-inputs-20260914-v1/model-a/validation.jsonl",
+            "sha256": "10ffbcb690a0fcb4781fdd7e8d4efaf079dc3875d6577d77409617b52ff35a4a"
+          },
+          "sourceGroups": {
+            "duplicateSampledSourceIndexRecords": null,
+            "sourceIndexAvailable": false,
+            "uniqueSampledSourceIndexes": null
+          },
+          "split": "A validation",
+          "unavailableFields": [
+            "sourceIndex"
+          ]
+        }
+      },
+      "B": {
+        "training": {
+          "binary": {
+            "bytes": 63360000,
+            "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+            "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+          },
+          "categories": {
+            "donorState": {
+              "active": 9956,
+              "none": 44
+            },
+            "inCheck": {
+              "False": 8159,
+              "True": 1841
+            },
+            "materialBucket": {},
+            "openingGroup": {},
+            "phase": {
+              "early": 1446,
+              "late": 2425,
+              "middle": 4644,
+              "terminal-adjacent": 1485
+            },
+            "sideToMove": {
+              "black": 4936,
+              "white": 5064
+            },
+            "source": {},
+            "tactical": {
+              "False": 1320,
+              "True": 8680
+            }
+          },
+          "labels": {
+            "atOrAboveMateThreshold": 0,
+            "atOrAboveTargetClip": 20,
+            "binaryLayout": "repository write_training_entry: packed[0:64], score i16le[64:66], teacher_move u16le[66:68], game_ply u16le[68:70], game_result i8[70], reserved[71]",
+            "gamePlyQuantiles": {
+              "0.0": 8.0,
+              "0.5": 57.0,
+              "1.0": 179.0
+            },
+            "gameResult": {
+              "-1": 2505,
+              "0": 5056,
+              "1": 2439
+            },
+            "mean": 12.784,
+            "meanAbsolute": 2567.844,
+            "negative": 4901,
+            "positive": 5077,
+            "quantiles": {
+              "0.0": -13572.0,
+              "0.01": -10112.0,
+              "0.1": -4572.2,
+              "0.25": -1508.0,
+              "0.5": 10.0,
+              "0.75": 1600.0,
+              "0.9": 4558.200000000001,
+              "0.99": 9788.060000000001,
+              "1.0": 13850.0
+            },
+            "teacherMoveNonzero": 0,
+            "zero": 22
+          },
+          "records": 880000,
+          "sampleCap": 10000,
+          "sampleFirstIndex": 0,
+          "sampleLastIndex": 879999,
+          "sampleRecords": 10000,
+          "sampleRule": "evenly-spaced-record-index-v1",
+          "sidecar": {
+            "bytes": 149594430,
+            "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+            "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+          },
+          "sourceGroups": {
+            "duplicateSampledSourceIndexRecords": 0,
+            "sourceIndexAvailable": true,
+            "uniqueSampledSourceIndexes": 10000
+          },
+          "split": "B training",
+          "unavailableFields": [
+            "position.materialBucket",
+            "position.openingGroup",
+            "position.sideToMove (derived from packed ABI)",
+            "position.source"
+          ]
+        },
+        "validation": {
+          "binary": {
+            "bytes": 4320000,
+            "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+            "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+          },
+          "categories": {
+            "donorState": {
+              "active": 9973,
+              "none": 27
+            },
+            "inCheck": {
+              "False": 8147,
+              "True": 1853
+            },
+            "materialBucket": {},
+            "openingGroup": {},
+            "phase": {
+              "early": 1588,
+              "late": 2469,
+              "middle": 4546,
+              "terminal-adjacent": 1397
+            },
+            "sideToMove": {
+              "black": 5176,
+              "white": 4824
+            },
+            "source": {},
+            "tactical": {
+              "False": 1215,
+              "True": 8785
+            }
+          },
+          "labels": {
+            "atOrAboveMateThreshold": 0,
+            "atOrAboveTargetClip": 41,
+            "binaryLayout": "repository write_training_entry: packed[0:64], score i16le[64:66], teacher_move u16le[66:68], game_ply u16le[68:70], game_result i8[70], reserved[71]",
+            "gamePlyQuantiles": {
+              "0.0": 8.0,
+              "0.5": 57.0,
+              "1.0": 179.0
+            },
+            "gameResult": {
+              "-1": 2228,
+              "0": 5497,
+              "1": 2275
+            },
+            "mean": -26.9504,
+            "meanAbsolute": 2749.236,
+            "negative": 4959,
+            "positive": 5023,
+            "quantiles": {
+              "0.0": -14434.0,
+              "0.01": -10302.02,
+              "0.1": -4864.4,
+              "0.25": -1799.0,
+              "0.5": 4.0,
+              "0.75": 1706.5,
+              "0.9": 4846.200000000001,
+              "0.99": 10052.340000000007,
+              "1.0": 13168.0
+            },
+            "teacherMoveNonzero": 0,
+            "zero": 18
+          },
+          "records": 60000,
+          "sampleCap": 10000,
+          "sampleFirstIndex": 0,
+          "sampleLastIndex": 59999,
+          "sampleRecords": 10000,
+          "sampleRule": "evenly-spaced-record-index-v1",
+          "sidecar": {
+            "bytes": 10123281,
+            "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+            "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+          },
+          "sourceGroups": {
+            "duplicateSampledSourceIndexRecords": 0,
+            "sourceIndexAvailable": true,
+            "uniqueSampledSourceIndexes": 10000
+          },
+          "split": "B validation",
+          "unavailableFields": [
+            "position.materialBucket",
+            "position.openingGroup",
+            "position.sideToMove (derived from packed ABI)",
+            "position.source"
+          ]
+        }
+      },
+      "crossCorpusStaticValidation": {
+        "reason": "no existing exact-objective, exact-orientation tooling was used",
+        "run": false
+      },
+      "manifests": {
+        "A": {
+          "training": {
+            "binary": {
+              "bytes": 63360000,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/training.bin",
+              "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+            },
+            "contractSha256": "bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b",
+            "dataset": "training",
+            "entryBytes": 72,
+            "labelBudget": 10000,
+            "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+            "matePolicy": "explicit-class-win-loss-none-plus-distance-from-30000-v1",
+            "records": 880000,
+            "resultLossEnabled": false,
+            "schema": "haitaka-r4-replacement-dataset-manifest-v1",
+            "scoreTransform": "identity-with-robust-clip-v1",
+            "sidecar": {
+              "bytes": 1552979382,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/training.jsonl",
+              "sha256": "f3928363815244a79eb06e83fd2b0da397fe32b34d7d380c761b47670bf081d8"
+            },
+            "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+            "unknownResultsIgnored": true
+          },
+          "validation": {
+            "binary": {
+              "bytes": 4320000,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/validation.bin",
+              "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+            },
+            "contractSha256": "bbd9a0924702114f8cf542f559d7affc99870e7d4b10f7783fc3f529fa28356b",
+            "dataset": "validation",
+            "entryBytes": 72,
+            "labelBudget": 10000,
+            "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+            "matePolicy": "explicit-class-win-loss-none-plus-distance-from-30000-v1",
+            "records": 60000,
+            "resultLossEnabled": false,
+            "schema": "haitaka-r4-replacement-dataset-manifest-v1",
+            "scoreTransform": "identity-with-robust-clip-v1",
+            "sidecar": {
+              "bytes": 105984150,
+              "path": "out/anhoku-reboot-r4-replacement/datasets/validation.jsonl",
+              "sha256": "10ffbcb690a0fcb4781fdd7e8d4efaf079dc3875d6577d77409617b52ff35a4a"
+            },
+            "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance",
+            "unknownResultsIgnored": true
+          }
+        },
+        "B": {
+          "corpus": {
+            "deduplicationPolicy": "exclude-model-a-and-deduplicate-model-b-by-anhoku-color-swap-board-family-v1",
+            "modelA": [
+              {
+                "bytes": 63360000,
+                "newCanonicalFamilies": 880000,
+                "path": "inputs/model-a/training.bin",
+                "records": 880000,
+                "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+              },
+              {
+                "bytes": 4320000,
+                "newCanonicalFamilies": 60000,
+                "path": "inputs/model-a/validation.bin",
+                "records": 60000,
+                "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+              },
+              {
+                "bytes": 4320000,
+                "newCanonicalFamilies": 60000,
+                "path": "inputs/model-a/development.bin",
+                "records": 60000,
+                "sha256": "21e7f9ca0cbd4b6b8256816f770f5dc6e66939aab7591cf3a3bc55072288cd00"
+              }
+            ],
+            "modelACanonicalFamilies": 1000000,
+            "passed": true,
+            "schema": "haitaka-anhoku-strength-first-model-b-corpus-v1",
+            "selectionPolicy": "sha256-rank-within-split-v1",
+            "selectionSeed": 2026091107,
+            "training": {
+              "binary": {
+                "bytes": 63360000,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+                "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+              },
+              "manifest": {
+                "bytes": 1384,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.json",
+                "sha256": "89f976b5fdfde9198fa9b671e8a6024758b1d638cceedecf9316371865cb0c55"
+              },
+              "records": 880000,
+              "sidecar": {
+                "bytes": 149594430,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+                "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+              },
+              "sourceStats": {
+                "duplicateCanonicalFamilyRecords": 347370,
+                "eligibleCanonicalFamilies": 925815,
+                "excludedRecords": 936,
+                "source": {
+                  "bytes": 91736712,
+                  "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/train.bin",
+                  "sha256": "e027868cbea2bb070f34335773125b2437f0e5a297a9b10ae2bcd8745835b622"
+                },
+                "sourceRecords": 1274121
+              }
+            },
+            "validation": {
+              "binary": {
+                "bytes": 4320000,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+                "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+              },
+              "excludedSelectedTrainingFamilies": 880000,
+              "manifest": {
+                "bytes": 1389,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.json",
+                "sha256": "e72d1119554bc7bcfb2b56487217d5af6801e0892c7532197b539a6b330755bf"
+              },
+              "records": 60000,
+              "sidecar": {
+                "bytes": 10123281,
+                "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+                "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+              },
+              "sourceStats": {
+                "duplicateCanonicalFamilyRecords": 22039,
+                "eligibleCanonicalFamilies": 64569,
+                "excludedRecords": 0,
+                "source": {
+                  "bytes": 6235776,
+                  "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/validation.bin",
+                  "sha256": "6a71de1affa450ca140dc431c95f04a723df0be25d399af8efc9666c6a832aee"
+                },
+                "sourceRecords": 86608
+              }
+            }
+          },
+          "training": {
+            "binary": {
+              "bytes": 63360000,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+              "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+            },
+            "dataset": "training",
+            "entryBytes": 72,
+            "labelBudget": 10000,
+            "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+            "records": 880000,
+            "schema": "haitaka-strength-first-frozen-dataset-manifest-v1",
+            "scoreTransform": "identity-with-robust-clip-v1",
+            "sidecar": {
+              "bytes": 149594430,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+              "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+            },
+            "source": {
+              "bytes": 91736712,
+              "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/train.bin",
+              "sha256": "e027868cbea2bb070f34335773125b2437f0e5a297a9b10ae2bcd8745835b622"
+            },
+            "sourceStats": {
+              "duplicateCanonicalFamilyRecords": 347370,
+              "eligibleCanonicalFamilies": 925815,
+              "excludedRecords": 936,
+              "source": {
+                "bytes": 91736712,
+                "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/train.bin",
+                "sha256": "e027868cbea2bb070f34335773125b2437f0e5a297a9b10ae2bcd8745835b622"
+              },
+              "sourceRecords": 1274121
+            },
+            "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance"
+          },
+          "validation": {
+            "binary": {
+              "bytes": 4320000,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+              "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+            },
+            "dataset": "validation",
+            "entryBytes": 72,
+            "labelBudget": 10000,
+            "labelEvaluator": "haitaka-native-handcrafted-search-v1",
+            "records": 60000,
+            "schema": "haitaka-strength-first-frozen-dataset-manifest-v1",
+            "scoreTransform": "identity-with-robust-clip-v1",
+            "sidecar": {
+              "bytes": 10123281,
+              "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+              "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+            },
+            "source": {
+              "bytes": 6235776,
+              "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/validation.bin",
+              "sha256": "6a71de1affa450ca140dc431c95f04a723df0be25d399af8efc9666c6a832aee"
+            },
+            "sourceStats": {
+              "duplicateCanonicalFamilyRecords": 22039,
+              "eligibleCanonicalFamilies": 64569,
+              "excludedRecords": 0,
+              "source": {
+                "bytes": 6235776,
+                "path": "out/anhoku-strength-first/step9-model-b-source-20260911-v2/datasets/validation.bin",
+                "sha256": "6a71de1affa450ca140dc431c95f04a723df0be25d399af8efc9666c6a832aee"
+              },
+              "sourceRecords": 86608
+            },
+            "targetSemantics": "bounded-nonmate-root-plus-explicit-mate-class-distance"
+          }
+        }
+      },
+      "sampleRule": "evenly-spaced-record-index-v1; at most 10,000 records per split; binary fields decoded using the repository's 72-byte training ABI"
+    },
+    "createdAt": "2026-09-14T00:28:40.607573+00:00",
+    "defects": [],
+    "deploymentAuthorized": false,
+    "diagnostics": {
+      "A": {
+        "2688": {
+          "bestValidation": {
+            "checkpoint": {
+              "bytes": 163439003,
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+              "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+            },
+            "loss": 0.012593777974446614,
+            "update": 2688
+          },
+          "exposure": {
+            "completedPasses": 49,
+            "dataCursor": {
+              "epoch": 49,
+              "record": 688128
+            },
+            "equivalentPasses": 49.781963636363635,
+            "examplesSeen": 43808128,
+            "validationEvaluations": 22,
+            "validationExamplesSeen": 1320000
+          },
+          "learningRate": 0.00044424727341895685,
+          "optimizerUpdates": 2688,
+          "timingSeconds": {
+            "checkpointSeconds": 41.17441385984421,
+            "exportSeconds": 29.444529127329588,
+            "shuffleSeconds": 7.842067118734121,
+            "trainingSeconds": 80.04821215942502,
+            "validationSeconds": 29.1045009046793
+          },
+          "trainWindow": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 1875.7040285012333,
+                  "records": 1998510,
+                  "teacherOnlyLoss": 0.012931291290343826
+                },
+                "true": {
+                  "rawScoreMae": 1845.8270031961422,
+                  "records": 89170,
+                  "teacherOnlyLoss": 0.012082447892843882
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 1874.7698189520497,
+                  "records": 2086740,
+                  "teacherOnlyLoss": 0.012897801802090877
+                },
+                "none": {
+                  "rawScoreMae": 1115.4048968051343,
+                  "records": 940,
+                  "teacherOnlyLoss": 0.0067530602521328744
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 509.2983126666773,
+                  "records": 313105,
+                  "teacherOnlyLoss": 0.00250328235172692
+                },
+                "late": {
+                  "rawScoreMae": 2742.4460190861687,
+                  "records": 626527,
+                  "teacherOnlyLoss": 0.019631690455928857
+                },
+                "middle": {
+                  "rawScoreMae": 1602.671792857314,
+                  "records": 1043725,
+                  "teacherOnlyLoss": 0.01072028989320618
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 3477.437369995111,
+                  "records": 104323,
+                  "teacherOnlyLoss": 0.02538364385133136
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 479.8681448587491,
+                  "records": 267892,
+                  "teacherOnlyLoss": 0.002496001506762017
+                },
+                "true": {
+                  "rawScoreMae": 2079.7218137497334,
+                  "records": 1819788,
+                  "teacherOnlyLoss": 0.014425882611153358
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -21.70321273803711,
+                23.023746490478516
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 1874.427908491723,
+            "saturation": {
+              "predictionAtTargetClip": 3.832004904966278e-05,
+              "targetAtClip": 0.15454619481912937
+            },
+            "scoreRange": {
+              "prediction": [
+                -13021.9267578125,
+                13814.248046875
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.012895035071288202,
+            "updateMagnitudeSamples": [
+              {
+                "absoluteMaximum": 0.0021045655012130737,
+                "l2": 0.2421208620071411,
+                "parameterL2": 1125.0830078125,
+                "relativeL2": 0.00021520266533746424
+              }
+            ]
+          },
+          "validation": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 1881.2578214336938,
+                  "records": 57163,
+                  "teacherOnlyLoss": 0.012651176179695973
+                },
+                "true": {
+                  "rawScoreMae": 1808.456113980024,
+                  "records": 2837,
+                  "teacherOnlyLoss": 0.011437262285331373
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 1878.5420611992465,
+                  "records": 59969,
+                  "teacherOnlyLoss": 0.012599619951753719
+                },
+                "none": {
+                  "rawScoreMae": 472.32173928906843,
+                  "records": 31,
+                  "teacherOnlyLoss": 0.001292058661009275
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 456.4682634082437,
+                  "records": 9000,
+                  "teacherOnlyLoss": 0.0018793746100531684
+                },
+                "late": {
+                  "rawScoreMae": 2825.2453573471175,
+                  "records": 18000,
+                  "teacherOnlyLoss": 0.02000031068589952
+                },
+                "middle": {
+                  "rawScoreMae": 1595.0218203393717,
+                  "records": 30000,
+                  "teacherOnlyLoss": 0.01026398188273112
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 3285.2151429573696,
+                  "records": 3000,
+                  "teacherOnlyLoss": 0.023595752716064452
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 493.55680540319304,
+                  "records": 8016,
+                  "teacherOnlyLoss": 0.0022638917802098747
+                },
+                "true": {
+                  "rawScoreMae": 2091.2699963424047,
+                  "records": 51984,
+                  "teacherOnlyLoss": 0.01418665953143335
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -20.39699935913086,
+                20.216602325439453
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 1877.815514032926,
+            "saturation": {
+              "predictionAtTargetClip": 5e-05,
+              "targetAtClip": 0.14105
+            },
+            "scoreRange": {
+              "prediction": [
+                -12238.19921875,
+                12129.9609375
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.012593777974446614
+          }
+        },
+        "4096": {
+          "bestValidation": {
+            "checkpoint": {
+              "bytes": 163439003,
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+              "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+            },
+            "loss": 0.012593777974446614,
+            "update": 2688
+          },
+          "exposure": {
+            "completedPasses": 75,
+            "dataCursor": {
+              "epoch": 75,
+              "record": 753664
+            },
+            "equivalentPasses": 75.85643636363636,
+            "examplesSeen": 66753664,
+            "validationEvaluations": 33,
+            "validationExamplesSeen": 1980000
+          },
+          "learningRate": 5e-05,
+          "optimizerUpdates": 4096,
+          "timingSeconds": {
+            "checkpointSeconds": 52.05829522758722,
+            "exportSeconds": 39.040467254817486,
+            "shuffleSeconds": 11.365307100117207,
+            "trainingSeconds": 122.16246401146054,
+            "validationSeconds": 43.68711647391319
+          },
+          "trainWindow": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 1771.6831303413298,
+                  "records": 1998683,
+                  "teacherOnlyLoss": 0.01242131459801631
+                },
+                "true": {
+                  "rawScoreMae": 1588.3331917087094,
+                  "records": 88997,
+                  "teacherOnlyLoss": 0.010653147449967261
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 1764.2451606101413,
+                  "records": 2086730,
+                  "teacherOnlyLoss": 0.012348944328042559
+                },
+                "none": {
+                  "rawScoreMae": 933.2018613152754,
+                  "records": 950,
+                  "teacherOnlyLoss": 0.0057430921200006865
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 444.59391592532086,
+                  "records": 313394,
+                  "teacherOnlyLoss": 0.002244397996810091
+                },
+                "late": {
+                  "rawScoreMae": 2636.4916994708183,
+                  "records": 625683,
+                  "teacherOnlyLoss": 0.01904391360369435
+                },
+                "middle": {
+                  "rawScoreMae": 1483.3509603688613,
+                  "records": 1044078,
+                  "teacherOnlyLoss": 0.010179178990497851
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 3297.915679263334,
+                  "records": 104525,
+                  "teacherOnlyLoss": 0.024182519363005518
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 421.1178137908173,
+                  "records": 268483,
+                  "teacherOnlyLoss": 0.002310225001359465
+                },
+                "true": {
+                  "rawScoreMae": 1962.0342678665368,
+                  "records": 1819197,
+                  "teacherOnlyLoss": 0.013827041422215363
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -21.297609329223633,
+                21.535608291625977
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 1763.8669978157573,
+            "saturation": {
+              "predictionAtTargetClip": 4.3589055793991415e-05,
+              "targetAtClip": 0.15423771842427958
+            },
+            "scoreRange": {
+              "prediction": [
+                -12778.5654296875,
+                12921.3642578125
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.012345938336111006,
+            "updateMagnitudeSamples": [
+              {
+                "absoluteMaximum": 5.1140785217285156e-05,
+                "l2": 0.012596762739121914,
+                "parameterL2": 1125.327880859375,
+                "relativeL2": 1.119385998816824e-05
+              }
+            ]
+          },
+          "validation": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 1894.7201557220121,
+                  "records": 57163,
+                  "teacherOnlyLoss": 0.01267770281691036
+                },
+                "true": {
+                  "rawScoreMae": 1797.9611049110217,
+                  "records": 2837,
+                  "teacherOnlyLoss": 0.011330690945291502
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 1890.82503051241,
+                  "records": 59969,
+                  "teacherOnlyLoss": 0.012619655429556573
+                },
+                "none": {
+                  "rawScoreMae": 574.7632700397122,
+                  "records": 31,
+                  "teacherOnlyLoss": 0.0016961177217683966
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 478.18699225567445,
+                  "records": 9000,
+                  "teacherOnlyLoss": 0.0019346410698360867
+                },
+                "late": {
+                  "rawScoreMae": 2830.550409572999,
+                  "records": 18000,
+                  "teacherOnlyLoss": 0.019976458655463325
+                },
+                "middle": {
+                  "rawScoreMae": 1611.8682212527574,
+                  "records": 30000,
+                  "teacherOnlyLoss": 0.010320807393391926
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 3266.355658657392,
+                  "records": 3000,
+                  "teacherOnlyLoss": 0.023409481366475422
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 520.7970382825522,
+                  "records": 8016,
+                  "teacherOnlyLoss": 0.0023364607623951165
+                },
+                "true": {
+                  "rawScoreMae": 2101.3003011945407,
+                  "records": 51984,
+                  "teacherOnlyLoss": 0.01419882276822105
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -21.058359146118164,
+                20.854904174804688
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 1890.1450652694991,
+            "saturation": {
+              "predictionAtTargetClip": 8.333333333333333e-05,
+              "targetAtClip": 0.14105
+            },
+            "scoreRange": {
+              "prediction": [
+                -12635.015625,
+                12512.9423828125
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.01261401138305664
+          }
+        }
+      },
+      "B": {
+        "2688": {
+          "bestValidation": {
+            "checkpoint": {
+              "bytes": 163438977,
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+              "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+            },
+            "loss": 0.0010183314323425293,
+            "update": 768
+          },
+          "exposure": {
+            "completedPasses": 49,
+            "dataCursor": {
+              "epoch": 49,
+              "record": 688128
+            },
+            "equivalentPasses": 49.781963636363635,
+            "examplesSeen": 43808128,
+            "validationEvaluations": 22,
+            "validationExamplesSeen": 1320000
+          },
+          "learningRate": 0.00044424727341895685,
+          "optimizerUpdates": 2688,
+          "timingSeconds": {
+            "checkpointSeconds": 44.404002820840105,
+            "exportSeconds": 38.214923419756815,
+            "shuffleSeconds": 8.341904934961349,
+            "trainingSeconds": 89.4374157069251,
+            "validationSeconds": 26.786082695703954
+          },
+          "trainWindow": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 126.26149647597265,
+                  "records": 1705577,
+                  "teacherOnlyLoss": 0.0001475738415714363
+                },
+                "true": {
+                  "rawScoreMae": 152.068413735956,
+                  "records": 382103,
+                  "teacherOnlyLoss": 0.00026786532568275106
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 131.03524754509175,
+                  "records": 2081035,
+                  "teacherOnlyLoss": 0.0001696894079474074
+                },
+                "none": {
+                  "rawScoreMae": 115.20924956793172,
+                  "records": 6645,
+                  "teacherOnlyLoss": 0.00013861507349041417
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 144.24008576269884,
+                  "records": 299358,
+                  "teacherOnlyLoss": 0.00015715192130201982
+                },
+                "late": {
+                  "rawScoreMae": 112.88846999259076,
+                  "records": 506125,
+                  "teacherOnlyLoss": 0.00015345783415003216
+                },
+                "middle": {
+                  "rawScoreMae": 133.26065385023924,
+                  "records": 988510,
+                  "teacherOnlyLoss": 0.0001590942104850845
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 141.00015317114818,
+                  "records": 293687,
+                  "teacherOnlyLoss": 0.0002454005295519161
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 108.5621803348837,
+                  "records": 284233,
+                  "teacherOnlyLoss": 8.540530741076977e-05
+                },
+                "true": {
+                  "rawScoreMae": 134.51881182258197,
+                  "records": 1803447,
+                  "teacherOnlyLoss": 0.00018285854081660538
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -21.521455764770508,
+                24.29441261291504
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 130.98487447788932,
+            "saturation": {
+              "predictionAtTargetClip": 0.0010384733292458615,
+              "targetAtClip": 0.0020510806253832004
+            },
+            "scoreRange": {
+              "prediction": [
+                -12912.873046875,
+                14576.6474609375
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.00016959049949647457,
+            "updateMagnitudeSamples": [
+              {
+                "absoluteMaximum": 0.0004479335620999336,
+                "l2": 0.10623055696487427,
+                "parameterL2": 1124.3372802734375,
+                "relativeL2": 9.448282008316856e-05
+              }
+            ]
+          },
+          "validation": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 465.9089750040814,
+                  "records": 49010,
+                  "teacherOnlyLoss": 0.0012492894980401998
+                },
+                "true": {
+                  "rawScoreMae": 632.8303855165555,
+                  "records": 10990,
+                  "teacherOnlyLoss": 0.002148535904610992
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 496.3170744428719,
+                  "records": 59815,
+                  "teacherOnlyLoss": 0.0014134311141910376
+                },
+                "none": {
+                  "rawScoreMae": 550.2648323059082,
+                  "records": 185,
+                  "teacherOnlyLoss": 0.0015984278877039214
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 367.3986361105742,
+                  "records": 9279,
+                  "teacherOnlyLoss": 0.0008270979210250991
+                },
+                "late": {
+                  "rawScoreMae": 535.3459899404969,
+                  "records": 14511,
+                  "teacherOnlyLoss": 0.0015887709375696536
+                },
+                "middle": {
+                  "rawScoreMae": 473.6193605748425,
+                  "records": 27709,
+                  "teacherOnlyLoss": 0.0012810766737800705
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 645.5697371029403,
+                  "records": 8501,
+                  "teacherOnlyLoss": 0.002189558627338721
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 398.122743941993,
+                  "records": 7078,
+                  "teacherOnlyLoss": 0.000928690403859876
+                },
+                "true": {
+                  "rawScoreMae": 509.6385627934611,
+                  "records": 52922,
+                  "teacherOnlyLoss": 0.0014789089234452557
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -23.581098556518555,
+                23.73189926147461
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 496.4834133629496,
+            "saturation": {
+              "predictionAtTargetClip": 0.0026333333333333334,
+              "targetAtClip": 0.0035
+            },
+            "scoreRange": {
+              "prediction": [
+                -14148.6591796875,
+                14239.1396484375
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.001414001480738322
+          }
+        },
+        "4096": {
+          "bestValidation": {
+            "checkpoint": {
+              "bytes": 163438977,
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+              "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+            },
+            "loss": 0.0010183314323425293,
+            "update": 768
+          },
+          "exposure": {
+            "completedPasses": 75,
+            "dataCursor": {
+              "epoch": 75,
+              "record": 753664
+            },
+            "equivalentPasses": 75.85643636363636,
+            "examplesSeen": 66753664,
+            "validationEvaluations": 33,
+            "validationExamplesSeen": 1980000
+          },
+          "learningRate": 5e-05,
+          "optimizerUpdates": 4096,
+          "timingSeconds": {
+            "checkpointSeconds": 50.61187014868483,
+            "exportSeconds": 43.62056714692153,
+            "shuffleSeconds": 10.754318196792156,
+            "trainingSeconds": 124.69029835122637,
+            "validationSeconds": 36.8934326977469
+          },
+          "trainWindow": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 96.38949677697147,
+                  "records": 1705849,
+                  "teacherOnlyLoss": 0.00010915707200653885
+                },
+                "true": {
+                  "rawScoreMae": 115.43770337858896,
+                  "records": 381831,
+                  "teacherOnlyLoss": 0.0002148005588919257
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 99.92013154916732,
+                  "records": 2081047,
+                  "teacherOnlyLoss": 0.0001285365355694943
+                },
+                "none": {
+                  "rawScoreMae": 85.19994255904427,
+                  "records": 6633,
+                  "teacherOnlyLoss": 0.0001104209519178293
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 124.20486009113063,
+                  "records": 299570,
+                  "teacherOnlyLoss": 0.00011981866248249192
+                },
+                "late": {
+                  "rawScoreMae": 80.45264908519663,
+                  "records": 506229,
+                  "teacherOnlyLoss": 0.00012021420709045919
+                },
+                "middle": {
+                  "rawScoreMae": 100.71411027430048,
+                  "records": 988077,
+                  "teacherOnlyLoss": 0.0001150701965439429
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 105.69907755255204,
+                  "records": 293804,
+                  "teacherOnlyLoss": 0.0001966439693591244
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 86.28381691724042,
+                  "records": 284680,
+                  "teacherOnlyLoss": 6.0106464409754485e-05
+                },
+                "true": {
+                  "rawScoreMae": 102.01904943150305,
+                  "records": 1803000,
+                  "teacherOnlyLoss": 0.0001392744790165542
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -21.491079330444336,
+                24.328340530395508
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 99.87336235677881,
+            "saturation": {
+              "predictionAtTargetClip": 0.0010514063458001226,
+              "targetAtClip": 0.0020980226854690376
+            },
+            "scoreRange": {
+              "prediction": [
+                -12894.6474609375,
+                14597.00390625
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.00012847897867888558,
+            "updateMagnitudeSamples": [
+              {
+                "absoluteMaximum": 2.9189977794885635e-05,
+                "l2": 0.00570386927574873,
+                "parameterL2": 1124.362060546875,
+                "relativeL2": 5.072982694715297e-06
+              }
+            ]
+          },
+          "validation": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 483.0006086940876,
+                  "records": 49010,
+                  "teacherOnlyLoss": 0.0013253955494698347
+                },
+                "true": {
+                  "rawScoreMae": 648.9786762227569,
+                  "records": 10990,
+                  "teacherOnlyLoss": 0.002238437367960797
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 513.2393596441374,
+                  "records": 59815,
+                  "teacherOnlyLoss": 0.0014920321812669957
+                },
+                "none": {
+                  "rawScoreMae": 566.071279304092,
+                  "records": 185,
+                  "teacherOnlyLoss": 0.0016873491374222009
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 379.15529812950297,
+                  "records": 9279,
+                  "teacherOnlyLoss": 0.0008693167664570752
+                },
+                "late": {
+                  "rawScoreMae": 553.7852248668539,
+                  "records": 14511,
+                  "teacherOnlyLoss": 0.0016802087262910532
+                },
+                "middle": {
+                  "rawScoreMae": 491.67430194771066,
+                  "records": 27709,
+                  "teacherOnlyLoss": 0.001361569845799895
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 661.8248255181321,
+                  "records": 8501,
+                  "teacherOnlyLoss": 0.002280017205258423
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 414.9220614847944,
+                  "records": 7078,
+                  "teacherOnlyLoss": 0.000997203660907298
+                },
+                "true": {
+                  "rawScoreMae": 526.5733935338036,
+                  "records": 52922,
+                  "teacherOnlyLoss": 0.0015588952437139486
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -23.750856399536133,
+                23.75083351135254
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 513.4022580630889,
+            "saturation": {
+              "predictionAtTargetClip": 0.002683333333333333,
+              "targetAtClip": 0.0035
+            },
+            "scoreRange": {
+              "prediction": [
+                -14250.513671875,
+                14250.5
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.001492634423573812
+          }
+        },
+        "768": {
+          "bestValidation": {
+            "checkpoint": {
+              "bytes": 163438977,
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+              "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+            },
+            "loss": 0.0010183314323425293,
+            "update": 768
+          },
+          "exposure": {
+            "completedPasses": 14,
+            "dataCursor": {
+              "epoch": 14,
+              "record": 196608
+            },
+            "equivalentPasses": 14.223418181818182,
+            "examplesSeen": 12516608,
+            "validationEvaluations": 7,
+            "validationExamplesSeen": 420000
+          },
+          "learningRate": 0.0013936358891833128,
+          "optimizerUpdates": 768,
+          "timingSeconds": {
+            "checkpointSeconds": 12.70342334266752,
+            "exportSeconds": 9.257429189048707,
+            "shuffleSeconds": 2.140278205741197,
+            "trainingSeconds": 26.73681875038892,
+            "validationSeconds": 8.904608357232064
+          },
+          "trainWindow": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 317.02041262461125,
+                  "records": 1701692,
+                  "teacherOnlyLoss": 0.0006851419611977177
+                },
+                "true": {
+                  "rawScoreMae": 504.2114747922634,
+                  "records": 381252,
+                  "teacherOnlyLoss": 0.0014770494358571074
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 351.13947097436676,
+                  "records": 2076251,
+                  "teacherOnlyLoss": 0.0008296278166714932
+                },
+                "none": {
+                  "rawScoreMae": 395.79490947281676,
+                  "records": 6693,
+                  "teacherOnlyLoss": 0.0009731154181436093
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 250.31586688827562,
+                  "records": 298950,
+                  "teacherOnlyLoss": 0.0004861604339962002
+                },
+                "late": {
+                  "rawScoreMae": 371.09767924593774,
+                  "records": 504335,
+                  "teacherOnlyLoss": 0.0008869976514094904
+                },
+                "middle": {
+                  "rawScoreMae": 334.0385793627535,
+                  "records": 986149,
+                  "teacherOnlyLoss": 0.0007435673406657988
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 478.0124780671868,
+                  "records": 293510,
+                  "teacherOnlyLoss": 0.0013733052780126934
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 216.4305991681624,
+                  "records": 283589,
+                  "teacherOnlyLoss": 0.0003378894676674604
+                },
+                "true": {
+                  "rawScoreMae": 372.53648779701615,
+                  "records": 1799355,
+                  "teacherOnlyLoss": 0.00090766242011613
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -23.564573287963867,
+                24.353120803833008
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 351.28295923942267,
+            "saturation": {
+              "predictionAtTargetClip": 0.001628464327413507,
+              "targetAtClip": 0.0020960717138818904
+            },
+            "scoreRange": {
+              "prediction": [
+                -14138.7431640625,
+                14611.8720703125
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.0008300888786881161,
+            "updateMagnitudeSamples": [
+              {
+                "absoluteMaximum": 0.0021011047065258026,
+                "l2": 0.3196008801460266,
+                "parameterL2": 1123.878662109375,
+                "relativeL2": 0.00028437311866583273
+              }
+            ]
+          },
+          "validation": {
+            "byStatus": {
+              "check": {
+                "false": {
+                  "rawScoreMae": 365.4060514884934,
+                  "records": 49010,
+                  "teacherOnlyLoss": 0.0008561188628347133
+                },
+                "true": {
+                  "rawScoreMae": 556.7318916305724,
+                  "records": 10990,
+                  "teacherOnlyLoss": 0.001741719571322718
+                }
+              },
+              "donor": {
+                "active": {
+                  "rawScoreMae": 400.19298206522274,
+                  "records": 59815,
+                  "teacherOnlyLoss": 0.001017337222865799
+                },
+                "none": {
+                  "rawScoreMae": 483.7343256202904,
+                  "records": 185,
+                  "teacherOnlyLoss": 0.0013397746794932598
+                }
+              },
+              "phase": {
+                "early": {
+                  "rawScoreMae": 309.8301720484595,
+                  "records": 9279,
+                  "teacherOnlyLoss": 0.0006519678993360765
+                },
+                "late": {
+                  "rawScoreMae": 416.1383102587258,
+                  "records": 14511,
+                  "teacherOnlyLoss": 0.0010623187925475313
+                },
+                "middle": {
+                  "rawScoreMae": 377.8594015445862,
+                  "records": 27709,
+                  "teacherOnlyLoss": 0.0009053803095982253
+                },
+                "terminal-adjacent": {
+                  "rawScoreMae": 546.2217066780481,
+                  "records": 8501,
+                  "teacherOnlyLoss": 0.0017113027930498095
+                }
+              },
+              "tactical": {
+                "false": {
+                  "rawScoreMae": 286.3977394558281,
+                  "records": 7078,
+                  "teacherOnlyLoss": 0.0005409981814371256
+                },
+                "true": {
+                  "rawScoreMae": 415.7044494275103,
+                  "records": 52922,
+                  "teacherOnlyLoss": 0.0010821719022029823
+                }
+              }
+            },
+            "outputScale": {
+              "rawOutputRange": [
+                -23.475799560546875,
+                22.893308639526367
+              ],
+              "runtimeScorePerRawUnit": 600.0
+            },
+            "rawScoreMae": 400.45056787451756,
+            "saturation": {
+              "predictionAtTargetClip": 0.0024333333333333334,
+              "targetAtClip": 0.0035
+            },
+            "scoreRange": {
+              "prediction": [
+                -14085.4794921875,
+                13735.984375
+              ],
+              "targetAfterClip": [
+                -12000.0,
+                12000.0
+              ]
+            },
+            "teacherOnlyLoss": 0.0010183314323425293
+          }
+        }
+      }
+    },
+    "exclusions": {
+      "abandoned1000msPartial": {
+        "eligibleForAnalysis": false,
+        "inspected": false,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-20260913-abandoned-1000ms-partial-unopened",
+        "reuseAllowed": false
+      },
+      "newConfirmation": "no 1,000 ms or deployment qualification is inferred",
+      "production": "handcrafted evaluator remains unchanged"
+    },
+    "historicalConfirmationDecisionPreserved": true,
+    "historicalEvidence": {
+      "aGames": {
+        "bytes": 8489542,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-a-suite-a/native-raw/self-play-games.jsonl",
+        "sha256": "913d7cc0268fa010529da0d66312094f56f9fa985cdbfba16ec1e953b31bed48"
+      },
+      "aReport": {
+        "bytes": 3550,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-a-suite-a/native-raw/self-play-report.json",
+        "sha256": "177d120033dbdc62ec3ba86a312c71076be16d04062829d8c39bb16faa9a8688"
+      },
+      "bGames": {
+        "bytes": 8474835,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-b-suite-b/native-raw/self-play-games.jsonl",
+        "sha256": "033d8f779840314863c9d252c8b642448757f74e0284f668393d49e6b797b883"
+      },
+      "bReport": {
+        "bytes": 3568,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-b-suite-b/native-raw/self-play-report.json",
+        "sha256": "70d86242ad71ad97008f477b097113b674744873862204916a50bbddd4e2dfc4"
+      },
+      "resultReport": {
+        "bytes": 4428,
+        "path": "r0/anhoku-strength-first/step9-result-report.json",
+        "sha256": "61f1da56f9a6ea0ef4b0999604fbcf2a56cc1a36bdef49f2d2bb014bafd2cbe2"
+      },
+      "resultReportMarkdown": {
+        "bytes": 1891,
+        "path": "r0/anhoku-strength-first/step9-result-report.md",
+        "sha256": "122c117df4fdc941a75ba9e4d3364f6f32a56e21441ae8e3af25d07e99f5f8e2"
+      },
+      "validatedResult": {
+        "bytes": 4715,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/confirmation-result-v1.json",
+        "sha256": "34f02d8d792f9265d329b3e15ac51a300da19d667cfb581746f7e72bbb4202a0"
+      }
+    },
+    "identity": {
+      "modelA": {
+        "bytes": 83048706,
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/exports/selected-u00002688.nnue",
+        "sha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa"
+      },
+      "modelB2688": {
+        "bytes": 83048698,
+        "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/candidates/candidate-u00002688.nnue",
+        "sha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221"
+      },
+      "modelB768": {
+        "bytes": 83048698,
+        "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/selected-u00000768.nnue",
+        "sha256": "ba4cff98b0a94607ba92367888606d37fc5621a41c3b861558c013eb7117e6ef"
+      },
+      "preservedRuntime": {
+        "bytes": 11372128,
+        "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+        "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+      },
+      "runtime": {
+        "bytes": 11372128,
+        "path": "target/release/haitaka_cli",
+        "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+      },
+      "suiteA": {
+        "bytes": 219737,
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-a-v1.tsv",
+        "sha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61"
+      },
+      "suiteB": {
+        "bytes": 219742,
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-b-v1.tsv",
+        "sha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf"
+      }
+    },
+    "parity": {
+      "A_u2688": {
+        "checkpoint": {
+          "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+          "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e",
+          "update": 2688
+        },
+        "checks": {
+          "fullPrecisionToIntegerMeasured": true,
+          "integerReferenceMatchesNative": true,
+          "integerReferenceMatchesWasm": true,
+          "nativeMatchesWasm": true,
+          "quantizationErrorReportedSeparately": true
+        },
+        "networkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+        "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/comparison-u00002688/parity-receipt-u00002688.json",
+        "runtimeBinding": "historical-prior-runtime",
+        "runtimeMatchesDiagnosisRuntime": false,
+        "runtimeSha256": "e9eabe0d0f633c37ac87f655afb66128968c98430f76da175b61aa995a0363c5",
+        "sha256": "8dc279a6f88320d062be92357a8d13a24134123fd1f242ddd7208046da0c89bd",
+        "status": "passed"
+      },
+      "B_u768": {
+        "checkpoint": {
+          "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+          "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221",
+          "update": 768
+        },
+        "checks": {
+          "fullPrecisionToIntegerMeasured": true,
+          "integerReferenceMatchesNative": true,
+          "integerReferenceMatchesWasm": true,
+          "nativeMatchesWasm": true,
+          "quantizationErrorReportedSeparately": true
+        },
+        "networkSha256": "ba4cff98b0a94607ba92367888606d37fc5621a41c3b861558c013eb7117e6ef",
+        "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/final-u00000768/parity-receipt-u00000768.json",
+        "runtimeBinding": "exact-diagnosis-runtime",
+        "runtimeMatchesDiagnosisRuntime": true,
+        "runtimeSha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009",
+        "sha256": "e2986bfdfc9e0879d3d4c20c270063d58b2dd7d75d23b902732d9966317486d2",
+        "status": "passed"
+      }
+    },
+    "runHistory": {
+      "A": {
+        "bestValidation": {
+          "checkpoint": {
+            "bytes": 163439003,
+            "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+            "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+          },
+          "loss": 0.012593777974446614,
+          "update": 2688
+        },
+        "complete": true,
+        "dataCursor": {
+          "epoch": 75,
+          "record": 753664
+        },
+        "equivalentPasses": 75.85643636363636,
+        "examplesSeen": 66753664,
+        "optimizerUpdates": 4096,
+        "stopReason": "maximum-updates",
+        "timingSeconds": {
+          "checkpointSeconds": 52.05829522758722,
+          "exportSeconds": 39.040467254817486,
+          "shuffleSeconds": 11.365307100117207,
+          "trainingSeconds": 122.16246401146054,
+          "validationSeconds": 43.68711647391319
+        }
+      },
+      "B": {
+        "bestValidation": {
+          "checkpoint": {
+            "bytes": 163438977,
+            "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+            "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+          },
+          "loss": 0.0010183314323425293,
+          "update": 768
+        },
+        "complete": true,
+        "dataCursor": {
+          "epoch": 75,
+          "record": 753664
+        },
+        "equivalentPasses": 75.85643636363636,
+        "examplesSeen": 66753664,
+        "optimizerUpdates": 4096,
+        "stopReason": "maximum-updates",
+        "timingSeconds": {
+          "checkpointSeconds": 50.61187014868483,
+          "exportSeconds": 43.62056714692153,
+          "shuffleSeconds": 10.754318196792156,
+          "trainingSeconds": 124.69029835122637,
+          "validationSeconds": 36.8934326977469
+        }
+      }
+    },
+    "schema": "haitaka-anhoku-strength-first-step9-diagnosis-audit-v1",
+    "scope": "bounded CPU-only diagnosis; no model training, GPU rental, deployment, or new confirmation claim",
+    "selectionHistory": {
+      "A": {
+        "candidates": [
+          {
+            "candidateRoles": [
+              "lowest-validation-loss"
+            ],
+            "checkpoint": {
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+              "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e",
+              "update": 2688
+            },
+            "comparisonReceipt": {
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/comparison-u00002688/comparison-receipt-u00002688.json",
+              "sha256": "8c934361e376fd6919c0438418bc22981ea25f857a30da8084b5c0c7516b2c64"
+            }
+          },
+          {
+            "candidateRoles": [
+              "highest-scheduled-screen-score"
+            ],
+            "checkpoint": {
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/scheduled-u00002048.pt",
+              "sha256": "f7336a327ebcf953b576dd5a80a8de41bd7d3e36d8f9d021c6f6bdc4596a6d67",
+              "update": 2048
+            },
+            "comparisonReceipt": {
+              "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/comparison-u00002048/comparison-receipt-u00002048.json",
+              "sha256": "efe0ea0748ae0f3ba4893add5ccd33c3f109a28aae0ff1ba30185a5f0832e675"
+            }
+          }
+        ],
+        "history": {
+          "bytes": 2981,
+          "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/selection-history-v2.json",
+          "sha256": "08e25fcb2a8ef448e8c539e64346916bb3935c557d51ac853166538ce29d54c2"
+        },
+        "selectedExport": {
+          "checkpoint": {
+            "bytes": 163439003,
+            "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/checkpoints/best-validation-u00002688.pt",
+            "sha256": "788abe282624b97854b5a3f37168751691828bd6246b3f4b5be6a8d852223c9e"
+          },
+          "configSha256": "3ec626241a4787e660177d6b4e72123532441582d619555b5225f990c981f5a6",
+          "experimentId": "strength-first-step8-compact-seed-replication-20260910-v1",
+          "integerNetwork": {
+            "bytes": 83048706,
+            "path": "out/anhoku-strength-first/step8-compact-seed-replication-20260910-v1/exports/selected-u00002688.nnue",
+            "sha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa"
+          },
+          "recoveredOrphan": false,
+          "schema": "haitaka-anhoku-strength-first-selection-export-receipt-v1",
+          "selectionWasExplicit": true,
+          "serializer": {
+            "bytes": 10128,
+            "path": "serialize.py",
+            "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+            "sha256": "0b741a8e4e0c6759614fa70d069e51934a69cfa7e52792966b6e3eb47f79bce7"
+          }
+        }
+      },
+      "B": {
+        "candidates": [
+          {
+            "candidateRoles": [
+              "lowest-validation-loss"
+            ],
+            "checkpoint": {
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+              "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221",
+              "update": 768
+            },
+            "comparisonReceipt": {
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/comparison-u00000768/comparison-receipt-u00000768.json",
+              "sha256": "3c5448d975aa1c4a83ba266249ec420ed141787d51cfb838896241cafc11db51"
+            }
+          },
+          {
+            "candidateRoles": [
+              "highest-scheduled-screen-score"
+            ],
+            "checkpoint": {
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/scheduled-u00000256.pt",
+              "sha256": "e6805dc06cfb46b11c3cc5145c3472085f070864177cd9fe3bb30689424e17f6",
+              "update": 256
+            },
+            "comparisonReceipt": {
+              "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/comparison-u00000256/comparison-receipt-u00000256.json",
+              "sha256": "5a75bb41448174edabc1410c440834bf192641e749f6bc14b4355f00a55a5819"
+            }
+          }
+        ],
+        "history": {
+          "bytes": 2898,
+          "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/selection-history-v2.json",
+          "sha256": "312c2379de1c91d9d4668c50f13819bc5f2678fa676243ae891a2fad4c8ce417"
+        },
+        "selectedExport": {
+          "checkpoint": {
+            "bytes": 163438977,
+            "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/best-validation-u00000768.pt",
+            "sha256": "e3e1afdb35cfc4cf35d44a30d6a25f371e0efd1aedee972af2f1de6466cd3221"
+          },
+          "configSha256": "c838091b1a3163572b88bcd107d487ef4bb592fe4334c45c643800c7ee35d1fc",
+          "experimentId": "strength-first-step9-model-b-training-20260912-v1",
+          "integerNetwork": {
+            "bytes": 83048698,
+            "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/selected-u00000768.nnue",
+            "sha256": "ba4cff98b0a94607ba92367888606d37fc5621a41c3b861558c013eb7117e6ef"
+          },
+          "recoveredOrphan": true,
+          "schema": "haitaka-anhoku-strength-first-selection-export-receipt-v1",
+          "selectionWasExplicit": true,
+          "serializer": {
+            "bytes": 10128,
+            "path": "serialize.py",
+            "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+            "sha256": "0b741a8e4e0c6759614fa70d069e51934a69cfa7e52792966b6e3eb47f79bce7"
+          }
+        },
+        "u2688Export": {
+          "checkpoint": {
+            "bytes": 163438912,
+            "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/checkpoints/scheduled-u00002688.pt",
+            "sha256": "44c62d40b268248b274fa6f4ae7a37a93e06b5e0340b93a89c9648084c46f260"
+          },
+          "configSha256": "c838091b1a3163572b88bcd107d487ef4bb592fe4334c45c643800c7ee35d1fc",
+          "experimentId": "strength-first-step9-model-b-training-20260912-v1",
+          "integerNetwork": {
+            "bytes": 83048698,
+            "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/exports/candidates/candidate-u00002688.nnue",
+            "sha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221"
+          },
+          "recoveredOrphan": null,
+          "schema": "haitaka-anhoku-strength-first-candidate-export-v1",
+          "selectionWasExplicit": null,
+          "serializer": {
+            "bytes": 10128,
+            "path": "serialize.py",
+            "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+            "sha256": "0b741a8e4e0c6759614fa70d069e51934a69cfa7e52792966b6e3eb47f79bce7"
+          }
+        }
+      }
+    },
+    "status": "passed"
+  },
+  "cells": {
+    "A u2,688 / Suite A": {
+      "games": 1024,
+      "gamesArtifact": {
+        "bytes": 8489542,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-a-suite-a/native-raw/self-play-games.jsonl",
+        "sha256": "913d7cc0268fa010529da0d66312094f56f9fa985cdbfba16ec1e953b31bed48"
+      },
+      "meanPairScore": 0.57275390625,
+      "pairs": 512,
+      "report": {
+        "bytes": 3550,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-a-suite-a/native-raw/self-play-report.json",
+        "sha256": "177d120033dbdc62ec3ba86a312c71076be16d04062829d8c39bb16faa9a8688"
+      },
+      "scoreRate": 0.57275390625,
+      "source": "historical-selected-subset",
+      "suite": "A",
+      "wdl": {
+        "draws": 1,
+        "losses": 437,
+        "wins": 586
+      }
+    },
+    "A u2,688 / Suite B": {
+      "blocks": [
+        {
+          "block": 0,
+          "scoreRate": 0.61328125,
+          "validation": {
+            "bytes": 28155,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-0/attempt-1/validation.json",
+            "sha256": "b48d7d3f53472d6fe643754525b1236b75a3d1ab8181457aa15ad46f84d07a94"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 99,
+            "wins": 157
+          }
+        },
+        {
+          "block": 1,
+          "scoreRate": 0.62109375,
+          "validation": {
+            "bytes": 28309,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-1/attempt-1/validation.json",
+            "sha256": "e0c30dc6d40012b50670ebb1082dace43987406da0e35e80a02fb4a680d2df62"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 97,
+            "wins": 159
+          }
+        },
+        {
+          "block": 2,
+          "scoreRate": 0.578125,
+          "validation": {
+            "bytes": 28549,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-2/attempt-1/validation.json",
+            "sha256": "b4cdf3d9872701f2db314bda5eae49ba81645b1d8812a9dcc792f1f2a55c74db"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 108,
+            "wins": 148
+          }
+        },
+        {
+          "block": 3,
+          "scoreRate": 0.55078125,
+          "validation": {
+            "bytes": 28551,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-3/attempt-1/validation.json",
+            "sha256": "473b5405367848a3f59446b169b8e987b9542a705ab7b35f044d61568bd86a84"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 115,
+            "wins": 141
+          }
+        }
+      ],
+      "games": 1024,
+      "meanPairScore": 0.5908203125,
+      "pairs": 512,
+      "scoreRate": 0.5908203125,
+      "source": "new-fixed-cell",
+      "suite": "B",
+      "wdl": {
+        "draws": 0,
+        "losses": 419,
+        "wins": 605
+      }
+    },
+    "B u2,688 / Suite A": {
+      "blocks": [
+        {
+          "block": 0,
+          "scoreRate": 0.47265625,
+          "validation": {
+            "bytes": 28160,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-0/attempt-1/validation.json",
+            "sha256": "9e98172c2107c8a35c1897bd542355d8440a271ae9ae998e0d5be8495dd27b39"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 135,
+            "wins": 121
+          }
+        },
+        {
+          "block": 1,
+          "scoreRate": 0.4765625,
+          "validation": {
+            "bytes": 28312,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-1/attempt-1/validation.json",
+            "sha256": "f75b94f552e3f068b02f3c2ef6b8d6013d9d7c09b6d796f5614a6ae708aed103"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 134,
+            "wins": 122
+          }
+        },
+        {
+          "block": 2,
+          "scoreRate": 0.484375,
+          "validation": {
+            "bytes": 28553,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-2/attempt-1/validation.json",
+            "sha256": "1466775be2e633c9e0a58215cf9411480aac92f59f098b3ae8ca2fd5f8fcefdc"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 132,
+            "wins": 124
+          }
+        },
+        {
+          "block": 3,
+          "scoreRate": 0.455078125,
+          "validation": {
+            "bytes": 28556,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-3/attempt-1/validation.json",
+            "sha256": "089bd5040e827376bc49515c6ad6e10a9c842ae9c0d4c8d5360f2e40c411cd60"
+          },
+          "wdl": {
+            "draws": 1,
+            "losses": 139,
+            "wins": 116
+          }
+        }
+      ],
+      "games": 1024,
+      "meanPairScore": 0.47216796875,
+      "pairs": 512,
+      "scoreRate": 0.47216796875,
+      "source": "new-fixed-cell",
+      "suite": "A",
+      "wdl": {
+        "draws": 1,
+        "losses": 540,
+        "wins": 483
+      }
+    },
+    "B u2,688 / Suite B": {
+      "games": 1024,
+      "gamesArtifact": {
+        "bytes": 8474835,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-b-suite-b/native-raw/self-play-games.jsonl",
+        "sha256": "033d8f779840314863c9d252c8b642448757f74e0284f668393d49e6b797b883"
+      },
+      "meanPairScore": 0.4990234375,
+      "pairs": 512,
+      "report": {
+        "bytes": 3568,
+        "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/model-b-suite-b/native-raw/self-play-report.json",
+        "sha256": "70d86242ad71ad97008f477b097113b674744873862204916a50bbddd4e2dfc4"
+      },
+      "scoreRate": 0.4990234375,
+      "source": "historical-selected-subset",
+      "suite": "B",
+      "wdl": {
+        "draws": 0,
+        "losses": 513,
+        "wins": 511
+      }
+    },
+    "B u768 / Suite A": {
+      "blocks": [
+        {
+          "block": 0,
+          "scoreRate": 0.55859375,
+          "validation": {
+            "bytes": 28143,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-0/attempt-1/validation.json",
+            "sha256": "f3fb64c1f5abba1588f0fe0922174e3d899dcc94ec199e63ce9a40226bc2269d"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 113,
+            "wins": 143
+          }
+        },
+        {
+          "block": 1,
+          "scoreRate": 0.58203125,
+          "validation": {
+            "bytes": 28296,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-1/attempt-1/validation.json",
+            "sha256": "8f6c2808c26ad5165c1260be8397171656ab07f29e0bd98884ac9330b6895b3b"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 107,
+            "wins": 149
+          }
+        },
+        {
+          "block": 2,
+          "scoreRate": 0.609375,
+          "validation": {
+            "bytes": 28536,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-2/attempt-1/validation.json",
+            "sha256": "4ef567c47e2a6d919ba8f0625cb93558838746e9ba8974866be29281653f3979"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 100,
+            "wins": 156
+          }
+        },
+        {
+          "block": 3,
+          "scoreRate": 0.58984375,
+          "validation": {
+            "bytes": 28538,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-3/attempt-1/validation.json",
+            "sha256": "f28b056699e5608ef1cef160245629069e2f8e4ae01c4081e9a4b573355d72f1"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 105,
+            "wins": 151
+          }
+        }
+      ],
+      "games": 1024,
+      "meanPairScore": 0.5849609375,
+      "pairs": 512,
+      "scoreRate": 0.5849609375,
+      "source": "new-fixed-cell",
+      "suite": "A",
+      "wdl": {
+        "draws": 0,
+        "losses": 425,
+        "wins": 599
+      }
+    },
+    "B u768 / Suite B": {
+      "blocks": [
+        {
+          "block": 0,
+          "scoreRate": 0.5546875,
+          "validation": {
+            "bytes": 28142,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-0/attempt-1/validation.json",
+            "sha256": "f4cd0dbb64b049b83e65afac9a2d1161262fc68ceefd70894146328d5e3fd4ed"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 114,
+            "wins": 142
+          }
+        },
+        {
+          "block": 1,
+          "scoreRate": 0.61328125,
+          "validation": {
+            "bytes": 28296,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-1/attempt-1/validation.json",
+            "sha256": "85284c4d35349642eb8786cee9897ad7f0b2201cb9e2940db5d611dafd686a52"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 99,
+            "wins": 157
+          }
+        },
+        {
+          "block": 2,
+          "scoreRate": 0.55859375,
+          "validation": {
+            "bytes": 28538,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-2/attempt-1/validation.json",
+            "sha256": "17749fcf9f5071f31bbd2d0a5c3cf4f9d2d382e0a27e2515c5e113fa103b3d22"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 113,
+            "wins": 143
+          }
+        },
+        {
+          "block": 3,
+          "scoreRate": 0.59375,
+          "validation": {
+            "bytes": 28535,
+            "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-3/attempt-1/validation.json",
+            "sha256": "599fed1c457683d712818456fb18d5c25b57fa04ca7cb22453520041c0ca02fe"
+          },
+          "wdl": {
+            "draws": 0,
+            "losses": 104,
+            "wins": 152
+          }
+        }
+      ],
+      "games": 1024,
+      "meanPairScore": 0.580078125,
+      "pairs": 512,
+      "scoreRate": 0.580078125,
+      "source": "new-fixed-cell",
+      "suite": "B",
+      "wdl": {
+        "draws": 0,
+        "losses": 430,
+        "wins": 594
+      }
+    }
+  },
+  "completionStatus": "complete",
+  "confirmationDecisionUnchanged": true,
+  "confirmationPassed": false,
+  "contrasts": {
+    "A_u2688_minus_B_u2688_suite_A": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.06103515625,
+      "point": 0.1005859375,
+      "replicates": 10000,
+      "seed": 2026091401,
+      "unit": "opening pair",
+      "upper95": 0.138671875
+    },
+    "A_u2688_minus_B_u2688_suite_B": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.0537109375,
+      "point": 0.091796875,
+      "replicates": 10000,
+      "seed": 2026091402,
+      "unit": "opening pair",
+      "upper95": 0.130859375
+    },
+    "A_u2688_minus_B_u2688_suite_balanced": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.069091796875,
+      "point": 0.09619140625,
+      "replicates": 10000,
+      "seed": 2026091403,
+      "unit": "opening pair",
+      "upper95": 0.122802734375
+    },
+    "B_u768_minus_B_u2688_suite_A": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.07421875,
+      "point": 0.11279296875,
+      "replicates": 10000,
+      "seed": 2026091404,
+      "unit": "opening pair",
+      "upper95": 0.15234375
+    },
+    "B_u768_minus_B_u2688_suite_B": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.04296875,
+      "point": 0.0810546875,
+      "replicates": 10000,
+      "seed": 2026091405,
+      "unit": "opening pair",
+      "upper95": 0.119140625
+    },
+    "B_u768_minus_B_u2688_suite_balanced": {
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "lower95": 0.070794677734375,
+      "point": 0.096923828125,
+      "replicates": 10000,
+      "seed": 2026091406,
+      "unit": "opening pair",
+      "upper95": 0.1240234375
+    }
+  },
+  "createdAt": "2026-09-14T04:49:51.208638+00:00",
+  "decision": "confirmation-failed-handcrafted-remains-production",
+  "deploymentAuthorized": false,
+  "exclusions": {
+    "abandoned1000msPartial": {
+      "eligible": false,
+      "inspected": false,
+      "path": "out/anhoku-strength-first/step9-independent-confirmation-20260913-abandoned-1000ms-partial-unopened"
+    },
+    "deployment": false,
+    "gpuRental": false,
+    "training": false
+  },
+  "hashes": {
+    "frozenContract": {
+      "bytes": 4382,
+      "path": "../../../r0/anhoku-strength-first/step9-confirmation-100ms-contract-v1.json",
+      "sha256": "f17469e029abec33bfe5fe47651395841921e88edca242c8edc1fd82c62295d4"
+    },
+    "frozenExecution": {
+      "bytes": 2114,
+      "path": "../../../r0/anhoku-strength-first/step9-confirmation-100ms-execution-v1.json",
+      "sha256": "138d17112969023e5930ebf99d929c56dd1afc74de8cb366db5b0cead59bdfa7"
+    },
+    "historicalResultReport": {
+      "bytes": 4428,
+      "path": "../../../r0/anhoku-strength-first/step9-result-report.json",
+      "sha256": "61f1da56f9a6ea0ef4b0999604fbcf2a56cc1a36bdef49f2d2bb014bafd2cbe2"
+    },
+    "modelA_u2688": {
+      "bytes": 83048706,
+      "path": "../step8-compact-seed-replication-20260910-v1/exports/selected-u00002688.nnue",
+      "sha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa"
+    },
+    "modelB_u2688": {
+      "bytes": 83048698,
+      "path": "../step9-model-b-training-20260912-v1/exports/candidates/candidate-u00002688.nnue",
+      "sha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221"
+    },
+    "modelB_u768": {
+      "bytes": 83048698,
+      "path": "../step9-model-b-training-20260912-v1/exports/selected-u00000768.nnue",
+      "sha256": "ba4cff98b0a94607ba92367888606d37fc5621a41c3b861558c013eb7117e6ef"
+    },
+    "suiteA": {
+      "bytes": 219737,
+      "path": "../../../haitaka_learn/openings/anhoku-strength-confirmation-100ms-a-v1.tsv",
+      "sha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61"
+    },
+    "suiteB": {
+      "bytes": 219742,
+      "path": "../../../haitaka_learn/openings/anhoku-strength-confirmation-100ms-b-v1.tsv",
+      "sha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf"
+    }
+  },
+  "host": {
+    "architecture": "arm64",
+    "checkout": "/Users/na2hiro/anhoku-step9-model-b-c3109e8",
+    "endpoint": "192.168.0.12",
+    "gitHead": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c",
+    "hostname": "ITSO-WX6303",
+    "role": "mbp"
+  },
+  "interpretationLimits": [
+    "Opening pairs are the independent units; games within a pair are color-swapped.",
+    "Historical diagonal cells ran in an earlier session and retain session/thermal confounding.",
+    "Two trained models cannot causally separate corpus, initialization, recipe, or session effects.",
+    "Intervals are descriptive, exploratory, two-sided, unadjusted for multiple comparisons.",
+    "This diagnosis establishes neither 1,000 ms strength nor shipped-WASM qualification nor deployment authorization."
+  ],
+  "manifest": {
+    "bytes": 455101,
+    "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/manifest.json",
+    "sha256": "f3cca7338b695bc3366394e3bc75b8b837b21a9bd47e5ccd31461aa6b4552b8c"
+  },
+  "nextProposal": "If NNUE work is resumed after review, use one separately reviewed prospective lane that isolates the B-model generalization hypothesis; keep corpus, seed, recipe, and session factors explicitly unresolved and predeclare one fixed endpoint.",
+  "remainingOwnedProcesses": [],
+  "retries": {
+    "attempts": {
+      "a2688-b": [
+        {
+          "attempt": "attempt-1",
+          "block": 0
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 1
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 2
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 3
+        }
+      ],
+      "b2688-a": [
+        {
+          "attempt": "attempt-1",
+          "block": 0
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 1
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 2
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 3
+        }
+      ],
+      "b768-a": [
+        {
+          "attempt": "attempt-1",
+          "block": 0
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 1
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 2
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 3
+        }
+      ],
+      "b768-b": [
+        {
+          "attempt": "attempt-1",
+          "block": 0
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 1
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 2
+        },
+        {
+          "attempt": "attempt-1",
+          "block": 3
+        }
+      ]
+    },
+    "policy": "rerun whole 128-pair block under a new attempt; no partial splice"
+  },
+  "runtime": {
+    "executed": {
+      "bytes": 11372128,
+      "path": "../../../target/release/haitaka_cli",
+      "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+    },
+    "preservedCopy": {
+      "bytes": 11372128,
+      "path": "../step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+      "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+    }
+  },
+  "schema": "haitaka-anhoku-strength-first-step9-diagnosis-report-v1",
+  "scope": "bounded exploratory post-confirmation diagnosis; CPU-only; native MBP 100 ms fixed schedule",
+  "supportedHypotheses": [
+    "A exceeds B u2,688 descriptively on both matched suites; this supports a B-model generalization-weakness hypothesis.",
+    "B u768 exceeds B u2,688 descriptively on both matched suites; this supports an earlier-checkpoint-generalizes-better hypothesis."
+  ],
+  "unresolvedAlternatives": [
+    "corpus attribution",
+    "initialization attribution",
+    "recipe attribution",
+    "session/thermal attribution",
+    "sampling noise",
+    "checkpoint-selection variance"
+  ],
+  "validation": {
+    "allNewBlocksValidated": true,
+    "auditPassed": true,
+    "fixtureArtifact": {
+      "bytes": 1134,
+      "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/audit/diagnostic-fixtures.json",
+      "sha256": "52fc60819f80fbec491a1cfb7e967d804b4ce6c36807bfc6a55229e442b523cf"
+    },
+    "newCells": {
+      "a2688-b": {
+        "blocks": [
+          {
+            "block": 0,
+            "scoreRate": 0.61328125,
+            "validation": {
+              "bytes": 28155,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-0/attempt-1/validation.json",
+              "sha256": "b48d7d3f53472d6fe643754525b1236b75a3d1ab8181457aa15ad46f84d07a94"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 99,
+              "wins": 157
+            }
+          },
+          {
+            "block": 1,
+            "scoreRate": 0.62109375,
+            "validation": {
+              "bytes": 28309,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-1/attempt-1/validation.json",
+              "sha256": "e0c30dc6d40012b50670ebb1082dace43987406da0e35e80a02fb4a680d2df62"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 97,
+              "wins": 159
+            }
+          },
+          {
+            "block": 2,
+            "scoreRate": 0.578125,
+            "validation": {
+              "bytes": 28549,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-2/attempt-1/validation.json",
+              "sha256": "b4cdf3d9872701f2db314bda5eae49ba81645b1d8812a9dcc792f1f2a55c74db"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 108,
+              "wins": 148
+            }
+          },
+          {
+            "block": 3,
+            "scoreRate": 0.55078125,
+            "validation": {
+              "bytes": 28551,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/a2688-b/block-3/attempt-1/validation.json",
+              "sha256": "473b5405367848a3f59446b169b8e987b9542a705ab7b35f044d61568bd86a84"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 115,
+              "wins": 141
+            }
+          }
+        ],
+        "games": 1024,
+        "pairs": 512,
+        "scoreRate": 0.5908203125,
+        "source": "new-fixed-cell",
+        "suite": "B",
+        "wdl": {
+          "draws": 0,
+          "losses": 419,
+          "wins": 605
+        }
+      },
+      "b2688-a": {
+        "blocks": [
+          {
+            "block": 0,
+            "scoreRate": 0.47265625,
+            "validation": {
+              "bytes": 28160,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-0/attempt-1/validation.json",
+              "sha256": "9e98172c2107c8a35c1897bd542355d8440a271ae9ae998e0d5be8495dd27b39"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 135,
+              "wins": 121
+            }
+          },
+          {
+            "block": 1,
+            "scoreRate": 0.4765625,
+            "validation": {
+              "bytes": 28312,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-1/attempt-1/validation.json",
+              "sha256": "f75b94f552e3f068b02f3c2ef6b8d6013d9d7c09b6d796f5614a6ae708aed103"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 134,
+              "wins": 122
+            }
+          },
+          {
+            "block": 2,
+            "scoreRate": 0.484375,
+            "validation": {
+              "bytes": 28553,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-2/attempt-1/validation.json",
+              "sha256": "1466775be2e633c9e0a58215cf9411480aac92f59f098b3ae8ca2fd5f8fcefdc"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 132,
+              "wins": 124
+            }
+          },
+          {
+            "block": 3,
+            "scoreRate": 0.455078125,
+            "validation": {
+              "bytes": 28556,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b2688-a/block-3/attempt-1/validation.json",
+              "sha256": "089bd5040e827376bc49515c6ad6e10a9c842ae9c0d4c8d5360f2e40c411cd60"
+            },
+            "wdl": {
+              "draws": 1,
+              "losses": 139,
+              "wins": 116
+            }
+          }
+        ],
+        "games": 1024,
+        "pairs": 512,
+        "scoreRate": 0.47216796875,
+        "source": "new-fixed-cell",
+        "suite": "A",
+        "wdl": {
+          "draws": 1,
+          "losses": 540,
+          "wins": 483
+        }
+      },
+      "b768-a": {
+        "blocks": [
+          {
+            "block": 0,
+            "scoreRate": 0.55859375,
+            "validation": {
+              "bytes": 28143,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-0/attempt-1/validation.json",
+              "sha256": "f3fb64c1f5abba1588f0fe0922174e3d899dcc94ec199e63ce9a40226bc2269d"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 113,
+              "wins": 143
+            }
+          },
+          {
+            "block": 1,
+            "scoreRate": 0.58203125,
+            "validation": {
+              "bytes": 28296,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-1/attempt-1/validation.json",
+              "sha256": "8f6c2808c26ad5165c1260be8397171656ab07f29e0bd98884ac9330b6895b3b"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 107,
+              "wins": 149
+            }
+          },
+          {
+            "block": 2,
+            "scoreRate": 0.609375,
+            "validation": {
+              "bytes": 28536,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-2/attempt-1/validation.json",
+              "sha256": "4ef567c47e2a6d919ba8f0625cb93558838746e9ba8974866be29281653f3979"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 100,
+              "wins": 156
+            }
+          },
+          {
+            "block": 3,
+            "scoreRate": 0.58984375,
+            "validation": {
+              "bytes": 28538,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-a/block-3/attempt-1/validation.json",
+              "sha256": "f28b056699e5608ef1cef160245629069e2f8e4ae01c4081e9a4b573355d72f1"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 105,
+              "wins": 151
+            }
+          }
+        ],
+        "games": 1024,
+        "pairs": 512,
+        "scoreRate": 0.5849609375,
+        "source": "new-fixed-cell",
+        "suite": "A",
+        "wdl": {
+          "draws": 0,
+          "losses": 425,
+          "wins": 599
+        }
+      },
+      "b768-b": {
+        "blocks": [
+          {
+            "block": 0,
+            "scoreRate": 0.5546875,
+            "validation": {
+              "bytes": 28142,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-0/attempt-1/validation.json",
+              "sha256": "f4cd0dbb64b049b83e65afac9a2d1161262fc68ceefd70894146328d5e3fd4ed"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 114,
+              "wins": 142
+            }
+          },
+          {
+            "block": 1,
+            "scoreRate": 0.61328125,
+            "validation": {
+              "bytes": 28296,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-1/attempt-1/validation.json",
+              "sha256": "85284c4d35349642eb8786cee9897ad7f0b2201cb9e2940db5d611dafd686a52"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 99,
+              "wins": 157
+            }
+          },
+          {
+            "block": 2,
+            "scoreRate": 0.55859375,
+            "validation": {
+              "bytes": 28538,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-2/attempt-1/validation.json",
+              "sha256": "17749fcf9f5071f31bbd2d0a5c3cf4f9d2d382e0a27e2515c5e113fa103b3d22"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 113,
+              "wins": 143
+            }
+          },
+          {
+            "block": 3,
+            "scoreRate": 0.59375,
+            "validation": {
+              "bytes": 28535,
+              "path": "out/anhoku-strength-first/step9-post-confirmation-diagnosis-20260914-v1/matches/b768-b/block-3/attempt-1/validation.json",
+              "sha256": "599fed1c457683d712818456fb18d5c25b57fa04ca7cb22453520041c0ca02fe"
+            },
+            "wdl": {
+              "draws": 0,
+              "losses": 104,
+              "wins": 152
+            }
+          }
+        ],
+        "games": 1024,
+        "pairs": 512,
+        "scoreRate": 0.580078125,
+        "source": "new-fixed-cell",
+        "suite": "B",
+        "wdl": {
+          "draws": 0,
+          "losses": 430,
+          "wins": 594
+        }
+      }
+    },
+    "outcomesOpenedAfterAllNewCells": true
+  }
+}

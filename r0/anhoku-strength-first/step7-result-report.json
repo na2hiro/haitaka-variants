@@ -1,0 +1,311 @@
+{
+  "challenger": {
+    "capAsLossScore": {
+      "groups": 64,
+      "lower95": 0.515625,
+      "mean": 0.59375,
+      "replicates": 20000,
+      "seed": 20260910,
+      "upper95": 0.671875
+    },
+    "capped": 0,
+    "draws": 0,
+    "games": 128,
+    "id": "u2048",
+    "load": {
+      "coldLoadMs": 749.0999999940395,
+      "fetchTimingsMs": {
+        "browserWorker": 2.6000000089406967,
+        "contract": 1.8999999910593033,
+        "modelA": 378.29999999701977,
+        "openings": 2.7000000029802322,
+        "wasm": 80.8999999910593,
+        "wasmGlue": 2.4000000059604645
+      },
+      "finishedAt": 5195013.100000009,
+      "glueImportMs": 6.299999997019768,
+      "modelBytes": 83048702,
+      "modelDescription": "Haitaka Anhoku strength-first-step3-compact-scratch-seed-20260906-v1 256x16x32",
+      "modelFetchMs": 378.29999999701977,
+      "modelLoadMs": 204.20000000298023,
+      "moduleLoadMs": 55.400000005960464,
+      "provenanceVerificationMs": 469,
+      "warmElapsedMs": 5194259.600000009,
+      "warmStartedAt": 753.5,
+      "wasmInitMs": 49.1000000089407,
+      "workerStartedAt": 4.4000000059604645
+    },
+    "losses": 52,
+    "memory": {
+      "firstSample": {
+        "highWaterMarkBytes": 11231232,
+        "processCount": 2,
+        "residentSetBytes": 11231232,
+        "sampledAtUnixMs": 1789023131973
+      },
+      "lastSample": {
+        "highWaterMarkBytes": 1778417664,
+        "processCount": 11,
+        "residentSetBytes": 1624338432,
+        "sampledAtUnixMs": 1789028327790
+      },
+      "method": "linux-procfs-process-group-sum",
+      "peakHighWaterMarkBytes": 1978966016,
+      "peakResidentSetBytes": 1971433472,
+      "processCountPeak": 19,
+      "processGroupId": 116614,
+      "sampleCount": 20759,
+      "sampleIntervalMs": 250,
+      "status": "observed"
+    },
+    "nodes": {
+      "A": {
+        "alphaBetaNodes": 129993722,
+        "alphaBetaPlusQnodes": 352439857,
+        "completedDepthMax": 7,
+        "completedDepthMean": 3.7332203389830507,
+        "completedDepthSum": 11013,
+        "elapsedMs": 2574921.1000000834,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 222446135,
+        "searches": 2950,
+        "totalNodes": 352439857,
+        "unsearchedMoves": 0
+      },
+      "B": {
+        "alphaBetaNodes": 81108954,
+        "alphaBetaPlusQnodes": 259598193,
+        "completedDepthMax": 7,
+        "completedDepthMean": 3.528359216745442,
+        "completedDepthSum": 10451,
+        "elapsedMs": 2618942.5000004023,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 178489239,
+        "searches": 2962,
+        "totalNodes": 259598193,
+        "unsearchedMoves": 0
+      },
+      "all": {
+        "alphaBetaNodes": 211102676,
+        "alphaBetaPlusQnodes": 612038050,
+        "completedDepthMax": 7,
+        "completedDepthMean": 3.6305818673883627,
+        "completedDepthSum": 21464,
+        "elapsedMs": 5193863.600000486,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 400935374,
+        "searches": 5912,
+        "totalNodes": 612038050,
+        "unsearchedMoves": 0
+      }
+    },
+    "report": {
+      "bytes": 28188462,
+      "path": "out/anhoku-strength-first/step7-corrected-checkpoint-rescreen-20260910-v1/challenger-u00002048-1000ms.json",
+      "sha256": "4e0c08f904b753bc4ab875083eea8b605daaa9c7c514bfb67d6db7d3e1d0eaab"
+    },
+    "score": {
+      "groups": 64,
+      "lower95": 0.515625,
+      "mean": 0.59375,
+      "replicates": 20000,
+      "seed": 20260910,
+      "upper95": 0.671875
+    },
+    "timing": {
+      "deadlineSampleCount": 5912,
+      "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+      "latenessSampleCount": 5912,
+      "maxElapsedMs": 1003.2000000029802,
+      "maxLatenessMs": 3.2000000029802322,
+      "p95ElapsedMs": 1000.1000000089407,
+      "p95LatenessMs": 0.10000000894069672,
+      "p99ElapsedMs": 1000.1000000089407,
+      "p99LatenessMs": 0.10000000894069672
+    },
+    "wins": 76
+  },
+  "challengerMinusIncumbent": {
+    "groups": 64,
+    "lower95": -0.03125,
+    "mean": 0.0703125,
+    "replicates": 20000,
+    "seed": 20260910,
+    "upper95": 0.171875
+  },
+  "complete": true,
+  "contract": {
+    "bytes": 9305,
+    "path": "r0/anhoku-strength-first/step7-corrected-checkpoint-rescreen-v1.json",
+    "sha256": "76d671374fcfed935ea5711f5ddb3629c89ff0a7eb4f6af7f61500cfdf201ee6"
+  },
+  "gpuUsed": false,
+  "incumbent": {
+    "capAsLossScore": {
+      "groups": 64,
+      "lower95": 0.4375,
+      "mean": 0.5234375,
+      "replicates": 20000,
+      "seed": 20260910,
+      "upper95": 0.609375
+    },
+    "capped": 0,
+    "draws": 0,
+    "games": 128,
+    "id": "u1920",
+    "load": {
+      "coldLoadMs": 783,
+      "fetchTimingsMs": {
+        "browserWorker": 3.5,
+        "contract": 2.2999999970197678,
+        "modelA": 393.1000000014901,
+        "openings": 3.2999999970197678,
+        "wasm": 83.60000000149012,
+        "wasmGlue": 2.7000000029802322
+      },
+      "finishedAt": 5253193.5,
+      "glueImportMs": 6.9000000059604645,
+      "modelBytes": 83048702,
+      "modelDescription": "Haitaka Anhoku strength-first-step3-compact-scratch-seed-20260906-v1 256x16x32",
+      "modelFetchMs": 393.1000000014901,
+      "modelLoadMs": 213.10000000149012,
+      "moduleLoadMs": 58.900000005960464,
+      "provenanceVerificationMs": 488.5,
+      "warmElapsedMs": 5252404.3000000045,
+      "warmStartedAt": 789.1999999955297,
+      "wasmInitMs": 52,
+      "workerStartedAt": 6.199999995529652
+    },
+    "losses": 61,
+    "memory": {
+      "firstSample": {
+        "highWaterMarkBytes": 3973120,
+        "processCount": 1,
+        "residentSetBytes": 3973120,
+        "sampledAtUnixMs": 1789016160018
+      },
+      "lastSample": {
+        "highWaterMarkBytes": 1766391808,
+        "processCount": 11,
+        "residentSetBytes": 1612734464,
+        "sampledAtUnixMs": 1789021414067
+      },
+      "method": "linux-procfs-process-group-sum",
+      "peakHighWaterMarkBytes": 1945653248,
+      "peakResidentSetBytes": 1939529728,
+      "processCountPeak": 16,
+      "processGroupId": 71776,
+      "sampleCount": 20992,
+      "sampleIntervalMs": 250,
+      "status": "observed"
+    },
+    "nodes": {
+      "A": {
+        "alphaBetaNodes": 132370187,
+        "alphaBetaPlusQnodes": 359586234,
+        "completedDepthMax": 8,
+        "completedDepthMean": 3.7884358288770055,
+        "completedDepthSum": 11335,
+        "elapsedMs": 2650763.7999999076,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 227216047,
+        "searches": 2992,
+        "totalNodes": 359586234,
+        "unsearchedMoves": 0
+      },
+      "B": {
+        "alphaBetaNodes": 79229598,
+        "alphaBetaPlusQnodes": 254884352,
+        "completedDepthMax": 8,
+        "completedDepthMean": 3.426043405676127,
+        "completedDepthSum": 10261,
+        "elapsedMs": 2601240.099999957,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 175654754,
+        "searches": 2995,
+        "totalNodes": 254884352,
+        "unsearchedMoves": 0
+      },
+      "all": {
+        "alphaBetaNodes": 211599785,
+        "alphaBetaPlusQnodes": 614470586,
+        "completedDepthMax": 8,
+        "completedDepthMean": 3.6071488224486385,
+        "completedDepthSum": 21596,
+        "elapsedMs": 5252003.899999864,
+        "emergencyFallbacks": 0,
+        "missingMoves": 0,
+        "qnodes": 402870801,
+        "searches": 5987,
+        "totalNodes": 614470586,
+        "unsearchedMoves": 0
+      }
+    },
+    "report": {
+      "bytes": 28551483,
+      "path": "out/anhoku-strength-first/step6-browser-export-retry-20260910-v2/browser-primary-1000ms.json",
+      "sha256": "c0ac9d73ce1be0f13efeb4ccab5e40fb1f1a5c3999f48a330dbc86dc20f7bce7"
+    },
+    "score": {
+      "groups": 64,
+      "lower95": 0.4375,
+      "mean": 0.5234375,
+      "replicates": 20000,
+      "seed": 20260910,
+      "upper95": 0.609375
+    },
+    "timing": {
+      "deadlineSampleCount": 5987,
+      "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+      "latenessSampleCount": 5987,
+      "maxElapsedMs": 1003.1999999955297,
+      "maxLatenessMs": 3.1999999955296516,
+      "p95ElapsedMs": 1000.1000000014901,
+      "p95LatenessMs": 0.10000000149011612,
+      "p99ElapsedMs": 1000.1000000089407,
+      "p99LatenessMs": 0.10000000894069672
+    },
+    "wins": 67
+  },
+  "limitations": [
+    "Both checkpoints and all openings are reused development evidence.",
+    "The two browser matches were run sequentially on the same host rather than simultaneously.",
+    "Selection uses the frozen conservative fixed-time point estimate; its interval is reported and does not become a confirmation claim."
+  ],
+  "parity": {
+    "mismatches": {
+      "integerVsNative": 0,
+      "integerVsWasm": 0,
+      "nativeVsWasm": 0
+    },
+    "nativeFullRefreshEqualsIncremental": true,
+    "positions": 1024,
+    "quantization": {
+      "count": 1024,
+      "maximumAbsoluteScoreDelta": 206.2627716064453,
+      "meanAbsoluteScoreDelta": 18.437363450415432,
+      "p95AbsoluteScoreDelta": 111.02679443359375,
+      "p99AbsoluteScoreDelta": 158.99324798583984
+    }
+  },
+  "productionChanged": false,
+  "productionRecommendation": "retain-handcrafted",
+  "schema": "haitaka-strength-first-corrected-checkpoint-rescreen-result-v1",
+  "scope": "reused-development-openings-checkpoint-selection-only",
+  "selection": {
+    "reason": "u2048 has the higher conservative 1-second score on the frozen common openings",
+    "rule": {
+      "decision": "Select u2048 only if its conservative point estimate is strictly greater than u1920; otherwise retain u1920.",
+      "extension": "No interim inspection, optional stopping, or sample extension.",
+      "metric": "cap-as-loss candidate score against handcrafted on the common 64 opening groups at 1000 ms",
+      "tieBreak": "u1920 because it had higher prior equal-node score and lower validation loss",
+      "uncertainty": "Report a 20000-replicate opening-paired bootstrap interval for each score and u2048-minus-u1920 using seed 20260910."
+    },
+    "selected": "u2048"
+  }
+}

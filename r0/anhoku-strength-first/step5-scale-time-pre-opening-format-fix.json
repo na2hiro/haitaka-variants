@@ -1,0 +1,79 @@
+{
+  "schema": "haitaka-strength-first-step5-scale-time-v1",
+  "status": "frozen-before-search",
+  "host": "192.168.0.12",
+  "architecture": "arm64",
+  "gpu": false,
+  "scope": "reused-development-only-no-promotion",
+  "candidate": {
+    "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+    "bytes": 83048702,
+    "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896"
+  },
+  "openings": {
+    "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/openings.tsv",
+    "bytes": 2897,
+    "sha256": "792dd2956876daaf303127af5d7153cfc7b6b7a7b1e789a300e777ffbee9bc61"
+  },
+  "parents": {
+    "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/selection/selected-parents.jsonl",
+    "bytes": 106166,
+    "sha256": "bf785475c145ac8610289b3ad7dab9ec3eae3f54c4d72dc5bf633366e61fa4db"
+  },
+  "priorUnion": {
+    "path": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1/union/union-plan.jsonl",
+    "bytes": 2175915,
+    "sha256": "6633093e3d8bccb58d573025ab5e477344465023c141051394ee4533bfad6605"
+  },
+  "multipliers": [
+    1,
+    2
+  ],
+  "scaleDefinition": "Multiply final integer NNUE evaluation after OUTPUT_SCALE division; treatment clamps static scores to +/-28975 below mate band; terminal scores unchanged; full, incremental and trace share mapping. Default multiplier 1 is bit-identical.",
+  "matchups": [
+    "scale2-vs-scale1",
+    "scale1-vs-handcrafted",
+    "scale2-vs-handcrafted"
+  ],
+  "movetimeMs": [
+    100,
+    1000
+  ],
+  "openingSelection": "odd-numbered stable IDs from existing 64-opening development suite, one paired cycle",
+  "gamesPerCell": 64,
+  "totalGames": 384,
+  "threads": 8,
+  "maxPlies": 200,
+  "randomPlies": 0,
+  "seed": 20260908,
+  "probeNodes": 10000,
+  "probeParents": 128,
+  "newChildLabelNodes": 250000,
+  "maximumNewLabels": 128,
+  "maximumDiagnosticNodes": 34560000,
+  "wallLimitHours": 8,
+  "uncertainty": "opening-cluster percentile bootstrap 20000 resamples seed20260908; paired budget differences within opening; exploratory only",
+  "selection": "Report all six cells without result-driven stopping. Do not change production settings or model based on this small development screen alone.",
+  "sourceFiles": [
+    {
+      "path": "haitaka_wasm/src/nnue.rs",
+      "bytes": 120227,
+      "sha256": "887f0b221cd58adb607ec563d37f735533ea0483b0f2494ddba3b5f88eb7b832"
+    },
+    {
+      "path": "haitaka_wasm/src/lib.rs",
+      "bytes": 192732,
+      "sha256": "955e63f26f39a3e081b2509fcb3003c5fbfd04e314fbd92aa5e7509150f80628"
+    },
+    {
+      "path": "haitaka_cli/src/main.rs",
+      "bytes": 203966,
+      "sha256": "bb0ebf9fd4390ad8505a69609e11b6c1c96444ca193ce3fd1e9ac833aff002e4"
+    },
+    {
+      "path": "haitaka_learn/src/bin/strength_first_step4_diagnostic.rs",
+      "bytes": 30228,
+      "sha256": "97b3c7b6823c725d1f3abe05ee1f6f663bd95b79b76ec549d0fc16eb33fe1503"
+    }
+  ]
+}

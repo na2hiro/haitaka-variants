@@ -43,6 +43,10 @@ ENTRY_BYTES = 72
 SCORE_CLIP = 12000.0
 HUBER_DELTA = 0.10
 NNUE_SCORE_SCALE = 600.0
+# CMake 4 removed the implicit compatibility mode for projects whose pinned
+# CMakeLists.txt declares a minimum version below 3.5.  Keep the pinned source
+# unchanged and bind the compatibility policy at configure time instead.
+R5_CMAKE_POLICY_VERSION_MINIMUM = "3.5"
 
 
 class R5Error(RuntimeError):
@@ -72,6 +76,287 @@ def sha256(path: Path) -> str:
     except OSError as exc:
         fail(f"cannot hash {path}: {exc}")
     return digest.hexdigest()
+
+
+def _replace_once(path: Path, old: str, new: str, label: str, applied: list[str]) -> None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(f"cannot read parity compatibility source {path}: {exc}")
+    count = text.count(old)
+    if count != 1:
+        fail(f"parity compatibility guard for {label} expected one match in {path}, found {count}")
+    try:
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    except OSError as exc:
+        fail(f"cannot write parity compatibility source {path}: {exc}")
+    applied.append(label)
+
+
+def _patch_probe(context: Path, patch_name: str) -> dict[str, Any]:
+    command = ["patch", "--batch", "--fuzz=3", "-p1", "-i", str(ROOT / "trainer-patches" / patch_name)]
+    try:
+        result = subprocess.run(command, cwd=context, text=True, capture_output=True, check=False)
+    except OSError as exc:
+        fail(f"cannot run parity patch probe for {patch_name}: {exc}")
+    return {
+        "patch": patch_name,
+        "command": command,
+        "returnCode": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+    }
+
+
+def _patch_rejects(context: Path) -> list[dict[str, str]]:
+    rejects = []
+    for path in sorted(context.rglob("*.rej")):
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            fail(f"cannot preserve patch reject {path}: {exc}")
+        rejects.append({
+            "path": str(path.relative_to(context)),
+            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "content": content,
+        })
+    return rejects
+
+
+def _patch_tool_version() -> str:
+    try:
+        result = subprocess.run(["patch", "--version"], text=True, capture_output=True, check=False)
+    except OSError as exc:
+        fail(f"cannot inspect patch tool for parity compatibility: {exc}")
+    return (result.stdout or result.stderr).splitlines()[0] if (result.stdout or result.stderr) else "unknown"
+
+
+def _replay_parity_patch(context: Path, archive: Path, external: Path, receipt_path: Path | None) -> None:
+    """Apply the pinned trainer patch contents with exact guards in a disposable parity context.
+
+    Apple patch 2.0 rejects valid hunks from the frozen patch bundle.  The probe
+    is retained in the receipt, while this replay applies the exact patch text
+    only after the pinned revision and both patch hashes have been verified.
+    """
+    phase_patch = ROOT / "trainer-patches" / "variant-nnue-pytorch-phase7.1.patch"
+    r5_patch = ROOT / "trainer-patches" / "variant-nnue-pytorch-r5.patch"
+    if not phase_patch.is_file() or not r5_patch.is_file():
+        fail("parity compatibility patches are missing")
+
+    probe = context.parent / "patch-probe"
+    probe.mkdir()
+    run(["tar", "-xf", str(archive), "-C", str(probe)], context.parent, "extract parity patch probe")
+    patch_logs = [_patch_probe(probe, phase_patch.name), _patch_probe(probe, r5_patch.name)]
+    rejects = _patch_rejects(probe)
+
+    applied: list[str] = []
+    model = context / "model.py"
+    train = context / "train.py"
+    source_before = {name: sha256(context / name) for name in ("model.py", "train.py")}
+
+    _replace_once(
+        model,
+        "import ranger\n",
+        "import os\nimport ranger\n",
+        "R5 model os import",
+        applied,
+    )
+    _replace_once(
+        model,
+        "# 3 layer fully connected network\nL1 = 512\nL2 = 16\nL3 = 32\n",
+        """# 3 layer fully connected network
+def _width(name, default):
+  value = int(os.environ.get(name, default))
+  if value <= 0:
+    raise ValueError('{} must be positive'.format(name))
+  return value
+
+L1 = _width('HAITAKA_NNUE_L1', 512)
+L2 = _width('HAITAKA_NNUE_L2', 16)
+L3 = _width('HAITAKA_NNUE_L3', 32)
+
+# This is intentionally a process-level identity.  The serializer and the
+# runtime format must be built with the same profile; a model cannot silently
+# change width after import.
+WIDTH_PROFILE = '{}x{}x{}'.format(L1, L2, L3)
+""",
+        "R5 dynamic-width model block",
+        applied,
+    )
+    _replace_once(
+        model,
+        "  def __init__(self, feature_set, lambda_=1.0):\n    super(NNUE, self).__init__()\n",
+        "  def __init__(self, feature_set, lambda_=1.0, learning_rate=1.5e-3):\n    super(NNUE, self).__init__()\n    self.learning_rate = learning_rate\n",
+        "Phase 7.1 learning-rate constructor",
+        applied,
+    )
+    _replace_once(
+        model,
+        "  def step_(self, batch, batch_idx, loss_type):\n",
+        """  def loss_value(self, batch):
+    us, them, white_indices, white_values, black_indices, black_values, outcome, score, psqt_indices, layer_stack_indices = batch
+    q = (self(us, them, white_indices, white_values, black_indices, black_values, psqt_indices, layer_stack_indices) * 600 / 361).sigmoid()
+    p = (score / 410).sigmoid()
+    loss_eval = (p - q).square().mean()
+    loss_result = (q - outcome).square().mean()
+    return self.lambda_ * loss_eval + (1.0 - self.lambda_) * loss_result
+
+  def step_(self, batch, batch_idx, loss_type):
+""",
+        "Phase 7.1 loss-value method",
+        applied,
+    )
+    _replace_once(
+        model,
+        """    us, them, white_indices, white_values, black_indices, black_values, outcome, score, psqt_indices, layer_stack_indices = batch
+
+    # 600 is the kPonanzaConstant scaling factor needed to convert the training net output to a score.
+    # This needs to match the value used in the serializer
+    nnue2score = 600
+    in_scaling = 410
+    out_scaling = 361
+
+    q = (self(us, them, white_indices, white_values, black_indices, black_values, psqt_indices, layer_stack_indices) * nnue2score / out_scaling).sigmoid()
+    t = outcome
+    p = (score / in_scaling).sigmoid()
+
+    loss_eval = (p - q).square().mean()
+    loss_result = (q - t).square().mean()
+    loss = self.lambda_ * loss_eval + (1.0 - self.lambda_) * loss_result
+""",
+        "    loss = self.loss_value(batch)\n",
+        "Phase 7.1 loss-value step replacement",
+        applied,
+    )
+    _replace_once(
+        model,
+        "  def validation_step(self, batch, batch_idx):\n    self.step_(batch, batch_idx, 'val_loss')\n",
+        "  def validation_step(self, batch, batch_idx, dataloader_idx=0):\n    self.step_(batch, batch_idx, 'id_val_loss' if dataloader_idx == 0 else 'ood_val_loss')\n",
+        "Phase 7.1 validation-step compatibility replay",
+        applied,
+    )
+    _replace_once(model, "    LR = 1.5e-3\n", "    LR = self.learning_rate\n", "Phase 7.1 learning-rate optimizer", applied)
+
+    _replace_once(
+        train,
+        "def make_data_loaders(train_filename, val_filename, feature_set, num_workers, batch_size, filtered, random_fen_skipping, main_device, epoch_size, val_size):\n",
+        "def make_data_loaders(train_filename, val_filename, feature_set, num_workers, batch_size, filtered, random_fen_skipping, main_device, epoch_size, val_size, ood_filename=None):\n",
+        "Phase 7.1 OOD loader signature",
+        applied,
+    )
+    _replace_once(
+        train,
+        """  val = DataLoader(nnue_dataset.FixedNumBatchesDataset(val_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+  return train, val
+""",
+        """  val = DataLoader(nnue_dataset.FixedNumBatchesDataset(val_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+  if ood_filename is None:
+    return train, val
+  ood_infinite = nnue_dataset.SparseBatchDataset(features_name, ood_filename, batch_size, filtered=filtered, random_fen_skipping=random_fen_skipping, device=main_device)
+  ood = DataLoader(nnue_dataset.FixedNumBatchesDataset(ood_infinite, (val_size + batch_size - 1) // batch_size), batch_size=None, batch_sampler=None)
+  return train, [val, ood]
+
+class DiagnosticLogCallback(pl.Callback):
+  def __init__(self, batch_size):
+    self.batch_size = batch_size
+
+  def on_validation_epoch_end(self, trainer, pl_module):
+    if trainer.logger is None or not trainer.optimizers:
+      return
+    trainer.logger.log_metrics({'optimizer_step': trainer.global_step,
+                                'accepted_positions': trainer.global_step * self.batch_size,
+                                'learning_rate': trainer.optimizers[0].param_groups[0]['lr']},
+                               step=trainer.global_step)
+""",
+        "Phase 7.1 OOD loader and diagnostic callback",
+        applied,
+    )
+    _replace_once(
+        train,
+        "  parser.add_argument(\"--validation-size\", type=int, default=1000000, dest='validation_size', help=\"Number of positions per validation step.\")\n",
+        """  parser.add_argument("--validation-size", type=int, default=1000000, dest='validation_size', help="Number of positions per validation step.")
+  parser.add_argument("--initial-learning-rate", type=float, default=1.5e-3, dest='initial_learning_rate')
+  parser.add_argument("--checkpoint-interval-steps", type=int, default=None, dest='checkpoint_interval_steps')
+  parser.add_argument("--validation-interval-steps", type=int, default=None, dest='validation_interval_steps')
+  parser.add_argument("--max-steps", type=int, default=-1, dest='max_steps')
+  parser.add_argument("--ood-validation", default=None, dest='ood_validation')
+""",
+        "Phase 7.1 training CLI options",
+        applied,
+    )
+    _replace_once(
+        train,
+        "    nnue = M.NNUE(feature_set=feature_set, lambda_=args.lambda_)\n",
+        "    nnue = M.NNUE(feature_set=feature_set, lambda_=args.lambda_, learning_rate=args.initial_learning_rate)\n",
+        "Phase 7.1 initial learning rate",
+        applied,
+    )
+    _replace_once(
+        train,
+        "    nnue.lambda_ = args.lambda_\n",
+        "    nnue.lambda_ = args.lambda_\n    nnue.learning_rate = args.initial_learning_rate\n",
+        "Phase 7.1 resumed learning rate",
+        applied,
+    )
+    _replace_once(
+        train,
+        """  checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=1, save_top_k=-1)
+  trainer = pl.Trainer.from_argparse_args(args, callbacks=[checkpoint_callback], logger=tb_logger)
+""",
+        """  if args.checkpoint_interval_steps is None:
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=1, save_top_k=-1)
+  else:
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(save_last=True, every_n_epochs=None, every_n_train_steps=args.checkpoint_interval_steps, save_top_k=-1)
+  if args.validation_interval_steps is not None:
+    args.val_check_interval = args.validation_interval_steps
+  trainer = pl.Trainer.from_argparse_args(args, callbacks=[checkpoint_callback, DiagnosticLogCallback(batch_size)], logger=tb_logger)
+""",
+        "Phase 7.1 step checkpointing",
+        applied,
+    )
+    _replace_once(
+        train,
+        "  train, val = make_data_loaders(args.train, args.val, feature_set, args.num_workers, batch_size, not args.no_smart_fen_skipping, args.random_fen_skipping, main_device, args.epoch_size, args.validation_size)\n",
+        "  train, val = make_data_loaders(args.train, args.val, feature_set, args.num_workers, batch_size, not args.no_smart_fen_skipping, args.random_fen_skipping, main_device, args.epoch_size, args.validation_size, args.ood_validation)\n",
+        "Phase 7.1 OOD loader wiring",
+        applied,
+    )
+    _replace_once(
+        train,
+        "  trainer.fit(nnue, train, val)\n",
+        "  trainer.fit(nnue, train_dataloaders=train, val_dataloaders=val)\n",
+        "Phase 7.1 multi-loader fit",
+        applied,
+    )
+
+    resulting_hashes = {name: sha256(context / name) for name in ("model.py", "train.py")}
+    if receipt_path is not None and not receipt_path.exists():
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        receipt = {
+            "schema": "haitaka-anhoku-step12-parity-patch-compatibility-v1",
+            "status": "passed",
+            "parityOnly": True,
+            "pinnedRevision": PINNED_TRAINER,
+            "patchTool": {"command": "patch --version", "version": _patch_tool_version()},
+            "patchFiles": [
+                {"path": str(phase_patch.relative_to(ROOT)), "sha256": sha256(phase_patch)},
+                {"path": str(r5_patch.relative_to(ROOT)), "sha256": sha256(r5_patch)},
+            ],
+            "sourceBeforeReplay": source_before,
+            "originalPatchCommandLogs": patch_logs,
+            "preservedRejects": rejects,
+            "exactReplacement": {
+                "old": "def validation_step(self, batch, batch_idx) -> validation_step(self, batch, batch_idx, dataloader_idx=0)",
+                "new": "id_val_loss for dataloader_idx 0; ood_val_loss otherwise",
+            },
+            "replayedHunks": applied,
+            "resultingTemporarySourceHashes": resulting_hashes,
+            "adapter": "r5_trainer.prepare_context guarded parity-only textual replay",
+            "additionalOptimizerUpdates": 0,
+            "checkpointModified": False,
+            "sourceCheckout": str(external),
+        }
+        receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def run(command: list[str], cwd: Path, label: str) -> None:
@@ -187,7 +472,13 @@ PIECE_VALUES = {
     )
 
 
-def prepare_context(width: dict[str, int], cmake: str) -> tuple[tempfile.TemporaryDirectory[str], Path]:
+def prepare_context(
+    width: dict[str, int],
+    cmake: str,
+    *,
+    parity_only: bool = False,
+    compatibility_receipt: Path | None = None,
+) -> tuple[tempfile.TemporaryDirectory[str], Path]:
     external = (ROOT / "../engine/variant-nnue-pytorch").resolve()
     if not external.is_dir():
         fail(f"pinned trainer checkout is missing: {external}")
@@ -217,15 +508,18 @@ def prepare_context(width: dict[str, int], cmake: str) -> tuple[tempfile.Tempora
         fail(f"cannot archive pinned trainer: {exc}")
     run(["tar", "-xf", str(archive), "-C", str(context)], root, "extract pinned trainer")
 
-    for patch_name, label in (
-        ("variant-nnue-pytorch-phase7.1.patch", "apply Phase 7.1 trainer patch"),
-        ("variant-nnue-pytorch-r5.patch", "apply R5 trainer patch"),
-    ):
-        run(
-            ["patch", "--batch", "--fuzz=3", "-p1", "-i", str(ROOT / "trainer-patches" / patch_name)],
-            context,
-            label,
-        )
+    if parity_only:
+        _replay_parity_patch(context, archive, external, compatibility_receipt)
+    else:
+        for patch_name, label in (
+            ("variant-nnue-pytorch-phase7.1.patch", "apply Phase 7.1 trainer patch"),
+            ("variant-nnue-pytorch-r5.patch", "apply R5 trainer patch"),
+        ):
+            run(
+                ["patch", "--batch", "--fuzz=3", "-p1", "-i", str(ROOT / "trainer-patches" / patch_name)],
+                context,
+                label,
+            )
     trainer_overlay = ROOT / "haitaka_learn" / "trainer_overlay"
     for name in ("feature_set.py", "features.py", "donor_features.py", "training_data_loader.cpp"):
         shutil.copy2(trainer_overlay / name, context / name)
@@ -236,10 +530,22 @@ def prepare_context(width: dict[str, int], cmake: str) -> tuple[tempfile.Tempora
         "HAITAKA_NNUE_L2": str(width["l2"]),
         "HAITAKA_NNUE_L3": str(width["l3"]),
     })
-    run([cmake, "-S", ".", "-B", "build"], context, "configure R5 data loader")
+    run(cmake_configure_argv(cmake), context, "configure R5 data loader")
     run([cmake, "--build", "build"], context, "build R5 data loader")
     run([cmake, "--install", "build", "--prefix", "."], context, "install R5 data loader")
     return temp, context
+
+
+def cmake_configure_argv(cmake: str) -> list[str]:
+    """Return the hash-bound configure command for the disposable context."""
+    return [
+        cmake,
+        "-S",
+        ".",
+        "-B",
+        "build",
+        f"-DCMAKE_POLICY_VERSION_MINIMUM={R5_CMAKE_POLICY_VERSION_MINIMUM}",
+    ]
 
 
 def import_trainer(context: Path):

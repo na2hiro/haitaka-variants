@@ -463,6 +463,26 @@ fn validate_position(path: &Path, line: usize, sfen: &str) -> Result<Board> {
 }
 
 pub fn color_swap_anhoku_sfen(sfen: &str) -> Result<String> {
+    let transformed = color_swap_anhoku_sfen_unchecked(sfen)?;
+    let board = Board::from_sfen(&transformed).map_err(|err| {
+        anyhow!(
+            "color-swapped SFEN is invalid: {err}; source SFEN: `{sfen}`; transformed SFEN: `{transformed}`"
+        )
+    })?;
+    Ok(board.to_string())
+}
+
+pub(crate) fn color_swap_anhoku_training_sfen(sfen: &str) -> Result<String> {
+    let transformed = color_swap_anhoku_sfen_unchecked(sfen)?;
+    let board = Board::from_training_sfen(&transformed).map_err(|err| {
+        anyhow!(
+            "color-swapped training SFEN is invalid: {err}; source SFEN: `{sfen}`; transformed SFEN: `{transformed}`"
+        )
+    })?;
+    Ok(board.to_string())
+}
+
+fn color_swap_anhoku_sfen_unchecked(sfen: &str) -> Result<String> {
     let fields = sfen.split_whitespace().collect::<Vec<_>>();
     if fields.len() != 4 {
         bail!("SFEN must contain board, side, hand, and move number");
@@ -501,12 +521,7 @@ pub fn color_swap_anhoku_sfen(sfen: &str) -> Result<String> {
             .collect()
     };
     let transformed = format!("{board} {side} {hand} {}", fields[3]);
-    let board = Board::from_sfen(&transformed).map_err(|err| {
-        anyhow!(
-            "color-swapped SFEN is invalid: {err}; source SFEN: `{sfen}`; transformed SFEN: `{transformed}`"
-        )
-    })?;
-    Ok(board.to_string())
+    Ok(transformed)
 }
 
 fn expand_rank(rank: &str) -> Result<Vec<Option<String>>> {
@@ -607,6 +622,14 @@ mod tests {
             "2sg1k3/4g2b1/l2Kp1s1+P/pP2PPpp1/2+r6/P6P1/+n3+bgP2/2+p5+l/3+s3+n1 b Prgs2n2l5p 129";
         let swapped = color_swap_anhoku_sfen(sfen).unwrap();
         assert_eq!(color_swap_anhoku_sfen(&swapped).unwrap(), sfen);
+    }
+
+    #[test]
+    fn anhoku_color_swap_round_trips_mixed_hands_from_model_b_corpus() {
+        let sfen =
+            "1n2s1+R1l/lrgk1n1+B1/1pp4g1/3ppb2p/p4PP2/1P7/2PPPp1SP/3KG2P1/L1g2G1NL b SN2Pp 56";
+        let swapped = color_swap_anhoku_training_sfen(sfen).unwrap();
+        assert_eq!(color_swap_anhoku_training_sfen(&swapped).unwrap(), sfen);
     }
 
     #[test]

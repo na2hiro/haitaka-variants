@@ -1,0 +1,57 @@
+{
+  "schema": "haitaka-anhoku-strength-first-independent-confirmation-100ms-execution-v1",
+  "createdAt": "2026-09-13T05:34:04Z",
+  "experimentId": "strength-first-independent-confirmation-100ms-20260913-v1",
+  "contract": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-100ms-contract-v1.json",
+    "bytes": 4382,
+    "sha256": "f17469e029abec33bfe5fe47651395841921e88edca242c8edc1fd82c62295d4"
+  },
+  "confirmationResultsOpened": false,
+  "modelA": {
+    "checkpointUpdate": 2688,
+    "integerNetworkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+    "suiteSha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61"
+  },
+  "modelB": {
+    "checkpointUpdate": 2688,
+    "integerNetworkSha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221",
+    "suiteSha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf"
+  },
+  "runtime": {
+    "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+    "bytes": 11372128,
+    "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+  },
+  "analyzer": {
+    "path": "scripts/strength_first_step9_confirmation_100ms.py",
+    "bytes": 14408,
+    "sha256": "f54b41941ca84e8a0c0bf69fbb9721a07a2d1a022a00436b40257e1c795578d2"
+  },
+  "unattendedRunner": {
+    "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/mbp-confirmation-100ms.sh",
+    "bytes": 3064,
+    "sha256": "6259243eef7974f30dad611f7928dff9cb274815ade994dd8a93a6454d517fad"
+  },
+  "host": {
+    "role": "mbp",
+    "endpoint": "192.168.0.12",
+    "checkout": "/Users/na2hiro/anhoku-step9-model-b-c3109e8",
+    "gitHead": "2e8e45db3bd7bb473a52e63e5ae4be86ef10628c"
+  },
+  "execution": {
+    "concurrentGames": 1,
+    "threads": 1,
+    "moveTimeMilliseconds": 100,
+    "gamesPerModel": 4096,
+    "pairsPerModel": 2048,
+    "scheduleOrder": [
+      "model-a-suite-a",
+      "model-b-suite-b"
+    ],
+    "interimLooks": 0,
+    "sampleExtension": false
+  },
+  "abandoned1000msResultsInspected": false,
+  "status": "frozen-ready-to-run"
+}

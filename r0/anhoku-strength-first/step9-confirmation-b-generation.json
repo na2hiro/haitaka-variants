@@ -1,0 +1,36 @@
+{
+  "attempts": 2059,
+  "colorSwapUnique": true,
+  "excludedSuites": [
+    {
+      "bytes": 1306,
+      "path": "haitaka_learn/openings/anhoku-v1.tsv",
+      "sha256": "7150a2a5871c4d302b63ab99ea31abe086471fa38a213dc184f42ce5d05721a7"
+    },
+    {
+      "bytes": 6127,
+      "path": "haitaka_learn/openings/anhoku-v2.tsv",
+      "sha256": "bc576bbe57c05b8b2112b416c1907845d38d5e087e8e3b71b44c19c4e1593307"
+    },
+    {
+      "bytes": 6148,
+      "path": "haitaka_learn/openings/anhoku-v3.tsv",
+      "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+    },
+    {
+      "bytes": 236018,
+      "path": "haitaka_learn/openings/anhoku-strength-confirmation-a-v1.tsv",
+      "sha256": "d58c3adfdb7ba96f0cf5e21e36c97fe48d1d3df337293b92b33665744f497f39"
+    }
+  ],
+  "output": {
+    "bytes": 236127,
+    "path": "haitaka_learn/openings/anhoku-strength-confirmation-b-v1.tsv",
+    "sha256": "4824a0c63bae39d86148cc1bc4bd6471b4c8f1296a460ec5b150fba0cce54578"
+  },
+  "positions": 2048,
+  "randomPlies": 16,
+  "rng": "rand-std-rng-0.9-lockfile-v1",
+  "schema": "haitaka-anhoku-strength-first-opening-generation-v1",
+  "seed": 2026091110
+}

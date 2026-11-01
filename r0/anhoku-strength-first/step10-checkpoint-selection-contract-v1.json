@@ -1,0 +1,765 @@
+{
+  "schema": "haitaka-anhoku-strength-first-checkpoint-selection-development-contract-v1",
+  "createdAt": "2026-09-14",
+  "experimentId": "strength-first-step10-checkpoint-selection-20260914-v1",
+  "status": "approved-design-only-awaiting-execution-bindings-and-authorization",
+  "scope": {
+    "classification": "prospective-development-only",
+    "question": "Does a predeclared earlier validation-loss checkpoint-selection rule generalize better than a fixed update-2688 endpoint when both checkpoints come from the same fresh-seed training run?",
+    "primaryHypothesis": "The earlier-selected checkpoint is materially better than the same-run update-2688 control, by more than 0.02 paired-score points, against handcrafted evaluation.",
+    "nullHypothesis": "The earlier-selected checkpoint is not materially better than the same-run update-2688 control; its paired-score difference is at most +0.02 points.",
+    "doesNotTest": [
+      "confirmation of either model",
+      "deployment or production authorization",
+      "the 100 ms diagnosis endpoint",
+      "a causal separation of corpus, initialization, recipe, or session effects",
+      "a universal claim that update 768 is the correct endpoint"
+    ],
+    "decisionBoundary": "This contract can produce development evidence for checkpoint selection only. It cannot reopen the failed Step 9 confirmation or authorize a model change.",
+    "uncertaintyBoundary": "The primary interval is conditional on this one fresh training run and its fixed opening source. It does not estimate seed variance, selection-rule variance, corpus variance, or session/thermal variance."
+  },
+  "priorEvidence": {
+    "diagnosisReport": {
+      "path": "r0/anhoku-strength-first/step9-diagnosis-report.json",
+      "bytes": 120153,
+      "sha256": "2031bccd6be29043d065ad2f9c201c026267d5423b8642431a4d78fcdd62baab"
+    },
+    "observedContrasts": {
+      "a2688MinusB2688SuiteBalancedScore": 0.09619140625,
+      "a2688MinusB2688Descriptive95PercentInterval": [
+        0.069091796875,
+        0.122802734375
+      ],
+      "b768MinusB2688SuiteBalancedScore": 0.096923828125,
+      "b768MinusB2688Descriptive95PercentInterval": [
+        0.070794677734375,
+        0.1240234375
+      ],
+      "b768ValidationLoss": 0.0010183314323425293,
+      "b2688ValidationLoss": 0.001414001480738322
+    },
+    "interpretation": "The observed u768 result motivates a prospective selection-rule test. It is not evidence that later training caused overfitting, and the exposed diagnosis cells cannot validate a general rule by themselves."
+  },
+  "authorization": {
+    "designWorkAuthorized": true,
+    "trainingAuthorized": false,
+    "cpuOpeningGenerationAuthorized": false,
+    "cpuMatchAuthorized": false,
+    "gpuRentalAuthorized": false,
+    "confirmationAuthorized": false,
+    "deploymentAuthorized": false,
+    "explicitUserGpuApprovalRequired": true,
+    "handcraftedRemainsProduction": true
+  },
+  "sourceAndPlanBindings": {
+    "basePlan": {
+      "path": "plans/anhoku-nnue-strength-first-plan.md",
+      "sha256": "f1bd5267a3afe2888fd0e513a2e7ec4acfa4fe9a64ca3172bc8650e7a39e537e"
+    },
+    "designBasisCommit": "1de1dbe",
+    "historicalTrainingExperiment": {
+      "path": "r0/anhoku-strength-first/step9-model-b-training-experiment-v1.json",
+      "bytes": 18009,
+      "sha256": "c838091b1a3163572b88bcd107d487ef4bb592fe4334c45c643800c7ee35d1fc"
+    },
+    "historicalDataContract": {
+      "path": "r0/anhoku-strength-first/step9-model-b-data-contract-v2.json",
+      "bytes": 3294,
+      "sha256": "a6a949adf74c45a091ccea834a00e11df911bad87243f1868d0c2a41ab3ae6db"
+    },
+    "historicalRuntime": {
+      "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+      "bytes": 11372128,
+      "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+    },
+    "historicalTrainer": {
+      "role": "historical-basis-only-not-executable",
+      "path": "scripts/strength_first_model_b_trainer.py",
+      "bytes": 3401,
+      "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0",
+      "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b",
+      "use": "provenance and recipe reference only; this wrapper hardcodes the historical Model B identity and cannot launch Step 10"
+    },
+    "step10ExecutionBinding": {
+      "status": "must-be-created-and-hash-bound-before-training",
+      "runner": {
+        "path": null,
+        "sha256": null
+      },
+      "resolvedConfig": {
+        "path": null,
+        "sha256": null
+      },
+      "requiredProperties": [
+        "does not hardcode Model B's historical seed or experiment ID",
+        "binds experimentId, fresh seed, frozen corpus, and every candidate checkpoint",
+        "records the 4,096-update learning-rate schedule horizon while stopping at update 2,688",
+        "records validation at every 128 updates and fails closed on any missing candidate",
+        "binds trainer, serializer, and runtime identities before launch"
+      ]
+    },
+    "openingGeneratorSource": {
+      "path": "haitaka_learn/src/strength_first_model_b.rs",
+      "bytes": 22913,
+      "sha256": "30a474ecde43ae991bcbcb7816d5dc6233fdd6f8662bd3c506e373a75827e4af"
+    },
+    "serializer": {
+      "path": "serialize.py",
+      "sha256": "0b741a8e4e0c6759614fa70d069e51934a69cfa7e52792966b6e3eb47f79bce7"
+    }
+  },
+  "training": {
+    "role": "fresh-model-c-prospective-selection-lane",
+    "initialization": "fresh-scratch",
+    "seed": 2026091414,
+    "corpus": {
+      "sourceExperiment": "strength-first-step9-model-b-training-20260912-v1",
+      "policy": "reuse-the-frozen-model-b-corpus-to-hold-data-fixed-within-the-selection-comparison",
+      "training": {
+        "records": 880000,
+        "entryBytes": 72,
+        "manifest": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.json",
+          "bytes": 1384,
+          "sha256": "89f976b5fdfde9198fa9b671e8a6024758b1d638cceedecf9316371865cb0c55"
+        },
+        "binary": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+          "bytes": 63360000,
+          "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+        },
+        "sidecar": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.jsonl",
+          "bytes": 149594430,
+          "sha256": "f213ae17df30478d12f9fcacdde057e85161cf40fd2a046cdb173cb1185a5fa0"
+        }
+      },
+      "validation": {
+        "records": 60000,
+        "entryBytes": 72,
+        "manifest": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.json",
+          "bytes": 1389,
+          "sha256": "e72d1119554bc7bcfb2b56487217d5af6801e0892c7532197b539a6b330755bf"
+        },
+        "binary": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+          "bytes": 4320000,
+          "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+        },
+        "sidecar": {
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.jsonl",
+          "bytes": 10123281,
+          "sha256": "4e576f0d4e0a0e80509f6ab695a71d1fe10754a231b76b7d20f30491050a4fb3"
+        }
+      }
+    },
+    "invariants": {
+      "featureFamily": "HalfKAv2^+DonorSingleEff",
+      "width": {
+        "l1": 256,
+        "l2": 16,
+        "l3": 32
+      },
+      "batchSize": 16384,
+      "workers": 1,
+      "cyclic": false,
+      "filtered": false,
+      "randomFenSkipping": 0,
+      "finiteFinalPartialBatch": true,
+      "trainingOrder": "pcg64dxsm-seed-epoch-record-permutation-v1",
+      "validationOrder": "fixed-source-order-once-per-evaluation-v1",
+      "objective": {
+        "kind": "robust-clipped-huber-v1",
+        "teacherOnly": true,
+        "resultLossEnabled": false,
+        "lambda": 1.0,
+        "targetScoreClip": 12000.0,
+        "normalizedScoreScale": 12000.0,
+        "huberDeltaNormalized": 0.1,
+        "modelOutputToRuntimeScore": 600.0
+      },
+      "optimizer": {
+        "kind": "Ranger",
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "epsilon": 1e-7,
+        "weightDecay": 0.0,
+        "lookaheadAlpha": 0.5,
+        "lookaheadK": 6,
+        "nSmaThreshold": 5,
+        "parameterGroupLearningRateMultipliers": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.1,
+          0.1
+        ],
+        "weightProjection": "pinned-model-_clip_weights-before-and-after-update-v1"
+      },
+      "learningRateSchedule": {
+        "kind": "linear-warmup-then-cosine-by-optimizer-update-v1",
+        "baseLearningRate": 0.0015,
+        "minimumLearningRate": 0.00005,
+        "warmupUpdates": 64,
+        "maximumUpdates": 4096
+      },
+      "omittedSettings": "Every optimizer and loader field not restated here is inherited from the hash-bound historical Model B recipe; no library default may silently fill an omitted setting.",
+      "scheduleHorizon": {
+        "recipeMaximumUpdates": 4096,
+        "executionStopUpdate": 2688,
+        "lrMustBeComputedAsIfHorizonWere4096": true,
+        "earlyStopIsNotScheduleRewrite": true
+      }
+    },
+    "exposure": {
+      "maximumOptimizerUpdates": 2688,
+      "trainToControlUnconditionally": true,
+      "validationEveryUpdates": 128,
+      "checkpointUpdates": [
+        128,
+        256,
+        384,
+        512,
+        640,
+        768,
+        896,
+        1024,
+        2688
+      ],
+      "recordActualExamplesPassesLearningRateAndValidationLoss": true,
+      "positionAndExposureCoupling": "The early candidate cap and update-2688 control are different exposure points in one schedule; this coupling is reported, not treated as isolated causality."
+    }
+  },
+  "selectionRule": {
+    "name": "lowest-validation-loss-within-early-cap-v1",
+    "candidateCapUpdate": 1024,
+    "candidateUpdates": [
+      128,
+      256,
+      384,
+      512,
+      640,
+      768,
+      896,
+      1024
+    ],
+    "metric": "finite validation teacher-only loss on the frozen 60,000-record validation binary",
+    "selection": "Let globalMinimum be the lowest finite validation loss across all eight predeclared candidate updates. Select the earliest candidate whose loss is within 1e-12 of globalMinimum.",
+    "control": {
+      "update": 2688,
+      "selection": "fixed before training and never replaced by a game result or validation result"
+    },
+    "eligibility": [
+      "all eight predeclared candidate updates must be present",
+      "checkpoint and validation receipt exist",
+      "validation has the exact frozen record count and order",
+      "loss is finite",
+      "training and validation diagnostics are complete",
+      "full-precision export, integer reference, native, and WASM parity pass before any match"
+    ],
+    "missingOrInvalidCandidatePolicy": "A missing checkpoint, missing validation receipt, nonfinite loss, incomplete diagnostic, export failure, or qualification failure for any of the eight candidate updates stops the experiment before matches; the candidate set may not be silently reduced.",
+    "forbiddenInputs": [
+      "strength screens",
+      "opening results",
+      "match scores",
+      "post-hoc checkpoint additions",
+      "manual override after seeing outcomes"
+    ],
+    "interpretation": "The rule is tested prospectively on one new seed and one frozen corpus. A selected early checkpoint is evidence about this rule under this exposure, not proof of a universal update endpoint or proof of overtraining."
+  },
+  "openingProtocol": {
+    "status": "must-be-generated-and-hash-bound-after-review-before-any-future-match",
+    "role": "new-development-only-opening-source",
+    "pairs": 128,
+    "gamesPerModel": 256,
+    "generation": {
+      "command": [
+        "target/release/haitaka_learn",
+        "strength-first-generate-opening-suite",
+        "--output",
+        "out/anhoku-strength-first/step10-checkpoint-selection-20260914-v1/openings/development.tsv",
+        "--report",
+        "out/anhoku-strength-first/step10-checkpoint-selection-20260914-v1/openings/generation.json",
+        "--seed",
+        "2026091415",
+        "--positions",
+        "128",
+        "--random-plies",
+        "16",
+        "--id-prefix",
+        "step10-selection",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-v1.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-v2.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-v3.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-strength-confirmation-a-v1.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-strength-confirmation-b-v1.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-strength-confirmation-100ms-a-v1.tsv",
+        "--exclude-suite",
+        "haitaka_learn/openings/anhoku-strength-confirmation-100ms-b-v1.tsv"
+      ],
+      "generatorSource": {
+        "path": "haitaka_learn/src/strength_first_model_b.rs",
+        "sha256": "30a474ecde43ae991bcbcb7816d5dc6233fdd6f8662bd3c506e373a75827e4af"
+      },
+      "generatorBuild": {
+        "binary": {
+          "path": "target/release/haitaka_learn",
+          "sha256": null
+        },
+        "buildReceipt": null,
+        "requiredBeforeGeneration": true
+      },
+      "rng": "rand-std-rng-0.9-lockfile-v1",
+      "randomPlies": 16,
+      "colorSwapUnique": true,
+      "modelBlind": true,
+      "outputReceiptSchema": "haitaka-anhoku-strength-first-opening-generation-v1",
+      "generationReceiptMustBind": [
+        "generator executable hash",
+        "generator source hash",
+        "seed",
+        "positions",
+        "random plies",
+        "all exclusion receipts",
+        "output path and SHA-256",
+        "canonical color-swap family uniqueness"
+      ]
+    },
+    "corpusFamilyExclusion": {
+      "status": "required-before-freeze",
+      "familyDefinition": "canonical color-swap board family using the repository's packed-board reader, matching the generator's canonical_family implementation",
+      "inputArtifacts": [
+        {
+          "role": "model-a-training",
+          "path": "out/anhoku-reboot-r4-replacement/datasets/training.bin",
+          "records": 880000,
+          "bytes": 63360000,
+          "sha256": "9ce80b25becf329f16135dd7c861374c0d51351e286b0f13396ffceb701fdc33"
+        },
+        {
+          "role": "model-a-validation",
+          "path": "out/anhoku-reboot-r4-replacement/datasets/validation.bin",
+          "records": 60000,
+          "bytes": 4320000,
+          "sha256": "fcb2b62bc7974499adbc71ec241ec344d9fbe6b8a4b964bb4d19fd74ab20b81b"
+        },
+        {
+          "role": "model-a-development",
+          "path": "out/anhoku-reboot-r4-replacement/datasets/development.bin",
+          "records": 60000,
+          "bytes": 4320000,
+          "sha256": "21e7f9ca0cbd4b6b8256816f770f5dc6e66939aab7591cf3a3bc55072288cd00"
+        },
+        {
+          "role": "model-b-training",
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin",
+          "records": 880000,
+          "bytes": 63360000,
+          "sha256": "51ecff36f4aa69a98d52e1cac78a47a0e62b15c834d9f33902557c138055b121"
+        },
+        {
+          "role": "model-b-validation",
+          "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin",
+          "records": 60000,
+          "bytes": 4320000,
+          "sha256": "c128c7b58ab2b782badb4d504b6520a3dde8050820feb567250b127de6d96fee"
+        }
+      ],
+      "check": "Every generated opening's canonical family, including its color swap, must be absent from every listed corpus artifact. The check must run before the opening suite is frozen and must fail closed.",
+      "receipt": {
+        "schema": "haitaka-anhoku-strength-first-opening-corpus-family-exclusion-v1",
+        "path": null,
+        "sha256": null
+      }
+    },
+    "independentValidationReceipt": {
+      "schema": "haitaka-anhoku-strength-first-step10-opening-validation-v1",
+      "path": null,
+      "sha256": null,
+      "requiredBeforeOpeningFreeze": true
+    },
+    "priorSuiteExclusions": [
+      {
+        "path": "haitaka_learn/openings/anhoku-v1.tsv",
+        "bytes": 1306,
+        "sha256": "7150a2a5871c4d302b63ab99ea31abe086471fa38a213dc184f42ce5d05721a7"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-v2.tsv",
+        "bytes": 6127,
+        "sha256": "bc576bbe57c05b8b2112b416c1907845d38d5e087e8e3b71b44c19c4e1593307"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-v3.tsv",
+        "bytes": 6148,
+        "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-a-v1.tsv",
+        "bytes": 236018,
+        "sha256": "d58c3adfdb7ba96f0cf5e21e36c97fe48d1d3df337293b92b33665744f497f39"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-b-v1.tsv",
+        "bytes": 236127,
+        "sha256": "4824a0c63bae39d86148cc1bc4bd6471b4c8f1296a460ec5b150fba0cce54578"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-a-v1.tsv",
+        "bytes": 219737,
+        "sha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61"
+      },
+      {
+        "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-b-v1.tsv",
+        "bytes": 219742,
+        "sha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf"
+      }
+    ],
+    "abandonedPartialPolicy": "Do not inspect, hash, read, or pass the abandoned 1,000 ms partial path to the generator. Its outcomes remain unopened and excluded by policy.",
+    "preMatchBinding": "The future execution contract must bind the generated output, generator build, independent validation receipt, and corpus-family exclusion receipt. No training outcome or model score may influence generation, filtering, ranking, or suite size."
+  },
+  "matchProtocol": {
+    "endpoint": "1,000 ms per move native production-search development endpoint",
+    "host": {
+      "role": "designated MBP",
+      "endpoint": "192.168.0.12",
+      "architecture": "arm64",
+      "runtime": {
+        "path": "out/anhoku-strength-first/step9-model-b-training-20260912-v1/runtime/haitaka_cli-u00000256",
+        "bytes": 11372128,
+        "sha256": "ad2e83f3921209c4006e3e23bdd105d951cd1919580560449cdff8fab2423009"
+      },
+      "requirements": [
+        "hostname and uname identity recorded",
+        "runtime hash reverified on host",
+        "plugged in",
+        "one game at a time",
+        "caffeinate tied only to owned runner"
+      ]
+    },
+    "opponent": "handcrafted-production-evaluator",
+    "models": [
+      {
+        "label": "early-selected",
+        "network": "the checkpoint selected by selectionRule from this run"
+      },
+      {
+        "label": "u2688-control",
+        "network": "the update-2688 export from this same run"
+      }
+    ],
+    "gamesPerModel": 256,
+    "pairsPerModel": 128,
+    "threads": 1,
+    "concurrency": 1,
+    "moveTimeMilliseconds": 1000,
+    "openingOrder": "sequential",
+    "openingRandomPlies": 0,
+    "maximumPly": 200,
+    "colorSwap": "anhoku-rotate-180-and-swap-colors-v1",
+    "schedule": {
+      "openingMapping": "Block b contains generated opening rows [32*b, 32*(b+1)) in original order; both cells use the identical mapping and each pair runs candidate colors in both seats.",
+      "executionOrder": [
+        {
+          "position": 1,
+          "cell": "early-selected",
+          "block": 0
+        },
+        {
+          "position": 2,
+          "cell": "u2688-control",
+          "block": 0
+        },
+        {
+          "position": 3,
+          "cell": "early-selected",
+          "block": 1
+        },
+        {
+          "position": 4,
+          "cell": "u2688-control",
+          "block": 1
+        },
+        {
+          "position": 5,
+          "cell": "early-selected",
+          "block": 2
+        },
+        {
+          "position": 6,
+          "cell": "u2688-control",
+          "block": 2
+        },
+        {
+          "position": 7,
+          "cell": "early-selected",
+          "block": 3
+        },
+        {
+          "position": 8,
+          "cell": "u2688-control",
+          "block": 3
+        }
+      ]
+    },
+    "matchSeed": 2026091417,
+    "searchSettings": {
+      "aDepth": null,
+      "bDepth": null,
+      "nodesPerMove": null,
+      "depthCapMeaning": "No explicit depth cap or node cap is passed; both engines use the exact frozen production-search defaults under the fixed movetime.",
+      "commandShape": [
+        "RUNTIME",
+        "self-play",
+        "--games",
+        "64",
+        "--threads",
+        "1",
+        "--a-eval",
+        "nnue",
+        "--b-eval",
+        "handcrafted",
+        "--a-nnue",
+        "NETWORK",
+        "--movetime-ms",
+        "1000",
+        "--openings",
+        "BLOCK_SFEN",
+        "--opening-order",
+        "sequential",
+        "--opening-random-plies",
+        "0",
+        "--seed",
+        "2026091417",
+        "--max-plies",
+        "200",
+        "--report-dir",
+        "ATTEMPT_DIR/native-raw"
+      ]
+    },
+    "runner": {
+      "path": null,
+      "sha256": null,
+      "requiredBeforeMatches": true,
+      "requirements": [
+        "serial execution",
+        "owned-process interruption recovery",
+        "sealed outcome-bearing artifacts",
+        "automatic strict validation after every block",
+        "bounded retry accounting"
+      ]
+    },
+    "analyzer": {
+      "path": null,
+      "sha256": null,
+      "requiredBeforeMatches": true,
+      "requirements": [
+        "validates both cells and exact command bindings",
+        "recomputes WDL and pair scores from raw games",
+        "rejects missing, duplicate, malformed, fallback, or failed games",
+        "does not open scores before both cells pass"
+      ]
+    },
+    "quiescentHost": {
+      "noConcurrentHeavyWork": true,
+      "noUnrelatedProcessInterruption": true,
+      "thermalAndSessionMarkersRecorded": true,
+      "pluggedIn": true
+    },
+    "blockSize": {
+      "pairs": 32,
+      "games": 64,
+      "blocksPerModel": 4,
+      "totalBlocks": 8
+    },
+    "scoreDisclosure": "Expose only pass/fail, completion counts, active block, failures, and timing until both complete cells validate.",
+    "incompletePolicy": {
+      "maximumAttemptsPerBlock": 2,
+      "processInterruption": "Send Ctrl+C once to the owned process, wait briefly, then SIGTERM only that owned process if required. Preserve and exclude the incomplete attempt; rerun the complete block under a new attempt only if budget remains.",
+      "correctnessFailure": "Stop the experiment immediately; do not auto-retry a correctness failure.",
+      "repeatedFailure": "A second failure from the same cause stops the experiment and is reported.",
+      "neverSplicePartialOutput": true
+    },
+    "noExtension": true,
+    "noInterimSelection": true
+  },
+  "statistics": {
+    "analysisUnit": "opening-id color-swapped pair",
+    "pairScore": {
+      "win": 1.0,
+      "draw": 0.5,
+      "loss": 0.0,
+      "definition": "For one opening pair, pairScore is the arithmetic mean of the two color-swapped game scores. The primary contrast is the mean of per-opening pair-score differences."
+    },
+    "primaryContrast": "mean pair score of early-selected minus mean pair score of u2688-control on the same opening IDs, both against handcrafted",
+    "bootstrap": {
+      "method": "paired-opening-score-difference-splitmix64-v1",
+      "replicates": 10000,
+      "seed": 2026091416,
+      "interval": "two-sided-percentile-95-descriptive-unadjusted",
+      "resamplingUnit": "opening pair",
+      "suiteWeight": 1.0
+    },
+    "decision": {
+      "materialityScoreDifference": 0.02,
+      "success": "two-sided 95% interval lower endpoint is greater than +0.02",
+      "failure": "two-sided 95% interval upper endpoint is less than -0.02, which is evidence of material inferiority of the early-selected checkpoint; failure to meet success is not by itself failure",
+      "inconclusive": "all other intervals, including intervals that do not establish a material improvement or material inferiority",
+      "claimType": "exploratory development evidence only; no confirmatory or deployment claim"
+    },
+    "secondaryReporting": [
+      "each model's WDL and paired score versus handcrafted",
+      "validation-loss-selected update and all candidate losses",
+      "training exposure, learning rate, and checkpoint provenance",
+      "runtime parity and timing failures",
+      "maximum-ply games and draws"
+    ],
+    "multiplicity": "Only the predeclared early-selected-minus-u2688 contrast is the primary decision. Secondary model-versus-handcrafted values are descriptive and do not alter selection or stopping.",
+    "conditionalInterpretation": "The interval quantifies opening uncertainty conditional on the one fresh run and fixed suite; it excludes variability in seeds, corpora, selection rules, and sessions."
+  },
+  "parityAndPreflight": {
+    "beforeTraining": [
+      "verify all corpus, trainer, serializer, plan, and base-recipe hashes",
+      "bind and validate a separate Step 10 runner and resolved configuration",
+      "run the real CPU trainer fixture and exact resume/export checks",
+      "prove validation at every 128-update candidate and explicit update-2688 export",
+      "confirm the fresh seed is not reused from A or B",
+      "record a fresh throughput, storage, and cost forecast; a quote is nonbinding until explicit approval"
+    ],
+    "beforeMatches": [
+      "bind the generated development suite and receipt",
+      "verify selected checkpoint rule from validation-only data",
+      "verify u2688 control comes from the same run",
+      "measure full-precision-to-integer quantization error separately without requiring it to be zero",
+      "require exact zero-mismatch integer-reference/native/WASM parity",
+      "verify exact runtime, command, suite, model, and seed bindings",
+      "run rejection fixtures for missing/duplicate pairs, wrong network/suite/settings, malformed WDL, and fallback/failure states"
+    ],
+    "stopImmediately": [
+      "identity or hash mismatch",
+      "trainer or loader semantic mismatch",
+      "nonfinite loss or numerical failure",
+      "missing or invalid candidate checkpoint or validation receipt",
+      "parity mismatch",
+      "illegal move, fallback, missing result, or malformed termination",
+      "opening overlap or invalid generation receipt",
+      "budget forecast exceeding the bound"
+    ],
+    "recoverableInterruption": "Only an owned process interruption may use the bounded rerun policy in matchProtocol.incompletePolicy. It does not authorize retry after a correctness failure.",
+    "candidateSetFailure": "Any missing or invalid candidate stops before matches; no candidate is silently dropped."
+  },
+  "budget": {
+    "fullTrainingRuns": 1,
+    "maximumOptimizerUpdates": 2688,
+    "maximumGpuHours": 4.0,
+    "maximumRentalCostUsd": 5.0,
+    "maximumNewStorageBytes": 8589934592,
+    "maximumCpuMatchWallHours": 24.0,
+    "historicalTrainingAnchor": {
+      "source": "r0/anhoku-strength-first/step9-model-b-training-experiment-v1.json",
+      "measuredTrainingWallSecondsFor4096Updates": 263.543865172,
+      "use": "nonbinding forecast anchor only"
+    },
+    "forecastReceipt": {
+      "schema": "haitaka-anhoku-strength-first-step10-throughput-storage-cost-forecast-v1",
+      "path": null,
+      "sha256": null,
+      "requiredBeforeTraining": true,
+      "mustInclude": [
+        "measured throughput probe or justified historical transfer",
+        "training and export wall-time forecast through update 2688",
+        "peak storage including checkpoints and logs",
+        "fresh GPU quote if rental is proposed",
+        "MBP match wall-time forecast for 512 games",
+        "retry reserve"
+      ]
+    },
+    "retryAccounting": {
+      "allTrainingAttemptsCount": true,
+      "allOpeningGenerationAttemptsCount": true,
+      "allMatchBlockAttemptsCount": true,
+      "maximumAttemptsPerMatchBlock": 2,
+      "noBudgetExtensionAfterFailure": true
+    },
+    "quotePolicy": "Historical quotes are nonbinding. A fresh quote and explicit user approval are required before any rental or training.",
+    "budgetStop": "stop and report; never label a budget stop as convergence or strength failure"
+  },
+  "output": {
+    "root": "out/anhoku-strength-first/step10-checkpoint-selection-20260914-v1",
+    "freshRunRefusesExistingState": true,
+    "requiredArtifacts": [
+      "contract.json",
+      "manifest.json",
+      "status.json",
+      "opening generation receipt",
+      "trainer run and selection history",
+      "candidate and u2688 exports",
+      "parity receipts",
+      "validated raw match blocks",
+      "analysis.json",
+      "report.md"
+    ],
+    "outcomeSeal": "Do not open WDL, scores, pair scores, or outcome-bearing game records until both complete cells pass validation."
+  },
+  "exclusions": {
+    "neverDo": [
+      "rent GPU or start training from this draft",
+      "run opening generation before independent review",
+      "run matches before opening and artifact bindings are complete",
+      "use Step 9 confirmation or diagnosis outcomes to alter the rule",
+      "inspect the abandoned 1,000 ms partial",
+      "generate a confirmation suite",
+      "reopen the failed confirmation",
+      "change production evaluator defaults",
+      "select based on match results"
+    ],
+    "reviewAloneDoesNotAuthorizeCompute": true,
+    "artifactBindingAloneDoesNotAuthorizeCompute": true,
+    "authorizationRule": "Review, artifact binding, and a valid contract do not authorize opening generation, training, matches, or GPU rental. Each corresponding authorization flag requires separate explicit user authorization.",
+    "historicalStep9SuitesRemainDevelopmentHistory": true,
+    "handcraftedProductionRecommendationUnchanged": true
+  },
+  "review": {
+    "required": true,
+    "reviewerConfiguration": "Astra medium",
+    "status": "approved-design-only-awaiting-execution-bindings-and-authorization",
+    "reviewedDraftSha256": "754ff18ef79993f3356664cfc9888e98e8e433ec885370fc844c4b4e67b97652",
+    "reviewerAgentId": "01a09e62-5815-7ed3-a064-f818cbfec2a6",
+    "reviewerNickname": "Planck",
+    "verdict": "approve with required amendments",
+    "requiredAmendments": [
+      "bind a separate executable Step 10 runner and config; retain the historical B wrapper as provenance only",
+      "fail closed on any missing or invalid candidate and define global-minimum tie handling",
+      "correct the opening generator binary, expand exclusions, and add generator/build, corpus-family, and independent validation receipts",
+      "freeze exact match blocks, seeds, command settings, runner/analyzer hashes, and interruption policy",
+      "define pair-score averaging and distinguish material inferiority from failure to show improvement",
+      "state that review and artifact binding alone authorize no compute and require a prelaunch budget forecast"
+    ],
+    "reviewMustCheck": [
+      "selection rule is fully predeclared and not fitted to match outcomes",
+      "same-run control makes the primary comparison interpretable",
+      "corpus and seed coupling/confounds are explicitly disclosed",
+      "opening provenance and exclusion gate is adequate",
+      "statistical success/failure/inconclusive rules are fixed",
+      "no authorization or confirmation boundary is accidentally widened"
+    ],
+    "finalReviewedContractSha256": "e49936562e9af368637969c987045713391bd7dcc84e90c3f1b4ed29b77dc5be",
+    "finalReviewerAgentId": "01a09e62-5815-7ed3-a064-f818cbfec2a6",
+    "finalReviewerNickname": "Planck",
+    "finalVerdict": "approve",
+    "remainingDesignChanges": [],
+    "receipt": "r0/anhoku-strength-first/step10-checkpoint-selection-review-v2.json"
+  }
+}
