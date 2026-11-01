@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "engineRevision": "459c3b92454247c5fd660c4a5e47e09e6c85ee5e",
+  "webBaseRevision": "13d0c91865fd58d72d480304b7fe671275f15508",
+  "bases": {
+    "engine": "121dda7404ff3e1d1e2c222d691277469d78ade7",
+    "web": "abff8be23e1219fe0f63c1b690a8a539d260c854"
+  },
+  "productionArtifacts": {
+    "scalar": {
+      "bytes": 18497592,
+      "sha256": "476a32ddcdd282c942b564dcbcdfb01e7195d25bc3cccdb8087ee0081c3332f5"
+    },
+    "simd": {
+      "bytes": 18498204,
+      "sha256": "b1247b5a24ccba17adbeb7b1679f175aba2c756aa7135a632317a3f31a499ce5"
+    }
+  },
+  "diagnosticComparison": {
+    "micro": {
+      "fixturePositions": 236,
+      "incrementalMoves": 2048,
+      "fixedDepthSearches": 20,
+      "hashes": {
+        "scalar": "1818efb698e3671aa4169460178501959fa1d99c9d31a5e8de02d87bf911b6b9",
+        "simd": "b367961a7ec41221444ca181208eccde14f4c7b42bd7c8906cb89bcd563bec3d"
+      },
+      "searches": {
+        "scalar": [
+          {
+            "bestMove": "7g7f",
+            "score": 56,
+            "states": 240
+          },
+          {
+            "bestMove": "3d5f",
+            "score": 1308,
+            "states": 157
+          },
+          {
+            "bestMove": "5h6h",
+            "score": 957,
+            "states": 218
+          },
+          {
+            "bestMove": "2c1d",
+            "score": -957,
+            "states": 280
+          },
+          {
+            "bestMove": "4a5a",
+            "score": -965,
+            "states": 70
+          },
+          {
+            "bestMove": "9b8b",
+            "score": 443,
+            "states": 137
+          },
+          {
+            "bestMove": "4g4f",
+            "score": 1518,
+            "states": 307
+          },
+          {
+            "bestMove": "P*7c",
+            "score": 1543,
+            "states": 155
+          },
+          {
+            "bestMove": "9a8a",
+            "score": 1575,
+            "states": 241
+          },
+          {
+            "bestMove": "N*9e",
+            "score": -1064,
+            "states": 261
+          },
+          {
+            "bestMove": "3c3d",
+            "score": 1,
+            "states": 153
+          },
+          {
+            "bestMove": "2e2d",
+            "score": 1367,
+            "states": 257
+          },
+          {
+            "bestMove": "8d5g",
+            "score": 867,
+            "states": 508
+          },
+          {
+            "bestMove": "4i5g",
+            "score": 651,
+            "states": 246
+          },
+          {
+            "bestMove": "8e7f",
+            "score": 1306,
+            "states": 303
+          },
+          {
+            "bestMove": "3c3d",
+            "score": -27,
+            "states": 131
+          },
+          {
+            "bestMove": "2b3b",
+            "score": 148,
+            "states": 132
+          },
+          {
+            "bestMove": "5h4h",
+            "score": 744,
+            "states": 141
+          },
+          {
+            "bestMove": "7i6i",
+            "score": -124,
+            "states": 41
+          },
+          {
+            "bestMove": "9h8h",
+            "score": 228,
+            "states": 232
+          }
+        ],
+        "simd": [
+          {
+            "bestMove": "7g7f",
+            "score": 56,
+            "states": 240
+          },
+          {
+            "bestMove": "3d5f",
+            "score": 1308,
+            "states": 157
+          },
+          {
+            "bestMove": "5h6h",
+            "score": 957,
+            "states": 218
+          },
+          {
+            "bestMove": "2c1d",
+            "score": -957,
+            "states": 280
+          },
+          {
+            "bestMove": "4a5a",
+            "score": -965,
+            "states": 70
+          },
+          {
+            "bestMove": "9b8b",
+            "score": 443,
+            "states": 137
+          },
+          {
+            "bestMove": "4g4f",
+            "score": 1518,
+            "states": 307
+          },
+          {
+            "bestMove": "P*7c",
+            "score": 1543,
+            "states": 155
+          },
+          {
+            "bestMove": "9a8a",
+            "score": 1575,
+            "states": 241
+          },
+          {
+            "bestMove": "N*9e",
+            "score": -1064,
+            "states": 261
+          },
+          {
+            "bestMove": "3c3d",
+            "score": 1,
+            "states": 153
+          },
+          {
+            "bestMove": "2e2d",
+            "score": 1367,
+            "states": 257
+          },
+          {
+            "bestMove": "8d5g",
+            "score": 867,
+            "states": 508
+          },
+          {
+            "bestMove": "4i5g",
+            "score": 651,
+            "states": 246
+          },
+          {
+            "bestMove": "8e7f",
+            "score": 1306,
+            "states": 303
+          },
+          {
+            "bestMove": "3c3d",
+            "score": -27,
+            "states": 131
+          },
+          {
+            "bestMove": "2b3b",
+            "score": 148,
+            "states": 132
+          },
+          {
+            "bestMove": "5h4h",
+            "score": 744,
+            "states": 141
+          },
+          {
+            "bestMove": "7i6i",
+            "score": -124,
+            "states": 41
+          },
+          {
+            "bestMove": "9h8h",
+            "score": 228,
+            "states": 232
+          }
+        ]
+      },
+      "result": "PASS"
+    },
+    "mini": {
+      "fixturePositions": 236,
+      "incrementalMoves": 2048,
+      "fixedDepthSearches": 20,
+      "hashes": {
+        "scalar": "1818efb698e3671aa4169460178501959fa1d99c9d31a5e8de02d87bf911b6b9",
+        "simd": "b367961a7ec41221444ca181208eccde14f4c7b42bd7c8906cb89bcd563bec3d"
+      },
+      "searches": {
+        "scalar": [
+          {
+            "bestMove": "6i7h",
+            "score": 50,
+            "states": 261
+          },
+          {
+            "bestMove": "3d4d",
+            "score": 1467,
+            "states": 204
+          },
+          {
+            "bestMove": "5h6i",
+            "score": 1230,
+            "states": 199
+          },
+          {
+            "bestMove": "1c1d",
+            "score": -1127,
+            "states": 336
+          },
+          {
+            "bestMove": "4a5a",
+            "score": -1113,
+            "states": 70
+          },
+          {
+            "bestMove": "9b8b",
+            "score": 506,
+            "states": 125
+          },
+          {
+            "bestMove": "4g4f",
+            "score": 1657,
+            "states": 379
+          },
+          {
+            "bestMove": "8d6b+",
+            "score": 1430,
+            "states": 177
+          },
+          {
+            "bestMove": "5b6c",
+            "score": 2095,
+            "states": 251
+          },
+          {
+            "bestMove": "N*9e",
+            "score": -1358,
+            "states": 243
+          },
+          {
+            "bestMove": "9b8b",
+            "score": -122,
+            "states": 169
+          },
+          {
+            "bestMove": "2e2d",
+            "score": 1412,
+            "states": 153
+          },
+          {
+            "bestMove": "8d5g",
+            "score": 715,
+            "states": 508
+          },
+          {
+            "bestMove": "4i5g",
+            "score": 740,
+            "states": 255
+          },
+          {
+            "bestMove": "8e7f",
+            "score": 1675,
+            "states": 268
+          },
+          {
+            "bestMove": "4a3b",
+            "score": -42,
+            "states": 177
+          },
+          {
+            "bestMove": "2b3b",
+            "score": 121,
+            "states": 195
+          },
+          {
+            "bestMove": "5h4h",
+            "score": 720,
+            "states": 141
+          },
+          {
+            "bestMove": "7i6i",
+            "score": -305,
+            "states": 41
+          },
+          {
+            "bestMove": "9e9f",
+            "score": 328,
+            "states": 207
+          }
+        ],
+        "simd": [
+          {
+            "bestMove": "6i7h",
+            "score": 50,
+            "states": 261
+          },
+          {
+            "bestMove": "3d4d",
+            "score": 1467,
+            "states": 204
+          },
+          {
+            "bestMove": "5h6i",
+            "score": 1230,
+            "states": 199
+          },
+          {
+            "bestMove": "1c1d",
+            "score": -1127,
+            "states": 336
+          },
+          {
+            "bestMove": "4a5a",
+            "score": -1113,
+            "states": 70
+          },
+          {
+            "bestMove": "9b8b",
+            "score": 506,
+            "states": 125
+          },
+          {
+            "bestMove": "4g4f",
+            "score": 1657,
+            "states": 379
+          },
+          {
+            "bestMove": "8d6b+",
+            "score": 1430,
+            "states": 177
+          },
+          {
+            "bestMove": "5b6c",
+            "score": 2095,
+            "states": 251
+          },
+          {
+            "bestMove": "N*9e",
+            "score": -1358,
+            "states": 243
+          },
+          {
+            "bestMove": "9b8b",
+            "score": -122,
+            "states": 169
+          },
+          {
+            "bestMove": "2e2d",
+            "score": 1412,
+            "states": 153
+          },
+          {
+            "bestMove": "8d5g",
+            "score": 715,
+            "states": 508
+          },
+          {
+            "bestMove": "4i5g",
+            "score": 740,
+            "states": 255
+          },
+          {
+            "bestMove": "8e7f",
+            "score": 1675,
+            "states": 268
+          },
+          {
+            "bestMove": "4a3b",
+            "score": -42,
+            "states": 177
+          },
+          {
+            "bestMove": "2b3b",
+            "score": 121,
+            "states": 195
+          },
+          {
+            "bestMove": "5h4h",
+            "score": 720,
+            "states": 141
+          },
+          {
+            "bestMove": "7i6i",
+            "score": -305,
+            "states": 41
+          },
+          {
+            "bestMove": "9e9f",
+            "score": 328,
+            "states": 207
+          }
+        ]
+      },
+      "result": "PASS"
+    }
+  },
+  "note": "These artifacts were rebuilt after merging current main/master. Archived P4/P6 benchmarks and400-game strength results retain their earlier pinned binaries; no post-merge strength measurement is claimed.",
+  "webValidatedRevision": "db92febaf4733e6f8034ce0fc9b707a143864a7a",
+  "checks": {
+    "workspaceRelease": {
+      "command": "cargo test --workspace --release",
+      "passed": 474,
+      "ignored": 5
+    },
+    "annan": {
+      "command": "cargo test -p haitaka_wasm --features annan",
+      "libraryPassed": 93
+    },
+    "realModels": {
+      "commands": [
+        "python3 scripts/tuyouraou11.py verify",
+        "python3 scripts/tuyouraou11.py verify --profile mini"
+      ],
+      "referencePositionsPerModel": 236,
+      "incrementalMovesPerModel": 2048,
+      "runtimeRangeAndSwitchTests": 3
+    },
+    "wasmExact": {
+      "command": "node scripts/tuyouraou11-simd.mjs --build; node scripts/tuyouraou11-simd.mjs --mini",
+      "backends": [
+        "scalar",
+        "simd"
+      ],
+      "referencePositionsPerModel": 236,
+      "incrementalMovesPerModel": 2048,
+      "fixedDepthSearchesPerModel": 20,
+      "result": "PASS"
+    },
+    "savedStrengthAudit": {
+      "games": 400,
+      "browserReplies": 43814,
+      "result": "PASS"
+    },
+    "statisticsTests": {
+      "passed": 4
+    },
+    "rustfmt": {
+      "result": "PASS"
+    }
+  },
+  "checkLogs": {
+    "workspaceRelease": "9713b00feb49d8cf9dce102c0381f97feb9e3838d4f4f11d8de73db4e3fada36",
+    "annan": "8125778cede54addb20a34336bac0700bff1c8308f2d04fb81fae394856ad9bc",
+    "micro": "489e3da314ed4a3052c535c53fc67158e196d79aa75908d0e0a4a65df4c48e2f",
+    "mini": "5da6d4ccde42181113f977dc83b0d731937e54f3de3e9ba64bb5c81b50feed7e",
+    "microWasm": "79ac7f7b07b4d3f95a480462aa79eb5c45362a4cfde7810c1707dd3cc8c5438d",
+    "miniWasm": "b80cb58483166df955ab1410f2a8033fcc9262df20123eece9ed242e3188c6a2",
+    "statistics": "bc8479a05ec69962a8f405b7ef262cc5bd74bfaa99d5139fe065724badaa7263",
+    "strengthAudit": "33974631b9fd5e9e53212585b68c0a1354ffd806e6080b4dd5e8f2b04f9eda42"
+  }
+}

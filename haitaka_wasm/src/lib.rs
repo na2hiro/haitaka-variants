@@ -2,6 +2,14 @@ mod movepick;
 mod nnue;
 #[doc(hidden)]
 pub mod nnue_kernels;
+/// SFNN model and incremental position state used by the search runtime.
+pub mod sfnn;
+#[cfg(feature = "sfnn-diagnostics")]
+mod sfnn_diagnostics;
+#[doc(hidden)]
+pub mod sfnn_kernels;
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod sfnn_runtime_tests;
 mod tt;
 
 use std::collections::HashMap;
@@ -24,6 +32,7 @@ pub use nnue::{
     donor_receiver_pair_v2_stats, migrate_donor_single_to_receiver_pair_v2,
     r1_donor_single_active_feature_indices,
 };
+use sfnn::{SfnnModel, SfnnPositionState};
 use tt::{Bound, SearchTtStats, TranspositionTable};
 use wasm_bindgen::prelude::*;
 
@@ -42,7 +51,7 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
     Piece::Gold,
 ];
 
-static NNUE_MODEL: OnceLock<RwLock<Option<Arc<NnueModel>>>> = OnceLock::new();
+static EVALUATION: OnceLock<RwLock<EvaluationStrategy>> = OnceLock::new();
 static SEARCH_TT: OnceLock<RwLock<TranspositionTable>> = OnceLock::new();
 const DEADLINE_CHECK_INTERVAL: u64 = 256;
 pub const SEARCH_NODE_COUNTING_VERSION: &str = "alpha-beta-plus-qsearch-v2";
@@ -337,6 +346,31 @@ enum EvaluationStrategy {
         model: Arc<NnueModel>,
         mode: SearchEvalMode,
     },
+    Sfnn {
+        model: Arc<SfnnModel>,
+        mode: SearchEvalMode,
+    },
+}
+
+// Keep the existing HalfKAv2 state inline (no new per-node allocation for it).
+#[allow(clippy::large_enum_variant)]
+enum EvaluationState {
+    Nnue(NnuePositionState),
+    Sfnn(SfnnPositionState),
+}
+impl EvaluationState {
+    fn nnue(&self) -> &NnuePositionState {
+        match self {
+            Self::Nnue(state) => state,
+            _ => panic!("expected NNUE state"),
+        }
+    }
+    fn sfnn(&self) -> &SfnnPositionState {
+        match self {
+            Self::Sfnn(state) => state,
+            _ => panic!("expected SFNN state"),
+        }
+    }
 }
 
 struct SearchContext<'a> {
@@ -1227,13 +1261,7 @@ fn elapsed_ms_since(started_at: Instant) -> f64 {
 }
 
 fn current_evaluation_strategy() -> EvaluationStrategy {
-    match current_nnue_model() {
-        Some(model) => EvaluationStrategy::Nnue {
-            model,
-            mode: SearchEvalMode::Incremental,
-        },
-        None => EvaluationStrategy::Handcrafted,
-    }
+    evaluation_slot().read().unwrap().clone()
 }
 
 fn best_move_impl(sfen: &str, depth: u8) -> Result<Option<String>, String> {
@@ -1244,9 +1272,26 @@ fn load_nnue_impl(bytes: &[u8]) -> Result<String, String> {
     let model =
         NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
     let description = model.description().to_string();
-    *nnue_model_slot().write().unwrap() = Some(Arc::new(model));
-    search_tt_slot().write().unwrap().clear();
+    let mut tt = search_tt_slot().write().unwrap();
+    *evaluation_slot().write().unwrap() = EvaluationStrategy::Nnue {
+        model: Arc::new(model),
+        mode: SearchEvalMode::Incremental,
+    };
+    tt.clear();
     Ok(description)
+}
+
+/// Native loader counterpart of the wasm-bindgen API. Parsing precedes mutation.
+#[doc(hidden)]
+pub fn load_sfnn_impl(nn: &[u8], progress: &[u8], arch: &str) -> Result<String, String> {
+    let model = SfnnModel::from_bytes(nn, progress, arch).map_err(|e| e.to_string())?;
+    let mut tt = search_tt_slot().write().unwrap();
+    *evaluation_slot().write().unwrap() = EvaluationStrategy::Sfnn {
+        model: Arc::new(model),
+        mode: SearchEvalMode::Incremental,
+    };
+    tt.clear();
+    Ok(arch.to_string())
 }
 
 fn search_impl(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
@@ -1487,7 +1532,15 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
         EvaluationStrategy::Nnue {
             model,
             mode: SearchEvalMode::Incremental,
-        } if has_both_kings(board) => Some(model.build_position_state_full(board)),
+        } if has_both_kings(board) => Some(EvaluationState::Nnue(
+            model.build_position_state_full(board),
+        )),
+        EvaluationStrategy::Sfnn {
+            model,
+            mode: SearchEvalMode::Incremental,
+        } if has_both_kings(board) => Some(EvaluationState::Sfnn(
+            model.build_position_state_full(board),
+        )),
         _ => None,
     };
     let mut ctx = SearchContext {
@@ -1764,7 +1817,7 @@ pub struct UsiSession {
     engine_name: String,
     board: Board,
     history: PositionHistory,
-    nnue_model: Option<Arc<NnueModel>>,
+    evaluation: EvaluationStrategy,
     movetime_max_depth: u8,
     tt: TranspositionTable,
 }
@@ -1835,7 +1888,7 @@ impl UsiSession {
             engine_name: engine_name.into(),
             history: PositionHistory::new(board.clone()),
             board,
-            nnue_model: None,
+            evaluation: EvaluationStrategy::Handcrafted,
             movetime_max_depth: movetime_max_depth.max(1),
             tt: TranspositionTable::default(),
         }
@@ -1854,9 +1907,22 @@ impl UsiSession {
             NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
         let model = model.with_evaluation_multiplier(multiplier)?;
         let description = model.description().to_string();
-        self.nnue_model = Some(Arc::new(model));
+        self.evaluation = EvaluationStrategy::Nnue {
+            model: Arc::new(model),
+            mode: SearchEvalMode::Incremental,
+        };
         self.tt.clear();
         Ok(description)
+    }
+
+    pub fn load_sfnn(&mut self, nn: &[u8], progress: &[u8], arch: &str) -> Result<String, String> {
+        let model = SfnnModel::from_bytes(nn, progress, arch).map_err(|e| e.to_string())?;
+        self.evaluation = EvaluationStrategy::Sfnn {
+            model: Arc::new(model),
+            mode: SearchEvalMode::Incremental,
+        };
+        self.tt.clear();
+        Ok(arch.to_string())
     }
 
     pub fn handle_line(&mut self, line: &str) -> Vec<String> {
@@ -2130,13 +2196,7 @@ impl UsiSession {
     }
 
     fn evaluation_strategy(&self) -> EvaluationStrategy {
-        match self.nnue_model.as_ref() {
-            Some(model) => EvaluationStrategy::Nnue {
-                model: Arc::clone(model),
-                mode: SearchEvalMode::Incremental,
-            },
-            None => EvaluationStrategy::Handcrafted,
-        }
+        self.evaluation.clone()
     }
 }
 
@@ -3070,6 +3130,36 @@ pub fn search_board_impl_with_eval_mode_and_node_budget_and_training_trace_in_wo
 
 #[cfg(not(target_arch = "wasm32"))]
 #[doc(hidden)]
+pub fn search_impl_sfnn(
+    sfen: &str,
+    depth: u8,
+    model: Arc<SfnnModel>,
+    mode: SearchEvalMode,
+) -> Result<SearchSummary, String> {
+    search_impl_with_strategy(sfen, depth, EvaluationStrategy::Sfnn { model, mode })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub fn search_iterative_deepening_impl_sfnn(
+    sfen: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    model: Arc<SfnnModel>,
+    mode: SearchEvalMode,
+    run_dfpn: bool,
+) -> Result<IterativeSearchSummary, String> {
+    search_iterative_deepening_with_strategy(
+        sfen,
+        max_depth,
+        timeout_ms,
+        EvaluationStrategy::Sfnn { model, mode },
+        IterativeSearchConfig { run_dfpn },
+    )
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
 pub fn search_impl_handcrafted(sfen: &str, depth: u8) -> Result<SearchSummary, String> {
     search_impl_with_strategy(sfen, depth, EvaluationStrategy::Handcrafted)
 }
@@ -3455,8 +3545,15 @@ pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
 pub fn evaluate_nnue(sfen: &str) -> Result<i32, JsValue> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| JsValue::from_str(&format!("failed to parse SFEN: {err}")))?;
-    let model = current_nnue_model().ok_or_else(|| JsValue::from_str("NNUE is not loaded"))?;
+    let EvaluationStrategy::Nnue { model, .. } = current_evaluation_strategy() else {
+        return Err(JsValue::from_str("NNUE is not loaded"));
+    };
     Ok(model.evaluate_full_refresh(&board))
+}
+
+#[wasm_bindgen(js_name = load_sfnn)]
+pub fn load_sfnn(nn_bytes: &[u8], progress_bytes: &[u8], arch: &str) -> Result<String, JsValue> {
+    load_sfnn_impl(nn_bytes, progress_bytes, arch).map_err(|err| JsValue::from_str(&err))
 }
 
 #[wasm_bindgen(js_name = set_hash_size_mb)]
@@ -3489,6 +3586,18 @@ impl UsiEngine {
     pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, JsValue> {
         self.session
             .load_nnue(bytes)
+            .map_err(|err| JsValue::from_str(&err))
+    }
+
+    #[wasm_bindgen(js_name = load_sfnn)]
+    pub fn load_sfnn(
+        &mut self,
+        nn_bytes: &[u8],
+        progress_bytes: &[u8],
+        arch: &str,
+    ) -> Result<String, JsValue> {
+        self.session
+            .load_sfnn(nn_bytes, progress_bytes, arch)
             .map_err(|err| JsValue::from_str(&err))
     }
 
@@ -3601,7 +3710,7 @@ fn search_best_move(
     board: &Board,
     depth: u8,
     ctx: &mut SearchContext<'_>,
-    nnue_state: Option<NnuePositionState>,
+    eval_state: Option<EvaluationState>,
     progress: &mut RootProgress,
 ) -> Result<(), SearchInterrupted> {
     ctx.clear_training_trace(0);
@@ -3650,7 +3759,7 @@ fn search_best_move(
             ctx.set_training_leaf(&child, 1, terminal, true);
             Ok(-terminal)
         } else {
-            let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+            let child_state = child_eval_state(ctx, board, &child, eval_state.as_ref(), mv);
             negamax(
                 &child,
                 depth.saturating_sub(1),
@@ -3712,7 +3821,7 @@ fn negamax(
     beta: i32,
     ply: i32,
     ctx: &mut SearchContext<'_>,
-    nnue_state: Option<NnuePositionState>,
+    eval_state: Option<EvaluationState>,
 ) -> Result<i32, SearchInterrupted> {
     ctx.clear_training_trace(ply);
     ctx.record_state()?;
@@ -3730,7 +3839,7 @@ fn negamax(
             0,
             ctx.qsearch_limits.check_budget,
             ctx,
-            nnue_state,
+            eval_state,
         );
     }
 
@@ -3772,7 +3881,7 @@ fn negamax(
             ctx.set_training_leaf(&child, ply + 1, terminal, true);
             Ok(-terminal)
         } else {
-            let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+            let child_state = child_eval_state(ctx, board, &child, eval_state.as_ref(), mv);
             negamax(&child, depth - 1, -beta, -alpha, ply + 1, ctx, child_state).map(|value| -value)
         };
         ctx.history.pop();
@@ -3825,7 +3934,7 @@ fn quiescence(
     qply: u8,
     check_budget: u8,
     ctx: &mut SearchContext<'_>,
-    nnue_state: Option<NnuePositionState>,
+    eval_state: Option<EvaluationState>,
 ) -> Result<i32, SearchInterrupted> {
     ctx.clear_training_trace(ply);
     ctx.check_deadline()?;
@@ -3835,7 +3944,7 @@ fn quiescence(
     }
     if !ctx.record_qnode(qply)? || qply >= ctx.qsearch_limits.max_ply {
         ctx.qsearch_stats.qsearch_cap_hits += u64::from(qply >= ctx.qsearch_limits.max_ply);
-        let score = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        let score = evaluate_or_mate(board, ply, ctx, eval_state.as_ref());
         ctx.set_training_leaf(board, ply, score, false);
         return Ok(score);
     }
@@ -3843,7 +3952,7 @@ fn quiescence(
     let in_check = !board.checkers().is_empty();
     let mut stand_pat_for_delta = None;
     if !in_check {
-        let stand_pat = evaluate_or_mate(board, ply, ctx, nnue_state.as_ref());
+        let stand_pat = evaluate_or_mate(board, ply, ctx, eval_state.as_ref());
         ctx.set_training_leaf(board, ply, stand_pat, false);
         if stand_pat >= beta {
             return Ok(stand_pat);
@@ -3882,7 +3991,7 @@ fn quiescence(
             ctx.set_training_leaf(&child, ply + 1, terminal, true);
             Ok(-terminal)
         } else {
-            let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+            let child_state = child_eval_state(ctx, board, &child, eval_state.as_ref(), mv);
             quiescence(
                 &child,
                 -beta,
@@ -3954,7 +4063,7 @@ fn quiescence(
                 ctx.set_training_leaf(&child, ply + 1, terminal, true);
                 Ok(-terminal)
             } else {
-                let child_state = child_nnue_state(ctx, board, &child, nnue_state.as_ref(), mv);
+                let child_state = child_eval_state(ctx, board, &child, eval_state.as_ref(), mv);
                 quiescence(
                     &child,
                     -beta,
@@ -4064,13 +4173,13 @@ fn score_from_tt(score: i32, ply: i32) -> i32 {
     }
 }
 
-fn child_nnue_state(
+fn child_eval_state(
     ctx: &SearchContext,
     parent_board: &Board,
     child_board: &Board,
-    parent_state: Option<&NnuePositionState>,
+    parent_state: Option<&EvaluationState>,
     mv: Move,
-) -> Option<NnuePositionState> {
+) -> Option<EvaluationState> {
     if !has_both_kings(child_board) {
         return None;
     }
@@ -4078,11 +4187,28 @@ fn child_nnue_state(
         EvaluationStrategy::Nnue {
             model,
             mode: SearchEvalMode::Incremental,
-        } => Some(model.apply_move(
-            parent_board,
-            child_board,
-            parent_state.expect("incremental search should have NNUE state"),
-            mv,
+        } => Some(EvaluationState::Nnue(
+            model.apply_move(
+                parent_board,
+                child_board,
+                parent_state
+                    .expect("incremental search should have NNUE state")
+                    .nnue(),
+                mv,
+            ),
+        )),
+        EvaluationStrategy::Sfnn {
+            model,
+            mode: SearchEvalMode::Incremental,
+        } => Some(EvaluationState::Sfnn(
+            model.apply_move(
+                parent_board,
+                child_board,
+                parent_state
+                    .expect("incremental search should have SFNN state")
+                    .sfnn(),
+                mv,
+            ),
         )),
         _ => None,
     }
@@ -4092,7 +4218,7 @@ fn evaluate_or_mate(
     board: &Board,
     ply: i32,
     ctx: &SearchContext,
-    nnue_state: Option<&NnuePositionState>,
+    eval_state: Option<&EvaluationState>,
 ) -> i32 {
     if ctx.artificial_eval_delay_micros > 0 {
         let delay_until =
@@ -4120,8 +4246,27 @@ fn evaluate_or_mate(
             mode: SearchEvalMode::Incremental,
         } => model.evaluate_from_state(
             board,
-            nnue_state.expect("incremental evaluation should receive NNUE state"),
+            eval_state
+                .expect("incremental evaluation should receive NNUE state")
+                .nnue(),
         ),
+        EvaluationStrategy::Sfnn { model, mode } => {
+            let score = match mode {
+                SearchEvalMode::FullRefresh => model.evaluate_full_refresh(board).eval_cp,
+                SearchEvalMode::Incremental => {
+                    model
+                        .evaluate_from_state(
+                            board,
+                            eval_state
+                                .expect("incremental evaluation should receive SFNN state")
+                                .sfnn(),
+                        )
+                        .eval_cp
+                }
+            };
+            // Static SFNN values must never be mistaken for search mate/TT scores.
+            score.clamp(-MATE_TT_THRESHOLD + 1, MATE_TT_THRESHOLD - 1)
+        }
     }
 }
 
@@ -4267,12 +4412,8 @@ fn piece_value(piece: Piece) -> i32 {
     }
 }
 
-fn nnue_model_slot() -> &'static RwLock<Option<Arc<NnueModel>>> {
-    NNUE_MODEL.get_or_init(|| RwLock::new(None))
-}
-
-fn current_nnue_model() -> Option<Arc<NnueModel>> {
-    nnue_model_slot().read().unwrap().clone()
+fn evaluation_slot() -> &'static RwLock<EvaluationStrategy> {
+    EVALUATION.get_or_init(|| RwLock::new(EvaluationStrategy::Handcrafted))
 }
 
 fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
@@ -4574,11 +4715,12 @@ mod tests {
 
     #[test]
     fn usi_session_marks_terminal_resign_as_no_legal_move() {
+        // Avoid an adjacent rook: in NekoNeko it would give the king rook moves.
         let mut session = UsiSession::default();
         assert!(session.terminal_notifications().is_empty());
         assert!(
             session
-                .handle_line("position sfen 8k/6G2/7B1/9/9/9/9/9/K8 b R 1 moves R*1b")
+                .handle_line("position sfen 8k/6G2/9/9/9/9/9/9/K8 b R 1 moves R*1d")
                 .is_empty()
         );
         let terminal = session.terminal_notifications();

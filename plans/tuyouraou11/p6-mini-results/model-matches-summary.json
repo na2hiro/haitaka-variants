@@ -1,0 +1,29 @@
+{
+  "games": 24,
+  "strata": {
+    "200": {
+      "wins": 8,
+      "losses": 4,
+      "draws": 0,
+      "scoreRate": 0.6666666666666666,
+      "rawSha256": "276f98a1692b31814cbad34857875e381574693df24ba2bb27132561e4ccee84"
+    },
+    "1000": {
+      "wins": 7,
+      "losses": 5,
+      "draws": 0,
+      "scoreRate": 0.5833333333333334,
+      "rawSha256": "50cf08978ebf175aa7aa84f66900d3f013d0e0aa9c0c4bdef80f1bb8ec6c1e59"
+    }
+  },
+  "samplingUnit": "color-swapped opening pair, stratified by movetime",
+  "bootstrapSeed": 1,
+  "bootstrapSamples": 10000,
+  "scoreRate": 0.625,
+  "ci95": [
+    0.45833333333333337,
+    0.7916666666666667
+  ],
+  "regression": false,
+  "scope": "native mini versus micro, identical detected AVX2/NEON kernels; exploratory, not a Wasm match or strength ranking"
+}

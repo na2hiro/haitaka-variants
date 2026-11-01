@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "experiment": "full",
+  "assignment": {
+    "A": "mini",
+    "B": "micro"
+  },
+  "games": 400,
+  "strata": [
+    {
+      "browser": "chromium",
+      "movetimeMs": 200,
+      "games": 100,
+      "miniWins": 66,
+      "microWins": 33,
+      "draws": 1,
+      "cappedDraws": 1,
+      "scoreRate": 0.665,
+      "ci95": [
+        0.57,
+        0.755
+      ],
+      "plies": 10758,
+      "gamesSha256": "a0d8fee2fb66560bb7b9328005a4f4e03ef91313e9916155de77178eefc096b4"
+    },
+    {
+      "browser": "chromium",
+      "movetimeMs": 1000,
+      "games": 100,
+      "scoreRate": 0.65,
+      "ci95": [
+        0.56,
+        0.73
+      ],
+      "sourceGamesSha256": [
+        "5f07f3f9735b9ad5163d8554a14589b14b78da6967f8211e62444631ad6d4ef0",
+        "07ab0cc3b3132bfc57da020d3257e397b73b6dfc8147bf1d0925b6c5596d1c6d"
+      ],
+      "miniWins": 65,
+      "microWins": 35,
+      "draws": 0,
+      "cappedDraws": 0,
+      "plies": 11545
+    },
+    {
+      "browser": "firefox",
+      "movetimeMs": 200,
+      "games": 100,
+      "miniWins": 45,
+      "microWins": 52,
+      "draws": 3,
+      "cappedDraws": 1,
+      "scoreRate": 0.465,
+      "ci95": [
+        0.365,
+        0.57
+      ],
+      "plies": 10657,
+      "gamesSha256": "b21a230bd0221f32520a2d1b44c9197dfb8b1f1d0d5f6bb7142ab0b84a34356f"
+    },
+    {
+      "browser": "firefox",
+      "movetimeMs": 1000,
+      "games": 100,
+      "scoreRate": 0.725,
+      "ci95": [
+        0.63,
+        0.815
+      ],
+      "sourceGamesSha256": [
+        "ab1a67016be55d6b7175495b08677b971e4bcdb673f6509b77ea9d21b2431225",
+        "5497b10af4250fe40ab86c15f2f77fe790bb5f3f94eaa076b03f0733c79e8631"
+      ],
+      "miniWins": 72,
+      "microWins": 27,
+      "draws": 1,
+      "cappedDraws": 1,
+      "plies": 10854
+    }
+  ],
+  "browsers": [
+    {
+      "browser": "chromium",
+      "scoreRate": 0.6575,
+      "ci95": [
+        0.595,
+        0.72
+      ],
+      "openingBlockCi95": [
+        0.59,
+        0.725
+      ]
+    },
+    {
+      "browser": "firefox",
+      "scoreRate": 0.595,
+      "ci95": [
+        0.525,
+        0.665
+      ],
+      "openingBlockCi95": [
+        0.5175000000000001,
+        0.6675
+      ]
+    }
+  ],
+  "scoreRate": 0.62625,
+  "ci95": [
+    0.58,
+    0.6725
+  ],
+  "openingBlockCi95": [
+    0.57625,
+    0.675
+  ],
+  "bootstrapSamples": 10000,
+  "bootstrapSeed": 1,
+  "miniStrongerInTestedConditions": true,
+  "p4RegressionCriterion": false,
+  "audits": [
+    {
+      "browser": "chromium",
+      "segment": "retained",
+      "games": 132,
+      "browserRepliesMatched": 14221,
+      "transcriptSha256": "2ec166b7161466749d612d9febae198447fb55f37d32c21648038fabaab2fe7f",
+      "profiles": {
+        "mini": {
+          "searches": 7120,
+          "workerOverrunMaxMs": 0.5,
+          "brokerOverrunMaxMs": 13.406918000022415,
+          "memoryMaxBytes": 127729664
+        },
+        "micro": {
+          "searches": 7101,
+          "workerOverrunMaxMs": 2.799999713897705,
+          "brokerOverrunMaxMs": 15.81327399998554,
+          "memoryMaxBytes": 116523008
+        }
+      },
+      "provenance": "PASS",
+      "everyMoveMatchesBrowserTranscript": "PASS",
+      "legalMovesAndTerminalRules": "native CLI validates every move with try_play and history adjudication"
+    },
+    {
+      "browser": "chromium",
+      "segment": "continuation",
+      "games": 68,
+      "browserRepliesMatched": 8082,
+      "transcriptSha256": "3180ba8715397cefc248f04bae40b2a15521fd57ed829620289632f4668f547d",
+      "profiles": {
+        "mini": {
+          "searches": 4047,
+          "workerOverrunMaxMs": 1.1000003814697266,
+          "brokerOverrunMaxMs": 11.338209999725223,
+          "memoryMaxBytes": 127729664
+        },
+        "micro": {
+          "searches": 4035,
+          "workerOverrunMaxMs": 0.5,
+          "brokerOverrunMaxMs": 7.834284000098705,
+          "memoryMaxBytes": 116523008
+        }
+      },
+      "provenance": "PASS",
+      "everyMoveMatchesBrowserTranscript": "PASS",
+      "legalMovesAndTerminalRules": "native CLI validates every move with try_play and history adjudication"
+    },
+    {
+      "browser": "firefox",
+      "segment": "retained",
+      "games": 132,
+      "browserRepliesMatched": 14005,
+      "transcriptSha256": "aa87fc6466d0a762a440c20d657dceaa2aed82147ef9371d76040d2f15ac23b0",
+      "profiles": {
+        "mini": {
+          "searches": 7005,
+          "workerOverrunMaxMs": 3,
+          "brokerOverrunMaxMs": 8.077748999989126,
+          "memoryMaxBytes": 127729664
+        },
+        "micro": {
+          "searches": 7000,
+          "workerOverrunMaxMs": 8,
+          "brokerOverrunMaxMs": 15.97630099998787,
+          "memoryMaxBytes": 116523008
+        }
+      },
+      "provenance": "PASS",
+      "everyMoveMatchesBrowserTranscript": "PASS",
+      "legalMovesAndTerminalRules": "native CLI validates every move with try_play and history adjudication"
+    },
+    {
+      "browser": "firefox",
+      "segment": "continuation",
+      "games": 68,
+      "browserRepliesMatched": 7506,
+      "transcriptSha256": "0334eb3ba21bb09f5730bce710d2e80f5cc98abe839c54b46fa25a4509ac8b81",
+      "profiles": {
+        "mini": {
+          "searches": 3760,
+          "workerOverrunMaxMs": 7,
+          "brokerOverrunMaxMs": 12.513965999998618,
+          "memoryMaxBytes": 127729664
+        },
+        "micro": {
+          "searches": 3746,
+          "workerOverrunMaxMs": 5,
+          "brokerOverrunMaxMs": 12.773511999999755,
+          "memoryMaxBytes": 116523008
+        }
+      },
+      "provenance": "PASS",
+      "everyMoveMatchesBrowserTranscript": "PASS",
+      "legalMovesAndTerminalRules": "native CLI validates every move with try_play and history adjudication"
+    }
+  ],
+  "result": "PASS"
+}

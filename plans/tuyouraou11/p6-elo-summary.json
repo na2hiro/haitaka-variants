@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "formula": "400 * log10(p / (1 - p))",
+  "p": "(wins + 0.5 * draws) / games",
+  "intervalMethod": "Monotone transformation of the saved opening-pair bootstrap score interval; not an independent Elo standard-error estimate",
+  "interpretation": "Relative logistic Elo equivalents in the measured match conditions, not absolute human/platform ratings",
+  "limitations": "Native P4 and browser P6 conditions differ; do not add these gaps or infer mini versus handcrafted from them. Direct browser handcrafted matches have not been measured here.",
+  "sources": {
+    "p6-strength-results/strength-summary.json": "33974631b9fd5e9e53212585b68c0a1354ffd806e6080b4dd5e8f2b04f9eda42",
+    "p4-games-summary.json": "f495ceb5f69d9b0e5a084fef1e14228de8156591abfa6cda7f42fc8f8203c692"
+  },
+  "records": [
+    {
+      "comparison": "mini minus micro",
+      "runtime": "browser SIMD Wasm",
+      "browser": "chromium",
+      "movetimeMs": 200,
+      "games": 100,
+      "wins": 66,
+      "losses": 33,
+      "draws": 1,
+      "scoreRate": 0.665,
+      "eloDifference": 119.11073530650378,
+      "ci95": [
+        48.96256003716191,
+        195.5123469058623
+      ]
+    },
+    {
+      "comparison": "mini minus micro",
+      "runtime": "browser SIMD Wasm",
+      "browser": "chromium",
+      "movetimeMs": 1000,
+      "games": 100,
+      "wins": 65,
+      "losses": 35,
+      "draws": 0,
+      "scoreRate": 0.65,
+      "eloDifference": 107.53812491703201,
+      "ci95": [
+        41.89414020800522,
+        172.78363838458742
+      ]
+    },
+    {
+      "comparison": "mini minus micro",
+      "runtime": "browser SIMD Wasm",
+      "browser": "firefox",
+      "movetimeMs": 200,
+      "games": 100,
+      "wins": 45,
+      "losses": 52,
+      "draws": 3,
+      "scoreRate": 0.465,
+      "eloDifference": -24.360331652509768,
+      "ci95": [
+        -96.19234433420038,
+        48.96256003716191
+      ]
+    },
+    {
+      "comparison": "mini minus micro",
+      "runtime": "browser SIMD Wasm",
+      "browser": "firefox",
+      "movetimeMs": 1000,
+      "games": 100,
+      "wins": 72,
+      "losses": 27,
+      "draws": 1,
+      "scoreRate": 0.725,
+      "eloDifference": 168.40212509629242,
+      "ci95": [
+        92.45553015463469,
+        257.594352134785
+      ]
+    },
+    {
+      "comparison": "mini minus micro",
+      "runtime": "browser SIMD Wasm",
+      "browser": "equal-weight aggregate of Chromium and Firefox",
+      "movetimeMs": [
+        200,
+        1000
+      ],
+      "games": 400,
+      "wins": 248,
+      "losses": 147,
+      "draws": 5,
+      "scoreRate": 0.62625,
+      "eloDifference": 89.6666150171264,
+      "ci95": [
+        56.0714812660147,
+        124.99239373865747
+      ],
+      "openingBlockCi95": [
+        53.40049087462641,
+        126.96816474086026
+      ]
+    },
+    {
+      "comparison": "micro minus handcrafted",
+      "runtime": "P4 native, before P6 SIMD",
+      "movetimeMs": 200,
+      "games": 100,
+      "wins": 92,
+      "losses": 8,
+      "draws": 0,
+      "scoreRate": 0.92,
+      "eloDifference": 424.27913614144484,
+      "ci95": [
+        330.2303601247127,
+        603.8601918186329
+      ]
+    },
+    {
+      "comparison": "micro minus handcrafted",
+      "runtime": "P4 native, before P6 SIMD",
+      "movetimeMs": 1000,
+      "games": 100,
+      "wins": 96,
+      "losses": 4,
+      "draws": 0,
+      "scoreRate": 0.96,
+      "eloDifference": 552.0844966846423,
+      "ci95": [
+        424.27913614144484,
+        798.2540778390198
+      ]
+    },
+    {
+      "comparison": "micro minus handcrafted",
+      "runtime": "P4 native, before P6 SIMD",
+      "movetimeMs": [
+        200,
+        1000
+      ],
+      "games": 200,
+      "wins": 188,
+      "losses": 12,
+      "draws": 0,
+      "scoreRate": 0.94,
+      "eloDifference": 477.9906412864218,
+      "ci95": [
+        391.5699895665423,
+        603.8601918186329
+      ]
+    }
+  ]
+}

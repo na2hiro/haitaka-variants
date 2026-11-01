@@ -1,0 +1,242 @@
+{
+  "fixturePositions": 236,
+  "incrementalMoves": 2048,
+  "fixedDepthSearches": 20,
+  "hashes": {
+    "scalar": "4cdd54c1b2c5bc92b6bf347d934262b38ed0abf606ab77a608918668a779e45d",
+    "simd": "69f3757ba7c7bdff0df369be2109c78aa1a2b4e2a2be474ab5dd8004c4ca125a"
+  },
+  "searches": {
+    "scalar": [
+      {
+        "bestMove": "6i7h",
+        "score": 50,
+        "states": 261
+      },
+      {
+        "bestMove": "3d4d",
+        "score": 1467,
+        "states": 204
+      },
+      {
+        "bestMove": "5h6i",
+        "score": 1230,
+        "states": 199
+      },
+      {
+        "bestMove": "1c1d",
+        "score": -1127,
+        "states": 336
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -1113,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 506,
+        "states": 125
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1657,
+        "states": 379
+      },
+      {
+        "bestMove": "8d6b+",
+        "score": 1430,
+        "states": 177
+      },
+      {
+        "bestMove": "5b6c",
+        "score": 2095,
+        "states": 251
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1358,
+        "states": 243
+      },
+      {
+        "bestMove": "9b8b",
+        "score": -122,
+        "states": 169
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1412,
+        "states": 153
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 715,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 740,
+        "states": 255
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1675,
+        "states": 268
+      },
+      {
+        "bestMove": "4a3b",
+        "score": -42,
+        "states": 177
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 121,
+        "states": 195
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 720,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -305,
+        "states": 41
+      },
+      {
+        "bestMove": "9e9f",
+        "score": 328,
+        "states": 207
+      }
+    ],
+    "simd": [
+      {
+        "bestMove": "6i7h",
+        "score": 50,
+        "states": 261
+      },
+      {
+        "bestMove": "3d4d",
+        "score": 1467,
+        "states": 204
+      },
+      {
+        "bestMove": "5h6i",
+        "score": 1230,
+        "states": 199
+      },
+      {
+        "bestMove": "1c1d",
+        "score": -1127,
+        "states": 336
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -1113,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 506,
+        "states": 125
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1657,
+        "states": 379
+      },
+      {
+        "bestMove": "8d6b+",
+        "score": 1430,
+        "states": 177
+      },
+      {
+        "bestMove": "5b6c",
+        "score": 2095,
+        "states": 251
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1358,
+        "states": 243
+      },
+      {
+        "bestMove": "9b8b",
+        "score": -122,
+        "states": 169
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1412,
+        "states": 153
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 715,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 740,
+        "states": 255
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1675,
+        "states": 268
+      },
+      {
+        "bestMove": "4a3b",
+        "score": -42,
+        "states": 177
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 121,
+        "states": 195
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 720,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -305,
+        "states": 41
+      },
+      {
+        "bestMove": "9e9f",
+        "score": 328,
+        "states": 207
+      }
+    ]
+  },
+  "result": "PASS",
+  "browsers": [
+    {
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "backend": "scalar",
+      "result": "PASS"
+    },
+    {
+      "browser": "chromium",
+      "version": "153.0.8010.12",
+      "backend": "simd",
+      "result": "PASS"
+    },
+    {
+      "browser": "firefox",
+      "version": "142.0.1",
+      "backend": "scalar",
+      "result": "PASS"
+    },
+    {
+      "browser": "firefox",
+      "version": "142.0.1",
+      "backend": "simd",
+      "result": "PASS"
+    }
+  ]
+}

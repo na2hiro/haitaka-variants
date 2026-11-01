@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-31",
+  "baseRevisions": {
+    "haitaka-variants": "16381522f44a15441dda29198d1b703638f4adbd",
+    "shogitter-3": "4fd0b35cf2f99314c0e60c149e4b4e35c3554eef"
+  },
+  "dirtyTrees": true,
+  "note": "Base revisions are starting points; these changes are uncommitted. Source hashes identify the implementation; production/diagnostic builds are separate.",
+  "tools": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "node": "v24.12.0",
+    "wasm-bindgen": "wasm-bindgen 0.2.118"
+  },
+  "sourceFiles": {
+    "haitaka-variants/haitaka_wasm/Cargo.toml": {
+      "bytes": 1168,
+      "sha256": "13a229d50a58505fc8bb3ebdbef8e68ec1a659628036e6883f0f52675e75d52a"
+    },
+    "haitaka-variants/haitaka_wasm/src/lib.rs": {
+      "bytes": 190462,
+      "sha256": "df9f4ff06b31331eddeb0a41254925f3114c3ce96c0292656b031cda0127aa42"
+    },
+    "haitaka-variants/haitaka_wasm/src/sfnn.rs": {
+      "bytes": 21955,
+      "sha256": "47f184e64cd4c4a60eaccf00c968ee46196decb9c8643b0e0d6bd8197c1f7578"
+    },
+    "haitaka-variants/haitaka_wasm/src/sfnn_kernels.rs": {
+      "bytes": 5238,
+      "sha256": "7f9a693d515fba272431e0f8a5dd29116e2d44dcecef866099d1bf9d5969b08b"
+    },
+    "haitaka-variants/haitaka_wasm/src/nnue_kernels.rs": {
+      "bytes": 10228,
+      "sha256": "2f0d566608b77d6a647a11c4917ac273d6a731fbb6f5cc319c237221bd01b4c9"
+    },
+    "haitaka-variants/haitaka_wasm/examples/sfnn_usi.rs": {
+      "bytes": 1422,
+      "sha256": "73a38095cdaf314dcb926321a20ce1c47768620119aea432394bcd03d3d07b43"
+    },
+    "shogitter-3/app/engines/enginePreparation.ts": {
+      "bytes": 2055,
+      "sha256": "fa471d5c6afa76d847fa68433493b374c3aa192667da2e4051adc7a81fa62a4c"
+    },
+    "shogitter-3/app/engines/wasmBindgenRuntime.ts": {
+      "bytes": 17095,
+      "sha256": "db39884e4c2ca13ddfa7dd1c82a617515127dc1bfd82b6c4a40acffae00b79b5"
+    },
+    "shogitter-3/app/engines/wasmSimd.ts": {
+      "bytes": 367,
+      "sha256": "6f0f2ac08c09913d08408cc024bc14b716aa8da98b513e8dc4d0fe1bf6e9a7b7"
+    },
+    "shogitter-3/app/bot/vendors/haitaka/standard/index.js": {
+      "bytes": 776,
+      "sha256": "60b89aea87c5927421d95dc495479ab28768bdc620c8f1e82c23fac97a4c86e0"
+    },
+    "shogitter-3/app/components/shogi/SelfBotShogi.tsx": {
+      "bytes": 37393,
+      "sha256": "9a942ef4b82728e777df8438f161bb1bdf1999626d5977c11952445005aa9394"
+    },
+    "shogitter-3/scripts/sync-haitaka-wasm.mjs": {
+      "bytes": 9424,
+      "sha256": "691040918123e4128aa798b966e3ffa62eae0a15f05f4334eb607bdc4af5d8b2"
+    },
+    "shogitter-3/scripts/haitaka-model.mjs": {
+      "bytes": 4298,
+      "sha256": "b762da314747308ebfcb5d92729067fbac3480e238ac5d173a0c4d80e72f0188"
+    },
+    "haitaka-variants/scripts/tuyouraou11.py": {
+      "bytes": 10948,
+      "sha256": "9ea8700ae56c33beee71db8b0551a1d5dc41fc450403694c3ca429863e743be1"
+    },
+    "haitaka-variants/scripts/tuyouraou11-simd.mjs": {
+      "bytes": 8622,
+      "sha256": "3251cb7740b74d00c14116a2e66822163072d5c5d4e96e4b7e344886f5fce7cc"
+    },
+    "haitaka-variants/scripts/tuyouraou11-p6-summary.py": {
+      "bytes": 7257,
+      "sha256": "0ca866920e9393b697b2a470f17aa52f476423469ec8991ca3d4c5d57712e5be"
+    },
+    "shogitter-3/scripts/tuyouraou11-browser.mjs": {
+      "bytes": 10919,
+      "sha256": "d5d76dfea15f7b33c36bcd53dafa3041a6fcf944d41c4dcf0ab0211f8b73afbd"
+    },
+    "shogitter-3/scripts/tuyouraou11-rules.mjs": {
+      "bytes": 6616,
+      "sha256": "c6813d33b2e31aec36c315b69a34cae2bd4a43f2d4644f32c8cd6bcd8862b46d"
+    },
+    "shogitter-3/tests/tuyouraou11.spec.ts": {
+      "bytes": 24265,
+      "sha256": "6948f9d35081b99d452b82fc41e5893183a94ae0bfa8ca7fdce1b1f72e192da7"
+    }
+  },
+  "productionWasm": {
+    "scalar": {
+      "bytes": 18496160,
+      "sha256": "2d622ad83effcbd2d8be984436a14734dc0f6932a90c78a6a5a765857de610ab"
+    },
+    "simd": {
+      "bytes": 18496758,
+      "sha256": "fbf31fd6b9457a2ca262d6e8bed93aea27dc95996ee7cb22fdfd6ef85ed1cda3"
+    }
+  },
+  "models": {
+    "micro": {
+      "descriptor": {
+        "kind": "sfnn-progress",
+        "id": "tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463",
+        "arch": "SFNN_ka2_2048_8_64_progress8",
+        "fvScale": 24,
+        "nn": {
+          "url": "/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/nn.bin",
+          "bytes": 3864610,
+          "sha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb"
+        },
+        "progress": {
+          "url": "/engines/haitaka/tuyouraou11micro/tuyouraou11micro-20261001-epoch0010-7f9545dbf73b-a2d18f056463/progress.bin",
+          "bytes": 1003104,
+          "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+        }
+      },
+      "files": {
+        "nn": {
+          "bytes": 3864610,
+          "sha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb"
+        },
+        "progress": {
+          "bytes": 1003104,
+          "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+        }
+      }
+    },
+    "mini": {
+      "descriptor": {
+        "kind": "sfnn-progress",
+        "id": "tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463",
+        "arch": "SFNN_ka2_4096_8_64_progress8",
+        "fvScale": 24,
+        "nn": {
+          "url": "/engines/haitaka/tuyouraou11mini/tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463/nn.bin",
+          "bytes": 7711372,
+          "sha256": "45323c65135da65d6c2c364eea93a5af6a285c27ebfb07eab4afbe737ef74508"
+        },
+        "progress": {
+          "url": "/engines/haitaka/tuyouraou11mini/tuyouraou11mini-20261003-epoch0010-45323c65135d-a2d18f056463/progress.bin",
+          "bytes": 1003104,
+          "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+        }
+      },
+      "files": {
+        "nn": {
+          "bytes": 7711372,
+          "sha256": "45323c65135da65d6c2c364eea93a5af6a285c27ebfb07eab4afbe737ef74508"
+        },
+        "progress": {
+          "bytes": 1003104,
+          "sha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+        }
+      }
+    }
+  },
+  "referenceBinary": {
+    "bytes": 1001752,
+    "sha256": "e73dd2c34baac0fe2965033ca0b5bc505e09ba76a72678eef77ac91d6d8fb911"
+  },
+  "nativeMatchBinary": {
+    "bytes": 9926112,
+    "sha256": "f8cc13c617897b9ba83d1325255a807ee6ae42675b40eed4732ab04aac86fe51"
+  },
+  "fixtures": {
+    "reference-fixture.json": {
+      "bytes": 108573,
+      "sha256": "0cbb0d0db65a55918abf4e0ed8c306a8db238a6cdc2e20ac903fecb0b5eef3d2"
+    },
+    "mini-reference-fixture.json": {
+      "bytes": 108607,
+      "sha256": "1e84bc340c33d4c50887c94f3c7039aaeb1bc0b9fb438778fc884686730bb256"
+    },
+    "p4-positions.json": {
+      "bytes": 4753,
+      "sha256": "14ebf71679d38aba4587652743f0403c32349f7c123b0f51ac1716d957f91e12"
+    },
+    "p4-openings.sfen": {
+      "bytes": 3536,
+      "sha256": "ce6653c8790157159a44f30e375984451282318e2dce6870de5a65d30e75696c"
+    }
+  },
+  "savedMeasurements": {
+    "mini-chromium.json": "863e8a8c24e30bc59e612bb9acc0a38bb3e39d5b3ef0345c708654dba0143e12",
+    "micro-chromium.json": "e49acb4fb9fc17dc71ea88066da3196dd5098886468a7e0bdc5be67262a95c0f",
+    "mini-firefox.json": "fcc2522200275d04251a8817b0b62ea224b68d1464eb90f66f29232a99c08d7f",
+    "micro-firefox.json": "b1f6b738f91f9f7e7500c6653f1939552874ace0abc84c5672f66316a4e02c45"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-31T09:30:12.008105+00:00",
+  "protocolSha256": "5d0cf29878eed7075f65fa51c29251234d46cb88c1a07ae24d691e58312c6e11",
+  "retainedGames": 264,
+  "continuedGames": 136,
+  "acceptedGames": 400,
+  "matchedBrowserReplies": 43814,
+  "workerSourceUnchangedOnContinuation": true,
+  "files": {
+    "accepted-games.jsonl": {
+      "bytes": 1065767,
+      "sha256": "1074d534b320be23fb87e0fb1bab3920a7b9bc3904a733706581c335b66e0db8"
+    },
+    "audit.log": {
+      "bytes": 5726,
+      "sha256": "33974631b9fd5e9e53212585b68c0a1354ffd806e6080b4dd5e8f2b04f9eda42"
+    },
+    "continuation/chromium/match-1000/self-play-games.jsonl": {
+      "bytes": 178176,
+      "sha256": "07ab0cc3b3132bfc57da020d3257e397b73b6dfc8147bf1d0925b6c5596d1c6d"
+    },
+    "continuation/chromium/match-1000/self-play-report.json": {
+      "bytes": 3586,
+      "sha256": "5586490c708988c8ebb0830153900836b95280063275b6617150276b71792aee"
+    },
+    "continuation/chromium/match-1000.log": {
+      "bytes": 36676,
+      "sha256": "68aeec800cf9a1aac91c06cd595abb0ff359792b48d5a76c77c730cfa4d5306c"
+    },
+    "continuation/chromium/metadata.json": {
+      "bytes": 5055,
+      "sha256": "ec903018bfc880cf0551a7567a8204e78421e5c5d4e936de3a49b7abb4ae2556"
+    },
+    "continuation/chromium/usi-transcript.jsonl.gz": {
+      "bytes": 668393,
+      "sha256": "3180ba8715397cefc248f04bae40b2a15521fd57ed829620289632f4668f547d"
+    },
+    "continuation/firefox/match-1000/self-play-games.jsonl": {
+      "bytes": 172999,
+      "sha256": "5497b10af4250fe40ab86c15f2f77fe790bb5f3f94eaa076b03f0733c79e8631"
+    },
+    "continuation/firefox/match-1000/self-play-report.json": {
+      "bytes": 3579,
+      "sha256": "7ecedd8e53f56bd15ae0e320baab4bd73b4028c1a5154d46a410fdddefdb16da"
+    },
+    "continuation/firefox/match-1000.log": {
+      "bytes": 35427,
+      "sha256": "2c1fb7e7244ea87bbaa7dc559636386a66f5ef0575d2eb2ccb59606c42b3dd43"
+    },
+    "continuation/firefox/metadata.json": {
+      "bytes": 5047,
+      "sha256": "b0e6cac97540b683b8a31fba4d41292db86c4cc7a200387c016fbf071961ac61"
+    },
+    "continuation/firefox/usi-transcript.jsonl.gz": {
+      "bytes": 591995,
+      "sha256": "0334eb3ba21bb09f5730bce710d2e80f5cc98abe839c54b46fa25a4509ac8b81"
+    },
+    "retained/chromium/match-1000/self-play-games.jsonl": {
+      "bytes": 86539,
+      "sha256": "5f07f3f9735b9ad5163d8554a14589b14b78da6967f8211e62444631ad6d4ef0"
+    },
+    "retained/chromium/match-1000.log": {
+      "bytes": 18620,
+      "sha256": "ec1d0d45a522bac4f5fc6f442bd319ac05d257f0d6cb32928b3b3628b9d53a21"
+    },
+    "retained/chromium/match-200/self-play-games.jsonl": {
+      "bytes": 252600,
+      "sha256": "a0d8fee2fb66560bb7b9328005a4f4e03ef91313e9916155de77178eefc096b4"
+    },
+    "retained/chromium/match-200/self-play-report.json": {
+      "bytes": 3518,
+      "sha256": "af2a4033e0377456716e5c7fe7b7af2b968e2c577154afd54e7a080f8d783896"
+    },
+    "retained/chromium/match-200.log": {
+      "bytes": 52838,
+      "sha256": "cd61e5fab70e488bccbcba7bcc35f3b7fd7a78b0d1889d7e874728dcd9729bbb"
+    },
+    "retained/chromium/metadata.json": {
+      "bytes": 4862,
+      "sha256": "7b5e2c7c830385257c9ce66187d3df18c04fa512ccc4f41e97ef51a1c3e35dcb"
+    },
+    "retained/chromium/usi-transcript.jsonl.gz": {
+      "bytes": 1153828,
+      "sha256": "2ec166b7161466749d612d9febae198447fb55f37d32c21648038fabaab2fe7f"
+    },
+    "retained/firefox/match-1000/self-play-games.jsonl": {
+      "bytes": 87380,
+      "sha256": "ab1a67016be55d6b7175495b08677b971e4bcdb673f6509b77ea9d21b2431225"
+    },
+    "retained/firefox/match-1000.log": {
+      "bytes": 18503,
+      "sha256": "a13193302831b130118df9f36f4afd905a1e248111b2c3e995084d266448fde0"
+    },
+    "retained/firefox/match-200/self-play-games.jsonl": {
+      "bytes": 250506,
+      "sha256": "b21a230bd0221f32520a2d1b44c9197dfb8b1f1d0d5f6bb7142ab0b84a34356f"
+    },
+    "retained/firefox/match-200/self-play-report.json": {
+      "bytes": 3507,
+      "sha256": "10153d0f189766067ca83211772665734122444cfbcee2b7b8d51636128bb341"
+    },
+    "retained/firefox/match-200.log": {
+      "bytes": 51055,
+      "sha256": "235b9be3a5ebe00a5eb323941e43ddfca3002bd6ddd932eeff0cc3724160bb64"
+    },
+    "retained/firefox/metadata.json": {
+      "bytes": 4854,
+      "sha256": "3e47d42401fa941c371d0da43c3df46e4a57506076a56c872cf30b2e00f6ec37"
+    },
+    "retained/firefox/usi-transcript.jsonl.gz": {
+      "bytes": 1064198,
+      "sha256": "aa87fc6466d0a762a440c20d657dceaa2aed82147ef9371d76040d2f15ac23b0"
+    },
+    "retained/strength-summary.json": {
+      "bytes": 5726,
+      "sha256": "33974631b9fd5e9e53212585b68c0a1354ffd806e6080b4dd5e8f2b04f9eda42"
+    },
+    "statistics-tests-current.log": {
+      "bytes": 102,
+      "sha256": "6e5fbc8ab058fef930b648853657313a632716018aeb019e1073138ba2b4d1c5"
+    },
+    "statistics-tests-final.log": {
+      "bytes": 102,
+      "sha256": "040f830a0b8eed88c6502441bc8bb265e50f6f3edd75224f8f47defdbb2614f4"
+    },
+    "strength-summary.json": {
+      "bytes": 5726,
+      "sha256": "33974631b9fd5e9e53212585b68c0a1354ffd806e6080b4dd5e8f2b04f9eda42"
+    },
+    "transport-test.log": {
+      "bytes": 114,
+      "sha256": "56856eb122718e14ed2373f5d0634dda7fdf97e5275e336d46a1cd217ca94acf"
+    }
+  },
+  "sourceFiles": {
+    "haitaka-variants/scripts/tuyouraou11-strength-summary.py": {
+      "bytes": 12912,
+      "sha256": "50c99a9ef79687f411792ae710596697de27d53f2867dd4dde5118892d847563"
+    },
+    "haitaka-variants/scripts/test_tuyouraou11_strength_summary.py": {
+      "bytes": 2195,
+      "sha256": "83c913093c51058dc9aa1dfe521c28268bb09881d44deebf200b076a1c10ab8a"
+    },
+    "shogitter-3/scripts/tuyouraou11-match.mjs": {
+      "bytes": 20629,
+      "sha256": "82d80756c2b88e125e964f94db072e510cd07589b144459ae3779aab6d982f1b"
+    },
+    "shogitter-3/scripts/tuyouraou11-match-resume.mjs": {
+      "bytes": 21434,
+      "sha256": "6b37c929e8e924298d009fe45f611c94de6ac50e42627837258fd43255ade6ac"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{"fixturePositions":236,"incrementalMoves":2048,"fixedDepthSearches":20,"hashes":{"scalar":"0d1bfc54a54d585f59df7b55c2547e279bc5fc05c6b587820de1cf74395d26d7","simd":"337f638a76db60bf83ff4bd46e3b2aadab02bd65c0be709ea8e30802ed7217d7"},"result":"PASS"}
+chromium: scalar reference cases: 0
+chromium: scalar reference cases: 32
+chromium: scalar reference cases: 64
+chromium: scalar reference cases: 96
+chromium: scalar reference cases: 128
+chromium: scalar reference cases: 160
+chromium: scalar reference cases: 192
+chromium: scalar reference cases: 224
+{"browser":"chromium","version":"153.0.8010.12","backend":"scalar","result":"PASS"}
+chromium: simd reference cases: 0
+chromium: simd reference cases: 32
+chromium: simd reference cases: 64
+chromium: simd reference cases: 96
+chromium: simd reference cases: 128
+chromium: simd reference cases: 160
+chromium: simd reference cases: 192
+chromium: simd reference cases: 224
+{"browser":"chromium","version":"153.0.8010.12","backend":"simd","result":"PASS"}

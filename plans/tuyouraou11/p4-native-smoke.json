@@ -1,0 +1,29 @@
+{
+  "handcrafted": {
+    "args": [],
+    "stdout": [
+      "id name Haitaka P2 (handcrafted)",
+      "option name Hash type spin default 16 min 1 max 1024",
+      "usiok",
+      "readyok",
+      "info depth 1 time 0 nodes 31 nps 165677 hashfull 0 qnodes 30 qsearchMaxPly 0 qsearchCapHits 0 qsearchCheckMoveTries 0 qsearchDeltaPrunes 0 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 lastCompletedIterationValue 12 completedIterationDepth 1 completedRootMovesInInterruptedIteration 0 partialRootState 0 interruptionReason none emergencyFallbackUsed 0 missingMove 0",
+      "bestmove 7g7f"
+    ],
+    "stderr": []
+  },
+  "sfnn": {
+    "args": [
+      "--model-dir",
+      "/home/na2hiro/proj/haitaka-variants/target/tuyouraou11/model"
+    ],
+    "stdout": [
+      "id name Haitaka P2 (TuyouraOu11 micro)",
+      "option name Hash type spin default 16 min 1 max 1024",
+      "usiok",
+      "readyok",
+      "info depth 1 time 1 nodes 31 nps 25688 hashfull 0 qnodes 30 qsearchMaxPly 0 qsearchCapHits 0 qsearchCheckMoveTries 0 qsearchDeltaPrunes 0 rootResultSchema haitaka-search-root-result-v1 playMoveWasSearched 1 lastCompletedIterationValue 58 completedIterationDepth 1 completedRootMovesInInterruptedIteration 0 partialRootState 0 interruptionReason none emergencyFallbackUsed 0 missingMove 0",
+      "bestmove 7g7f"
+    ],
+    "stderr": []
+  }
+}

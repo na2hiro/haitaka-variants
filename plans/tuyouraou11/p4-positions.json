@@ -1,0 +1,213 @@
+[
+  {
+    "id": "0:0",
+    "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+    "tags": [
+      "black-to-move",
+      "opening",
+      "king-position"
+    ]
+  },
+  {
+    "id": "0:48",
+    "sfen": "1n2s2n1/lr1k1g1+Bl/p2p1p2p/1p1s1g+B2/2pNP2p1/P1P4PP/1P1P1PP2/2SK1G2R/L1G3SNL b 2P 49",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "0:96",
+    "sfen": "6g2/l1ns1sk1l/2n2p3/p1rpP4/Ppp6/1PPK+B2pP/1NSPpPPPG/2G1+BG1R1/L4S1NL b 2P 97",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "0:145",
+    "sfen": "1r3k3/4Ps3/1P2sp1gl/3p3+B+B/N1p1G1g1P/1NP1KP3/l1SP2P1G/p3R2+p1/LN3S1NL w 5Pp 146",
+    "tags": [
+      "white-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "0:193",
+    "sfen": "4Gkr2/P6sp/1P1+Ps2gL/N2p1ppP1/Np3P+Bpb/4K2+p1/l1S1P1P1G/p6RL/LNg2S1N1 w 2Pp 194",
+    "tags": [
+      "white-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "1:17",
+    "sfen": "lnsgk2nl/r4sgb1/1ppppppp1/p7p/1P7/9/P1PPPPPPP/1BSG1RS1L/LN2KG1N1 w - 18",
+    "tags": [
+      "white-to-move",
+      "opening",
+      "king-position"
+    ]
+  },
+  {
+    "id": "1:72",
+    "sfen": "l1s2p3/r3k2+B1/1p1g2np1/S1p2g2l/3pp2Pp/p1P2g3/PPN1PPP1P/L1S2RS1L/2K2G1N1 b BNPp 73",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "1:120",
+    "sfen": "lr1g+N4/p1ksg4/+Lp4+Bp1/1Bp2Pp1l/4p2Pp/3pG1P2/1PN+pP1SSP/2SPR3L/PK1N1G1N1 b P 121",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "1:168",
+    "sfen": "+Lr3p3/3+P+Bn2p/1pk4+Pn/pbp3p2/2PGp3l/3pg1PS1/GPN3SS+p/K1S3gLL/P3+r2N1 b 3P 169",
+    "tags": [
+      "black-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "1:217",
+    "sfen": "1+L3+R+Pp1/k7p/3+BP2s1/psG1n1pP1/1pP1GP1SP/1P1pg1P1l/BKNS2n1+p/3P3LL/P5g+r1 w Pn 218",
+    "tags": [
+      "white-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "2:9",
+    "sfen": "lns3snl/r1gk1g1b1/ppppppppp/9/9/1P3P3/P1PPP1PPP/1B1S3R1/LN1GKGSNL w - 10",
+    "tags": [
+      "white-to-move",
+      "opening",
+      "king-position"
+    ]
+  },
+  {
+    "id": "2:64",
+    "sfen": "l2p1g3/rgs2k1b1/n1pNsppp1/pp6l/1P3P1Pp/2PPP1P+BP/P2G3RN/L2S1GS1L/1N2K4 b P 65",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "2:112",
+    "sfen": "l2p+N3p/1gs6/1pp1kpp2/pB2p2rl/1n1PPPs1P/P1P3P2/L1+n1gGR1+p/1b1S2S1L/1N2K1GP1 b P 113",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "2:160",
+    "sfen": "3s4p/1g5l1/l1pk2p2/pB1psp2l/PNPP1PPpP/4p3R/+bP2g3L/2S2SG2/3NKNG+r1 b Pn2p 161",
+    "tags": [
+      "black-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "2:209",
+    "sfen": "1+N1s4p/1b1pk1n2/l4n1l1/P2PsppPl/1+b2GP+r1P/1pS1P3R/1PN1p2+pL/5S1G1/2K1G3G w 4p 210",
+    "tags": [
+      "white-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "3:1",
+    "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B4SR1/LNSGKG1NL w - 2",
+    "tags": [
+      "white-to-move",
+      "opening",
+      "king-position"
+    ]
+  },
+  {
+    "id": "3:49",
+    "sfen": "1n1rk2nb/l2sgs1g1/3p1p1p1/pp2p1p1l/2pP1P2p/1PP1P2P1/PS3KP1P/L4GS1R/1N+B1G2NL w - 50",
+    "tags": [
+      "white-to-move",
+      "middlegame",
+      "promoted-piece",
+      "king-position"
+    ]
+  },
+  {
+    "id": "3:104",
+    "sfen": "1p1rs3b/4kg1s1/lP5p1/p2ppP2l/1S1P2pP1/N1p2p2p/P1NGP1nSP/L1G1G+bP1R/2K4NL b P 105",
+    "tags": [
+      "black-to-move",
+      "middlegame",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "3:152",
+    "sfen": "1+B2s4/+N+SPrk1s2/lP2gP1p1/7P1/pG1Pp1p1l/6S2/P1N1P+pP1p/L1GR1p3/+ngK3+n1L b B3P 153",
+    "tags": [
+      "black-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  },
+  {
+    "id": "3:201",
+    "sfen": "1+S+B6/+NPPr1PG2/3gk4/l1g5s/p1pPp1pS1/G5PNl/P+pNLP2P1/+n3Rp2p/2K1B2SL w 3P 202",
+    "tags": [
+      "white-to-move",
+      "late-legal-play",
+      "promoted-piece",
+      "hand",
+      "king-position"
+    ]
+  }
+]

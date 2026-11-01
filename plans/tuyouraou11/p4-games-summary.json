@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "seed": 1,
+    "bootstrapSamples": 10000,
+    "samplingUnit": "starting-position color-swapped pair",
+    "strata": {
+      "200": {
+        "wins": 92,
+        "draws": 0,
+        "losses": 8,
+        "scoreRate": 0.92,
+        "ci95": [0.87, 0.97]
+      },
+      "1000": {
+        "wins": 96,
+        "draws": 0,
+        "losses": 4,
+        "scoreRate": 0.96,
+        "ci95": [0.92, 0.99]
+      }
+    },
+    "scoreRate": 0.94,
+    "ci95": [0.905, 0.97],
+    "regression": false
+  },
+  "records": {
+    "p4-results/match-200/self-play-games.jsonl": {
+      "bytes": 233838,
+      "sha256": "16fe08c43fb60666d264acf275bb1e4ce588117c02e77bd940fed2c75fc57e46"
+    },
+    "p4-results/match-200/self-play-report.json": {
+      "bytes": 3443,
+      "sha256": "33a06b89abb52e8a5199c644068cb652f1fedcff331f2822f2a7ea95653df64c"
+    },
+    "p4-results/match-1000/self-play-games.jsonl": {
+      "bytes": 236706,
+      "sha256": "b2f3677b72714ab25a03f1b9e9c65a3f8bbb429cf4d77dec3b7aea8f84d6ac2d"
+    },
+    "p4-results/match-1000/self-play-report.json": {
+      "bytes": 3464,
+      "sha256": "f43279e6d826bdc95b849906ed3e06a6ba6d39c712d8cfa4234bc5631b044107"
+    }
+  }
+}

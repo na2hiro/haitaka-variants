@@ -1,0 +1,216 @@
+{
+  "fixturePositions": 236,
+  "incrementalMoves": 2048,
+  "fixedDepthSearches": 20,
+  "hashes": {
+    "scalar": "4cdd54c1b2c5bc92b6bf347d934262b38ed0abf606ab77a608918668a779e45d",
+    "simd": "69f3757ba7c7bdff0df369be2109c78aa1a2b4e2a2be474ab5dd8004c4ca125a"
+  },
+  "searches": {
+    "scalar": [
+      {
+        "bestMove": "7g7f",
+        "score": 56,
+        "states": 240
+      },
+      {
+        "bestMove": "3d5f",
+        "score": 1308,
+        "states": 157
+      },
+      {
+        "bestMove": "5h6h",
+        "score": 957,
+        "states": 218
+      },
+      {
+        "bestMove": "2c1d",
+        "score": -957,
+        "states": 280
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -965,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 443,
+        "states": 137
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1518,
+        "states": 307
+      },
+      {
+        "bestMove": "P*7c",
+        "score": 1543,
+        "states": 155
+      },
+      {
+        "bestMove": "9a8a",
+        "score": 1575,
+        "states": 241
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1064,
+        "states": 261
+      },
+      {
+        "bestMove": "3c3d",
+        "score": 1,
+        "states": 153
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1367,
+        "states": 257
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 867,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 651,
+        "states": 246
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1306,
+        "states": 303
+      },
+      {
+        "bestMove": "3c3d",
+        "score": -27,
+        "states": 131
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 148,
+        "states": 132
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 744,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -124,
+        "states": 41
+      },
+      {
+        "bestMove": "9h8h",
+        "score": 228,
+        "states": 232
+      }
+    ],
+    "simd": [
+      {
+        "bestMove": "7g7f",
+        "score": 56,
+        "states": 240
+      },
+      {
+        "bestMove": "3d5f",
+        "score": 1308,
+        "states": 157
+      },
+      {
+        "bestMove": "5h6h",
+        "score": 957,
+        "states": 218
+      },
+      {
+        "bestMove": "2c1d",
+        "score": -957,
+        "states": 280
+      },
+      {
+        "bestMove": "4a5a",
+        "score": -965,
+        "states": 70
+      },
+      {
+        "bestMove": "9b8b",
+        "score": 443,
+        "states": 137
+      },
+      {
+        "bestMove": "4g4f",
+        "score": 1518,
+        "states": 307
+      },
+      {
+        "bestMove": "P*7c",
+        "score": 1543,
+        "states": 155
+      },
+      {
+        "bestMove": "9a8a",
+        "score": 1575,
+        "states": 241
+      },
+      {
+        "bestMove": "N*9e",
+        "score": -1064,
+        "states": 261
+      },
+      {
+        "bestMove": "3c3d",
+        "score": 1,
+        "states": 153
+      },
+      {
+        "bestMove": "2e2d",
+        "score": 1367,
+        "states": 257
+      },
+      {
+        "bestMove": "8d5g",
+        "score": 867,
+        "states": 508
+      },
+      {
+        "bestMove": "4i5g",
+        "score": 651,
+        "states": 246
+      },
+      {
+        "bestMove": "8e7f",
+        "score": 1306,
+        "states": 303
+      },
+      {
+        "bestMove": "3c3d",
+        "score": -27,
+        "states": 131
+      },
+      {
+        "bestMove": "2b3b",
+        "score": 148,
+        "states": 132
+      },
+      {
+        "bestMove": "5h4h",
+        "score": 744,
+        "states": 141
+      },
+      {
+        "bestMove": "7i6i",
+        "score": -124,
+        "states": 41
+      },
+      {
+        "bestMove": "9h8h",
+        "score": 228,
+        "states": 232
+      }
+    ]
+  },
+  "result": "PASS"
+}

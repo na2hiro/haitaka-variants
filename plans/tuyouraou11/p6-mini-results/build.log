@@ -1,0 +1,6 @@
+> shogitter@ build:remix /home/na2hiro/proj/.shogitter-p6-mini-r5Rnlp
+✓ built in 25.94s
+✓ built in 33ms
+✓ built in 15.62s
+> shogitter@ build:node /home/na2hiro/proj/.shogitter-p6-mini-r5Rnlp
+> node scripts/build.js

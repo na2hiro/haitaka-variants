@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/engines/wasmBindgenRuntime.test.ts (42 tests) 193ms
+
+ Test Files  1 passed (1)
+      Tests  42 passed (42)
+   Start at  07:52:47
+   Duration  978ms (transform 127ms, setup 0ms, collect 140ms, tests 193ms, environment 0ms, prepare 112ms)
+
