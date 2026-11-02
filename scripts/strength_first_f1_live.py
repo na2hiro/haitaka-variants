@@ -302,6 +302,15 @@ def _runtime(root: Path) -> dict[str, Any]:
     return value
 
 
+def _require_campaign_limits(grant: dict[str, Any]) -> None:
+    # Dispatch uses the fixed campaign schedule and host deadline. A smaller
+    # grant cannot authorize those budgets without a separately bounded plan.
+    hours, games = grant.get("maximumHostHours"), grant.get("maximumScoredGames")
+    f1.require(type(hours) in (int, float) and hours * 3600 == HOST_SECONDS_CAP
+               and type(games) is int and games == 1536,
+               "match grant must authorize the fixed 32-hour, 1536-game campaign")
+
+
 def _grant(root: Path, phase: str) -> dict[str, Any]:
     runtime = _runtime(root)
     qualification_path = root / "runtime/qualification.json"
@@ -314,7 +323,7 @@ def _grant(root: Path, phase: str) -> dict[str, Any]:
     f1.require(_future_utc(grant["validUntilUtc"]), "match grant expired")
     f1.require(grant.get("host") == runtime["host"]["name"] and grant.get("oneHost") is True and grant.get("scoredGamesAuthorized") is True, "match host or scored scope differs")
     f1.require(grant.get("setupLedgerSha256") == f1.sha256(root / "runtime/setup-ledger.json"), "match setup wall ledger binding differs")
-    f1.require(grant.get("maximumHostHours", 99) <= 32 and grant.get("maximumScoredGames", 9999) <= 1536, "match grant cap differs")
+    _require_campaign_limits(grant)
     if phase == "holdout":
         analysis = _load(root / "analysis/development.json")
         f1.require(analysis.get("screenAdvances") is True, "holdout blocked by development screen")
@@ -330,7 +339,8 @@ def _qualification_grant(root: Path) -> dict[str, Any]:
     f1.require(_future_utc(grant["validUntilUtc"]), "qualification grant expired")
     f1.require(grant.get("host") == runtime["host"]["name"] and grant.get("oneHost") is True, "qualification host grant differs")
     f1.require(grant.get("setupLedgerSha256") == f1.sha256(root / "runtime/setup-ledger.json"), "qualification setup wall ledger binding differs")
-    f1.require(grant.get("maximumHostHours", 99) <= 32 and grant.get("maximumScoredGames", 9999) <= 1536 and _spent_seconds(root) + 2 * 3600 <= HOST_SECONDS_CAP, "qualification host wall cap lacks two-hour reserve")
+    _require_campaign_limits(grant)
+    f1.require(_spent_seconds(root) + 2 * 3600 <= HOST_SECONDS_CAP, "qualification host wall cap lacks two-hour reserve")
     return runtime
 
 

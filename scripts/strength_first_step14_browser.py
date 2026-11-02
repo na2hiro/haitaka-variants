@@ -627,11 +627,14 @@ class BrowserHandler(http.server.BaseHTTPRequestHandler):
                 if isinstance(expected_games, int) and len(self.state.raw_games) != expected_games:
                     self.fail_request("result-before-all-raw-games")
                     return
+                # Controllers read report.json as soon as completion is visible.
+                try:
+                    atomic_json(self.output_dir / "report.json", value)
+                except OSError:
+                    self.fail_request("result-write-failed", 500)
+                    return
                 self.state.result = value
                 self.state.event.set()
-            # This write occurs in the request handler before the controller
-            # can observe the completion event.
-            atomic_json(self.output_dir / "report.json", value)
             self.send_bytes(b"result-durable\n", "text/plain")
             return
         if path == "/error":
