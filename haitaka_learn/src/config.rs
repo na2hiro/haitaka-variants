@@ -2515,6 +2515,21 @@ fn default_selection_top_k() -> usize {
     3
 }
 
+#[cfg(test)]
+pub(crate) fn active_rules_for_tests() -> RulesConfig {
+    RulesConfig {
+        ruleset: serde_json::from_value(serde_json::json!(
+            active_variant_feature().unwrap_or("standard")
+        ))
+        .unwrap(),
+        win_conditions: active_win_conditions(),
+        movement_constraint: active_movement_constraint(),
+        rule_id: Some(65000),
+        handicap: None,
+        opening_sfen: None,
+    }
+}
+
 fn active_variant_feature() -> Option<&'static str> {
     if cfg!(feature = "annan") {
         Some("annan")
