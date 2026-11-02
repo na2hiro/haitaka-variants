@@ -5897,6 +5897,11 @@ mod tests {
 
         assert_eq!(terminal_winner(&board, Color::Black), Some(Seat::B));
         assert_eq!(terminal_winner(&board, Color::White), Some(Seat::A));
+        let history = PositionHistory::new(board.clone());
+        assert_eq!(
+            terminal_adjudication(&board, &history, Color::Black),
+            Some((Some(Seat::B), GameTerminationReason::NoLegalMove))
+        );
     }
 
     #[test]

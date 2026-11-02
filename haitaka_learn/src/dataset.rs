@@ -1289,6 +1289,7 @@ fn choose_searched_stochastic_rollout_move(
         child.play_unchecked(canonical_move);
         let score = match child.status() {
             haitaka::GameStatus::Won => 30_000,
+            haitaka::GameStatus::WonBySideToMove => -30_000,
             haitaka::GameStatus::Drawn => 0,
             haitaka::GameStatus::Ongoing => {
                 let summary = teacher.search_depth(&child, search_depth, workspace)?;
@@ -2060,6 +2061,7 @@ fn determine_game_outcome(board: &Board, played_plies: u16, max_plies: u16) -> G
     } else {
         match board.status() {
             haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
+            haitaka::GameStatus::WonBySideToMove => GameOutcome::Winner(board.side_to_move()),
             haitaka::GameStatus::Drawn | haitaka::GameStatus::Ongoing => GameOutcome::Draw,
         }
     }
@@ -9291,6 +9293,7 @@ resume = false
 [verify]
 run_search_smoke = false
 "#,
+            aux = active_test_aux_rules(),
         )
     }
 
@@ -9299,6 +9302,8 @@ run_search_smoke = false
             r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "{output_dir}"
@@ -9324,6 +9329,7 @@ resume = false
 [verify]
 run_search_smoke = false
 "#,
+            aux = active_test_aux_rules(),
         )
     }
 
@@ -9332,6 +9338,8 @@ run_search_smoke = false
             r#"
 [rules]
 ruleset = "{ruleset}"
+rule_id = 65000
+{aux}
 
 [paths]
 output_dir = "{output_dir}"

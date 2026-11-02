@@ -602,12 +602,13 @@ impl LoadedGenerationConfig {
         }
     }
 
-    pub fn runtime_mode(&self) -> &'static str {
-        active_variant_feature().unwrap_or("standard")
+    pub fn runtime_mode(&self) -> String {
+        self.config.rules.profile().canonical_name()
     }
 
     pub fn ruleset_requires_matching_engine(&self) -> Result<()> {
-        validate_ruleset_engine(self.config.rules.ruleset)
+        validate_ruleset_engine(self.config.rules.ruleset)?;
+        self.config.rules.ensure_auxiliary_features_match()
     }
 
     pub fn opening_sfen(&self) -> Result<String> {
@@ -1220,6 +1221,12 @@ where
 fn effective_rule_id_for(rules: &RulesConfig) -> Result<u16> {
     if let Some(rule_id) = rules.rule_id {
         return Ok(rule_id);
+    }
+    if !rules.win_conditions.is_empty() || rules.movement_constraint.is_some() {
+        bail!(
+            "rules.rule_id must be set for composite or auxiliary rule profile {}",
+            rules.profile().canonical_name()
+        );
     }
     match rules.ruleset {
         Ruleset::Handicap => match rules.handicap {
@@ -2694,6 +2701,31 @@ kind = "handcrafted"
         let second = LoadedGenerationConfig::from_path(&second).unwrap();
         assert_ne!(first.source_hash_hex, second.source_hash_hex);
         assert_eq!(first.hash_hex, second.hash_hex);
+    }
+
+    #[test]
+    fn strict_generation_preserves_composite_profile_and_explicit_rule_identity() {
+        let temp = tempdir().unwrap();
+        let config = temp.path().join("generation.toml");
+        fs::write(
+            &config,
+            strict_generation_toml("out").replace(
+                "ruleset = \"anhoku\"",
+                "ruleset = \"anhoku\"\nwin_conditions = [\"oute\"]\nrule_id = 123",
+            ),
+        )
+        .unwrap();
+        let mut loaded = LoadedGenerationConfig::from_path(&config).unwrap();
+        assert_eq!(loaded.runtime_mode(), "anhoku+oute");
+        assert_eq!(loaded.effective_rule_id().unwrap(), 123);
+        loaded.config.rules.rule_id = None;
+        assert!(
+            loaded
+                .effective_rule_id()
+                .unwrap_err()
+                .to_string()
+                .contains("rules.rule_id must be set")
+        );
     }
 
     #[test]

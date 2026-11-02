@@ -1678,8 +1678,11 @@ fn search_board_with_node_budget_in_tt_and_history(
     // caller could mistake it for a depth-zero/incomplete search.  Keep the
     // same side-to-move mate orientation used by the recursive search below
     // the root, while consuming no artificial search nodes.
-    if board.status() == GameStatus::Won {
-        let terminal = terminal_score_for_side_to_move(board, 0).unwrap_or(-MATE_SCORE);
+    if matches!(
+        board.status(),
+        GameStatus::Won | GameStatus::WonBySideToMove
+    ) {
+        let terminal = no_legal_moves_terminal_score(board, 0);
         let node_root_result = root_result(
             None,
             false,
@@ -4923,6 +4926,19 @@ mod tests {
             terminal_score_for_side_to_move(&board, 3),
             Some(MATE_SCORE - 3)
         );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+                &board,
+                1,
+                1,
+                &mut SearchWorkspace::default(),
+            )
+            .unwrap();
+            assert_eq!(summary.best_score, Some(MATE_SCORE));
+            assert_eq!(summary.best_move, None);
+            assert_eq!(summary.total_nodes, 0);
+        }
     }
 
     #[test]
