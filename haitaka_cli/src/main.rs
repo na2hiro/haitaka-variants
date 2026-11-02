@@ -5639,7 +5639,12 @@ mod tests {
         let moves = vec!["5i5h".to_string(), "5a5b".to_string()];
 
         client
-            .search(&Board::from_sfen(base_sfen).unwrap(), base_sfen, &moves, SearchBudget::Depth(1))
+            .search(
+                &Board::from_sfen(base_sfen).unwrap(),
+                base_sfen,
+                &moves,
+                SearchBudget::Depth(1),
+            )
             .expect("external search should complete");
 
         assert_eq!(

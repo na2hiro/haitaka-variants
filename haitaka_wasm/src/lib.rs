@@ -6081,13 +6081,9 @@ mod tests {
     #[cfg(feature = "shihonkangen")]
     fn iterative_search_does_not_select_dfpn_mate_that_loses_capital_return() {
         let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
-        let summary = search_board_iterative_deepening_with_strategy(
-            &board,
-            1,
-            5_000,
-            EvaluationStrategy::Handcrafted,
-        )
-        .unwrap();
+        let history = PositionHistory::new(board.clone());
+        let summary =
+            search_board_iterative_deepening_impl_with_history(&board, &history, 1, 5_000).unwrap();
 
         assert!(summary.completed_depth > 0);
         assert_ne!(summary.best_move.as_deref(), Some("5c5b"));

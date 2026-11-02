@@ -516,12 +516,16 @@ fn train(args: TrainArgs) -> Result<()> {
 }
 
 fn rank_existing(args: RankExistingArgs) -> Result<()> {
-    let ruleset = ruleset_from_config(&args.config)?;
-    let features = required_learn_feature_for_ruleset(&ruleset)?;
-    let self_play_bin = build_haitaka_cli(features)?;
+    let features = learn_features_from_config(&args.config)?;
+    let self_play_bin = build_haitaka_cli(features.as_deref())?;
     run_command(
         "cargo",
-        haitaka_learn_rank_existing_args(&args.config, features, &self_play_bin, &args.extra_args),
+        haitaka_learn_rank_existing_args(
+            &args.config,
+            features.as_deref(),
+            &self_play_bin,
+            &args.extra_args,
+        ),
         "rank existing NNUE candidates",
     )
 }
