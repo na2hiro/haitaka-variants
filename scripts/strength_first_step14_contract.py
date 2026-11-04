@@ -248,7 +248,7 @@ def validate_trace(trace: dict[str, Any], game: dict[str, Any], move_index: int,
                for line in gameover_lines]
     if len(best) != 1 or best[0] != trace["bestMove"]:
         fail(f"{where}: bestmove conflicts with USI")
-    if len(reasons) > 1 or (reasons[0] if reasons else None) != trace["gameoverReason"]:
+    if len(reasons) > 1 or (reasons[0] if reasons else None) != trace["gameoverReasonRaw"]:
         fail(f"{where}: gameover reason conflicts with USI")
     if terminal:
         if len(gameover_lines) != 1 or not isinstance(trace["gameoverReasonRaw"], str):
