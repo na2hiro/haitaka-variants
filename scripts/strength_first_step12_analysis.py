@@ -109,6 +109,19 @@ def percentile(values: list[float], probability: float) -> float:
     return ordered[low] * (high - position) + ordered[high] * (position - low)
 
 
+def read_sealed(path: Path, binding: Any, expected_path: str) -> bytes:
+    if (not isinstance(binding, dict) or binding.get("path") != expected_path
+            or type(binding.get("bytes")) is not int):
+        fail(f"sealed artifact binding differs: {path}")
+    try:
+        contents = path.read_bytes()
+    except OSError as exc:
+        fail(f"cannot load sealed artifact {path}: {exc}")
+    if len(contents) != binding["bytes"] or hashlib.sha256(contents).hexdigest() != binding.get("sha256"):
+        fail(f"sealed artifact bytes/hash changed: {path}")
+    return contents
+
+
 def accepted(root: Path, cell: str, block: int) -> tuple[Path, dict[str, Any], list[dict[str, Any]]]:
     block_dir = root / "matches" / cell / f"block-{block:02d}"
     candidates: list[tuple[Path, dict[str, Any]]] = []
@@ -116,15 +129,31 @@ def accepted(root: Path, cell: str, block: int) -> tuple[Path, dict[str, Any], l
         validation_path = attempt / "validation.json"
         accepted_path = attempt / "accepted.json"
         if validation_path.is_file() and accepted_path.is_file():
-            value = load(validation_path)
-            if value.get("status") == "passed" and value.get("sealed") is True:
-                candidates.append((attempt, value))
+            acceptance = load(accepted_path)
+            if (not isinstance(acceptance, dict)
+                    or acceptance.get("schema") != "haitaka-anhoku-strength-first-step12-accepted-block-v1"
+                    or acceptance.get("status") != "accepted" or acceptance.get("cell") != cell
+                    or acceptance.get("block") != block or acceptance.get("attempt") != attempt.name):
+                fail(f"accepted block identity/status differs: {accepted_path}")
+            contents = read_sealed(validation_path, acceptance.get("validation"), "validation.json")
+            try:
+                value = json.loads(contents)
+            except (UnicodeError, json.JSONDecodeError) as exc:
+                fail(f"cannot load sealed validation {validation_path}: {exc}")
+            if (not isinstance(value, dict)
+                    or value.get("schema") != "haitaka-anhoku-strength-first-step12-block-validation-v1"
+                    or value.get("experimentId") != EXPERIMENT_ID or value.get("cell") != cell
+                    or value.get("block") != block or value.get("attempt") != attempt.name
+                    or value.get("status") != "passed" or value.get("sealed") is not True):
+                fail(f"sealed validation identity/status differs: {validation_path}")
+            candidates.append((attempt, value))
     if len(candidates) != 1:
         fail(f"{cell} block {block} has {len(candidates)} accepted validations")
     attempt, validation = candidates[0]
     games_path = attempt / "raw/self-play-games.jsonl"
+    contents = read_sealed(games_path, validation.get("games"), str(games_path.relative_to(root)))
     try:
-        games = [json.loads(line) for line in games_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        games = [json.loads(line) for line in contents.decode("utf-8").splitlines() if line.strip()]
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         fail(f"cannot load raw games for {cell} block {block}: {exc}")
     if len(games) != GAMES_PER_BLOCK:

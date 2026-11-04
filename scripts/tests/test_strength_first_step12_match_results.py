@@ -79,6 +79,16 @@ class NativeResultTests(unittest.TestCase):
         self.write(attempt / "raw/self-play-report.json", report)
         (attempt / "raw/self-play-games.jsonl").write_text("".join(json.dumps(game) + "\n" for game in games))
 
+    def accept_block(self, attempt):
+        validation_path = attempt / "validation.json"
+        value = json.loads(validation_path.read_text())
+        self.write(attempt / "accepted.json", {
+            "schema": "haitaka-anhoku-strength-first-step12-accepted-block-v1",
+            "status": "accepted", "cell": value["cell"], "block": value["block"],
+            "attempt": attempt.name,
+            "validation": {"path": "validation.json", "bytes": validation_path.stat().st_size,
+                           "sha256": validator.sha256(validation_path)}})
+
     def test_native_terminal_vocabulary_and_legacy_caps_validate_without_rewriting(self):
         attempt, games = self.block()
         raw = attempt / "raw/self-play-games.jsonl"
@@ -137,7 +147,7 @@ class NativeResultTests(unittest.TestCase):
             for block in range(validator.BLOCKS):
                 attempt, _ = self.block(cell, block)
                 validator.validate(self.root, cell, block, attempt)
-                self.write(attempt / "accepted.json", {"status": "accepted"})
+                self.accept_block(attempt)
         scores, pairs, bounds, refs = analysis.collect(self.root)
         self.assertEqual(len(refs), 8)
         for cell in validator.CELLS:
@@ -158,6 +168,54 @@ class NativeResultTests(unittest.TestCase):
             self.assertEqual(model["wdl"], {"aWins": 64, "bWins": 64, "draws": 128})
             self.assertEqual(model["cappedGames"], 64)
             self.assertEqual(model["meanPairScore"]["exact"], "1/2")
+
+    def test_analysis_rejects_changed_raw_games_after_acceptance(self):
+        attempt, _ = self.block()
+        validator.validate(self.root, "early-selected", 0, attempt)
+        self.accept_block(attempt)
+        raw = attempt / "raw/self-play-games.jsonl"
+        original = raw.read_bytes()
+        # Changing a-win to b-win preserves both the byte length and 64-game count.
+        altered = original.replace(b'"result": "a-win"', b'"result": "b-win"', 1)
+        self.assertNotEqual(altered, original)
+        self.assertEqual(len(altered), len(original))
+        for payload in (altered, original + b"\n"):
+            with self.subTest(bytes=len(payload)):
+                raw.write_bytes(payload)
+                with self.assertRaises(analysis.AnalysisError):
+                    analysis.accepted(self.root, "early-selected", 0)
+        raw.write_bytes(original)
+        self.assertEqual(len(analysis.accepted(self.root, "early-selected", 0)[2]), 64)
+
+    def test_analysis_rejects_changed_validation_receipt(self):
+        attempt, _ = self.block()
+        validator.validate(self.root, "early-selected", 0, attempt)
+        self.accept_block(attempt)
+        path = attempt / "validation.json"
+        value = json.loads(path.read_text())
+        value["games"]["sha256"] = "0" * 64
+        self.write(path, value)
+        with self.assertRaises(analysis.AnalysisError):
+            analysis.accepted(self.root, "early-selected", 0)
+
+    def test_analysis_rejects_invalid_acceptance_and_artifact_bindings(self):
+        attempt, _ = self.block()
+        validator.validate(self.root, "early-selected", 0, attempt)
+        self.accept_block(attempt)
+        path = attempt / "accepted.json"
+        original = json.loads(path.read_text())
+        changes = [
+            {"status": "pending"}, {"cell": "u2688-control"}, {"block": 1},
+            {"attempt": "attempt-01"}, {"validation": None},
+            {"validation": {**original["validation"], "path": "other-validation.json"}},
+            {"validation": {**original["validation"], "bytes": 0}},
+            {"validation": {**original["validation"], "sha256": "0" * 64}},
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                self.write(path, {**original, **change})
+                with self.assertRaises(analysis.AnalysisError):
+                    analysis.accepted(self.root, "early-selected", 0)
 
 
 class CampaignResumeTests(unittest.TestCase):
@@ -203,7 +261,7 @@ class CampaignResumeTests(unittest.TestCase):
             # Seal the real validator's offline fixture instead of launching games.
             attempt, _ = fixture.block(cell, index)
             validator.validate(root, cell, index, attempt)
-            fixture.write(attempt / "accepted.json", {"status": "accepted"})
+            fixture.accept_block(attempt)
             launched.append((cell, index))
             return {"cell": cell, "block": index, "status": "accepted",
                     "attempt": attempt.name, "gamesLaunched": 64}
