@@ -1144,11 +1144,10 @@ impl Board {
             return false;
         }
 
-        let mut has_legal_moves = false;
-        board.generate_moves(|_| {
-            has_legal_moves = true;
-            true
-        });
+        // Uchi-fuzume depends on actual evasions, even if an outcome rule
+        // such as Oute has already ended play in the checking position.
+        let has_legal_moves = board.generate_drops_without_outcome(|_| true)
+            || board.generate_board_moves_for_without_outcome(BitBoard::FULL, |_| true);
 
         !has_legal_moves
     }
@@ -2153,11 +2152,19 @@ impl Board {
     pub fn generate_board_moves_for(
         &self,
         mask: BitBoard,
-        mut listener: impl FnMut(PieceMoves) -> bool,
+        listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
         if self.immediate_winner().is_some() {
             return false;
         }
+        self.generate_board_moves_for_without_outcome(mask, listener)
+    }
+
+    fn generate_board_moves_for_without_outcome(
+        &self,
+        mask: BitBoard,
+        mut listener: impl FnMut(PieceMoves) -> bool,
+    ) -> bool {
         // The neko variants generate a broad superset and verify each move's king
         // safety on the post-move position (pins are disabled for these variants).
         #[cfg(any(
@@ -2277,10 +2284,14 @@ impl Board {
     /// });
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
-    pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+    pub fn generate_drops(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
         if self.immediate_winner().is_some() {
             return false;
         }
+        self.generate_drops_without_outcome(listener)
+    }
+
+    fn generate_drops_without_outcome(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",

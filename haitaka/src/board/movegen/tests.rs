@@ -73,6 +73,38 @@ fn oute_is_an_immediate_win_and_stops_play() {
     assert!(!board.is_legal("5a4a".parse().unwrap()));
 }
 
+#[cfg(all(feature = "oute", not(feature = "king-constraint-category")))]
+#[test]
+fn oute_checking_pawn_drop_with_evasions_is_legal() {
+    let mut board: Board = "4k4/9/9/9/9/9/9/9/4K4 b P 1".parse().unwrap();
+    let mv: Move = "P*5b".parse().unwrap();
+
+    assert!(board.is_legal_drop(mv));
+    assert!(board.is_legal(mv));
+    assert!(board.generate_drops(|moves| moves.has(mv)));
+    assert!(board.generate_moves(|moves| moves.has(mv)));
+    assert!(board.generate_checks(|moves| moves.has(mv)));
+
+    board.play(mv);
+    assert_eq!(board.winner(), Some(Color::Black));
+    assert!(!board.generate_moves(|_| true));
+    assert!(!board.generate_board_moves(|_| true));
+    assert!(!board.generate_drops(|_| true));
+}
+
+#[cfg(all(feature = "oute", not(feature = "donor-category")))]
+#[test]
+fn oute_checking_pawn_drop_without_evasions_is_illegal() {
+    let board: Board = "3pkp3/9/4G4/9/9/9/9/9/4K4 b P 1".parse().unwrap();
+    let mv: Move = "P*5b".parse().unwrap();
+
+    assert!(!board.is_legal_drop(mv));
+    assert!(!board.is_legal(mv));
+    assert!(!board.generate_drops(|moves| moves.has(mv)));
+    assert!(!board.generate_moves(|moves| moves.has(mv)));
+    assert!(!board.generate_checks(|moves| moves.has(mv)));
+}
+
 #[cfg(feature = "sanmaime")]
 #[test]
 fn three_hand_pieces_are_an_immediate_win() {

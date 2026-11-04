@@ -40,6 +40,8 @@ jobs:
 
     - name: Run orthogonal rule tests
       run: |
+        cargo test -p haitaka --features oute oute_
+        cargo test -p haitaka --features annan,oute oute_checking_pawn_drop
         cargo check --workspace --features annan,oute,sanmaime,igyoku --verbose
         cargo test -p haitaka --features annan,oute,sanmaime,igyoku oute_is_an_immediate_win_and_stops_play
         cargo test -p haitaka_wasm --features annan,oute,sanmaime,igyoku immediate_win_is_scored_as_terminal_loss_for_side_to_move
