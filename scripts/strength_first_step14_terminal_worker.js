@@ -3,6 +3,22 @@
  * search. */
 const TERMINAL = new Set(["king-captured", "no-legal-move", "repetition-draw", "jishogi-draw"]);
 
+let pendingProvenance = null;
+
+function waitForProvenanceAcknowledgement() {
+  return new Promise((resolve, reject) => { pendingProvenance = {resolve, reject}; });
+}
+function acknowledgeProvenance(data) {
+  if (!pendingProvenance) throw new Error("unexpected provenance acknowledgement");
+  const pending = pendingProvenance;
+  pendingProvenance = null;
+  if (data.kind !== "provenance" || data.index !== 0 || data.ok !== true) {
+    pending.reject(new Error("controller rejected provenance acknowledgement"));
+  } else {
+    pending.resolve();
+  }
+}
+
 function send(engine, command) { return Array.from(engine.send(command), String); }
 async function digest(bytes) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), b => b.toString(16).padStart(2, "0")).join("");
@@ -56,7 +72,9 @@ async function run(config) {
   if (config?.schema !== "haitaka-anhoku-strength-first-step14-terminal-config-v1" || !Array.isArray(config.records) || config.records.length === 0 || config.records.length > 8) throw new Error("terminal configuration differs");
   const started = performance.now();
   const verified = await verify(config);
+  const acknowledgement = waitForProvenanceAcknowledgement();
   self.postMessage({type: "provenance", acknowledgement: {envelopeId: config.provenance.envelopeId, verifiedBeforePlay: true, verifiedFiles: verified.verified}});
+  await acknowledgement;
   const wasm = await import("/pkg/haitaka_wasm.js");
   await wasm.default(verified.fetched.wasm);
   const engineA = new wasm.UsiEngine(), engineB = new wasm.UsiEngine();
@@ -75,6 +93,8 @@ async function run(config) {
   self.postMessage({type: "result", result: {schema: "haitaka-anhoku-strength-first-step14-terminal-report-v1", status: "passed", provenance: {envelopeId: config.provenance.envelopeId}, execution: {runtime: "desktop-google-chrome-headless-dedicated-module-worker", workerCount: 1, concurrentGames: 1, engineCount: 2, scoredGames: 0, terminalQueries: replays.length * 2}, load: {browserStartedAt: started, modelDescription, handshake}, replays}});
 }
 self.onmessage = async ({data}) => {
-  if (data?.type === "provenance-ack" || data?.type === "game-ack") return;
-  try { await run(data); } catch (_) { self.postMessage({type: "error", errorCategory: "terminal-browser-worker-error"}); }
+  try {
+    if (data?.type === "provenance-ack") { acknowledgeProvenance(data); return; }
+    await run(data);
+  } catch (_) { self.postMessage({type: "error", errorCategory: "terminal-browser-worker-error"}); }
 };
