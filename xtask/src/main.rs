@@ -375,13 +375,10 @@ fn required_value(iter: &mut impl Iterator<Item = OsString>, flag: &str) -> Resu
 }
 
 fn package(args: PackageArgs) -> Result<()> {
-    let mut features = args.features.clone().or_else(|| {
-        if args.ruleset.contains('+') {
-            Some(args.ruleset.replace('+', ","))
-        } else {
-            inferred_package_feature(&args.ruleset).map(str::to_string)
-        }
-    });
+    let mut features = args
+        .features
+        .clone()
+        .or_else(|| inferred_package_features(&args.ruleset));
     let base_ruleset = args.ruleset.split('+').next().unwrap_or("standard");
     if let Some(donor) = inferred_package_feature(base_ruleset)
         && !features.as_deref().is_some_and(|selected| {
@@ -890,6 +887,16 @@ fn default_rule_id(ruleset: &str) -> u32 {
     }
 }
 
+fn inferred_package_features(ruleset: &str) -> Option<String> {
+    let mut parts = ruleset.split('+');
+    let base = parts.next().unwrap_or("standard");
+    let features = inferred_package_feature(base)
+        .into_iter()
+        .chain(parts)
+        .collect::<Vec<_>>();
+    (!features.is_empty()).then(|| features.join(","))
+}
+
 fn inferred_package_feature(ruleset: &str) -> Option<&'static str> {
     match ruleset {
         "annan" => Some("annan"),
@@ -1274,6 +1281,42 @@ mod tests {
         assert_eq!(inferred_package_feature("annan"), Some("annan"));
         assert_eq!(inferred_package_feature("tenkyo"), Some("tenkyo"));
         assert_eq!(inferred_package_feature("anki"), Some("anki"));
+    }
+
+    #[test]
+    fn composite_package_inference_excludes_non_feature_bases() {
+        for (profile, expected) in [
+            ("standard", None),
+            ("handicap", None),
+            ("standard+oute", Some("oute")),
+            ("handicap+oute", Some("oute")),
+            ("annan+oute", Some("annan,oute")),
+            ("standard+sanmaime+igyoku", Some("sanmaime,igyoku")),
+        ] {
+            let features = inferred_package_features(profile);
+            assert_eq!(features.as_deref(), expected, "profile {profile}");
+            assert_eq!(
+                canonical_package_profile(profile, features.as_deref()).unwrap(),
+                profile
+            );
+            let wasm_args = args_as_strings(&wasm_pack_args(features.as_deref()));
+            let package_args = args_as_strings(&haitaka_cli_package_args(
+                profile,
+                123,
+                &PathBuf::from("target/composite.tgz"),
+                &PathBuf::from("haitaka_wasm/pkg"),
+                None,
+                features.as_deref(),
+                true,
+            ));
+            for args in [wasm_args, package_args] {
+                if let Some(expected) = expected {
+                    assert!(has_adjacent_args(&args, "--features", expected));
+                } else {
+                    assert!(!args.iter().any(|arg| arg == "--features"));
+                }
+            }
+        }
     }
 
     #[test]
