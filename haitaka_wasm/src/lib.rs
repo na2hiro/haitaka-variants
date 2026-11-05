@@ -2019,6 +2019,8 @@ impl UsiSession {
     }
 
     /// Return a terminal notification without starting a search or changing history.
+    /// Side-to-move variant wins include `winner black` or `winner white` in
+    /// the gameover line; `bestmove resign` remains a terminal sentinel.
     pub fn terminal_notifications(&self) -> Vec<String> {
         let history_result = self.history.adjudication();
         if history_result != HistoryAdjudication::Ongoing {
@@ -2031,10 +2033,21 @@ impl UsiSession {
                 "bestmove resign".to_string(),
             ];
         }
-        if self.board.status() != haitaka::GameStatus::Ongoing {
+        let status = self.board.status();
+        if status != haitaka::GameStatus::Ongoing {
+            // `resign` is the terminal bestmove sentinel. Reversed variant
+            // outcomes must name the winner instead of implying a loss for us.
+            let winner = if status == haitaka::GameStatus::WonBySideToMove {
+                match self.board.winner().expect("a terminal win has a winner") {
+                    Color::Black => " winner black",
+                    Color::White => " winner white",
+                }
+            } else {
+                ""
+            };
             return vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::ANHOKU_HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
@@ -4746,15 +4759,101 @@ mod tests {
         let terminal = session.terminal_notifications();
         assert_eq!(session.handle_line("go depth 1"), terminal);
         assert_eq!(session.terminal_notifications(), terminal);
+        let winner = if session.board.status() == GameStatus::WonBySideToMove {
+            " winner white"
+        } else {
+            ""
+        };
         assert_eq!(
             terminal,
             vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::ANHOKU_HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ]
+        );
+    }
+
+    #[cfg(any(feature = "shihonkangen", feature = "ningenshogi"))]
+    fn assert_usi_terminal_side_to_move_winner(start: &str, moves: &[&str]) {
+        let original: Board = start.parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                original.color_swapped()
+            } else {
+                original.clone()
+            };
+            let moves = moves
+                .iter()
+                .map(|text| {
+                    let mv: Move = text.parse().unwrap();
+                    if swap {
+                        match mv {
+                            Move::BoardMove {
+                                from,
+                                to,
+                                promotion,
+                            } => Move::BoardMove {
+                                from: from.flip(),
+                                to: to.flip(),
+                                promotion,
+                            },
+                            Move::Drop { piece, to } => Move::Drop {
+                                piece,
+                                to: to.flip(),
+                            },
+                        }
+                        .to_string()
+                    } else {
+                        mv.to_string()
+                    }
+                })
+                .collect::<Vec<_>>();
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {}", moves.join(" ")))
+                    .is_empty()
+            );
+            assert_eq!(session.board.status(), GameStatus::WonBySideToMove);
+            let winner = session.board.winner().unwrap();
+            assert_eq!(winner, session.board.side_to_move());
+            let color = if winner == Color::Black {
+                "black"
+            } else {
+                "white"
+            };
+            let expected = vec![
+                format!(
+                    "info string gameover no-legal-move winner {color} rules {}",
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
+            let board = session.board.clone();
+            let history = session.history.positions().to_vec();
+            assert_eq!(session.terminal_notifications(), expected);
+            assert_eq!(session.handle_line("go depth 1"), expected);
+            assert_eq!(session.handle_line("go movetime 1"), expected);
+            assert_eq!(session.board, board);
+            assert_eq!(session.history.positions(), history);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn usi_terminal_notification_names_capital_return_winner() {
+        assert_usi_terminal_side_to_move_winner("4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1", &["9d8d"]);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_terminal_notification_names_human_shogi_winner() {
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
         );
     }
 

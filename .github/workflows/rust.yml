@@ -65,6 +65,7 @@ jobs:
         cargo test -p haitaka --features ningenshogi human_shogi
         cargo test -p haitaka_learn --features ningenshogi --bin haitaka_learn searched_rollout_preserves_human_shogi_history
         cargo test -p haitaka_wasm --features ningenshogi human_shogi
+        cargo test -p haitaka_wasm --features shihonkangen,ningenshogi usi_terminal_notification
         cargo test -p haitaka_cli --features shihonkangen,ningenshogi external_engine_receives_the_full_position_history
         cargo test -p haitaka_cli --features shihonkangen,ningenshogi self_play_report_records_the_active_composite_profile
         cargo check --workspace --features annan,shihonkangen,ningenshogi,igyoku --verbose

@@ -127,7 +127,7 @@ test("provenance and durable game acknowledgements gate search and the next game
 });
 
 test("terminal queries preserve the raw loser color and assign winners through swapped seats", async () => {
-  for (const reason of ["no-legal-move", "king-captured", "repetition-draw", "jishogi-draw",
+  for (const reason of ["no-legal-move", "no-legal-move winner black", "no-legal-move winner white", "king-captured", "repetition-draw", "jishogi-draw",
     "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
     const h = harness({reason});
     await h.run();
@@ -136,14 +136,14 @@ test("terminal queries preserve the raw loser color and assign winners through s
       assert.equal(game.searches.length, 2);
       const terminal = game.searches.at(-1);
       assert.equal(terminal.bestMove, "resign");
-      assert.equal(terminal.gameoverReason, reason.split(":")[0]);
-      assert.equal(terminal.gameoverReasonRaw, reason);
+      assert.equal(terminal.gameoverReason, reason.split(/[\s:]/)[0]);
+      assert.equal(terminal.gameoverReasonRaw, reason.split(/\s+/)[0]);
       assert.equal(terminal.terminalFlagsDerived, true);
       assert.equal(terminal.rootResultSchema, null);
       const winnerColor = reason.endsWith(":black") ? "white" : "black";
       const winner = ["repetition-draw", "jishogi-draw"].includes(reason) ? null
         : reason.startsWith("perpetual-check-loss:")
-          ? (winnerColor === game.aColor ? "A" : "B") : game.whiteEngine;
+          ? (winnerColor === game.aColor ? "A" : "B") : reason.includes("winner black") ? game.blackEngine : game.whiteEngine;
       assert.equal(game.rawWinner, winner);
     }
   }
