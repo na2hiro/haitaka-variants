@@ -54,3 +54,42 @@ node scripts/verify_hand_rule_wasm.mjs \
 Single-rule archives are in `target/hand-verification/packages/`. Their IDs
 are 24, 54, 57, 93, 143, 146, and 155. A bundle with all seven archives and
 these instructions is `target/hand-verification/hand-rule-packages.zip`.
+
+## Iterative subagent code review
+
+Reviewed the complete implementation against `55d8229` using three reviewers
+covering core rules, NNUE/data generation, and integration. The first pass found
+no P1/P2 issues. A second pass swapped review scopes and found one P2: material
+values were clamped for each color before subtracting, so Growth positions with
+large but unequal hands could receive the same material score. The fix retains
+`i64` totals through the material difference and mobility calculation, then
+clamps the final side-to-move score once. A focused re-review confirmed the fix
+and found no remaining P1/P2 in that scope. A second reviewer independently
+confirmed the fix and completed the core/search cross-review without further
+P1/P2 findings.
+
+The regression checks equal high inventories, a one-pawn advantage for either
+color, saturation for a 700-pawn difference, and equal/one-pawn differences at
+`u32::MAX`. The release-WASM comparison also exercises these advantages through
+USI search instead of only calling the static evaluator.
+
+As requested, these P3 findings remain deferred:
+
+- Nakamaware accepts malformed SFENs with neither physical King and assigns an
+  arbitrary winner. Such a position cannot result from legal play; the empty
+  board can also trigger the zero-hash debug assertion in board-move generation.
+- The trainer-specific SFEN decoder bypasses hand-rule invariants along with
+  physical-piece inventory limits. Malformed external records can therefore
+  contain asymmetric shared hands or unnormalized cancellation/fusion hands;
+  data produced by the generator remains valid.
+- An artificial Growth position already holding `u32::MAX` copies of a piece
+  can parse successfully but panic on capturing another copy. This is an
+  extreme finite-representation boundary; checked arithmetic prevents silent
+  wrapping but does not turn this case into a recoverable input error.
+
+Post-fix verification: the Growth integration suite passed (3 tests), and the
+complete native WASM-library suite passed (102 tests, 4 existing fixture tests
+ignored), including the fixed-depth reference-score comparison. Release WASM
+is rebuilt for all seven profiles before refreshing their package archives.
+
+Raw additional logs use the `cr-` prefix in `target/hand-verification/`.

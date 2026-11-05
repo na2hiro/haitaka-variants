@@ -107,3 +107,21 @@ fn hand_rules_native_wasm_fixtures() {
     )
     .unwrap();
 }
+
+#[test]
+#[cfg(feature = "zoshoku")]
+fn hand_rules_growth_evaluates_the_material_difference_before_clamping() {
+    let evaluate = |black: u32, white: u32| {
+        let board =
+            Board::from_sfen(&format!("4k4/9/9/9/9/9/9/9/4K4 b {black}P{white}p 1")).unwrap();
+        handcrafted_static_eval(&board)
+    };
+    assert_eq!(evaluate(300, 300), 0);
+    assert_eq!(evaluate(301, 300), 100);
+    assert_eq!(evaluate(300, 301), -100);
+    assert_eq!(evaluate(1000, 300), 28_000);
+    assert_eq!(evaluate(300, 1000), -28_000);
+    assert_eq!(evaluate(u32::MAX, u32::MAX), 0);
+    assert_eq!(evaluate(u32::MAX, u32::MAX - 1), 100);
+    assert_eq!(evaluate(u32::MAX - 1, u32::MAX), -100);
+}

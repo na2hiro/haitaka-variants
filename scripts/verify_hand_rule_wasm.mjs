@@ -34,6 +34,22 @@ for (const rule of ['nakamaware', 'fushiyo', 'share', 'zoshoku', 'babanuki', 'te
     assert.deepEqual(engine.terminal_notifications(), row.usi, `${rule}: terminal notification`);
     engine.free();
   }
+  if (rule === 'zoshoku') {
+    const score = (hand) => {
+      const engine = new api.UsiEngine();
+      assert.deepEqual(engine.send(`position sfen 4k4/9/9/9/9/9/9/9/4K4 b ${hand} 1`), []);
+      const response = engine.send('go depth 1').join('\n');
+      engine.free();
+      const match = response.match(/lastCompletedIterationValue (-?\d+)/);
+      assert(match, response);
+      return Number(match[1]);
+    };
+    const equal = score('300P300p');
+    assert(score('301P300p') > equal);
+    assert(score('300P301p') < equal);
+    assert(score('1000P300p') > 27_000);
+    assert(score('300P1000p') < -27_000);
+  }
   results.push({ rule, positions: fixtures.length, nativeWasmAgreement: true });
 }
 console.log(JSON.stringify(results, null, 2));

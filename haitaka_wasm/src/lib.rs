@@ -4343,7 +4343,7 @@ fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
     terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
-fn material_score(board: &Board, color: Color) -> i32 {
+fn material_score(board: &Board, color: Color) -> i64 {
     let mut score = 0i64;
     for piece in Piece::ALL {
         score +=
@@ -4352,7 +4352,7 @@ fn material_score(board: &Board, color: Color) -> i32 {
     for piece in HAND_PIECES {
         score += i64::from(board.num_in_hand(color, piece)) * i64::from(piece_value(piece));
     }
-    score.clamp(-28_000, 28_000) as i32
+    score
 }
 
 fn opponent_mobility(board: &Board) -> usize {
@@ -4380,8 +4380,9 @@ pub fn handcrafted_static_eval(board: &Board) -> i32 {
     let us = board.side_to_move();
     let them = !us;
     (material_score(board, us) - material_score(board, them)
-        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32))
-        .clamp(-28_000, 28_000)
+        + i64::from(MOBILITY_WEIGHT)
+            * (count_legal_moves(board) as i64 - opponent_mobility(board) as i64))
+        .clamp(-28_000, 28_000) as i32
 }
 
 fn record_move_try(ctx: &mut SearchContext<'_>, source: MoveSource) {
@@ -5990,8 +5991,10 @@ mod tests {
             return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
-        (material_score(board, us) - material_score(board, them)).clamp(-28_000, 28_000)
-            + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+        (material_score(board, us) - material_score(board, them)
+            + i64::from(MOBILITY_WEIGHT)
+                * i64::from(our_mobility - opponent_mobility(board) as i32))
+        .clamp(-28_000, 28_000) as i32
     }
 
     #[cfg(not(any(
