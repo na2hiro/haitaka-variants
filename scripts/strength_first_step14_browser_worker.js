@@ -37,14 +37,17 @@ function terminalReason(outputs) {
   const lines = outputs.filter(line => line.startsWith("info string gameover "));
   if (lines.length > 1) throw new Error("duplicate gameover output");
   if (!lines.length) return null;
-  const raw = lines[0].slice("info string gameover ".length).trim().split(/\s+/)[0];
+  const tokens = lines[0].slice("info string gameover ".length).trim().split(/\s+/);
+  const raw = tokens[0];
+  const winnerColor = tokens.includes("winner") ? requiredValue(tokens, "winner") : null;
+  if (winnerColor !== null && !["black", "white"].includes(winnerColor)) throw new Error("invalid terminal winning color");
   if (raw.startsWith("perpetual-check-loss:")) {
     const loserColor = raw.slice("perpetual-check-loss:".length);
     if (loserColor !== "black" && loserColor !== "white") throw new Error("invalid perpetual-check loser color");
     return { canonical: "perpetual-check-loss", raw, loserColor };
   }
   if (!TERMINAL.has(raw)) throw new Error(`unknown gameover reason ${raw}`);
-  return { canonical: raw, raw, loserColor: null };
+  return { canonical: raw, raw, loserColor: null, winnerColor };
 }
 
 function waitForAcknowledgement(kind, index) {
@@ -120,7 +123,7 @@ function winnerForTerminal(trace, scheduled) {
     const winnerColor = trace.terminalLoserColor === "black" ? "white" : "black";
     return winnerColor === scheduled.aColor ? "A" : "B";
   }
-  const winnerColor = trace.color === "black" ? "white" : "black";
+  const winnerColor = terminalReason(trace.outputs).winnerColor ?? (trace.color === "black" ? "white" : "black");
   return winnerColor === scheduled.aColor ? "A" : "B";
 }
 

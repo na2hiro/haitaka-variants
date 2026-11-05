@@ -838,11 +838,13 @@ fn game_result_status(board: &Board, capped: bool) -> String {
         return "terminal/black-win".to_string();
     }
     match board.status() {
-        GameStatus::Won => match board.side_to_move() {
-            Color::Black => "terminal/white-win",
-            Color::White => "terminal/black-win",
+        GameStatus::Won | GameStatus::WonBySideToMove => {
+            match board.winner().expect("terminal win has a winner") {
+                Color::Black => "terminal/black-win",
+                Color::White => "terminal/white-win",
+            }
+            .to_string()
         }
-        .to_string(),
         GameStatus::Drawn => "terminal/draw".to_string(),
         GameStatus::Ongoing => "unknown/unfinished".to_string(),
     }

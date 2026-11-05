@@ -223,11 +223,11 @@ struct PackageArgs {
     #[arg(long, default_value = "haitaka_wasm/pkg")]
     wasm_dir: PathBuf,
     /// Ruleset name written into metadata.
-    #[arg(long, default_value = default_ruleset())]
+    #[arg(long, default_value_t = active_rule_profile())]
     ruleset: String,
     /// Shogitter rule ID written into metadata.
-    #[arg(long, default_value_t = default_rule_id())]
-    rule_id: u32,
+    #[arg(long)]
+    rule_id: Option<u32>,
     /// Optional NNUE file to include in the package.
     #[arg(long)]
     nnue: Option<PathBuf>,
@@ -248,7 +248,7 @@ struct ArchiveEngineArgs {
     #[arg(long)]
     nnue: Option<PathBuf>,
     /// Ruleset name written into metadata.
-    #[arg(long, default_value = default_ruleset())]
+    #[arg(long, default_value_t = active_rule_profile())]
     ruleset: String,
     /// Engine display name written into metadata.
     #[arg(long = "engine-name", default_value = ENGINE_NAME)]
@@ -907,6 +907,30 @@ fn default_ruleset() -> &'static str {
     }
 }
 
+fn active_rule_profile() -> String {
+    let mut profile = default_ruleset().to_string();
+    for (enabled, name) in [
+        (cfg!(feature = "oute"), "oute"),
+        (cfg!(feature = "sanmaime"), "sanmaime"),
+        (cfg!(feature = "inochinotokin"), "inochinotokin"),
+        (cfg!(feature = "shihonkangen"), "shihonkangen"),
+        (cfg!(feature = "ningenshogi"), "ningenshogi"),
+        (cfg!(feature = "tennouzan"), "tennouzan"),
+        (cfg!(feature = "igyoku"), "igyoku"),
+        (cfg!(feature = "hitomasuou"), "hitomasuou"),
+    ] {
+        if enabled {
+            profile.push('+');
+            profile.push_str(name);
+        }
+    }
+    profile
+}
+
+fn has_auxiliary_rules() -> bool {
+    cfg!(feature = "win-condition-category") || cfg!(feature = "king-constraint-category")
+}
+
 fn default_rule_id() -> u32 {
     if cfg!(feature = "annan") {
         26
@@ -960,8 +984,19 @@ fn profile_display_ruleset(ruleset: &str) -> String {
     }
 }
 
-fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePackageManifest {
-    EnginePackageManifest {
+fn package_manifest(
+    args: &PackageArgs,
+    nnue: Option<NnueArtifact>,
+) -> Result<EnginePackageManifest> {
+    let rule_id = match args.rule_id {
+        Some(rule_id) => rule_id,
+        None if !has_auxiliary_rules() && args.ruleset == default_ruleset() => default_rule_id(),
+        None => bail!(
+            "--rule-id is required for composite or auxiliary rule profile {}",
+            args.ruleset
+        ),
+    };
+    Ok(EnginePackageManifest {
         schema: "shogitter-engine-package",
         schema_version: 1,
         engine: ManifestEngine {
@@ -986,7 +1021,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             id: format!("{}-default", args.ruleset),
             name: format!("{} default", profile_display_ruleset(&args.ruleset)),
             rules: vec![ManifestRule {
-                rule_id: args.rule_id,
+                rule_id,
                 variant: args.ruleset.clone(),
                 position_format: "sfen",
                 move_format: "usi",
@@ -994,7 +1029,7 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
             }],
             nnue,
         }],
-    }
+    })
 }
 
 fn parse_board(sfen: Option<&str>) -> Result<Board> {
@@ -1418,15 +1453,16 @@ fn generate_opening_board(
     opening_random_plies: u16,
     seed: u64,
     pair_index: u32,
-) -> Result<Board> {
+) -> Result<(Board, Vec<String>)> {
     if opening_random_plies == 0 {
-        return Ok(base.clone());
+        return Ok((base.clone(), Vec::new()));
     }
 
     for attempt in 0..16 {
         let mut board = base.clone();
         let mut rng = StdRng::seed_from_u64(opening_seed(seed, pair_index, attempt));
         let mut completed = 0;
+        let mut played_moves = Vec::with_capacity(opening_random_plies as usize);
 
         while completed < opening_random_plies && board.status() == GameStatus::Ongoing {
             let moves = legal_moves(&board);
@@ -1435,11 +1471,12 @@ fn generate_opening_board(
             }
             let mv = moves[rng.random_range(0..moves.len())];
             board.play(mv);
+            played_moves.push(mv.to_string());
             completed += 1;
         }
 
         if completed == opening_random_plies && board.status() == GameStatus::Ongoing {
-            return Ok(board);
+            return Ok((board, played_moves));
         }
     }
 
@@ -1454,7 +1491,7 @@ fn game_opening(
     openings: Option<&[OpeningPosition]>,
     args: &SelfPlayArgs,
     game_index: u32,
-) -> Result<(Board, OpeningRecord)> {
+) -> Result<(Board, OpeningRecord, Vec<String>)> {
     let (base, mut record) = if let Some(openings) = openings {
         let selection_index = match args.opening_unit {
             OpeningUnit::Pair => game_index / 2,
@@ -1505,11 +1542,11 @@ fn game_opening(
         let pair_index = game_index / 2;
         let random_seed = opening_seed(args.seed, pair_index, 0);
         record.random_seed = Some(random_seed);
-        let board =
+        let (board, moves) =
             generate_opening_board(&base, args.opening_random_plies, args.seed, pair_index)?;
-        Ok((board, record))
+        Ok((board, record, moves))
     } else {
-        Ok((base, record))
+        Ok((base, record, Vec::new()))
     }
 }
 
@@ -1692,12 +1729,7 @@ impl UsiEngineClient {
         budget: SearchBudget,
     ) -> Result<EngineSearchResult> {
         let started_at = Instant::now();
-        let move_suffix = if moves.is_empty() {
-            String::new()
-        } else {
-            format!(" moves {}", moves.join(" "))
-        };
-        self.send_command(&format!("position sfen {start_sfen}{move_suffix}"))?;
+        self.send_command(&usi_position_command(start_sfen, moves))?;
         self.send_command(&go_command(budget))?;
         let timeout = search_timeout(budget);
         let (bestmove, telemetry) = self.read_bestmove(timeout)?;
@@ -1838,6 +1870,15 @@ impl UsiEngineClient {
             format!("; recent stderr: {}", lines.join(" | "))
         }
     }
+}
+
+fn usi_position_command(base_sfen: &str, moves: &[String]) -> String {
+    let mut command = format!("position sfen {base_sfen}");
+    if !moves.is_empty() {
+        command.push_str(" moves ");
+        command.push_str(&moves.join(" "));
+    }
+    command
 }
 
 impl Drop for UsiEngineClient {
@@ -2033,6 +2074,13 @@ fn terminal_adjudication(
         return Some((winner, GameTerminationReason::KingCaptured));
     }
 
+    if let Some(winner) = board.immediate_winner() {
+        return Some((
+            Some(seat_for_color(winner, a_color)),
+            GameTerminationReason::NoLegalMove,
+        ));
+    }
+
     match history.adjudication() {
         HistoryAdjudication::RepetitionDraw => {
             return Some((None, GameTerminationReason::RepetitionDraw));
@@ -2048,10 +2096,16 @@ fn terminal_adjudication(
 
     (board.status() != GameStatus::Ongoing).then(|| {
         (
-            Some(seat_for_color(!board.side_to_move(), a_color)),
+            terminal_winner(board, a_color),
             GameTerminationReason::NoLegalMove,
         )
     })
+}
+
+fn terminal_winner(board: &Board, a_color: Color) -> Option<Seat> {
+    board
+        .winner()
+        .map(|winner| if winner == a_color { Seat::A } else { Seat::B })
 }
 
 fn play_self_play_game(
@@ -2062,7 +2116,8 @@ fn play_self_play_game(
     engine_a: &EngineConfig,
     engine_b: &EngineConfig,
 ) -> Result<GameResult> {
-    let (mut board, opening) = game_opening(base_board, openings, args, game_index)?;
+    let (mut board, opening, mut position_moves) =
+        game_opening(base_board, openings, args, game_index)?;
     let start_sfen = board.to_string();
     let mut history = PositionHistory::new(board.clone());
     let a_color = game_a_color(game_index);
@@ -2124,7 +2179,7 @@ fn play_self_play_game(
         };
         let current_sfen = board.to_string();
         let summary = runtime
-            .search(&board, &history, &start_sfen, &moves, config.budget)
+            .search(&board, &history, &opening.base_sfen, &position_moves, config.budget)
             .map_err(|err| {
             anyhow!(
                 "search failed in game {} on ply {} with {} to move (engine {}, sfen: {}, moves: {}): {err}",
@@ -2197,6 +2252,7 @@ fn play_self_play_game(
                 moves.join(" ")
             )
         })?;
+        position_moves.push(best_move.clone());
         moves.push(best_move);
         history.push(board.clone());
         plies = ply + 1;
@@ -2955,7 +3011,7 @@ fn self_play_report(
             dirty: git_dirty(),
             executable_sha256: file_sha256(&std::env::current_exe()?)?,
         },
-        ruleset: default_ruleset().to_string(),
+        ruleset: active_rule_profile(),
         command: report_command(args, threads),
         engines,
         summary,
@@ -3270,9 +3326,10 @@ fn self_play_inner(args: SelfPlayArgs, cleanup_dirs: &mut Vec<PathBuf>) -> Resul
     ];
     let threads = resolve_self_play_threads(args.threads, args.games);
     let expected_report_command = report_command(&args, threads);
+    let expected_ruleset = active_rule_profile();
     let mut report_output = prepare_self_play_report_output(
         args.report_dir.as_deref(),
-        default_ruleset(),
+        &expected_ruleset,
         &expected_report_command,
         &report_engines,
     )?;
@@ -3794,10 +3851,10 @@ fn git_dirty() -> bool {
 }
 
 fn active_feature_names() -> Vec<String> {
-    // Derived from `default_ruleset()` so a native archive's advertised `features`
-    // can never disagree with its `ruleset`. The variant features are mutually
-    // exclusive, so this is exactly the one active rule (or "standard").
-    vec![default_ruleset().to_string()]
+    active_rule_profile()
+        .split('+')
+        .map(str::to_string)
+        .collect()
 }
 
 fn infer_build_profile(binary: &Path) -> ArchiveBuildProfile {
@@ -3856,7 +3913,7 @@ fn package_in_staging(args: PackageArgs, staging: &Path) -> Result<()> {
         None
     };
 
-    let manifest = package_manifest(&args, nnue);
+    let manifest = package_manifest(&args, nnue)?;
     fs::write(
         staging.join(MANIFEST_FILE),
         serde_json::to_string_pretty(&manifest)?,
@@ -3962,8 +4019,8 @@ mod tests {
         PackageArgs {
             output,
             wasm_dir,
-            ruleset: default_ruleset().to_string(),
-            rule_id: default_rule_id(),
+            ruleset: active_rule_profile(),
+            rule_id: Some(default_rule_id()),
             nnue: None,
             allow_missing_wasm: false,
         }
@@ -3978,7 +4035,7 @@ mod tests {
             output,
             binary,
             nnue,
-            ruleset: default_ruleset().to_string(),
+            ruleset: active_rule_profile(),
             engine_name: ENGINE_NAME.to_string(),
             profile: Some(ArchiveBuildProfile::Debug),
             target: Some("test-target".to_string()),
@@ -4134,8 +4191,9 @@ mod tests {
 
         assert_eq!(default_ruleset(), expected_ruleset);
         assert_eq!(default_rule_id(), expected_rule_id);
-        // A native archive's advertised features must agree with its ruleset.
-        assert_eq!(active_feature_names(), vec![expected_ruleset.to_string()]);
+        let features = active_feature_names();
+        assert_eq!(features.first().map(String::as_str), Some(expected_ruleset));
+        assert_eq!(features.join("+"), active_rule_profile());
     }
 
     fn write_fake_wasm_pack_output(dir: &Path) {
@@ -4181,7 +4239,7 @@ mod tests {
     #[test]
     fn manifest_serializes_shogitter_engine_package_v1() {
         let args = test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["schema"], "shogitter-engine-package");
@@ -4189,7 +4247,7 @@ mod tests {
         assert_eq!(json["engine"]["id"], ENGINE_ID);
         assert_eq!(
             json["engine"]["name"],
-            format!("{ENGINE_NAME} ({})", default_ruleset())
+            format!("{ENGINE_NAME} ({})", active_rule_profile())
         );
         assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");
@@ -4206,16 +4264,19 @@ mod tests {
         assert_eq!(json["profiles"].as_array().unwrap().len(), 1);
         assert_eq!(
             json["profiles"][0]["id"],
-            format!("{}-default", default_ruleset())
+            format!("{}-default", active_rule_profile())
         );
         assert_eq!(
             json["profiles"][0]["name"],
-            format!("{} default", profile_display_ruleset(default_ruleset()))
+            format!(
+                "{} default",
+                profile_display_ruleset(&active_rule_profile())
+            )
         );
         assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], default_rule_id());
         assert_eq!(
             json["profiles"][0]["rules"][0]["variant"],
-            default_ruleset()
+            active_rule_profile()
         );
         assert_eq!(json["profiles"][0]["rules"][0]["positionFormat"], "sfen");
         assert_eq!(json["profiles"][0]["rules"][0]["moveFormat"], "usi");
@@ -4232,7 +4293,8 @@ mod tests {
                 path: NNUE_ARTIFACT_PATH,
                 format: "nnue",
             }),
-        );
+        )
+        .unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["profiles"][0]["nnue"]["path"], NNUE_ARTIFACT_PATH);
@@ -4240,13 +4302,45 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "tennouzan")]
+    fn tennouzan_package_records_rule_172_and_feature_profile() {
+        let mut args = test_package_args(PathBuf::from("pkg"), PathBuf::from("out.tgz"));
+        args.rule_id = Some(172);
+        let json = serde_json::to_value(package_manifest(&args, None).unwrap()).unwrap();
+        assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], 172);
+        assert_eq!(
+            json["profiles"][0]["rules"][0]["variant"],
+            active_rule_profile()
+        );
+        assert!(
+            active_feature_names()
+                .iter()
+                .any(|feature| feature == "tennouzan")
+        );
+    }
+
+    #[test]
+    fn auxiliary_package_profile_requires_explicit_rule_id() {
+        let args = PackageArgs {
+            output: PathBuf::from("out.tgz"),
+            wasm_dir: PathBuf::from("haitaka_wasm/pkg"),
+            ruleset: "standard+oute".to_string(),
+            rule_id: None,
+            nnue: None,
+            allow_missing_wasm: true,
+        };
+        let error = package_manifest(&args, None).unwrap_err().to_string();
+        assert!(error.contains("--rule-id is required"));
+    }
+
+    #[test]
     fn manifest_serializes_explicit_anhoku_profile() {
         let mut args =
             test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
         args.ruleset = "anhoku".to_string();
-        args.rule_id = 55;
+        args.rule_id = Some(55);
 
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["profiles"][0]["id"], "anhoku-default");
@@ -4276,7 +4370,7 @@ mod tests {
         assert_eq!(json["schemaVersion"], 1);
         assert_eq!(json["engine"]["name"], ENGINE_NAME);
         assert_eq!(json["engine"]["version"], env!("CARGO_PKG_VERSION"));
-        assert_eq!(json["engine"]["ruleset"], default_ruleset());
+        assert_eq!(json["engine"]["ruleset"], active_rule_profile());
         assert_eq!(json["engine"]["buildProfile"], "debug");
         assert_eq!(json["engine"]["target"], "test-target");
         assert_eq!(json["runtime"]["protocol"], "usi");
@@ -4660,6 +4754,32 @@ mod tests {
     }
 
     #[test]
+    fn external_usi_position_replays_the_full_move_history() {
+        let moves = vec!["4d4c".to_string(), "9c9d".to_string(), "1g1f".to_string()];
+        assert_eq!(
+            usi_position_command("4k4/9/9/9/9/9/9/9/4K4 b - 1", &moves),
+            "position sfen 4k4/9/9/9/9/9/9/9/4K4 b - 1 moves 4d4c 9c9d 1g1f"
+        );
+    }
+
+    #[test]
+    fn self_play_report_records_the_active_composite_profile() {
+        let cli = Cli::try_parse_from(["haitaka", "self-play"]).unwrap();
+        let Command::SelfPlay(args) = cli.command else {
+            unreachable!();
+        };
+        let report = self_play_report(
+            &args,
+            1,
+            Vec::new(),
+            rating_summary(&MatchStats::default(), args.games),
+        )
+        .unwrap();
+
+        assert_eq!(report.ruleset, active_rule_profile());
+    }
+
+    #[test]
     fn self_play_thread_count_uses_available_parallelism_when_zero() {
         let available = thread::available_parallelism()
             .map(|parallelism| parallelism.get())
@@ -4681,13 +4801,20 @@ mod tests {
     #[test]
     fn random_opening_generation_is_reproducible() {
         let base = Board::from_sfen(SFEN_STARTPOS).expect("startpos should parse");
-        let opening_a =
+        let (opening_a, moves_a) =
             generate_opening_board(&base, 2, 123, 0).expect("opening generation should succeed");
-        let opening_b =
+        let (opening_b, moves_b) =
             generate_opening_board(&base, 2, 123, 0).expect("opening generation should succeed");
 
         assert_eq!(opening_a.to_string(), opening_b.to_string());
+        assert_eq!(moves_a, moves_b);
         assert_ne!(opening_a.to_string(), base.to_string());
+
+        let mut replayed = base.clone();
+        for move_text in moves_a {
+            replayed.play(move_text.parse().unwrap());
+        }
+        assert_eq!(replayed, opening_a);
     }
 
     #[test]
@@ -5512,6 +5639,43 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn external_engine_receives_the_full_position_history() {
+        let temp = unique_temp_dir("external-position-history");
+        fs::create_dir_all(&temp).expect("create temp dir");
+        let script = temp.join("engine.sh");
+        let position_log = temp.join("position.txt");
+        write_executable_script(
+            &script,
+            &format!(
+                "#!/bin/sh\nwhile IFS= read -r line; do\ncase \"$line\" in\n  usi) echo usiok ;;\n  isready) echo readyok ;;\n  position*) printf '%s\\n' \"$line\" > '{}' ;;\n  go*) echo 'bestmove 5i5h' ;;\nesac\ndone\n",
+                position_log.display()
+            ),
+        );
+        let mut client =
+            UsiEngineClient::spawn_with_startup_timeout(&script, &[], Duration::from_secs(5))
+                .expect("engine should start");
+        let base_sfen = "4k4/9/9/9/9/9/9/9/4K4 b - 1";
+        let moves = vec!["5i5h".to_string(), "5a5b".to_string()];
+
+        client
+            .search(
+                &Board::from_sfen(base_sfen).unwrap(),
+                base_sfen,
+                &moves,
+                SearchBudget::Depth(1),
+            )
+            .expect("external search should complete");
+
+        assert_eq!(
+            fs::read_to_string(&position_log).unwrap().trim(),
+            "position sfen 4k4/9/9/9/9/9/9/9/4K4 b - 1 moves 5i5h 5a5b"
+        );
+        client.send_command("quit").expect("send quit");
+        fs::remove_dir_all(temp).expect("clean temp dir");
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn external_engine_startup_timeout_fails_clearly() {
         let temp = unique_temp_dir("startup-timeout");
         fs::create_dir_all(&temp).expect("create temp dir");
@@ -5744,6 +5908,21 @@ mod tests {
         fs::remove_dir_all(temp).expect("clean temp dir");
     }
 
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn terminal_winner_reports_the_opponent_of_the_losing_previous_mover() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(terminal_winner(&board, Color::Black), Some(Seat::B));
+        assert_eq!(terminal_winner(&board, Color::White), Some(Seat::A));
+        let history = PositionHistory::new(board.clone());
+        assert_eq!(
+            terminal_adjudication(&board, &history, Color::Black),
+            Some((Some(Seat::B), GameTerminationReason::NoLegalMove))
+        );
+    }
+
     #[test]
     fn package_requires_wasm_bindgen_artifacts_by_default() {
         let temp = unique_temp_dir("missing-wasm");
@@ -5816,11 +5995,15 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "annan")]
+    #[cfg(all(
+        feature = "annan",
+        not(feature = "win-condition-category"),
+        not(feature = "king-constraint-category")
+    ))]
     #[test]
     fn annan_manifest_defaults_to_rule_26_usi_sfen() {
         let args = test_package_args(PathBuf::from("haitaka_wasm/pkg"), PathBuf::from("out.tgz"));
-        let manifest = package_manifest(&args, None);
+        let manifest = package_manifest(&args, None).unwrap();
         let json = serde_json::to_value(&manifest).expect("serialize manifest");
 
         assert_eq!(json["runtime"]["kind"], "wasm-bindgen");

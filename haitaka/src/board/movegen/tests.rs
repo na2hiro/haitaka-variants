@@ -63,6 +63,312 @@ fn subset_movegen_habu_position() {
     visit(&board, 2);
 }
 
+#[cfg(feature = "oute")]
+#[test]
+fn oute_is_an_immediate_win_and_stops_play() {
+    let board: Board = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+    assert!(!board.generate_moves(|_| true));
+    assert!(!board.is_legal("5a4a".parse().unwrap()));
+}
+
+#[cfg(all(feature = "oute", not(feature = "king-constraint-category")))]
+#[test]
+fn oute_checking_pawn_drop_with_evasions_is_legal() {
+    let mut board: Board = "4k4/9/9/9/9/9/9/9/4K4 b P 1".parse().unwrap();
+    let mv: Move = "P*5b".parse().unwrap();
+
+    assert!(board.is_legal_drop(mv));
+    assert!(board.is_legal(mv));
+    assert!(board.generate_drops(|moves| moves.has(mv)));
+    assert!(board.generate_moves(|moves| moves.has(mv)));
+    assert!(board.generate_checks(|moves| moves.has(mv)));
+
+    board.play(mv);
+    assert_eq!(board.winner(), Some(Color::Black));
+    assert!(!board.generate_moves(|_| true));
+    assert!(!board.generate_board_moves(|_| true));
+    assert!(!board.generate_drops(|_| true));
+}
+
+#[cfg(all(feature = "oute", not(feature = "donor-category")))]
+#[test]
+fn oute_checking_pawn_drop_without_evasions_is_illegal() {
+    let board: Board = "3pkp3/9/4G4/9/9/9/9/9/4K4 b P 1".parse().unwrap();
+    let mv: Move = "P*5b".parse().unwrap();
+
+    assert!(!board.is_legal_drop(mv));
+    assert!(!board.is_legal(mv));
+    assert!(!board.generate_drops(|moves| moves.has(mv)));
+    assert!(!board.generate_moves(|moves| moves.has(mv)));
+    assert!(!board.generate_checks(|moves| moves.has(mv)));
+}
+
+#[cfg(all(feature = "tennouzan", not(feature = "king-constraint-category")))]
+#[test]
+fn tennouzan_king_reaching_center_wins_for_either_color() {
+    let initial: Board = "4k4/9/9/9/9/4K4/8P/9/9 b - 1".parse().unwrap();
+    for swap in [false, true] {
+        let mut board = if swap {
+            initial.color_swapped()
+        } else {
+            initial.clone()
+        };
+        let winner = board.side_to_move();
+        assert_eq!(board.immediate_winner(), None);
+        let mv: Move = if swap { "5d5e" } else { "5f5e" }.parse().unwrap();
+        assert!(board.is_legal(mv));
+        assert!(board.generate_moves(|moves| moves.has(mv)));
+        board.play(mv);
+        assert_eq!(board.king(winner), Square::E5);
+        assert_eq!(board.immediate_winner(), Some(winner));
+        assert_eq!(board.winner(), Some(winner));
+        assert_eq!(board.status(), GameStatus::Won);
+        assert!(!board.generate_moves(|_| true));
+        assert!(!board.generate_board_moves(|_| true));
+        assert!(!board.generate_drops(|_| true));
+        let other_move: Move = if swap { "5i4i" } else { "5a4a" }.parse().unwrap();
+        assert!(!board.is_legal(other_move));
+    }
+}
+
+#[cfg(feature = "tennouzan")]
+#[test]
+fn tennouzan_requires_the_physical_king_at_center() {
+    let board: Board = "4k4/9/9/9/4G4/4K4/9/9/9 w - 1".parse().unwrap();
+    #[cfg(feature = "annan")]
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::Black, Square::E5),
+        Piece::King
+    );
+    assert_eq!(board.immediate_winner(), None);
+}
+
+#[cfg(feature = "tennouzan")]
+#[test]
+fn tennouzan_does_not_allow_entering_an_attacked_center() {
+    let board: Board = "k8/9/4r4/9/9/4K4/9/9/9 b - 1".parse().unwrap();
+    let mv: Move = "5f5e".parse().unwrap();
+    assert!(!board.is_legal(mv));
+    assert!(!board.generate_moves(|moves| moves.has(mv)));
+}
+
+#[cfg(all(feature = "tennouzan", not(feature = "ningenshogi")))]
+#[test]
+fn tennouzan_keeps_normal_checkmate_as_a_win() {
+    let mut board: Board = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1".parse().unwrap();
+    board.play("R*1b".parse().unwrap());
+    assert_ne!(board.king(Color::Black), Square::E5);
+    assert_eq!(board.winner(), Some(Color::Black));
+}
+
+#[cfg(all(feature = "tennouzan", feature = "shihonkangen"))]
+#[test]
+fn tennouzan_respects_immediate_loss_precedence() {
+    let board: Board = "4k4/9/9/9/4K4/9/9/9/9 w RBGSN 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+}
+
+#[cfg(feature = "sanmaime")]
+#[test]
+fn three_hand_pieces_are_an_immediate_win() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 w RBG 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "inochinotokin")]
+#[test]
+fn a_previous_movers_tokin_is_an_immediate_win() {
+    let board: Board = "4k4/9/9/9/9/9/4+P4/9/4K4 w - 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "shihonkangen")]
+#[test]
+fn reaching_five_hand_pieces_is_an_immediate_loss() {
+    let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), None);
+
+    board.play("9d8d".parse().unwrap());
+
+    assert_eq!(board.num_in_hand(Color::Black, Piece::Pawn), 1);
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+    assert!(!board.generate_moves(|_| true));
+}
+
+#[cfg(all(feature = "sanmaime", feature = "shihonkangen"))]
+#[test]
+fn immediate_loss_takes_precedence_over_win_conditions() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 w RBGSN 1".parse().unwrap();
+
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+    assert!(!board.generate_moves(|_| true));
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_mate_wins_after_every_surviving_piece_has_moved() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1".parse().unwrap();
+    board.play("4d4c".parse().unwrap());
+    board.play("9c9d".parse().unwrap());
+    board.play("9b5b".parse().unwrap());
+
+    assert_eq!(
+        board.unmoved_pieces() & board.colors(Color::Black),
+        BitBoard::EMPTY
+    );
+    assert_eq!(board.winner(), Some(Color::Black));
+    assert_eq!(board.status(), GameStatus::Won);
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_mating_side_loses_with_an_unmoved_piece_left() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+    board.play("4d4c".parse().unwrap());
+    board.play("9c9d".parse().unwrap());
+    board.play("9b5b".parse().unwrap());
+
+    assert_eq!(
+        board.unmoved_pieces() & board.colors(Color::Black),
+        Square::G1.bitboard()
+    );
+    assert_eq!(board.winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_capture_removes_an_unmoved_piece_from_the_requirement() {
+    let mut board: Board = "4k4/9/9/4rP3/9/9/9/9/8K w - 1".parse().unwrap();
+    assert!(board.unmoved_pieces().has(Square::D4));
+
+    board.play("5d4d".parse().unwrap());
+
+    assert!(!board.unmoved_pieces().has(Square::D4));
+}
+
+#[test]
+fn color_swapped_board_preserves_position_and_legal_moves() {
+    let board: Board = "4k4/9/4+p4/9/2B6/9/4P4/9/4K4 b R2Prp 17".parse().unwrap();
+    let swapped = board.color_swapped();
+    assert_eq!(swapped.color_swapped(), board);
+    assert_eq!(swapped.side_to_move(), !board.side_to_move());
+    assert_eq!(swapped.move_number(), board.move_number());
+    for color in Color::ALL {
+        assert_eq!(swapped.hand(!color), board.hand(color));
+    }
+    let mut expected_moves = Vec::new();
+    board.generate_moves(|moves| {
+        for mv in moves {
+            expected_moves.push(
+                match mv {
+                    Move::BoardMove {
+                        from,
+                        to,
+                        promotion,
+                    } => Move::BoardMove {
+                        from: from.flip(),
+                        to: to.flip(),
+                        promotion,
+                    },
+                    Move::Drop { piece, to } => Move::Drop {
+                        piece,
+                        to: to.flip(),
+                    },
+                }
+                .to_string(),
+            );
+        }
+        false
+    });
+    let mut actual_moves = Vec::new();
+    swapped.generate_moves(|moves| {
+        actual_moves.extend(moves.into_iter().map(|mv| mv.to_string()));
+        false
+    });
+    expected_moves.sort();
+    actual_moves.sort();
+    assert_eq!(actual_moves, expected_moves);
+    let reparsed: Board = swapped.to_string().parse().unwrap();
+    assert_eq!(swapped, reparsed);
+    assert_eq!(swapped.hash(), reparsed.hash());
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_color_swap_rotates_original_piece_history() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1".parse().unwrap();
+    for mv in ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"] {
+        board.play(mv.parse().unwrap());
+    }
+    let swapped = board.color_swapped();
+    assert_eq!(swapped.unmoved_pieces(), board.unmoved_pieces().rotate());
+    assert_ne!(swapped.unmoved_pieces(), swapped.occupied());
+    assert_eq!(swapped.color_swapped(), board);
+    assert_eq!(swapped.color_swapped().hash(), board.hash());
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_history_participates_in_position_identity() {
+    let mut moved: Board = "4k4/9/9/9/9/9/9/9/4K4 b - 1".parse().unwrap();
+    moved.play("5i5h".parse().unwrap());
+    moved.play("5a5b".parse().unwrap());
+    moved.play("5h5i".parse().unwrap());
+    moved.play("5b5a".parse().unwrap());
+
+    let reparsed: Board = format!("{moved}").parse().unwrap();
+    assert_ne!(moved.unmoved_pieces(), reparsed.unmoved_pieces());
+    assert_ne!(moved.hash(), reparsed.hash());
+    assert!(!moved.same_position(&reparsed));
+}
+
+#[cfg(feature = "igyoku")]
+#[test]
+fn igyoku_forbids_physical_king_moves() {
+    let board: Board = "4k4/9/9/9/9/9/9/9/4K4 b - 1".parse().unwrap();
+    assert!(!board.is_legal("5i5h".parse().unwrap()));
+    let mut saw_king = false;
+    board.generate_moves(|moves| {
+        saw_king |= matches!(
+            moves,
+            PieceMoves::BoardMoves {
+                piece: Piece::King,
+                ..
+            }
+        );
+        false
+    });
+    assert!(!saw_king);
+}
+
+#[cfg(feature = "hitomasuou")]
+#[test]
+fn hitomasuou_only_allows_destinations_in_the_home_zone() {
+    let board: Board = "4k4/9/9/9/9/9/4K4/9/9 b - 1".parse().unwrap();
+    assert!(board.is_legal("5g5h".parse().unwrap()));
+    assert!(!board.is_legal("5g4f".parse().unwrap()));
+}
+
+#[cfg(all(feature = "annan", feature = "king-constraint-category"))]
+#[test]
+fn king_constraint_only_applies_to_the_physical_king() {
+    let board: Board = "k8/9/9/9/4P4/4K4/9/9/9 b - 1".parse().unwrap();
+    assert!(
+        board.is_legal("5e4d".parse().unwrap()),
+        "a Pawn moving with donated King movement must not inherit the King's zone restriction"
+    );
+}
+
 #[allow(dead_code)]
 fn test_is_legal(board: Board) {
     use std::collections::HashSet;
@@ -277,6 +583,7 @@ fn pawn_push_mate_is_valid() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discount_pawn_drop_mate_in_perft() {
     // See old discussion at: https://www.talkchess.com/forum3/viewtopic.php?f=7&t=71550
     //
@@ -312,6 +619,7 @@ fn discount_pawn_drop_mate_in_perft() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn donot_move_into_check() {
     let sfen: &str = "7lk/9/8S/9/9/9/9/7L1/8K b P 1";
     let mut board: Board = Board::tsume(sfen).unwrap();
@@ -442,6 +750,7 @@ fn tsume() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn generate_checks() {
     let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     let board = Board::tsume(sfen).unwrap();
@@ -496,6 +805,7 @@ fn generate_checks() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
 fn play_tsume() {
     // first tsume in Zoku Tsumu-ya-Tsumuzaru-ya
     // by the First Meijin, Ohashi Sokei
@@ -578,6 +888,7 @@ fn invalid_tsume() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discovered_checks1() {
     let sfen = "8l/5gB2/7G1/7pk/7sp/9/9/9/9 b R";
     let board = Board::tsume(sfen).unwrap();
@@ -632,6 +943,7 @@ fn discovered_checks1() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(any(feature = "oute", feature = "shihonkangen")))]
 fn pinners() {
     let sfen = "8l/5gB2/8k/7p1/7sp/9/9/9/8K b RG";
     let mut board = Board::tsume(sfen).unwrap();
@@ -669,6 +981,7 @@ fn pinners() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn undiscovered_checks() {
     /*
         R . . . . . G . k
@@ -716,6 +1029,7 @@ fn undiscovered_checks() {
 
 #[test]
 #[cfg(not(feature = "tenkyo"))]
+#[cfg(not(any(feature = "oute", feature = "shihonkangen")))]
 fn discovered_checks2() {
     /*
     . . . . . . . . .
@@ -784,6 +1098,7 @@ fn discovered_checks2() {
     feature = "tenjiku",
     feature = "anki"
 )))]
+#[cfg(not(feature = "shihonkangen"))]
 fn discovered_checks3() {
     /*
     . . . . . . . . .
@@ -1414,6 +1729,7 @@ fn anki_king_move_into_donor_only_attack_is_rejected() {
 
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_king_capture_removes_enemy_backer_attack() {
     let board: Board = "k8/4K4/4r4/4p4/9/9/9/9/9 b - 1".parse().unwrap();
     let from = board.king(Color::Black);
@@ -1457,6 +1773,7 @@ fn annan_king_capture_removes_enemy_backer_attack() {
 /// Black Rook on 5a can capture the backer on 5f, removing the check.
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_capture_backer_resolves_check() {
     // rank a: Black Rook on 5a
     // rank c: White King on 9c (safe from Black Rook — different file)
@@ -1529,6 +1846,7 @@ fn annan_capture_backer_does_not_help_native_check() {
 /// Black should be able to drop a piece on 5h to interpose.
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_drop_interpose_backed_slider() {
     // rank b: White King on 9b (safe)
     // rank f: White Rook on 5f (backer)
@@ -1750,6 +2068,7 @@ fn annan_illegal_pawn_drop_mate_is_not_legal_or_generated() {
 
 #[test]
 #[cfg(feature = "annan")]
+#[cfg(not(feature = "oute"))]
 fn annan_double_check_can_be_resolved_by_capturing_shared_backer() {
     let board: Board =
         "1nsgkgs+Bl/1r5b1/2pp2p1p/1p5P1/2n6/1P1Pl4/2P2PP1P/5K3/1+lS+rpGSN+l w N4Pgp 1"

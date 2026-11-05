@@ -308,7 +308,7 @@ fn load_or_create_state(
         schema: SELECTION_SCHEMA.to_string(),
         schema_version: SELECTION_SCHEMA_VERSION,
         config_hash: loaded.hash_hex.clone(),
-        ruleset: loaded.config.rules.ruleset.as_str().to_string(),
+        ruleset: loaded.runtime_mode(),
         feature_set: loaded.training_features().to_string(),
         selection: selection.clone(),
         candidates: Vec::new(),
@@ -334,7 +334,7 @@ fn validate_state_identity(
             loaded.hash_hex
         );
     }
-    let ruleset = loaded.config.rules.ruleset.as_str();
+    let ruleset = loaded.runtime_mode();
     if state.ruleset != ruleset {
         bail!(
             "selection state {} was created for ruleset {}, but current ruleset is {}",
@@ -1404,7 +1404,7 @@ fn validate_legacy_ranking_protocol(
     if legacy.schema != SELECTION_SCHEMA || legacy.schema_version != SELECTION_SCHEMA_VERSION {
         bail!("unsupported legacy selection state schema");
     }
-    if legacy.ruleset != loaded.config.rules.ruleset.as_str()
+    if legacy.ruleset != loaded.runtime_mode()
         || legacy.feature_set != loaded.training_features()
         || legacy.selection.movetime_ms != selection.movetime_ms
         || legacy.selection.opening_random_plies != selection.opening_random_plies
@@ -1439,7 +1439,7 @@ fn validate_legacy_match_report(
         "openings": null,
         "openingOrder": "sequential",
     });
-    if report["ruleset"] != loaded.config.rules.ruleset.as_str() {
+    if report["ruleset"] != loaded.runtime_mode() {
         bail!(
             "legacy match report {} uses a different ruleset",
             path.display()
@@ -1696,7 +1696,7 @@ fn ranking_match_identity(
     selection: &SelectionConfig,
 ) -> Result<String> {
     let identity = serde_json::json!({
-        "ruleset": loaded.config.rules.ruleset.as_str(),
+        "ruleset": loaded.runtime_mode(),
         "featureSet": loaded.training_features(),
         "openingSfen": loaded.opening_sfen()?,
         "movetimeMs": selection.movetime_ms,
@@ -1814,6 +1814,8 @@ mod tests {
             config: LearnConfig {
                 rules: RulesConfig {
                     ruleset: Ruleset::Standard,
+                    win_conditions: Vec::new(),
+                    movement_constraint: None,
                     rule_id: None,
                     handicap: None,
                     opening_sfen: None,
@@ -1833,7 +1835,7 @@ mod tests {
             schema: SELECTION_SCHEMA.to_string(),
             schema_version: SELECTION_SCHEMA_VERSION,
             config_hash: loaded.hash_hex.clone(),
-            ruleset: loaded.config.rules.ruleset.as_str().to_string(),
+            ruleset: loaded.runtime_mode(),
             feature_set: loaded.training_features().to_string(),
             selection,
             candidates: Vec::new(),
@@ -1870,11 +1872,10 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("self-play-report.json");
         let mut loaded = loaded_config_for_tests("config");
-        loaded.config.rules.ruleset =
-            serde_json::from_value(serde_json::json!(loaded.runtime_mode())).unwrap();
+        loaded.config.rules = crate::config::active_rules_for_tests();
         let selection = SelectionConfig::default();
         let report = serde_json::json!({
-            "ruleset": loaded.config.rules.ruleset.as_str(),
+            "ruleset": loaded.runtime_mode(),
             "command": {
                 "movetimeMs": selection.movetime_ms,
                 "openingRandomPlies": selection.opening_random_plies,
