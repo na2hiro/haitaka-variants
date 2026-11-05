@@ -1246,19 +1246,13 @@ fn choose_searched_stochastic_rollout_move(
         "rollout temperature must be finite and positive"
     );
 
-    let current_sfen = board.to_string();
-    let swapped_sfen = color_swap_anhoku_sfen(&current_sfen).with_context(|| {
-        format!(
-            "failed to canonicalize rollout position for dataset `{dataset_name}`, pair {pair_index}, ply {ply}"
-        )
-    })?;
-    let use_swapped_orientation = swapped_sfen < current_sfen;
-    let canonical_board = Board::from_sfen(if use_swapped_orientation {
-        &swapped_sfen
+    let swapped_board = board.color_swapped();
+    let use_swapped_orientation = swapped_board.to_string() < board.to_string();
+    let canonical_board = if use_swapped_orientation {
+        swapped_board
     } else {
-        &current_sfen
-    })
-    .map_err(|err| anyhow!("failed to parse canonical rollout position: {err}"))?;
+        board.clone()
+    };
     let canonical_legal_moves = legal_moves
         .iter()
         .copied()
@@ -6774,6 +6768,8 @@ mod tests {
             feature = "anki"
         ))
     ))]
+    // Human Shogi additionally requires the mating side's original pieces to have moved.
+    #[cfg(not(feature = "ningenshogi"))]
     fn searched_rollout_keeps_an_immediate_mate_above_ordinary_moves() {
         let board = Board::from_sfen("4k4/9/3LGL3/9/9/9/9/9/4K4 b R 1").unwrap();
         let legal_moves = collect_legal_moves(&board);
@@ -6803,6 +6799,56 @@ mod tests {
             child.play_unchecked(decision.move_);
             assert_eq!(child.status(), haitaka::GameStatus::Won);
         }
+    }
+
+    #[test]
+    #[cfg(all(feature = "ningenshogi", not(feature = "donor-category")))]
+    fn searched_rollout_preserves_human_shogi_history_in_both_orientations() {
+        let mut original: Board = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1".parse().unwrap();
+        for move_ in ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"] {
+            original.play(move_.parse().unwrap());
+        }
+        let mut swapped_orientations = Vec::new();
+        for board in [original.clone(), original.color_swapped()] {
+            swapped_orientations.push(board.color_swapped().to_string() < board.to_string());
+            let mut mate = board.clone();
+            let move_: Move = "9b5b+".parse().unwrap();
+            mate.play(if board.side_to_move() == Color::Black {
+                move_
+            } else {
+                transform_move(move_)
+            });
+            assert_eq!(mate.winner(), Some(board.side_to_move()));
+            // SFEN omits the original-piece history that makes this mate a win.
+            let reparsed: Board = mate.to_string().parse().unwrap();
+            assert_eq!(reparsed.winner(), Some(!board.side_to_move()));
+
+            let legal_moves = collect_legal_moves(&board);
+            let decision = choose_searched_stochastic_rollout_move(
+                &board,
+                &legal_moves,
+                &Teacher::Handcrafted,
+                1,
+                u16::MAX,
+                0,
+                100.0,
+                75,
+                "human-shogi",
+                0,
+                0,
+                "splitmix64-v1",
+                &mut SearchWorkspace::default(),
+                &mut SearchUseStats::default(),
+            )
+            .unwrap();
+            assert_eq!(decision.best_score, 30_000);
+            assert_eq!(decision.selected_score, 30_000);
+            let mut child = board.clone();
+            child.play(decision.move_);
+            assert_eq!(child.winner(), Some(board.side_to_move()));
+        }
+        swapped_orientations.sort();
+        assert_eq!(swapped_orientations, vec![false, true]);
     }
 
     #[test]

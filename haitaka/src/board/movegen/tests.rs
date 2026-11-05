@@ -190,6 +190,67 @@ fn human_shogi_capture_removes_an_unmoved_piece_from_the_requirement() {
     assert!(!board.unmoved_pieces().has(Square::D4));
 }
 
+#[test]
+fn color_swapped_board_preserves_position_and_legal_moves() {
+    let board: Board = "4k4/9/4+p4/9/2B6/9/4P4/9/4K4 b R2Prp 17".parse().unwrap();
+    let swapped = board.color_swapped();
+    assert_eq!(swapped.color_swapped(), board);
+    assert_eq!(swapped.side_to_move(), !board.side_to_move());
+    assert_eq!(swapped.move_number(), board.move_number());
+    for color in Color::ALL {
+        assert_eq!(swapped.hand(!color), board.hand(color));
+    }
+    let mut expected_moves = Vec::new();
+    board.generate_moves(|moves| {
+        for mv in moves {
+            expected_moves.push(
+                match mv {
+                    Move::BoardMove {
+                        from,
+                        to,
+                        promotion,
+                    } => Move::BoardMove {
+                        from: from.flip(),
+                        to: to.flip(),
+                        promotion,
+                    },
+                    Move::Drop { piece, to } => Move::Drop {
+                        piece,
+                        to: to.flip(),
+                    },
+                }
+                .to_string(),
+            );
+        }
+        false
+    });
+    let mut actual_moves = Vec::new();
+    swapped.generate_moves(|moves| {
+        actual_moves.extend(moves.into_iter().map(|mv| mv.to_string()));
+        false
+    });
+    expected_moves.sort();
+    actual_moves.sort();
+    assert_eq!(actual_moves, expected_moves);
+    let reparsed: Board = swapped.to_string().parse().unwrap();
+    assert_eq!(swapped, reparsed);
+    assert_eq!(swapped.hash(), reparsed.hash());
+}
+
+#[cfg(feature = "ningenshogi")]
+#[test]
+fn human_shogi_color_swap_rotates_original_piece_history() {
+    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1".parse().unwrap();
+    for mv in ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"] {
+        board.play(mv.parse().unwrap());
+    }
+    let swapped = board.color_swapped();
+    assert_eq!(swapped.unmoved_pieces(), board.unmoved_pieces().rotate());
+    assert_ne!(swapped.unmoved_pieces(), swapped.occupied());
+    assert_eq!(swapped.color_swapped(), board);
+    assert_eq!(swapped.color_swapped().hash(), board.hash());
+}
+
 #[cfg(feature = "ningenshogi")]
 #[test]
 fn human_shogi_history_participates_in_position_identity() {

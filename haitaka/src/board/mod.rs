@@ -111,6 +111,33 @@ impl Board {
         Self::from_sfen(SFEN_STARTPOS).unwrap()
     }
 
+    /// Rotate the position 180 degrees and exchange both players' colors.
+    ///
+    /// The move number is preserved. Unlike a SFEN round trip, this also
+    /// preserves and rotates Human Shogi's original-piece movement history.
+    pub fn color_swapped(&self) -> Self {
+        let mut board = Self::default();
+        for color in Color::ALL {
+            for piece in Piece::ALL {
+                for square in self.colored_pieces(color, piece) {
+                    board.unchecked_put(!color, piece, square.flip());
+                }
+                board.unchecked_set_hand(!color, piece, self.num_in_hand(color, piece));
+            }
+        }
+        if self.side_to_move() == Color::Black {
+            board.inner.toggle_side_to_move();
+        }
+        board.move_number = self.move_number;
+        board.checkers = self.checkers.rotate();
+        board.pinned = self.pinned.rotate();
+        #[cfg(feature = "ningenshogi")]
+        {
+            board.unmoved_pieces = self.unmoved_pieces.rotate();
+        }
+        board
+    }
+
     /// Return a reference to the hand for color.
     pub fn hand(&self, color: Color) -> &[u8; Piece::NUM] {
         self.inner.hand(color)
