@@ -6768,7 +6768,7 @@ mod tests {
             feature = "anki"
         ))
     ))]
-    // Human Shogi additionally requires the mating side's original pieces to have moved.
+    // Human Shogi requires both players' original pieces to have moved.
     #[cfg(not(feature = "ningenshogi"))]
     fn searched_rollout_keeps_an_immediate_mate_above_ordinary_moves() {
         let board = Board::from_sfen("4k4/9/3LGL3/9/9/9/9/9/4K4 b R 1").unwrap();
@@ -6804,8 +6804,10 @@ mod tests {
     #[test]
     #[cfg(all(feature = "ningenshogi", not(feature = "donor-category")))]
     fn searched_rollout_preserves_human_shogi_history_in_both_orientations() {
-        let mut original: Board = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1".parse().unwrap();
-        for move_ in ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"] {
+        let mut original: Board = "4k4/R8/9/5K3/9/9/8G/9/9 b 2p 1".parse().unwrap();
+        for move_ in [
+            "4d4c", "5a6a", "1g1f", "6a5a", "1f1g", "P*6a", "1g1f", "P*4a",
+        ] {
             original.play(move_.parse().unwrap());
         }
         let mut swapped_orientations = Vec::new();
@@ -6849,6 +6851,38 @@ mod tests {
         }
         swapped_orientations.sort();
         assert_eq!(swapped_orientations, vec![false, true]);
+    }
+
+    #[test]
+    #[cfg(all(feature = "ningenshogi", not(feature = "donor-category")))]
+    fn searched_rollout_avoids_human_shogi_mate_until_defender_finishes() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1".parse().unwrap();
+        for mv in ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"] {
+            board.play(mv.parse().unwrap());
+        }
+        for board in [board.clone(), board.color_swapped()] {
+            let decision = choose_searched_stochastic_rollout_move(
+                &board,
+                &collect_legal_moves(&board),
+                &Teacher::Handcrafted,
+                1,
+                u16::MAX,
+                0,
+                100.0,
+                75,
+                "human-shogi",
+                0,
+                0,
+                "splitmix64-v1",
+                &mut SearchWorkspace::default(),
+                &mut SearchUseStats::default(),
+            )
+            .unwrap();
+            assert!(decision.best_score < SEARCH_MATE_SCORE_THRESHOLD);
+            let mut child = board.clone();
+            child.play(decision.move_);
+            assert_ne!(child.winner(), Some(!board.side_to_move()));
+        }
     }
 
     #[test]

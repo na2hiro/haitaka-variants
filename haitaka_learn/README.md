@@ -130,8 +130,9 @@ Supported `win_conditions` values are `oute`, `sanmaime`, `inochinotokin`,
 use `ruleset = "standard"`, `win_conditions = ["tennouzan"]`, and `rule_id = 172`,
 and build with `--features tennouzan`. Reaching 55 (USI `5e`) with the physical
 King is an additional win; ordinary checkmate and King safety still apply.
-Human Shogi rollout boards carry their
-unmoved-piece history through search and self-play; when an `opening_sfen` is
+Human Shogi reverses checkmate until both players have moved every surviving
+original piece; completion by only one player does not permit checkmating.
+Rollout boards carry this two-player unmoved-piece history through search and self-play; when an `opening_sfen` is
 loaded, all pieces present in that opening are initially considered unmoved.
 These outcome rules do not change NNUE input geometry.
 

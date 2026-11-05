@@ -69,7 +69,8 @@ jobs:
         cargo test -p haitaka --features shihonkangen mating_line_is_rejected_when_capture_reaches_five_hand_pieces
         cargo test -p haitaka_wasm --features shihonkangen iterative_search_does_not_select_dfpn_mate_that_loses_capital_return
         cargo test -p haitaka --features ningenshogi human_shogi
-        cargo test -p haitaka_learn --features ningenshogi --bin haitaka_learn searched_rollout_preserves_human_shogi_history
+        cargo test -p haitaka_cli --features ningenshogi human_shogi_terminal_adjudication
+        cargo test -p haitaka_learn --features ningenshogi --bin haitaka_learn human_shogi
         cargo test -p haitaka_wasm --features ningenshogi human_shogi
         cargo test -p haitaka_wasm --features shihonkangen,ningenshogi usi_terminal_notification
         cargo test -p haitaka_cli --features shihonkangen,ningenshogi external_engine_receives_the_full_position_history

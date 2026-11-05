@@ -912,7 +912,7 @@ impl Board {
     ///
     /// Besides position-based immediate outcomes, this checks for the normal
     /// no-legal-move ending. In Human Shogi, a checkmating player instead loses
-    /// when one of their original, uncaptured pieces has never moved.
+    /// until every original, uncaptured piece of both players has moved.
     pub fn winner(&self) -> Option<Color> {
         if let Some(winner) = self.immediate_winner() {
             return Some(winner);
@@ -923,7 +923,7 @@ impl Board {
 
         let previous = !self.side_to_move();
         #[cfg(feature = "ningenshogi")]
-        if !self.checkers.is_empty() && !(self.unmoved_pieces & self.colors(previous)).is_empty() {
+        if !self.checkers.is_empty() && !self.unmoved_pieces.is_empty() {
             return Some(self.side_to_move());
         }
 

@@ -215,34 +215,59 @@ fn immediate_loss_takes_precedence_over_win_conditions() {
 
 #[cfg(feature = "ningenshogi")]
 #[test]
-fn human_shogi_mate_wins_after_every_surviving_piece_has_moved() {
-    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1".parse().unwrap();
-    board.play("4d4c".parse().unwrap());
-    board.play("9c9d".parse().unwrap());
-    board.play("9b5b".parse().unwrap());
-
-    assert_eq!(
-        board.unmoved_pieces() & board.colors(Color::Black),
-        BitBoard::EMPTY
+fn human_shogi_checkmate_requires_both_players_to_finish_moving() {
+    fn mate(start: &str, moves: &[&str]) -> Board {
+        let mut board: Board = start.parse().unwrap();
+        for mv in moves {
+            board.play(mv.parse().unwrap());
+        }
+        board
+    }
+    // White moves its original King and drops both blockers. Dropped pieces
+    // carry no original-piece requirement; Black moves its Rook on the last ply.
+    let completed_moves = [
+        "4d4c", "5a6a", "1g1f", "6a5a", "1f1g", "P*6a", "1g1f", "P*4a", "9b5b+",
+    ];
+    let both_complete = mate("4k4/R8/9/5K3/9/9/8G/9/9 b 2p 1", &completed_moves);
+    let only_defender_complete = mate("4k4/R8/9/5K3/9/9/7PG/9/9 b 2p 1", &completed_moves);
+    let only_mater_complete = mate("3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1", &["4d4c", "9c9d", "9b5b"]);
+    let neither_complete = mate(
+        "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1",
+        &["4d4c", "9c9d", "9b5b"],
     );
-    assert_eq!(board.winner(), Some(Color::Black));
-    assert_eq!(board.status(), GameStatus::Won);
-}
-
-#[cfg(feature = "ningenshogi")]
-#[test]
-fn human_shogi_mating_side_loses_with_an_unmoved_piece_left() {
-    let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
-    board.play("4d4c".parse().unwrap());
-    board.play("9c9d".parse().unwrap());
-    board.play("9b5b".parse().unwrap());
-
-    assert_eq!(
-        board.unmoved_pieces() & board.colors(Color::Black),
-        Square::G1.bitboard()
-    );
-    assert_eq!(board.winner(), Some(Color::White));
-    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+    for (board, mater_pending, defender_pending, mater_wins) in [
+        (both_complete, false, false, true),
+        (only_defender_complete, true, false, false),
+        (only_mater_complete, false, true, false),
+        (neither_complete, true, true, false),
+    ] {
+        for board in [board.clone(), board.color_swapped()] {
+            let defender = board.side_to_move();
+            let mater = !defender;
+            assert_eq!(
+                !(board.unmoved_pieces() & board.colors(mater)).is_empty(),
+                mater_pending
+            );
+            assert_eq!(
+                !(board.unmoved_pieces() & board.colors(defender)).is_empty(),
+                defender_pending
+            );
+            assert!(!board.checkers().is_empty());
+            assert!(!board.generate_moves(|_| true));
+            assert_eq!(
+                board.winner(),
+                Some(if mater_wins { mater } else { defender })
+            );
+            assert_eq!(
+                board.status(),
+                if mater_wins {
+                    GameStatus::Won
+                } else {
+                    GameStatus::WonBySideToMove
+                }
+            );
+        }
+    }
 }
 
 #[cfg(feature = "ningenshogi")]

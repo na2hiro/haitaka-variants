@@ -817,6 +817,21 @@ mod tests {
         assert!(result.pv.is_empty());
     }
 
+    #[cfg(feature = "ningenshogi")]
+    #[test]
+    fn human_shogi_mating_line_is_rejected_until_defender_finishes_moving() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        let mv: Move = "9b5b".parse().unwrap();
+        let mut child = board.clone();
+        child.play(mv);
+        assert!((child.unmoved_pieces() & child.colors(Color::Black)).is_empty());
+        assert!(!(child.unmoved_pieces() & child.colors(Color::White)).is_empty());
+        assert_eq!(child.winner(), Some(Color::White));
+        assert!(!verify_mating_line(&board, Color::Black, &[mv]));
+    }
+
     #[cfg(feature = "shihonkangen")]
     #[test]
     fn mating_line_is_rejected_when_capture_reaches_five_hand_pieces() {

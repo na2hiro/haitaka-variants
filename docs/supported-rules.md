@@ -22,8 +22,10 @@ orthogonal to the following win-condition and king-constraint features:
 - `inochinotokin`: the previous mover wins when they have made a Tokin.
 - `tennouzan`: 天王山の玉 (rule ID 172). The previous mover also wins by legally moving their physical King to 55 (USI `5e`). Normal checkmate still wins. Another piece borrowing King movement does not satisfy this condition.
 - `shihonkangen`: the previous mover loses when their total hand reaches five pieces.
-- `ningenshogi`: normal checkmate is reversed when the mating player still has
-  an original piece on the board that has neither moved nor been captured.
+- `ningenshogi`: normal checkmate is reversed until **both players** have moved
+  every original, uncaptured piece. If either player has an original piece on
+  the board that has never moved, the checkmating player loses, even if that
+  player has already completed their own moves.
 - `igyoku`: the physical King cannot move.
 - `hitomasuou`: the physical King may only move within the six squares on files
   4--6 and its two home ranks.

@@ -5908,6 +5908,23 @@ mod tests {
         fs::remove_dir_all(temp).expect("clean temp dir");
     }
 
+    #[cfg(feature = "ningenshogi")]
+    #[test]
+    fn human_shogi_terminal_adjudication_waits_for_both_players() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1".parse().unwrap();
+        for mv in ["4d4c", "9c9d", "9b5b"] {
+            board.play(mv.parse().unwrap());
+        }
+        for board in [board.clone(), board.color_swapped()] {
+            let mater = !board.side_to_move();
+            let history = PositionHistory::new(board.clone());
+            assert_eq!(
+                terminal_adjudication(&board, &history, mater),
+                Some((Some(Seat::B), GameTerminationReason::NoLegalMove))
+            );
+        }
+    }
+
     #[cfg(feature = "shihonkangen")]
     #[test]
     fn terminal_winner_reports_the_opponent_of_the_losing_previous_mover() {

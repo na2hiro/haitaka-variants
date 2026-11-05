@@ -156,8 +156,8 @@ See [haitaka_wasm/README.md](haitaka_wasm/README.md).
 - `inochinotokin`: making a Tokin wins immediately.
 - `tennouzan`: 天王山の玉 (rule 172); moving the physical King to 55 (USI `5e`) also wins immediately.
 - `shihonkangen`: reaching five total pieces in hand loses immediately.
-- `ningenshogi`: a checkmating player loses if any of their original,
-  uncaptured pieces has never moved.
+- `ningenshogi`: a checkmating player loses until both players have moved all
+  their original, uncaptured pieces. Completion by only one player is insufficient.
 - `igyoku`: the physical King cannot move.
 - `hitomasuou`: the physical King is confined to the six-square home zone.
 

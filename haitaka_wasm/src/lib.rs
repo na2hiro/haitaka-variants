@@ -4851,6 +4851,12 @@ mod tests {
     #[test]
     #[cfg(feature = "ningenshogi")]
     fn usi_terminal_notification_names_human_shogi_winner() {
+        // Even a mating side that has moved every piece loses while the
+        // defender still has original pieces waiting to move.
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
+        );
         assert_usi_terminal_side_to_move_winner(
             "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1",
             &["4d4c", "9c9d", "9b5b"],
@@ -6245,15 +6251,21 @@ mod tests {
     #[test]
     #[cfg(feature = "ningenshogi")]
     fn usi_movetime_search_preserves_human_shogi_move_history() {
-        let initial = "3pkp3/R8/p8/5K3/9/9/8G/9/9 b - 1";
-        let moves = ["4d4c", "9c9d", "1g1f", "9d9e", "1f1g", "9e9f"];
+        let initial = "4k4/R8/9/5K3/9/9/8G/9/9 b 2p 1";
+        let moves = [
+            "4d4c", "5a6a", "1g1f", "6a5a", "1f1g", "P*6a", "1g1f", "P*4a",
+        ];
         let mut session = UsiSession::default();
         let position = format!("position sfen {initial} moves {}", moves.join(" "));
         assert!(session.handle_line(&position).is_empty());
 
         let output = session.handle_line("go movetime 0 depth 1");
 
-        assert_eq!(output.last().map(String::as_str), Some("bestmove 9b5b+"));
+        let mv = output.last().unwrap().strip_prefix("bestmove ").unwrap();
+        let mut child = session.board.clone();
+        child.play(mv.parse().unwrap());
+        assert!(child.unmoved_pieces().is_empty());
+        assert_eq!(child.winner(), Some(Color::Black));
     }
 
     #[test]
