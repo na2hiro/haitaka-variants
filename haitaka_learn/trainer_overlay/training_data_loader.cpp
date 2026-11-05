@@ -333,7 +333,8 @@ struct HalfKAv2 {
     static constexpr int NUM_PLANES =
         NUM_SQ * NUM_PT + MAX_HAND_PIECES * (NUM_PT - (NUM_KSQ > 1));
     static constexpr int INPUTS = NUM_PLANES * NUM_KSQ;
-    static constexpr int MAX_ACTIVE_FEATURES = MAX_PIECES + MAX_HAND_PIECES;
+    // A shared hand is represented for both players: up to 78 rows in shogi.
+    static constexpr int MAX_ACTIVE_FEATURES = 2 * MAX_PIECES;
 
     static int feature_index(Color color, Square ksq, Square sq, Piece p) {
         auto p_idx = static_cast<int>(type_of(p)) * 2 + (color_of(p) != color);
@@ -387,7 +388,7 @@ struct HalfKAv2Factorized {
         HalfKAv2::INPUTS
         + HalfKAv2::NUM_SQ * NUM_PT
         + MAX_HAND_PIECES * (NUM_PT - 2 * (HalfKAv2::NUM_KSQ > 1));
-    static constexpr int MAX_ACTIVE_FEATURES = HalfKAv2::MAX_ACTIVE_FEATURES + MAX_PIECES;
+    static constexpr int MAX_ACTIVE_FEATURES = 2 * HalfKAv2::MAX_ACTIVE_FEATURES;
 
     static std::pair<int, int> fill_features_sparse(
         const TrainingDataEntry& e, int* features, float* values, Color color

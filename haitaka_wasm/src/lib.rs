@@ -3561,6 +3561,15 @@ pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
 pub fn evaluate_nnue(sfen: &str) -> Result<i32, JsValue> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| JsValue::from_str(&format!("failed to parse SFEN: {err}")))?;
+    if !has_both_kings(&board)
+        || Color::ALL
+            .into_iter()
+            .any(|c| board.num_in_hand(c, Piece::King) > 0)
+    {
+        return Err(JsValue::from_str(
+            "terminal King positions are not static NNUE inputs",
+        ));
+    }
     let EvaluationStrategy::Nnue { model, .. } = current_evaluation_strategy() else {
         return Err(JsValue::from_str("NNUE is not loaded"));
     };
@@ -3965,7 +3974,7 @@ fn quiescence(
         return Ok(score);
     }
 
-    let in_check = !board.checkers().is_empty();
+    let in_check = !haitaka::hand_rules::allows_ignored_check() && !board.checkers().is_empty();
     let mut stand_pat_for_delta = None;
     if !in_check {
         let stand_pat = evaluate_or_mate(board, ply, ctx, eval_state.as_ref());
@@ -3988,7 +3997,8 @@ fn quiescence(
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
         if let Some(stand_pat) = stand_pat_for_delta {
-            if qply >= ctx.qsearch_limits.delta_min_qply
+            if !cfg!(feature = "hand-category")
+                && qply >= ctx.qsearch_limits.delta_min_qply
                 && stand_pat
                     .saturating_add(picked.tactical_score.optimistic_delta)
                     .saturating_add(ctx.qsearch_limits.delta_margin)
@@ -4334,17 +4344,15 @@ fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
-    let mut score = 0;
-
-    for &piece in &Piece::ALL {
-        score += board.colored_pieces(color, piece).len() as i32 * piece_value(piece);
+    let mut score = 0i64;
+    for piece in Piece::ALL {
+        score +=
+            i64::from(board.colored_pieces(color, piece).len()) * i64::from(piece_value(piece));
     }
-
-    for &piece in &HAND_PIECES {
-        score += i32::from(board.num_in_hand(color, piece)) * piece_value(piece);
+    for piece in HAND_PIECES {
+        score += i64::from(board.num_in_hand(color, piece)) * i64::from(piece_value(piece));
     }
-
-    score
+    score.clamp(-28_000, 28_000) as i32
 }
 
 fn opponent_mobility(board: &Board) -> usize {
@@ -4371,8 +4379,9 @@ fn count_legal_moves(board: &Board) -> usize {
 pub fn handcrafted_static_eval(board: &Board) -> i32 {
     let us = board.side_to_move();
     let them = !us;
-    material_score(board, us) - material_score(board, them)
-        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32)
+    (material_score(board, us) - material_score(board, them)
+        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32))
+        .clamp(-28_000, 28_000)
 }
 
 fn record_move_try(ctx: &mut SearchContext<'_>, source: MoveSource) {
@@ -5879,7 +5888,7 @@ mod tests {
             return reference_handcrafted_eval(board, ply);
         }
 
-        let in_check = !board.checkers().is_empty();
+        let in_check = !haitaka::hand_rules::allows_ignored_check() && !board.checkers().is_empty();
         let mut stand_pat_for_delta = None;
         if !in_check {
             let stand_pat = reference_handcrafted_eval(board, ply);
@@ -5981,7 +5990,7 @@ mod tests {
             return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
-        material_score(board, us) - material_score(board, them)
+        (material_score(board, us) - material_score(board, them)).clamp(-28_000, 28_000)
             + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
     }
 
