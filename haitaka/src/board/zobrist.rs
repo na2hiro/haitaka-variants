@@ -90,7 +90,7 @@ pub struct ZobristBoard {
     // Note that `pieces[Piece::NUM]` is used as bitmap of all promoted pieces
     pieces: [BitBoard; Piece::NUM + 1], // piece type => bitmap of board locations
     colors: [BitBoard; Color::NUM],     // color => bit map of board locations
-    hands: [[u8; Piece::NUM]; Color::NUM], // color => [number of pieces in hand, indexed by piece type]
+    hands: [[u32; Piece::NUM]; Color::NUM], // color => [number of pieces in hand, indexed by piece type]
     side_to_move: Color,
     hash: u64,
 }
@@ -128,22 +128,22 @@ impl ZobristBoard {
     }
 
     #[inline(always)]
-    pub const fn hand(&self, color: Color) -> &[u8; Piece::NUM] {
+    pub const fn hand(&self, color: Color) -> &[u32; Piece::NUM] {
         &self.hands[color as usize]
     }
 
     #[inline(always)]
-    pub const fn hands(&self) -> &[[u8; Piece::NUM]; Color::NUM] {
+    pub const fn hands(&self) -> &[[u32; Piece::NUM]; Color::NUM] {
         &self.hands
     }
 
     #[inline(always)]
-    pub const fn num_in_hand(&self, color: Color, piece: Piece) -> u8 {
+    pub const fn num_in_hand(&self, color: Color, piece: Piece) -> u32 {
         self.hands[color as usize][piece as usize]
     }
 
     #[inline(always)]
-    pub fn unchecked_set_hand(&mut self, color: Color, piece: Piece, count: u8) {
+    pub fn unchecked_set_hand(&mut self, color: Color, piece: Piece, count: u32) {
         let old_count = self.hands[color as usize][piece as usize];
         self.hands[color as usize][piece as usize] = count;
         self.xor_hand(color, piece, old_count, count);
@@ -153,8 +153,14 @@ impl ZobristBoard {
     pub fn take_in_hand(&mut self, color: Color, piece: Piece) {
         let piece = piece.unpromote();
         let old_count = self.hands[color as usize][piece as usize];
-        self.hands[color as usize][piece as usize] = old_count + 1;
-        self.xor_hand(color, piece, old_count, old_count + 1);
+        self.hands[color as usize][piece as usize] =
+            old_count.checked_add(1).expect("hand inventory overflow");
+        self.xor_hand(
+            color,
+            piece,
+            old_count,
+            old_count.checked_add(1).expect("hand inventory overflow"),
+        );
     }
 
     /// Take from hand
@@ -205,15 +211,18 @@ impl ZobristBoard {
 
     // Update Zobrist hash for dropping a piece or taking a piece in hand.
     #[inline(always)]
-    fn xor_hand(&mut self, color: Color, piece: Piece, old_count: u8, new_count: u8) {
-        debug_assert!(
-            (old_count as usize) < ZOBRIST.color[color as usize].hand[piece as usize].len()
-        );
-        debug_assert!(
-            (new_count as usize) < ZOBRIST.color[color as usize].hand[piece as usize].len()
-        );
-        self.hash ^= ZOBRIST.color[color as usize].hand[piece as usize][old_count as usize];
-        self.hash ^= ZOBRIST.color[color as usize].hand[piece as usize][new_count as usize];
+    fn xor_hand(&mut self, color: Color, piece: Piece, old_count: u32, new_count: u32) {
+        fn key(color: Color, piece: Piece, count: u32) -> u64 {
+            if count < 20 {
+                return ZOBRIST.color[color as usize].hand[piece as usize][count as usize];
+            }
+            let mut x = u64::from(count) | ((piece as u64) << 32) | ((color as u64) << 48);
+            x = x.wrapping_add(0x9e3779b97f4a7c15);
+            x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+            x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
+            x ^ (x >> 31)
+        }
+        self.hash ^= key(color, piece, old_count) ^ key(color, piece, new_count);
     }
 
     #[inline(always)]

@@ -423,6 +423,9 @@ impl Board {
     /// the attacker, but DFPN is not a complete solver for plans that require
     /// non-checking preparation.
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
+        if crate::hand_rules::allows_ignored_check() {
+            return disabled_capture_king_dfpn();
+        }
         let history = PositionHistory::new(self.clone());
         DfpnSolver::new(self.side_to_move(), *options).solve(self, &history)
     }
@@ -434,6 +437,9 @@ impl Board {
     ) -> Result<DfpnResult, &'static str> {
         if !history.matches_current(self) {
             return Err("DFPN history current position does not match root");
+        }
+        if crate::hand_rules::allows_ignored_check() {
+            return Ok(disabled_capture_king_dfpn());
         }
         Ok(DfpnSolver::new(self.side_to_move(), *options).solve(self, history))
     }
@@ -1111,5 +1117,22 @@ mod tests {
             max_pv_moves: 64,
         });
         assert_ne!(result.status, DfpnStatus::Mate);
+    }
+}
+
+fn disabled_capture_king_dfpn() -> DfpnResult {
+    DfpnResult {
+        status: DfpnStatus::Unknown,
+        pv: vec![],
+        completed: false,
+        interruption_reason: None,
+        stats: DfpnStats {
+            nodes: 0,
+            tt_hits: 0,
+            tt_stores: 0,
+            tt_collisions: 0,
+            elapsed_ms: 0.0,
+            repetition_hits: 0,
+        },
     }
 }

@@ -65,3 +65,13 @@ ningenshogi = ["win-condition-category"]
 tennouzan = ["win-condition-category"]
 igyoku = ["king-constraint-category"]
 hitomasuou = ["king-constraint-category"]
+
+# Orthogonal capture, hand, and outcome rules.
+hand-category = []
+nakamaware = ["hand-category"]
+fushiyo = ["hand-category"]
+share = ["hand-category"]
+zoshoku = ["hand-category"]
+babanuki = ["hand-category"]
+tensuu = ["hand-category", "win-condition-category"]
+suika = ["hand-category", "win-condition-category"]

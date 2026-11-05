@@ -61,6 +61,110 @@ macro_rules! abort_if {
 }
 
 impl Board {
+    /// Generate physical moves without requiring the mover to evade check.
+    /// Both capture-king profiles use this path, including donor variants.
+    fn generate_capture_king_moves(
+        &self,
+        mask: BitBoard,
+        board_moves: bool,
+        drops: bool,
+        mut listener: impl FnMut(PieceMoves) -> bool,
+    ) -> bool {
+        if self.immediate_winner().is_some() {
+            return false;
+        }
+        let color = self.side_to_move();
+        if board_moves {
+            for from in self.colors(color) & mask {
+                let piece = self.piece_on(from).unwrap();
+                #[cfg(feature = "donor-category")]
+                let mut targets = crate::variant_rules::effective_movements(self, color, from)
+                    .pseudo_legals(color, from, self.occupied());
+                #[cfg(not(feature = "donor-category"))]
+                let mut targets = match piece {
+                    Piece::Pawn => pawn_attacks(color, from),
+                    Piece::Lance => get_lance_moves(color, from, self.occupied()),
+                    Piece::Knight => knight_attacks(color, from),
+                    Piece::Silver => silver_attacks(color, from),
+                    Piece::Gold
+                    | Piece::Tokin
+                    | Piece::PLance
+                    | Piece::PKnight
+                    | Piece::PSilver => gold_attacks(color, from),
+                    Piece::Bishop => get_bishop_moves(color, from, self.occupied()),
+                    Piece::Rook => get_rook_moves(color, from, self.occupied()),
+                    Piece::PBishop => {
+                        get_bishop_moves(color, from, self.occupied()) | gold_attacks(color, from)
+                    }
+                    Piece::PRook => {
+                        get_rook_moves(color, from, self.occupied()) | silver_attacks(color, from)
+                    }
+                    Piece::King => king_attacks(color, from),
+                };
+                targets -= from.bitboard();
+                if !cfg!(feature = "nakamaware") {
+                    targets -= self.colors(color);
+                }
+                if piece == Piece::King {
+                    targets &= self.king_destination_mask(color);
+                }
+                for to in targets {
+                    for promotion in [false, true] {
+                        if promotion
+                            && (!piece.is_promotable()
+                                || !(piece.can_promote(color, from)
+                                    || piece.can_promote(color, to)))
+                        {
+                            continue;
+                        }
+                        if !promotion && piece.must_promote(color, to) {
+                            continue;
+                        }
+                        // Moving a physical pawn must not leave a second native
+                        // pawn on its file, even when a friendly pawn is captured.
+                        if piece == Piece::Pawn && !promotion {
+                            let remaining = self.colored_pieces(color, Piece::Pawn)
+                                - from.bitboard()
+                                - to.bitboard();
+                            if !(remaining & to.file().bitboard()).is_empty() {
+                                continue;
+                            }
+                        }
+                        let mvs = PieceMoves::BoardMoves {
+                            color,
+                            piece,
+                            from,
+                            to: to.bitboard(),
+                            prom_status: if promotion {
+                                PromotionStatus::MustPromote
+                            } else {
+                                PromotionStatus::CannotPromote
+                            },
+                        };
+                        if listener(mvs) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        if drops && !cfg!(feature = "fushiyo") {
+            for piece in Piece::ALL.into_iter().take(Piece::HAND_NUM) {
+                if !self.has_in_hand(color, piece) {
+                    continue;
+                }
+                let mut to = !self.occupied() & !no_fly_zone(color, piece);
+                if piece == Piece::Pawn {
+                    to &= self.pawnless_files[color as usize];
+                }
+                if !to.is_empty() && listener(PieceMoves::Drops { color, piece, to }) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     #[inline(always)]
     fn king_destination_mask(&self, color: Color) -> BitBoard {
         let _ = color;
@@ -1527,6 +1631,9 @@ impl Board {
         listener: &mut F,
         targets: BitBoard,
     ) -> bool {
+        if cfg!(feature = "fushiyo") {
+            return false;
+        }
         let color = self.side_to_move();
         if targets.is_empty() || self.is_hand_empty(color) {
             return false;
@@ -1561,6 +1668,13 @@ impl Board {
 
     /// Is this move a legal drop?
     pub fn is_legal_drop(&self, mv: Move) -> bool {
+        if cfg!(feature = "fushiyo") {
+            return false;
+        }
+        if crate::hand_rules::allows_ignored_check() {
+            return self
+                .generate_capture_king_moves(BitBoard::FULL, false, true, |mvs| mvs.has(mv));
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -1676,6 +1790,10 @@ impl Board {
         feature = "anki"
     )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self
+                .generate_capture_king_moves(BitBoard::FULL, true, false, |mvs| mvs.has(mv));
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -1795,6 +1913,10 @@ impl Board {
         feature = "anki"
     ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self
+                .generate_capture_king_moves(BitBoard::FULL, true, false, |mvs| mvs.has(mv));
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -2038,6 +2160,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, true, true, listener);
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -2063,6 +2188,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, true, true, listener);
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -2156,6 +2284,9 @@ impl Board {
     ) -> bool {
         if self.immediate_winner().is_some() {
             return false;
+        }
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(mask, true, false, listener);
         }
         self.generate_board_moves_for_without_outcome(mask, listener)
     }
@@ -2288,6 +2419,12 @@ impl Board {
         if self.immediate_winner().is_some() {
             return false;
         }
+        if cfg!(feature = "fushiyo") {
+            return false;
+        }
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, false, true, listener);
+        }
         self.generate_drops_without_outcome(listener)
     }
 
@@ -2355,6 +2492,19 @@ impl Board {
         piece: Piece,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if cfg!(feature = "fushiyo") {
+            return false;
+        }
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, false, true, |mvs| {
+                if let PieceMoves::Drops { piece: p, .. } = mvs {
+                    if p == piece {
+                        return listener(mvs);
+                    }
+                }
+                false
+            });
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -2473,6 +2623,44 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, true, true, |mvs| {
+                for mv in mvs {
+                    let mut child = self.clone();
+                    child.play_unchecked(mv);
+                    if !child.checkers().is_empty()
+                        || child.immediate_winner() == Some(self.side_to_move())
+                    {
+                        let single = match mv {
+                            Move::Drop { piece, to } => PieceMoves::Drops {
+                                color: self.side_to_move(),
+                                piece,
+                                to: to.bitboard(),
+                            },
+                            Move::BoardMove {
+                                from,
+                                to,
+                                promotion,
+                            } => PieceMoves::BoardMoves {
+                                color: self.side_to_move(),
+                                piece: self.piece_on(from).unwrap(),
+                                from,
+                                to: to.bitboard(),
+                                prom_status: if promotion {
+                                    PromotionStatus::MustPromote
+                                } else {
+                                    PromotionStatus::CannotPromote
+                                },
+                            },
+                        };
+                        if listener(single) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            });
+        }
         if self.immediate_winner().is_some() {
             return false;
         }
@@ -2718,6 +2906,44 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if crate::hand_rules::allows_ignored_check() {
+            return self.generate_capture_king_moves(BitBoard::FULL, true, true, |mvs| {
+                for mv in mvs {
+                    let mut child = self.clone();
+                    child.play_unchecked(mv);
+                    if !child.checkers().is_empty()
+                        || child.immediate_winner() == Some(self.side_to_move())
+                    {
+                        let single = match mv {
+                            Move::Drop { piece, to } => PieceMoves::Drops {
+                                color: self.side_to_move(),
+                                piece,
+                                to: to.bitboard(),
+                            },
+                            Move::BoardMove {
+                                from,
+                                to,
+                                promotion,
+                            } => PieceMoves::BoardMoves {
+                                color: self.side_to_move(),
+                                piece: self.piece_on(from).unwrap(),
+                                from,
+                                to: to.bitboard(),
+                                prom_status: if promotion {
+                                    PromotionStatus::MustPromote
+                                } else {
+                                    PromotionStatus::CannotPromote
+                                },
+                            },
+                        };
+                        if listener(single) {
+                            return true;
+                        }
+                    }
+                }
+                false
+            });
+        }
         if self.immediate_winner().is_some() {
             return false;
         }

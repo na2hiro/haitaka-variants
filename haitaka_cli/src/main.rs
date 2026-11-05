@@ -916,8 +916,15 @@ fn active_rule_profile() -> String {
         (cfg!(feature = "shihonkangen"), "shihonkangen"),
         (cfg!(feature = "ningenshogi"), "ningenshogi"),
         (cfg!(feature = "tennouzan"), "tennouzan"),
+        (cfg!(feature = "tensuu"), "tensuu"),
+        (cfg!(feature = "suika"), "suika"),
         (cfg!(feature = "igyoku"), "igyoku"),
         (cfg!(feature = "hitomasuou"), "hitomasuou"),
+        (cfg!(feature = "nakamaware"), "nakamaware"),
+        (cfg!(feature = "fushiyo"), "fushiyo"),
+        (cfg!(feature = "share"), "share"),
+        (cfg!(feature = "zoshoku"), "zoshoku"),
+        (cfg!(feature = "babanuki"), "babanuki"),
     ] {
         if enabled {
             profile.push('+');
@@ -928,7 +935,9 @@ fn active_rule_profile() -> String {
 }
 
 fn has_auxiliary_rules() -> bool {
-    cfg!(feature = "win-condition-category") || cfg!(feature = "king-constraint-category")
+    cfg!(feature = "win-condition-category")
+        || cfg!(feature = "king-constraint-category")
+        || cfg!(feature = "hand-category")
 }
 
 fn default_rule_id() -> u32 {
@@ -990,6 +999,11 @@ fn package_manifest(
 ) -> Result<EnginePackageManifest> {
     let rule_id = match args.rule_id {
         Some(rule_id) => rule_id,
+        None if args.ruleset == active_rule_profile()
+            && haitaka::hand_rules::single_rule_id(&args.ruleset).is_some() =>
+        {
+            u32::from(haitaka::hand_rules::single_rule_id(&active_rule_profile()).unwrap())
+        }
         None if !has_auxiliary_rules() && args.ruleset == default_ruleset() => default_rule_id(),
         None => bail!(
             "--rule-id is required for composite or auxiliary rule profile {}",
@@ -2071,6 +2085,10 @@ fn terminal_adjudication(
             (false, false) => None,
             (true, true) => unreachable!(),
         };
+        let winner = board
+            .immediate_winner()
+            .map(|color| seat_for_color(color, a_color))
+            .or(winner);
         return Some((winner, GameTerminationReason::KingCaptured));
     }
 
@@ -3891,6 +3909,9 @@ fn package(args: PackageArgs) -> Result<()> {
 }
 
 fn package_in_staging(args: PackageArgs, staging: &Path) -> Result<()> {
+    if cfg!(feature = "zoshoku") && args.nnue.is_some() {
+        bail!("zoshoku NNUE packages are not supported");
+    }
     if staging.exists() {
         fs::remove_dir_all(&staging).with_context(|| format!("remove {}", staging.display()))?;
     }
@@ -6017,6 +6038,45 @@ mod tests {
         assert_eq!(
             json["profiles"][0]["rules"][0]["startpos"],
             "lnsgkgsnl/1r5b1/p1ppppp1p/1p5p1/9/1P5P1/P1PPPPP1P/1B5R1/LNSGKGSNL b - 1"
+        );
+    }
+}
+
+#[cfg(test)]
+mod hand_rule_tests {
+    use super::*;
+    #[test]
+    fn hand_rules_package_preserves_profile_and_default_identity() {
+        if let Some(id) = haitaka::hand_rules::single_rule_id(&active_rule_profile()) {
+            let args = PackageArgs {
+                output: PathBuf::from("out.tgz"),
+                wasm_dir: PathBuf::from("pkg"),
+                ruleset: active_rule_profile(),
+                rule_id: None,
+                nnue: None,
+                allow_missing_wasm: true,
+            };
+            let value = serde_json::to_value(package_manifest(&args, None).unwrap()).unwrap();
+            assert_eq!(value["profiles"][0]["rules"][0]["ruleId"], id);
+            assert_eq!(
+                value["profiles"][0]["rules"][0]["variant"],
+                active_rule_profile()
+            );
+        }
+    }
+    #[test]
+    #[cfg(all(
+        feature = "nakamaware",
+        feature = "shihonkangen",
+        not(feature = "suika")
+    ))]
+    fn hand_rules_cli_uses_variant_winner_after_king_capture() {
+        let mut b = Board::from_sfen("9/9/9/4k4/4R4/9/9/9/K8 b RBGS 1").unwrap();
+        b.play("5e5d".parse().unwrap());
+        let history = PositionHistory::new(b.clone());
+        assert_eq!(
+            terminal_adjudication(&b, &history, Color::Black).unwrap().0,
+            Some(Seat::B)
         );
     }
 }
