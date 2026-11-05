@@ -1678,6 +1678,7 @@ pub enum WinCondition {
     Inochinotokin,
     Shihonkangen,
     Ningenshogi,
+    Tennouzan,
 }
 
 impl WinCondition {
@@ -1688,6 +1689,7 @@ impl WinCondition {
             Self::Inochinotokin => "inochinotokin",
             Self::Shihonkangen => "shihonkangen",
             Self::Ningenshogi => "ningenshogi",
+            Self::Tennouzan => "tennouzan",
         }
     }
 }
@@ -1724,6 +1726,7 @@ impl RuleProfile {
             WinCondition::Inochinotokin,
             WinCondition::Shihonkangen,
             WinCondition::Ningenshogi,
+            WinCondition::Tennouzan,
         ] {
             if self.win_conditions.contains(&condition) {
                 name.push('+');
@@ -2577,6 +2580,9 @@ fn active_win_conditions() -> Vec<WinCondition> {
     if cfg!(feature = "ningenshogi") {
         conditions.push(WinCondition::Ningenshogi);
     }
+    if cfg!(feature = "tennouzan") {
+        conditions.push(WinCondition::Tennouzan);
+    }
     conditions
 }
 
@@ -2741,6 +2747,45 @@ kind = "handcrafted"
                 .to_string()
                 .contains("rules.rule_id must be set")
         );
+    }
+
+    #[test]
+    fn tennouzan_config_preserves_rule_172_and_requires_explicit_identity() {
+        let config: LearnConfig = toml::from_str(
+            r#"
+[rules]
+ruleset = "standard"
+win_conditions = ["tennouzan"]
+rule_id = 172
+"#,
+        )
+        .unwrap();
+        assert_eq!(config.rules.win_conditions, vec![WinCondition::Tennouzan]);
+        assert_eq!(
+            config.rules.profile().canonical_name(),
+            "standard+tennouzan"
+        );
+        assert_eq!(effective_rule_id_for(&config.rules).unwrap(), 172);
+        let mut loaded = LoadedConfig {
+            path: PathBuf::from("/tmp/haitaka_learn.tennouzan.toml"),
+            hash_hex: "test".to_string(),
+            config,
+        };
+        assert_eq!(loaded.effective_rule_id().unwrap(), 172);
+        loaded.config.rules.rule_id = None;
+        assert!(loaded.effective_rule_id().is_err());
+        assert!(effective_rule_id_for(&loaded.config.rules).is_err());
+        if cfg!(feature = "tennouzan") {
+            loaded.config.rules = active_rules_for_tests();
+            assert!(
+                loaded
+                    .config
+                    .rules
+                    .win_conditions
+                    .contains(&WinCondition::Tennouzan)
+            );
+            loaded.ruleset_requires_matching_engine().unwrap();
+        }
     }
 
     #[test]

@@ -105,6 +105,72 @@ fn oute_checking_pawn_drop_without_evasions_is_illegal() {
     assert!(!board.generate_checks(|moves| moves.has(mv)));
 }
 
+#[cfg(all(feature = "tennouzan", not(feature = "king-constraint-category")))]
+#[test]
+fn tennouzan_king_reaching_center_wins_for_either_color() {
+    let initial: Board = "4k4/9/9/9/9/4K4/8P/9/9 b - 1".parse().unwrap();
+    for swap in [false, true] {
+        let mut board = if swap {
+            initial.color_swapped()
+        } else {
+            initial.clone()
+        };
+        let winner = board.side_to_move();
+        assert_eq!(board.immediate_winner(), None);
+        let mv: Move = if swap { "5d5e" } else { "5f5e" }.parse().unwrap();
+        assert!(board.is_legal(mv));
+        assert!(board.generate_moves(|moves| moves.has(mv)));
+        board.play(mv);
+        assert_eq!(board.king(winner), Square::E5);
+        assert_eq!(board.immediate_winner(), Some(winner));
+        assert_eq!(board.winner(), Some(winner));
+        assert_eq!(board.status(), GameStatus::Won);
+        assert!(!board.generate_moves(|_| true));
+        assert!(!board.generate_board_moves(|_| true));
+        assert!(!board.generate_drops(|_| true));
+        let other_move: Move = if swap { "5i4i" } else { "5a4a" }.parse().unwrap();
+        assert!(!board.is_legal(other_move));
+    }
+}
+
+#[cfg(feature = "tennouzan")]
+#[test]
+fn tennouzan_requires_the_physical_king_at_center() {
+    let board: Board = "4k4/9/9/9/4G4/4K4/9/9/9 w - 1".parse().unwrap();
+    #[cfg(feature = "annan")]
+    assert_eq!(
+        crate::variant_rules::effective_piece(&board, Color::Black, Square::E5),
+        Piece::King
+    );
+    assert_eq!(board.immediate_winner(), None);
+}
+
+#[cfg(feature = "tennouzan")]
+#[test]
+fn tennouzan_does_not_allow_entering_an_attacked_center() {
+    let board: Board = "k8/9/4r4/9/9/4K4/9/9/9 b - 1".parse().unwrap();
+    let mv: Move = "5f5e".parse().unwrap();
+    assert!(!board.is_legal(mv));
+    assert!(!board.generate_moves(|moves| moves.has(mv)));
+}
+
+#[cfg(all(feature = "tennouzan", not(feature = "ningenshogi")))]
+#[test]
+fn tennouzan_keeps_normal_checkmate_as_a_win() {
+    let mut board: Board = "8k/6G2/7B1/9/9/9/9/9/K8 b R 1".parse().unwrap();
+    board.play("R*1b".parse().unwrap());
+    assert_ne!(board.king(Color::Black), Square::E5);
+    assert_eq!(board.winner(), Some(Color::Black));
+}
+
+#[cfg(all(feature = "tennouzan", feature = "shihonkangen"))]
+#[test]
+fn tennouzan_respects_immediate_loss_precedence() {
+    let board: Board = "4k4/9/9/9/4K4/9/9/9/9 w RBGSN 1".parse().unwrap();
+    assert_eq!(board.immediate_winner(), Some(Color::White));
+    assert_eq!(board.status(), GameStatus::WonBySideToMove);
+}
+
 #[cfg(feature = "sanmaime")]
 #[test]
 fn three_hand_pieces_are_an_immediate_win() {

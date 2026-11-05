@@ -152,7 +152,8 @@ compile_error!("donor-category is internal; enable one concrete donor feature in
         feature = "sanmaime",
         feature = "inochinotokin",
         feature = "shihonkangen",
-        feature = "ningenshogi"
+        feature = "ningenshogi",
+        feature = "tennouzan"
     ))
 ))]
 compile_error!("win-condition-category is internal; enable a concrete win condition instead");

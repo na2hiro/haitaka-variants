@@ -154,6 +154,7 @@ See [haitaka_wasm/README.md](haitaka_wasm/README.md).
 - `oute`: giving check wins immediately.
 - `sanmaime`: reaching three total pieces in hand wins immediately.
 - `inochinotokin`: making a Tokin wins immediately.
+- `tennouzan`: 天王山の玉 (rule 172); moving the physical King to 55 (USI `5e`) also wins immediately.
 - `shihonkangen`: reaching five total pieces in hand loses immediately.
 - `ningenshogi`: a checkmating player loses if any of their original,
   uncaptured pieces has never moved.

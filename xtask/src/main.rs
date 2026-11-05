@@ -477,6 +477,7 @@ fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<St
         "inochinotokin",
         "shihonkangen",
         "ningenshogi",
+        "tennouzan",
         "igyoku",
         "hitomasuou",
     ] {
@@ -813,7 +814,12 @@ fn learn_features_from_toml(raw_toml: &str) -> Result<Option<String>> {
                 .ok_or_else(|| "rules.win_conditions entries must be strings".to_string())?;
             if !matches!(
                 condition,
-                "oute" | "sanmaime" | "inochinotokin" | "shihonkangen" | "ningenshogi"
+                "oute"
+                    | "sanmaime"
+                    | "inochinotokin"
+                    | "shihonkangen"
+                    | "ningenshogi"
+                    | "tennouzan"
             ) {
                 return Err(format!("unsupported win condition {condition:?}"));
             }
@@ -1317,6 +1323,39 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn tennouzan_workflows_forward_features_and_rule_172() {
+        let features = learn_features_from_toml(
+            r#"[rules]
+ruleset = "standard"
+win_conditions = ["tennouzan"]
+rule_id = 172
+"#,
+        )
+        .unwrap();
+        assert_eq!(features.as_deref(), Some("tennouzan"));
+        let profile = canonical_package_profile("standard", features.as_deref()).unwrap();
+        assert_eq!(profile, "standard+tennouzan");
+        assert_eq!(inferred_package_features(&profile), features);
+        let args = args_as_strings(&haitaka_cli_package_args(
+            &profile,
+            172,
+            &PathBuf::from("target/tennouzan.tgz"),
+            &PathBuf::from("haitaka_wasm/pkg"),
+            None,
+            features.as_deref(),
+            true,
+        ));
+        assert!(has_adjacent_args(&args, "--features", "tennouzan"));
+        assert!(has_adjacent_args(&args, "--ruleset", "standard+tennouzan"));
+        assert!(has_adjacent_args(&args, "--rule-id", "172"));
+        assert!(has_adjacent_args(
+            &args_as_strings(&wasm_pack_args(features.as_deref())),
+            "--features",
+            "tennouzan"
+        ));
     }
 
     #[test]

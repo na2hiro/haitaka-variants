@@ -48,6 +48,12 @@ jobs:
         cargo test -p haitaka_learn --features annan,oute,sanmaime,igyoku composite_rule_profile_has_stable_canonical_name
     - name: Run remaining outcome and king-constraint tests
       run: |
+        cargo test -p haitaka --features tennouzan tennouzan
+        cargo test -p haitaka --features annan,tennouzan tennouzan
+        cargo test -p haitaka --features tennouzan,shihonkangen tennouzan_respects_immediate_loss_precedence
+        cargo test -p haitaka_wasm --features tennouzan tennouzan
+        cargo test -p haitaka_learn --features tennouzan --bin haitaka_learn tennouzan
+        cargo test -p haitaka_cli --features tennouzan tennouzan
         cargo test -p haitaka --features sanmaime three_hand_pieces_are_an_immediate_win
         cargo test -p haitaka --features inochinotokin a_previous_movers_tokin_is_an_immediate_win
         cargo test -p haitaka --features igyoku igyoku_forbids_physical_king_moves

@@ -915,6 +915,7 @@ fn active_rule_profile() -> String {
         (cfg!(feature = "inochinotokin"), "inochinotokin"),
         (cfg!(feature = "shihonkangen"), "shihonkangen"),
         (cfg!(feature = "ningenshogi"), "ningenshogi"),
+        (cfg!(feature = "tennouzan"), "tennouzan"),
         (cfg!(feature = "igyoku"), "igyoku"),
         (cfg!(feature = "hitomasuou"), "hitomasuou"),
     ] {
@@ -4298,6 +4299,24 @@ mod tests {
 
         assert_eq!(json["profiles"][0]["nnue"]["path"], NNUE_ARTIFACT_PATH);
         assert_eq!(json["profiles"][0]["nnue"]["format"], "nnue");
+    }
+
+    #[test]
+    #[cfg(feature = "tennouzan")]
+    fn tennouzan_package_records_rule_172_and_feature_profile() {
+        let mut args = test_package_args(PathBuf::from("pkg"), PathBuf::from("out.tgz"));
+        args.rule_id = Some(172);
+        let json = serde_json::to_value(package_manifest(&args, None).unwrap()).unwrap();
+        assert_eq!(json["profiles"][0]["rules"][0]["ruleId"], 172);
+        assert_eq!(
+            json["profiles"][0]["rules"][0]["variant"],
+            active_rule_profile()
+        );
+        assert!(
+            active_feature_names()
+                .iter()
+                .any(|feature| feature == "tennouzan")
+        );
     }
 
     #[test]

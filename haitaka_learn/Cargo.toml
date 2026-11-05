@@ -41,5 +41,6 @@ sanmaime = ["win-condition-category", "haitaka/sanmaime", "haitaka_wasm/sanmaime
 inochinotokin = ["win-condition-category", "haitaka/inochinotokin", "haitaka_wasm/inochinotokin"]
 shihonkangen = ["win-condition-category", "haitaka/shihonkangen", "haitaka_wasm/shihonkangen"]
 ningenshogi = ["win-condition-category", "haitaka/ningenshogi", "haitaka_wasm/ningenshogi"]
+tennouzan = ["win-condition-category", "haitaka/tennouzan", "haitaka_wasm/tennouzan"]
 igyoku = ["king-constraint-category", "haitaka/igyoku", "haitaka_wasm/igyoku"]
 hitomasuou = ["king-constraint-category", "haitaka/hitomasuou", "haitaka_wasm/hitomasuou"]

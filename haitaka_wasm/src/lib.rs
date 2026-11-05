@@ -4858,6 +4858,40 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(feature = "tennouzan", not(feature = "king-constraint-category")))]
+    fn tennouzan_search_reaches_center_and_stops_play() {
+        let initial: Board = "4k4/9/9/9/9/4K4/8P/9/9 b - 1".parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                initial.color_swapped()
+            } else {
+                initial.clone()
+            };
+            let mv = if swap { "5d5e" } else { "5f5e" };
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root}"))
+                    .is_empty()
+            );
+            assert_eq!(
+                session.handle_line("go depth 1").last().unwrap(),
+                &format!("bestmove {mv}")
+            );
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {mv}"))
+                    .is_empty()
+            );
+            assert_eq!(session.board.winner(), Some(root.side_to_move()));
+            let terminal = session.terminal_notifications();
+            assert!(terminal[0].starts_with("info string gameover no-legal-move "));
+            assert_eq!(terminal[1], "bestmove resign");
+            assert_eq!(session.handle_line("go depth 1"), terminal);
+        }
+    }
+
+    #[test]
     fn usi_session_tiny_movetime_falls_back_to_legal_move() {
         let mut session = UsiSession::default();
         assert!(session.handle_line("position startpos").is_empty());

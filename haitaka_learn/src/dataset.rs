@@ -9147,6 +9147,7 @@ seed = 9
             (cfg!(feature = "inochinotokin"), "inochinotokin"),
             (cfg!(feature = "shihonkangen"), "shihonkangen"),
             (cfg!(feature = "ningenshogi"), "ningenshogi"),
+            (cfg!(feature = "tennouzan"), "tennouzan"),
         ]
         .into_iter()
         .filter_map(|(enabled, name)| enabled.then_some(name))

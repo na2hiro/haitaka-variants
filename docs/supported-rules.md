@@ -20,6 +20,7 @@ orthogonal to the following win-condition and king-constraint features:
 - `oute`: the previous mover wins immediately by giving check.
 - `sanmaime`: the previous mover wins when their total hand reaches three pieces.
 - `inochinotokin`: the previous mover wins when they have made a Tokin.
+- `tennouzan`: 天王山の玉 (rule ID 172). The previous mover also wins by legally moving their physical King to 55 (USI `5e`). Normal checkmate still wins. Another piece borrowing King movement does not satisfy this condition.
 - `shihonkangen`: the previous mover loses when their total hand reaches five pieces.
 - `ningenshogi`: normal checkmate is reversed when the mating player still has
   an original piece on the board that has neither moved nor been captured.
@@ -36,6 +37,27 @@ automatically enable the internal `donor-category`, `win-condition-category`,
 or `king-constraint-category` marker; those markers must not be selected
 directly. `annan` keeps its custom start position; the other variants currently
 use the standard shogi start position until variant-specific openings are documented.
+
+For rule 172, build with `--features tennouzan` and set the learning config's
+rules section to:
+
+```toml
+[rules]
+ruleset = "standard"
+win_conditions = ["tennouzan"]
+rule_id = 172
+```
+
+Package the corresponding browser engine with:
+
+```console
+cargo xtask package --ruleset standard+tennouzan --rule-id 172
+```
+
+As with other composite profiles, the rule ID is explicit. A center-reaching
+move must still obey the active movement and King-safety rules. Other donor
+or outcome features can be combined with `tennouzan` using the same profile
+mechanism; immediate-loss conditions keep their precedence.
 
 Position-based outcomes are checked before the normal no-legal-move ending.
 `Board::winner()` returns the winning color directly; `GameStatus::WonBySideToMove`

@@ -941,7 +941,8 @@ impl Board {
                 feature = "oute",
                 feature = "sanmaime",
                 feature = "inochinotokin",
-                feature = "shihonkangen"
+                feature = "shihonkangen",
+                feature = "tennouzan"
             ))]
             let previous = !self.side_to_move();
 
@@ -978,6 +979,11 @@ impl Board {
 
             #[cfg(feature = "inochinotokin")]
             if self.has(previous, Piece::Tokin) {
+                return Some(previous);
+            }
+
+            #[cfg(feature = "tennouzan")]
+            if self.colored_pieces(previous, Piece::King).has(Square::E5) {
                 return Some(previous);
             }
         }
