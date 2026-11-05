@@ -28,6 +28,17 @@ function valueAfter(tokens, name) {
   return index >= 0 && index + 1 < tokens.length ? tokens[index + 1] : null;
 }
 
+function explicitWinnerColor(gameover) {
+  const tokens = (gameover ?? "").split(/\s+/);
+  const keys = tokens.filter(token => token === "winner");
+  if (!keys.length) return null;
+  const color = valueAfter(tokens, "winner");
+  if (keys.length !== 1 || !["black", "white"].includes(color)) {
+    throw new Error(`invalid terminal winning color: ${gameover}`);
+  }
+  return color;
+}
+
 function boolAfter(tokens, ...names) {
   return names.some((name) => valueAfter(tokens, name) === "1");
 }
@@ -177,7 +188,10 @@ function terminalFrom(trace, sideEngine, blackEngine, whiteEngine) {
     return { reason: trace.gameoverReason, winner: loser === "A" ? "B" : "A" };
   }
   if (LOSS_REASONS.has(trace.gameoverReason)) {
-    return { reason: trace.gameoverReason, winner: sideEngine === "A" ? "B" : "A" };
+    const color = explicitWinnerColor(trace.gameover);
+    const winner = color === null ? (sideEngine === "A" ? "B" : "A")
+      : color === "black" ? blackEngine : whiteEngine;
+    return { reason: trace.gameoverReason, winner };
   }
   throw new Error(`unhandled terminal reason ${trace.gameoverReason}`);
 }

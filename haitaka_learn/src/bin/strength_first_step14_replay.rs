@@ -398,6 +398,7 @@ fn color_name(color: Color) -> &'static str {
 fn board_status_name(status: GameStatus) -> &'static str {
     match status {
         GameStatus::Won => "won",
+        GameStatus::WonBySideToMove => "won_by_side_to_move",
         GameStatus::Drawn => "drawn",
         GameStatus::Ongoing => "ongoing",
     }
@@ -412,7 +413,7 @@ fn seat_for_color(color: Color, a_color: Color) -> Seat {
 }
 
 /// Terminal precedence matches the bound game runtime: king availability,
-/// history adjudication, then board status. A rules draw is only recognized
+/// immediate outcomes, history adjudication, then board status. A rules draw is only recognized
 /// from `GameStatus::Drawn`; an arbitrary ongoing position is never jishogi.
 fn terminal(board: &Board, history: &PositionHistory) -> Result<Option<Adjudication>> {
     ensure!(
@@ -434,6 +435,13 @@ fn terminal(board: &Board, history: &PositionHistory) -> Result<Option<Adjudicat
         }));
     }
 
+    if let Some(winner) = board.immediate_winner() {
+        return Ok(Some(Adjudication {
+            reason: TerminalReason::NoLegalMove,
+            winner_color: Some(winner),
+        }));
+    }
+
     match history.adjudication() {
         HistoryAdjudication::RepetitionDraw => {
             return Ok(Some(Adjudication {
@@ -451,9 +459,9 @@ fn terminal(board: &Board, history: &PositionHistory) -> Result<Option<Adjudicat
     }
 
     Ok(match board.status() {
-        GameStatus::Won => Some(Adjudication {
+        GameStatus::Won | GameStatus::WonBySideToMove => Some(Adjudication {
             reason: TerminalReason::NoLegalMove,
-            winner_color: Some(!board.side_to_move()),
+            winner_color: board.winner(),
         }),
         GameStatus::Drawn => Some(Adjudication {
             reason: TerminalReason::JishogiDraw,
@@ -819,4 +827,17 @@ mod tests {
             .contains("after terminal adjudication"));
         assert_eq!(receipt["checks"]["noMoveAfterTerminal"], false);
     }
+
+    #[cfg(feature = "shihonkangen")]
+    #[test]
+    fn terminal_scores_the_actual_winner_after_capital_return_loss() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+        let history = PositionHistory::new(board.clone());
+        let result = terminal(&board, &history).unwrap().unwrap();
+        assert_eq!(result.winner_color, Some(Color::White));
+        assert_eq!(result.reason, TerminalReason::NoLegalMove);
+        assert_eq!(board_status_name(board.status()), "won_by_side_to_move");
+    }
+
 }

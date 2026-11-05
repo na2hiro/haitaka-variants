@@ -15,6 +15,21 @@ const move = (usi) => [
   `bestmove ${usi}`,
 ];
 
+test("explicit terminal winners override resign across seats and queried sides", () => {
+  for (const [black, white] of [["A", "B"], ["B", "A"]]) {
+    for (const color of ["black", "white"]) {
+      for (const side of ["A", "B"]) {
+        const result = terminalFrom(parsed(`no-legal-move winner ${color}`), side, black, white);
+        assert.equal(result.reason, "no-legal-move");
+        assert.equal(result.winner, color === "black" ? black : white);
+      }
+    }
+  }
+  for (const suffix of ["winner", "winner red", "winner black winner white"]) {
+    assert.throws(() => terminalFrom(parsed(`no-legal-move ${suffix}`), "A", "A", "B"), /winning color/);
+  }
+});
+
 test("perpetual-check notifications retain loser color across seats and queried sides", () => {
   for (const [black, white] of [["A", "B"], ["B", "A"]]) {
     for (const color of ["black", "white"]) {
@@ -44,7 +59,7 @@ test("unknown terminals and unqualified nonterminal moves still fail", () => {
 });
 
 test("final-ply terminal adjudication honors seats, initial side and move parity without extra search", () => {
-  const reasons = [null, "king-captured", "no-legal-move", "repetition-draw", "jishogi-draw",
+  const reasons = [null, "king-captured", "no-legal-move", "no-legal-move winner black", "no-legal-move winner white", "repetition-draw", "jishogi-draw",
     "perpetual-check-loss:black", "perpetual-check-loss:white"];
   for (const reason of reasons) {
     for (const second of [false, true]) {
@@ -84,9 +99,10 @@ test("final-ply terminal adjudication honors seats, initial side and move parity
           assert.equal(game.searches.length, maxPlies);
           assert.equal(game.missingMoves + game.emergencyFallbacks + game.unsearchedMoves, 0);
           assert.equal(game.capped, reason === null);
-          assert.equal(game.terminationReason, reason?.split(":")[0] ?? "maximum-ply-capped");
+          assert.equal(game.terminationReason, reason?.split(/[\s:]/)[0] ?? "maximum-ply-capped");
           let winner = null;
           if (reason?.startsWith("perpetual-check-loss:")) winner = reason.endsWith(":black") ? white : black;
+          else if (reason?.includes("winner ")) winner = reason.includes("winner black") ? black : white;
           else if (reason === "king-captured" || reason === "no-legal-move") winner = nextSide === "A" ? "B" : "A";
           assert.equal(game.winner, winner);
           assert.equal(game.scoreA, winner === "A" ? 1 : winner === "B" ? 0 : 0.5);
@@ -108,7 +124,7 @@ test("final-ply terminal adjudication honors seats, initial side and move parity
 });
 
 test("terminals before the cap keep raw notification outside search metrics", () => {
-  for (const reason of ["no-legal-move", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
+  for (const reason of ["no-legal-move", "no-legal-move winner black", "no-legal-move winner white", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
     for (const second of [false, true]) {
       let calls = 0;
       const engine = { send(command) {
@@ -121,7 +137,7 @@ test("terminals before the cap keep raw notification outside search metrics", ()
       assert.equal(game.capped, false);
       assert.equal(game.terminalNotification.gameover, notification(reason)[0]);
       const winner = reason === "repetition-draw" ? null
-        : reason.endsWith(":black") ? game.whiteEngine : game.blackEngine;
+        : reason.includes("winner white") || reason.endsWith(":black") ? game.whiteEngine : game.blackEngine;
       assert.equal(game.winner, winner);
     }
   }

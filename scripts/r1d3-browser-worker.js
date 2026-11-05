@@ -11,6 +11,17 @@ function valueAfter(tokens, name) {
   return index >= 0 && index + 1 < tokens.length ? tokens[index + 1] : null;
 }
 
+function explicitWinnerColor(gameover) {
+  const tokens = (gameover ?? "").split(/\s+/);
+  const keys = tokens.filter(token => token === "winner");
+  if (!keys.length) return null;
+  const color = valueAfter(tokens, "winner");
+  if (keys.length !== 1 || !["black", "white"].includes(color)) {
+    throw new Error(`invalid terminal winning color: ${gameover}`);
+  }
+  return color;
+}
+
 function boolAfter(tokens, name) {
   return valueAfter(tokens, name) === "1";
 }
@@ -85,7 +96,10 @@ function terminalFrom(searchResult, sideEngine, blackEngine, whiteEngine) {
     return { reason: "perpetual-check-loss", winner: loser === "A" ? "B" : "A" };
   }
   if (searchResult.gameover?.includes("no-legal-move")) {
-    return { reason: "no-legal-move", winner: sideEngine === "A" ? "B" : "A" };
+    const color = explicitWinnerColor(searchResult.gameover);
+    const winner = color === null ? (sideEngine === "A" ? "B" : "A")
+      : color === "black" ? blackEngine : whiteEngine;
+    return { reason: "no-legal-move", winner };
   }
   throw new Error(`nonterminal missing move from engine ${sideEngine}: ${searchResult.outputs.join(" | ")}`);
 }

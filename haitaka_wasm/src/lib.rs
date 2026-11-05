@@ -1678,8 +1678,11 @@ fn search_board_with_node_budget_in_tt_and_history(
     // caller could mistake it for a depth-zero/incomplete search.  Keep the
     // same side-to-move mate orientation used by the recursive search below
     // the root, while consuming no artificial search nodes.
-    if board.status() == GameStatus::Won {
-        let terminal = terminal_score_for_side_to_move(board, 0).unwrap_or(-MATE_SCORE);
+    if matches!(
+        board.status(),
+        GameStatus::Won | GameStatus::WonBySideToMove
+    ) {
+        let terminal = no_legal_moves_terminal_score(board, 0);
         let node_root_result = root_result(
             None,
             false,
@@ -2016,6 +2019,8 @@ impl UsiSession {
     }
 
     /// Return a terminal notification without starting a search or changing history.
+    /// Side-to-move variant wins include `winner black` or `winner white` in
+    /// the gameover line; `bestmove resign` remains a terminal sentinel.
     pub fn terminal_notifications(&self) -> Vec<String> {
         let history_result = self.history.adjudication();
         if history_result != HistoryAdjudication::Ongoing {
@@ -2028,10 +2033,21 @@ impl UsiSession {
                 "bestmove resign".to_string(),
             ];
         }
-        if self.board.status() != haitaka::GameStatus::Ongoing {
+        let status = self.board.status();
+        if status != haitaka::GameStatus::Ongoing {
+            // `resign` is the terminal bestmove sentinel. Reversed variant
+            // outcomes must name the winner instead of implying a loss for us.
+            let winner = if status == haitaka::GameStatus::WonBySideToMove {
+                match self.board.winner().expect("a terminal win has a winner") {
+                    Color::Black => " winner black",
+                    Color::White => " winner white",
+                }
+            } else {
+                ""
+            };
             return vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::ANHOKU_HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
@@ -3863,7 +3879,7 @@ fn negamax(
     let ply_index = usize::try_from(ply).unwrap_or(usize::MAX);
     let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, ply_index);
     if move_picker.is_empty() {
-        return Ok(-MATE_SCORE + ply);
+        return Ok(no_legal_moves_terminal_score(board, ply));
     }
 
     let mut best_score = -INF_SCORE;
@@ -4043,7 +4059,7 @@ fn quiescence(
 
     if in_check {
         if !searched_move {
-            let score = -MATE_SCORE + ply;
+            let score = no_legal_moves_terminal_score(board, ply);
             ctx.set_training_leaf(board, ply, score, true);
             return Ok(score);
         }
@@ -4232,7 +4248,7 @@ fn evaluate_or_mate(
     }
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
-        return -MATE_SCORE + ply;
+        return no_legal_moves_terminal_score(board, ply);
     }
 
     match &ctx.evaluation {
@@ -4276,7 +4292,9 @@ fn has_both_kings(board: &Board) -> bool {
 
 fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
     let us = board.side_to_move();
-    if !board.has(us, Piece::King) {
+    if let Some(winner) = board.immediate_winner() {
+        Some(terminal_score_for_winner(us, winner, ply))
+    } else if !board.has(us, Piece::King) {
         Some(-MATE_SCORE + ply)
     } else if !board.has(!us, Piece::King) {
         Some(MATE_SCORE - ply)
@@ -4298,6 +4316,21 @@ fn search_terminal_score(board: &Board, ply: i32, ctx: &SearchContext<'_>) -> Op
             MATE_SCORE - ply
         }),
     }
+}
+
+fn terminal_score_for_winner(side_to_move: Color, winner: Color, ply: i32) -> i32 {
+    if winner == side_to_move {
+        MATE_SCORE - ply
+    } else {
+        -MATE_SCORE + ply
+    }
+}
+
+fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
+    let winner = board
+        .winner()
+        .expect("a position without legal moves must have a winner");
+    terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -4726,16 +4759,142 @@ mod tests {
         let terminal = session.terminal_notifications();
         assert_eq!(session.handle_line("go depth 1"), terminal);
         assert_eq!(session.terminal_notifications(), terminal);
+        let winner = if session.board.status() == GameStatus::WonBySideToMove {
+            " winner white"
+        } else {
+            ""
+        };
         assert_eq!(
             terminal,
             vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::ANHOKU_HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ]
         );
+    }
+
+    #[cfg(any(feature = "shihonkangen", feature = "ningenshogi"))]
+    fn assert_usi_terminal_side_to_move_winner(start: &str, moves: &[&str]) {
+        let original: Board = start.parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                original.color_swapped()
+            } else {
+                original.clone()
+            };
+            let moves = moves
+                .iter()
+                .map(|text| {
+                    let mv: Move = text.parse().unwrap();
+                    if swap {
+                        match mv {
+                            Move::BoardMove {
+                                from,
+                                to,
+                                promotion,
+                            } => Move::BoardMove {
+                                from: from.flip(),
+                                to: to.flip(),
+                                promotion,
+                            },
+                            Move::Drop { piece, to } => Move::Drop {
+                                piece,
+                                to: to.flip(),
+                            },
+                        }
+                        .to_string()
+                    } else {
+                        mv.to_string()
+                    }
+                })
+                .collect::<Vec<_>>();
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {}", moves.join(" ")))
+                    .is_empty()
+            );
+            assert_eq!(session.board.status(), GameStatus::WonBySideToMove);
+            let winner = session.board.winner().unwrap();
+            assert_eq!(winner, session.board.side_to_move());
+            let color = if winner == Color::Black {
+                "black"
+            } else {
+                "white"
+            };
+            let expected = vec![
+                format!(
+                    "info string gameover no-legal-move winner {color} rules {}",
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
+            let board = session.board.clone();
+            let history = session.history.positions().to_vec();
+            assert_eq!(session.terminal_notifications(), expected);
+            assert_eq!(session.handle_line("go depth 1"), expected);
+            assert_eq!(session.handle_line("go movetime 1"), expected);
+            assert_eq!(session.board, board);
+            assert_eq!(session.history.positions(), history);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn usi_terminal_notification_names_capital_return_winner() {
+        assert_usi_terminal_side_to_move_winner("4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1", &["9d8d"]);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_terminal_notification_names_human_shogi_winner() {
+        // Even a mating side that has moved every piece loses while the
+        // defender still has original pieces waiting to move.
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
+        );
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "tennouzan", not(feature = "king-constraint-category")))]
+    fn tennouzan_search_reaches_center_and_stops_play() {
+        let initial: Board = "4k4/9/9/9/9/4K4/8P/9/9 b - 1".parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                initial.color_swapped()
+            } else {
+                initial.clone()
+            };
+            let mv = if swap { "5d5e" } else { "5f5e" };
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root}"))
+                    .is_empty()
+            );
+            assert_eq!(
+                session.handle_line("go depth 1").last().unwrap(),
+                &format!("bestmove {mv}")
+            );
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {mv}"))
+                    .is_empty()
+            );
+            assert_eq!(session.board.winner(), Some(root.side_to_move()));
+            let terminal = session.terminal_notifications();
+            assert!(terminal[0].starts_with("info string gameover no-legal-move "));
+            assert_eq!(terminal[1], "bestmove resign");
+            assert_eq!(session.handle_line("go depth 1"), terminal);
+        }
     }
 
     #[test]
@@ -4882,6 +5041,55 @@ mod tests {
     #[cfg(feature = "annan")]
     fn returns_legal_move_for_annan_start_position() {
         assert_legal_best_move(haitaka::SFEN_STARTPOS, 2);
+    }
+
+    #[test]
+    #[cfg(feature = "oute")]
+    fn immediate_win_is_scored_as_terminal_loss_for_side_to_move() {
+        let sfen = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1";
+        let board: Board = sfen.parse().unwrap();
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(-MATE_SCORE + 3)
+        );
+        assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn capital_return_loss_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(MATE_SCORE - 3)
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+                &board,
+                1,
+                1,
+                &mut SearchWorkspace::default(),
+            )
+            .unwrap();
+            assert_eq!(summary.best_score, Some(MATE_SCORE));
+            assert_eq!(summary.best_move, None);
+            assert_eq!(summary.total_nodes, 0);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        board.play("9b5b".parse().unwrap());
+
+        assert_eq!(terminal_score_for_side_to_move(&board, 3), None);
+        assert_eq!(no_legal_moves_terminal_score(&board, 3), MATE_SCORE - 3);
     }
 
     #[test]
@@ -5632,7 +5840,7 @@ mod tests {
 
         let moves = reference_ordered_moves(board);
         if moves.is_empty() {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
 
         let mut best_score = -INF_SCORE;
@@ -5724,7 +5932,7 @@ mod tests {
             return if searched_move {
                 alpha
             } else {
-                -MATE_SCORE + ply
+                no_legal_moves_terminal_score(board, ply)
             };
         }
 
@@ -5776,7 +5984,7 @@ mod tests {
         let us = board.side_to_move();
         let our_mobility = count_legal_moves(board) as i32;
         if our_mobility == 0 {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
         material_score(board, us) - material_score(board, them)
@@ -5996,6 +6204,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -6008,6 +6217,55 @@ mod tests {
         assert_eq!(dfpn.status, "mate");
         assert!(dfpn.selected);
         assert_eq!(dfpn.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_human_shogi() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 1, 5_000, true).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("R*1b"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "unknown");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_capital_return() {
+        let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
+        let history = PositionHistory::new(board.clone());
+        let summary =
+            search_board_iterative_deepening_impl_with_history(&board, &history, 1, 5_000).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b"));
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b+"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "no_mate");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_movetime_search_preserves_human_shogi_move_history() {
+        let initial = "4k4/R8/9/5K3/9/9/8G/9/9 b 2p 1";
+        let moves = [
+            "4d4c", "5a6a", "1g1f", "6a5a", "1f1g", "P*6a", "1g1f", "P*4a",
+        ];
+        let mut session = UsiSession::default();
+        let position = format!("position sfen {initial} moves {}", moves.join(" "));
+        assert!(session.handle_line(&position).is_empty());
+
+        let output = session.handle_line("go movetime 0 depth 1");
+
+        let mv = output.last().unwrap().strip_prefix("bestmove ").unwrap();
+        let mut child = session.board.clone();
+        child.play(mv.parse().unwrap());
+        assert!(child.unmoved_pieces().is_empty());
+        assert_eq!(child.winner(), Some(Color::Black));
     }
 
     #[test]
@@ -6045,6 +6303,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -6097,6 +6356,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",
