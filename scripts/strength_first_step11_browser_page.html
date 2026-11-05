@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Anhoku Step 11 browser check</title>
+<script type="module">
+  const config = await (await fetch('/config.json', { cache: 'no-store' })).json();
+  const worker = new Worker('/worker.js', { type: 'module' });
+  const post = (path, value) => fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(value),
+  });
+  worker.onmessage = ({ data }) => {
+    if (data.type === 'progress') post('/progress', data);
+    if (data.type === 'result') post('/result', { ...data.result, userAgent: navigator.userAgent });
+    if (data.type === 'error') post('/error', data);
+  };
+  worker.onerror = (event) => post('/error', { type: 'error', error: event.message || 'worker error' });
+  worker.postMessage(config);
+</script>
+<p>Step 11 browser worker running.</p>

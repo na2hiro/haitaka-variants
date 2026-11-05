@@ -60,4 +60,4 @@ jobs:
       with:
         node-version: "22"
     - name: Run browser worker regression tests
-      run: node --test scripts/tests/r1d3-browser-worker.test.mjs
+      run: node --test scripts/tests/*-browser-worker.test.mjs

@@ -1,0 +1,158 @@
+{
+  "schema": "haitaka-strength-first-step9-model-b-preflight-v1",
+  "createdAt": "2026-09-12T08:14:00+09:00",
+  "sourceCommit": "63bba20",
+  "status": "ready-awaiting-explicit-gpu-rental-permission",
+  "scope": "independent-data Model B training through the receipt-gated u128 throughput probe; preregistered u2688 confirmation checkpoint",
+  "experiment": {
+    "experimentId": "strength-first-step9-model-b-training-20260912-v1",
+    "config": {
+      "path": "r0/anhoku-strength-first/step9-model-b-training-experiment-v1.json",
+      "bytes": 18237,
+      "sha256": "1c14643cd5eba5fea343d207a4f027db3a4fa02f49b8c38727cf8cae7addd74b"
+    },
+    "runner": {
+      "path": "scripts/strength_first_model_b_trainer.py",
+      "bytes": 3401,
+      "sha256": "a54afc8cadbefa25096c59f3a7238c5b5a53ff367392792453708c9681e542d0"
+    },
+    "baseRunner": {
+      "path": "scripts/strength_first_trainer.py",
+      "bytes": 190184,
+      "sha256": "c75e7691f1b105afdf0bd1f7d6b9f7eab42c715de3e1fbc29779fad109a4d44d"
+    },
+    "trainingSeed": 2026091108,
+    "initialization": "fresh-scratch",
+    "featureFamily": "HalfKAv2^+DonorSingleEff",
+    "width": {
+      "l1": 256,
+      "l2": 16,
+      "l3": 32
+    },
+    "maximumUpdates": 4096,
+    "initialExecutionBoundary": 128,
+    "fixedConfirmationCheckpointUpdate": 2688,
+    "primaryFixedTimeMilliseconds": 1000
+  },
+  "contracts": {
+    "data": {
+      "path": "r0/anhoku-strength-first/step9-model-b-data-contract-v2.json",
+      "sha256": "a6a949adf74c45a091ccea834a00e11df911bad87243f1868d0c2a41ab3ae6db"
+    },
+    "confirmation": {
+      "path": "r0/anhoku-strength-first/step9-confirmation-contract-v2.json",
+      "bytes": 4569,
+      "sha256": "00bb1e0694891f95149442dffac9400cb8e56cb3ec686db69d2948b2e375ff8a"
+    },
+    "corpusCompletion": {
+      "path": "r0/anhoku-strength-first/step9-model-b-mac-rebalance-receipt.json",
+      "bytes": 4557,
+      "sha256": "c869d1bafa92dfbcaa2fa6f8b261d98a57a9a630018a4e6efb21242a6965a0ca"
+    }
+  },
+  "data": {
+    "independentDataSeed": true,
+    "modelACanonicalFamiliesExcluded": 1000000,
+    "trainingRecords": 880000,
+    "validationRecords": 60000,
+    "corpusManifest": {
+      "path": "out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/model-b-corpus.json",
+      "bytes": 3311,
+      "sha256": "2e7b32aa0103b033e627a272c20f135f6a5aa11d1c22d6c6d0b75b7c4412b54d"
+    },
+    "diagnosticSidecarsPresent": true
+  },
+  "preflight": {
+    "closedWorldConfigValidation": "passed",
+    "deterministicRunnerSelfTest": "passed",
+    "rustModelBTests": "2 passed",
+    "realCpuFixturePassed": true,
+    "realCpuFixture": {
+      "path": "out/anhoku-strength-first/step9-model-b-preflight-20260912-v1/real-fixture/report.json",
+      "bytes": 5151,
+      "sha256": "96cfeacb2465b54a7b80dcd817580840f4ec88acb403f610a79ac70279e5545e"
+    },
+    "resumeWeightsExact": true,
+    "resumeOptimizerExact": true,
+    "resumePredictionsExact": true,
+    "resumeExportsExact": true
+  },
+  "bundle": {
+    "role": "quote-invariant-GPU-training-payload; exact config and approval receipt are transferred separately",
+    "path": "target/pretrain-bundles/strength-first-step9-model-b-invariants-v1.tgz",
+    "bytes": 46826152,
+    "sha256": "9e336af3492a5dfdbab08e529f6005b56872f4bb54a0b737e0501d63e58d07ae",
+    "builtOn": "192.168.0.12",
+    "mbaUsed": false,
+    "pinnedTrainerRevision": "61666d9e3653e4df9881b14c23f8fdcc4bf7779b"
+  },
+  "rental": {
+    "provider": "Vast.ai",
+    "requestedGpu": "one compatible verified NVIDIA GPU with at least 23 GB VRAM",
+    "requestedDiskGigabytes": 60,
+    "quotedOffer": {
+      "id": 32084934,
+      "gpu_name": "A10",
+      "gpu_ram": 23028,
+      "dph_total": 0.21111111111111108,
+      "dph_base": 0.19999999999999998,
+      "storage_total_cost": 0.01111111111111111,
+      "reliability": 0.9993692,
+      "verification": "verified",
+      "rentable": true,
+      "rented": false,
+      "disk_space": 212.9375,
+      "disk_bw": 13107.2,
+      "inet_down": 815.6,
+      "inet_up": 881.2,
+      "inet_down_cost": 0.000013020833333333334,
+      "inet_up_cost": 0.000013020833333333334,
+      "cuda_max_good": 12.8,
+      "driver_version": "570.86.10",
+      "pcie_bw": 12.3,
+      "cpu_cores_effective": 16.0,
+      "cpu_ram": 64448,
+      "duration": 41114446.67976928,
+      "geolocation": "Minnesota, US",
+      "static_ip": true,
+      "direct_port_count": 249,
+      "gpu_frac": 0.125,
+      "num_gpus": 1
+    },
+    "publicQuote": {
+      "path": "out/anhoku-strength-first/step9-model-b-preflight-20260912-v1/vast-offer-quote-20260912.json",
+      "bytes": 1032,
+      "sha256": "dea06631d4459b0f2847291c3a272d5b307adc7fe332a2cd27c092e1f53d9481",
+      "observedAt": "2026-09-11T23:11:20.473765Z",
+      "validUntil": "2026-09-12T03:11:20.473765Z"
+    },
+    "currentQuotedCombinedHourlyRateUsd": 0.21111111111111108,
+    "currentFourHourComputeAndListedStorageUsd": 0.8444444444444443,
+    "maximumCombinedHourlyRateUsd": 0.75,
+    "maximumRentedUptimeHours": 4.0,
+    "maximumTotalCostUsd": 5.0,
+    "offerMustBeRecheckedBeforeCreate": true,
+    "equivalentOfferWithinEnvelopeAllowedAfterApproval": true
+  },
+  "execution": {
+    "automaticFullRun": false,
+    "continuationsRequireHashBoundEvidence": true,
+    "paidCpuScreenWaitingPlanned": false,
+    "afterApproval": [
+      "Recheck this offer or bind an equivalent verified offer within the frozen commercial envelope.",
+      "Create one 60 GiB instance and bind its actual offer to the approval receipt.",
+      "Transfer and verify the invariant bundle, exact config, and approval receipt.",
+      "Run setup and the real fixture, then train only through update 128.",
+      "Download the u128 checkpoint, state, metrics, and throughput evidence before deciding any continuation."
+    ]
+  },
+  "limits": [
+    "The local CPU fixture does not qualify CUDA state, production training-loop ordering, native/Wasm parity, or match behavior.",
+    "The first paid leg stops at update 128 and does not authorize later continuation legs.",
+    "No confirmation-suite game may run until Model B training and the fixed u2688 checkpoint finish."
+  ],
+  "gpuRentalAuthorized": false,
+  "gpuUsed": false,
+  "productionChanged": false,
+  "nextAction": "obtain explicit permission for the stated Vast.ai envelope"
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "haitaka-anhoku-strength-first-independent-confirmation-100ms-contract-v1",
+  "createdAt": "2026-09-13T05:32:31Z",
+  "experimentId": "strength-first-independent-confirmation-100ms-20260913-v1",
+  "endpoint": {
+    "claim": "both independently trained fixed models beat handcrafted at 100 ms per move on the native MBP runtime",
+    "doesNotEstablish": [
+      "superiority at 1000 ms per move",
+      "shipped-WASM production-interface qualification",
+      "deployment authorization"
+    ]
+  },
+  "modelA": {
+    "role": "fixed-model-a",
+    "checkpointUpdate": 2688,
+    "integerNetworkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+    "confirmationSuite": "A"
+  },
+  "modelB": {
+    "role": "independent-data-replication-fixed-before-confirmation",
+    "checkpointUpdate": 2688,
+    "checkpointSha256": "44c62d40b268248b274fa6f4ae7a37a93e06b5e0340b93a89c9648084c46f260",
+    "integerNetworkSha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221",
+    "confirmationSuite": "B"
+  },
+  "suites": {
+    "A": {
+      "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-a-v1.tsv",
+      "bytes": 219737,
+      "sha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61",
+      "generationReceipt": {
+        "path": "r0/anhoku-strength-first/step9-confirmation-100ms-a-generation.json",
+        "bytes": 1358,
+        "sha256": "6416de3f4280a845c6e88513079ed4b665e86d16f69c3dd522880f8c287f9b87"
+      },
+      "openingSourceGroups": 2048,
+      "sourceGameSeed": 2026091301,
+      "sourceRandomPlies": 16
+    },
+    "B": {
+      "path": "haitaka_learn/openings/anhoku-strength-confirmation-100ms-b-v1.tsv",
+      "bytes": 219742,
+      "sha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf",
+      "generationReceipt": {
+        "path": "r0/anhoku-strength-first/step9-confirmation-100ms-b-generation.json",
+        "bytes": 1561,
+        "sha256": "a2ba77394438a4676066a46eac2780f0f45d15f365ff3bda050ce8b69b1acd8d"
+      },
+      "openingSourceGroups": 2048,
+      "sourceGameSeed": 2026091302,
+      "sourceRandomPlies": 16,
+      "excludedSuiteA": true
+    }
+  },
+  "matchProtocol": {
+    "hostRole": "mbp",
+    "endpoint": "192.168.0.12",
+    "concurrentGames": 1,
+    "moveTimeMilliseconds": 100,
+    "opponent": "haitaka-native-handcrafted",
+    "gamesPerOpeningSourceGroup": 2,
+    "schedule": "one-color-swapped-pair-in-file-order-v1",
+    "gamesPerModel": 4096,
+    "interimLooks": 0,
+    "sampleExtension": false,
+    "incompleteSchedulePolicy": "fail-closed-and-rerun-the-original-complete-schedule-without-inspecting-a-partial-result",
+    "primaryEndpoint": "candidate-viewpoint-paired-score"
+  },
+  "statisticalDecision": {
+    "minimumEffectForPowerElo": 20.0,
+    "minimumEffectScore": 0.5287505638922686,
+    "alphaOneSided": 0.05,
+    "targetPowerPerModel": 0.8,
+    "approximateConjunctionPowerAtMinimumEffect": 0.69039481,
+    "analysisUnit": "opening-source color-swapped pair",
+    "pairCountPerModel": 2048,
+    "pairScoreRange": [
+      0.0,
+      1.0
+    ],
+    "standardDeviationBound": 0.5,
+    "interval": "one-sided-95-percent-student-t-lower-bound-over-pair-scores-v1",
+    "perModelPass": "lower-bound-strictly-greater-than-0.5",
+    "overallPass": "both-model-A-and-model-B-pass",
+    "multiplicity": "intersection-union-conjunction; each component tested at one-sided alpha 0.05"
+  },
+  "exposurePolicy": {
+    "modelsFrozenBeforeSuiteGeneration": true,
+    "freshSuitesGeneratedWithoutModelEvaluation": true,
+    "suiteResultsMustRemainUnopenedUntilBothCompleteSchedulesFinish": true,
+    "noModelOrCheckpointSelectionFromConfirmation": true
+  },
+  "abandoned1000msCampaign": {
+    "path": "out/anhoku-strength-first/step9-independent-confirmation-20260913-abandoned-1000ms-partial-unopened",
+    "status": "stopped-partial-results-unopened",
+    "eligibleForAnalysis": false,
+    "reuseAllowed": false
+  },
+  "deploymentAuthorized": false,
+  "gpuAuthorized": false,
+  "status": "preregistered",
+  "supersedes": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-contract-v2.json",
+    "sha256": "b1e262c161d6fcf5965d8768aa2dcedbed62bb8225647fa3f550bf493cf88788",
+    "reason": "User-authorized switch to a shorter 100 ms endpoint before inspecting partial sealed 1000 ms outcomes; both replacement suites are fresh."
+  }
+}

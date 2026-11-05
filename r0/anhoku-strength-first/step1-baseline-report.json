@@ -1,0 +1,664 @@
+{
+  "browserFixedTime": [
+    {
+      "artifacts": {
+        "independentAudit": {
+          "bytes": 5642,
+          "path": "out/anhoku-strength-first/step1/browser-c16-vs-handcrafted-100ms-audit.json",
+          "sha256": "97f2ad3b4646d8c4a116c813d2249b619d19dad408f3757473491619ded54009"
+        },
+        "report": {
+          "bytes": 25531722,
+          "path": "out/anhoku-strength-first/step1/browser-c16-vs-handcrafted-100ms.json",
+          "sha256": "627e7825a17e669343a2bd6c86d0bc46b43b121ae6f4e98f153e8d2ea7afbdf2"
+        }
+      },
+      "budget": {
+        "movetimeMs": 100
+      },
+      "environment": "desktop-google-chrome-headless-dedicated-module-worker-on-local-ubuntu",
+      "label": "C/16",
+      "load": {
+        "coldLoadMs": 1054.5,
+        "glueImportMs": 5.399999976158142,
+        "modelLoadMs": 333.5,
+        "moduleLoadMs": 47.19999998807907,
+        "warmElapsedMs": 479762.39999997616,
+        "wasmInitMs": 41.80000001192093
+      },
+      "memory": {
+        "firstSample": {
+          "highWaterMarkBytes": 24576,
+          "processCount": 1,
+          "residentSetBytes": 24576,
+          "sampledAtUnixMs": 1788695371813
+        },
+        "lastSample": {
+          "highWaterMarkBytes": 1952669696,
+          "processCount": 11,
+          "residentSetBytes": 1842057216,
+          "sampledAtUnixMs": 1788695853375
+        },
+        "method": "linux-procfs-process-group-sum",
+        "peakHighWaterMarkBytes": 2170912768,
+        "peakResidentSetBytes": 2168172544,
+        "processCountPeak": 15,
+        "processGroupId": 173433,
+        "sampleCount": 1925,
+        "sampleIntervalMs": 250,
+        "status": "observed"
+      },
+      "provenance": {
+        "browserHarness": {
+          "bytes": 24610,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/scripts/strength_first_browser_harness.mjs",
+          "sha256": "46d8a256fe81fb60e51e180bee208feddc4afa6ea5b49f32973d856e654b9e03"
+        },
+        "browserWorker": {
+          "bytes": 18987,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/scripts/strength_first_browser_worker.js",
+          "route": "/worker.js",
+          "sha256": "0bd0c2f95fd513a34f03d227170bf6647dcaec3f6f6c71ca29c262d2c440ba6a"
+        },
+        "modelA": {
+          "bytes": 161206531,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+          "route": "/model.nnue",
+          "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0"
+        },
+        "openings": {
+          "bytes": 4872,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step1/development-openings.sfen",
+          "route": "/openings.tsv",
+          "sha256": "f17ef22e4c1ff203ff0dacd1f1968dabf74a6603580a04a99d35ff87a28b0f78"
+        },
+        "source": {
+          "dirty": true,
+          "dirtyStatus": "AD AGENTS.md\n M haitaka_wasm/src/lib.rs\n M plans/reboot/reboot-5-fixed-data-exposure-and-1m-workflow-pilot.md\n?? AGENT.md\n?? anhoku-8b.tgz\n?? anhoku-v0.6-78.tgz\n?? anhoku-v0.6-mac.tgz\n?? haitaka_learn/src/bin/r5r_reusable_diagnostic.rs\n?? plans/anhoku-nnue-strength-first-plan.md\n?? plans/reboot/r5r-v3e-independent-review.json\n?? r0/anhoku-strength-first/step2-independent-review.json\n?? r0/anhoku-strength-first/step3-experiment-v1.json\n?? scripts/__pycache__/r5_repair_workflow.cpython-310.pyc\n?? scripts/__pycache__/r5_trainer.cpython-310.pyc\n?? scripts/r5_cache_protocol_fixture.py\n?? scripts/r5_group_replenishment.py\n?? scripts/r5_group_replenishment_fixture.py\n?? scripts/r5_repair_v3.py\n?? scripts/r5_repair_workflow.py\n?? scripts/strength_first_browser_harness.mjs\n?? scripts/strength_first_browser_worker.js\n?? scripts/strength_first_preflight.py\n?? scripts/strength_first_trainer.py\n?? scripts/test_strength_first_preflight.py",
+          "schema": "haitaka-anhoku-strength-first-source-provenance-v1",
+          "suppliedContract": null,
+          "suppliedSourceIdentity": null,
+          "workspaceCommit": "144de948c109c900ceb49661b0799ef5b182a405",
+          "workspaceTree": "0d808688b22d22b000d430eba198a541a7ee9569"
+        },
+        "wasm": {
+          "bytes": 18403416,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step1/wasm-current-512/haitaka_wasm_bg.wasm",
+          "route": "/pkg/haitaka_wasm_bg.wasm",
+          "sha256": "9674518f9ecf1e5f5f7a79e8e3e190c4d70cd9a86be36e14cdc147a19e7391a8"
+        }
+      },
+      "score": {
+        "draws": 0,
+        "games": 128,
+        "independentOpeningGroups": 64,
+        "losses": 67,
+        "openingPairStudentT95": {
+          "degreesOfFreedom": 63,
+          "lower": 0.3891501482047355,
+          "method": "two-sided-95-percent-student-t-over-64-opening-pair-means",
+          "sampleStandardDeviation": 0.3499397623900252,
+          "upper": 0.5639748517952645
+        },
+        "pairs": 64,
+        "scoreRate": 0.4765625,
+        "wins": 61
+      },
+      "search": {
+        "alphaBetaNodes": 14725106,
+        "combinedNodes": 52625962,
+        "completedDepthMax": 5,
+        "fallbacks": 0,
+        "missingMoves": 0,
+        "qsearchNodes": 37900856,
+        "searches": 5401,
+        "terminationReasons": {
+          "no-legal-move": 128
+        },
+        "unsearchedMoves": 0
+      },
+      "timing": {
+        "maxElapsedMs": 103.09999996423721,
+        "maxLatenessMs": 3.099999964237213,
+        "p95LatenessMs": 0.10000002384185791,
+        "p99LatenessMs": 0.10000002384185791,
+        "samples": 5401
+      },
+      "valid": true
+    },
+    {
+      "artifacts": {
+        "independentAudit": {
+          "bytes": 5633,
+          "path": "out/anhoku-strength-first/step1/browser-compact-vs-handcrafted-100ms-audit.json",
+          "sha256": "4fa7f7838d310a0e6af50b8420bbc6c7e33f790bb92b5d0fe44932b1d6898bd3"
+        },
+        "report": {
+          "bytes": 26406473,
+          "path": "out/anhoku-strength-first/step1/browser-compact-vs-handcrafted-100ms.json",
+          "sha256": "52337e54add83bd04df4b7b3ea8a626784a546bf63aea37770189196e56b7353"
+        }
+      },
+      "budget": {
+        "movetimeMs": 100
+      },
+      "environment": "desktop-google-chrome-headless-dedicated-module-worker-on-local-ubuntu",
+      "label": "compact width 256",
+      "load": {
+        "coldLoadMs": 656.1999999880791,
+        "glueImportMs": 6,
+        "modelLoadMs": 179.89999997615814,
+        "moduleLoadMs": 49.19999998807907,
+        "warmElapsedMs": 496364.5,
+        "wasmInitMs": 43.19999998807907
+      },
+      "memory": {
+        "firstSample": {
+          "highWaterMarkBytes": 3502080,
+          "processCount": 1,
+          "residentSetBytes": 3502080,
+          "sampledAtUnixMs": 1788694791700
+        },
+        "lastSample": {
+          "highWaterMarkBytes": 1702064128,
+          "processCount": 11,
+          "residentSetBytes": 1601069056,
+          "sampledAtUnixMs": 1788695289494
+        },
+        "method": "linux-procfs-process-group-sum",
+        "peakHighWaterMarkBytes": 1964277760,
+        "peakResidentSetBytes": 1943265280,
+        "processCountPeak": 16,
+        "processGroupId": 165027,
+        "sampleCount": 1990,
+        "sampleIntervalMs": 250,
+        "status": "observed"
+      },
+      "provenance": {
+        "browserHarness": {
+          "bytes": 24610,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/scripts/strength_first_browser_harness.mjs",
+          "sha256": "46d8a256fe81fb60e51e180bee208feddc4afa6ea5b49f32973d856e654b9e03"
+        },
+        "browserWorker": {
+          "bytes": 18987,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/scripts/strength_first_browser_worker.js",
+          "route": "/worker.js",
+          "sha256": "0bd0c2f95fd513a34f03d227170bf6647dcaec3f6f6c71ca29c262d2c440ba6a"
+        },
+        "modelA": {
+          "bytes": 83048665,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-reboot-r5-gpu/compact-final.nnue",
+          "route": "/model.nnue",
+          "sha256": "99c86bbf86d81ed67dde341b06724be3f9e917cca16aa8e78dd2a5732fd0cac0"
+        },
+        "openings": {
+          "bytes": 4872,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step1/development-openings.sfen",
+          "route": "/openings.tsv",
+          "sha256": "f17ef22e4c1ff203ff0dacd1f1968dabf74a6603580a04a99d35ff87a28b0f78"
+        },
+        "source": {
+          "dirty": true,
+          "dirtyStatus": "AD AGENTS.md\n M haitaka_wasm/src/lib.rs\n M plans/reboot/reboot-5-fixed-data-exposure-and-1m-workflow-pilot.md\n?? AGENT.md\n?? anhoku-8b.tgz\n?? anhoku-v0.6-78.tgz\n?? anhoku-v0.6-mac.tgz\n?? haitaka_learn/src/bin/r5r_reusable_diagnostic.rs\n?? plans/anhoku-nnue-strength-first-plan.md\n?? plans/reboot/r5r-v3e-independent-review.json\n?? r0/anhoku-strength-first/step2-independent-review.json\n?? r0/anhoku-strength-first/step3-experiment-v1.json\n?? scripts/__pycache__/r5_repair_workflow.cpython-310.pyc\n?? scripts/__pycache__/r5_trainer.cpython-310.pyc\n?? scripts/r5_cache_protocol_fixture.py\n?? scripts/r5_group_replenishment.py\n?? scripts/r5_group_replenishment_fixture.py\n?? scripts/r5_repair_v3.py\n?? scripts/r5_repair_workflow.py\n?? scripts/strength_first_browser_harness.mjs\n?? scripts/strength_first_browser_worker.js\n?? scripts/strength_first_preflight.py\n?? scripts/strength_first_trainer.py\n?? scripts/test_strength_first_preflight.py",
+          "schema": "haitaka-anhoku-strength-first-source-provenance-v1",
+          "suppliedContract": null,
+          "suppliedSourceIdentity": null,
+          "workspaceCommit": "144de948c109c900ceb49661b0799ef5b182a405",
+          "workspaceTree": "0d808688b22d22b000d430eba198a541a7ee9569"
+        },
+        "wasm": {
+          "bytes": 18412528,
+          "path": "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step1/wasm-compact-256/haitaka_wasm_bg.wasm",
+          "route": "/pkg/haitaka_wasm_bg.wasm",
+          "sha256": "37eae6978fb45b1c48d991323e02766354d17463e0129bfa05d4f81bd3852ac1"
+        }
+      },
+      "score": {
+        "draws": 0,
+        "games": 128,
+        "independentOpeningGroups": 64,
+        "losses": 70,
+        "openingPairStudentT95": {
+          "degreesOfFreedom": 63,
+          "lower": 0.3802688344145554,
+          "method": "two-sided-95-percent-student-t-over-64-opening-pair-means",
+          "sampleStandardDeviation": 0.2916666666666667,
+          "upper": 0.5259811655854446
+        },
+        "pairs": 64,
+        "scoreRate": 0.453125,
+        "wins": 58
+      },
+      "search": {
+        "alphaBetaNodes": 16383916,
+        "combinedNodes": 56272293,
+        "completedDepthMax": 6,
+        "fallbacks": 0,
+        "missingMoves": 0,
+        "qsearchNodes": 39888377,
+        "searches": 5582,
+        "terminationReasons": {
+          "no-legal-move": 128
+        },
+        "unsearchedMoves": 0
+      },
+      "timing": {
+        "maxElapsedMs": 103.09999996423721,
+        "maxLatenessMs": 3.099999964237213,
+        "p95LatenessMs": 0.10000002384185791,
+        "p99LatenessMs": 0.10000002384185791,
+        "samples": 5582
+      },
+      "valid": true
+    }
+  ],
+  "decision": {
+    "basis": [
+      "best existing equal-node score rate: 0.4765625, with uncertainty still including parity",
+      "fixed-time comparison against C/16 is inconclusive: both grouped intervals include 0.5 and overlap",
+      "compact model load and observed process-group memory are lower in the production browser path",
+      "a fresh compact run directly tests the proposed optimization schedule within the smaller deployable family"
+    ],
+    "claim": "Proceed to the bounded compact scratch experiment only after explicit GPU-rental approval; no existing export is established stronger than handcrafted.",
+    "nextTrainingFamily": "compact width 256 scratch"
+  },
+  "generatedAt": "2026-09-06T21:23:11+09:00",
+  "inputs": {
+    "checks": {
+      "activeJobInventory": "valid",
+      "anhokuV3Schedule": "valid",
+      "integerExports": "valid",
+      "r5OneMillionSplits": "valid"
+    },
+    "developmentRecords": 60000,
+    "models": {
+      "c16": {
+        "actualBytes": 161206531,
+        "actualSha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0",
+        "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+        "status": "valid"
+      },
+      "compact": {
+        "actualBytes": 83048665,
+        "actualSha256": "99c86bbf86d81ed67dde341b06724be3f9e917cca16aa8e78dd2a5732fd0cac0",
+        "path": "out/anhoku-reboot-r5-gpu/compact-final.nnue",
+        "status": "valid"
+      },
+      "currentSeed17": {
+        "actualBytes": 161206489,
+        "actualSha256": "7dc9af50a8618aa7a511aa891baeda8823015e2ade2a21d80346c77297be44d9",
+        "path": "out/anhoku-reboot-r5-gpu/current-final.nnue",
+        "status": "valid"
+      },
+      "seed29": {
+        "actualBytes": 161206489,
+        "actualSha256": "67692b31bc86d3a71043cbfc176a96b8cc96cdb549ef0940c4f209a5afb044a4",
+        "path": "out/anhoku-reboot-r5-gpu/replication-seed29/final.nnue",
+        "status": "valid"
+      }
+    },
+    "schedule": {
+      "colorSwappedPairs": 128,
+      "cycles": 2,
+      "openingIds": 64,
+      "path": "out/anhoku-strength-first/step1/development-openings.sfen",
+      "scheduleSha256": "2c1c729978a26815edde2bbc269917c5790d9e121a0282717e650a0110764529",
+      "sha256": "f17ef22e4c1ff203ff0dacd1f1968dabf74a6603580a04a99d35ff87a28b0f78"
+    },
+    "trainingRecords": 880000,
+    "validationRecords": 60000
+  },
+  "nativeEqualNode": [
+    {
+      "artifacts": {
+        "independentAudit": {
+          "bytes": 84461,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted-valid-v3/audit.json",
+          "sha256": "26afb41e85abbf4bd7925772838b3014fe2645c2c6b80e61b3d25570bf49ed61"
+        },
+        "rawGames": {
+          "bytes": 547237,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted-valid-v3/self-play-games.jsonl",
+          "sha256": "d9379287499bd8513dda21ad7500f2824ed206ef5af6e61e5726839340059b55"
+        },
+        "report": {
+          "bytes": 3507,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted-valid-v3/self-play-report.json",
+          "sha256": "826e324105ea9c4d03dd0b703f77f57aa274a3aa3b22096759c43eb5e6cb754a"
+        }
+      },
+      "budget": {
+        "nodeCounting": "alpha-beta-plus-qsearch-v2",
+        "nodesPerMove": 10000
+      },
+      "environment": "native-mbp-single-thread",
+      "label": "C/16",
+      "score": {
+        "draws": 4,
+        "games": 256,
+        "independentOpeningGroups": 64,
+        "losses": 150,
+        "openingGroupStudentT95": {
+          "degreesOfFreedom": 63,
+          "lower": 0.32718032874432634,
+          "method": "two-sided-95-percent-student-t-over-64-opening-id-means",
+          "sampleStandardDeviation": 0.3165413285787698,
+          "upper": 0.48531967125567366
+        },
+        "pairs": 128,
+        "scoreRate": 0.40625,
+        "wins": 102
+      },
+      "search": {
+        "alphaBetaNodes": 24718332,
+        "combinedNodes": 122980000,
+        "completedDepthMax": 5,
+        "completedDepthMean": 4.0546875,
+        "completedDepthMin": 3,
+        "fallbacks": 0,
+        "missingMoves": 0,
+        "qsearchNodes": 98261668,
+        "terminationReasons": {
+          "maximum-ply-capped": 4,
+          "no-legal-move": 252
+        }
+      },
+      "valid": true
+    },
+    {
+      "artifacts": {
+        "independentAudit": {
+          "bytes": 84538,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted-valid-v3/audit.json",
+          "sha256": "dd9f1f44b32caf3f70d44a760e3bcdf2ff702f2d2e1cf5e7a4c389ccefec4102"
+        },
+        "rawGames": {
+          "bytes": 555260,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted-valid-v3/self-play-games.jsonl",
+          "sha256": "6ae6bff3a56de970217bfd1047bf0382dfb1a340c88c1a24292eaec20ae0326f"
+        },
+        "report": {
+          "bytes": 3506,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted-valid-v3/self-play-report.json",
+          "sha256": "dd8df72128c0475af0a57198e78a8e7e28d9ac3e55ab17f334633106969126a5"
+        }
+      },
+      "budget": {
+        "nodeCounting": "alpha-beta-plus-qsearch-v2",
+        "nodesPerMove": 10000
+      },
+      "environment": "native-mbp-single-thread",
+      "label": "current seed 17",
+      "score": {
+        "draws": 2,
+        "games": 256,
+        "independentOpeningGroups": 64,
+        "losses": 142,
+        "openingGroupStudentT95": {
+          "degreesOfFreedom": 63,
+          "lower": 0.3518784466707835,
+          "method": "two-sided-95-percent-student-t-over-64-opening-id-means",
+          "sampleStandardDeviation": 0.3584085953631117,
+          "upper": 0.5309340533292165
+        },
+        "pairs": 128,
+        "scoreRate": 0.44140625,
+        "wins": 112
+      },
+      "search": {
+        "alphaBetaNodes": 28120202,
+        "combinedNodes": 133800000,
+        "completedDepthMax": 5,
+        "completedDepthMean": 4.1015625,
+        "completedDepthMin": 3,
+        "fallbacks": 0,
+        "missingMoves": 0,
+        "qsearchNodes": 105679798,
+        "terminationReasons": {
+          "no-legal-move": 254,
+          "repetition-draw": 2
+        }
+      },
+      "valid": true
+    },
+    {
+      "artifacts": {
+        "independentAudit": {
+          "bytes": 84469,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted-valid-v3/audit.json",
+          "sha256": "b7f0538b74ace607dd26eee4d06f2df674829771447fab5db3323ff32812e89b"
+        },
+        "rawGames": {
+          "bytes": 545732,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted-valid-v3/self-play-games.jsonl",
+          "sha256": "50a3fa051b065e0ae201ae9c1357eca391a7bc3013aeced33f78f4e2ccf7b6b2"
+        },
+        "report": {
+          "bytes": 3508,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted-valid-v3/self-play-report.json",
+          "sha256": "76f9f859effd8c584624d7a3b6088c34ab1bf4d59ac4aa43737bf092cb93c941"
+        }
+      },
+      "budget": {
+        "nodeCounting": "alpha-beta-plus-qsearch-v2",
+        "nodesPerMove": 10000
+      },
+      "environment": "native-mbp-single-thread",
+      "label": "compact width 256",
+      "score": {
+        "draws": 0,
+        "games": 256,
+        "independentOpeningGroups": 64,
+        "losses": 134,
+        "openingGroupStudentT95": {
+          "degreesOfFreedom": 63,
+          "lower": 0.3891501482047355,
+          "method": "two-sided-95-percent-student-t-over-64-opening-id-means",
+          "sampleStandardDeviation": 0.3499397623900252,
+          "upper": 0.5639748517952645
+        },
+        "pairs": 128,
+        "scoreRate": 0.4765625,
+        "wins": 122
+      },
+      "search": {
+        "alphaBetaNodes": 26969654,
+        "combinedNodes": 121420000,
+        "completedDepthMax": 6,
+        "completedDepthMean": 4.1015625,
+        "completedDepthMin": 3,
+        "fallbacks": 0,
+        "missingMoves": 0,
+        "qsearchNodes": 94450346,
+        "terminationReasons": {
+          "no-legal-move": 256
+        }
+      },
+      "valid": true
+    }
+  ],
+  "schema": "haitaka-anhoku-strength-first-step1-baseline-v1",
+  "scope": "development evidence only; not promotion or confirmation evidence",
+  "searchCorrectness": {
+    "changes": [
+      "reserve first-root-child progress under pathological node-budget qsearch",
+      "bound first-depth timed qsearch so a searched legal move completes",
+      "return typed partial qsearch result when the soft cap unwinds",
+      "return a completed rules-defined result for root terminal positions"
+    ],
+    "source": {
+      "bytes": 191831,
+      "path": "haitaka_wasm/src/lib.rs",
+      "sha256": "f3687d03db82bad893a475be1543d011a5cbab6349f868853e68588714170056"
+    },
+    "tests": [
+      {
+        "command": "cargo test -p haitaka_wasm --features anhoku",
+        "passed": true,
+        "tests": 92
+      },
+      {
+        "command": "python3 -m unittest scripts/test_strength_first_preflight.py",
+        "passed": true,
+        "tests": 8
+      }
+    ]
+  },
+  "snapshot": {
+    "activeLocalJobs": 0,
+    "activeRemoteJobs": 0,
+    "commit": "144de948c109c900ceb49661b0799ef5b182a405",
+    "dirty": true,
+    "dirtyPaths": [
+      "AGENT.md",
+      "AGENTS.md",
+      "anhoku-8b.tgz",
+      "anhoku-v0.6-78.tgz",
+      "anhoku-v0.6-mac.tgz",
+      "haitaka_learn/src/bin/",
+      "haitaka_wasm/src/lib.rs",
+      "plans/anhoku-nnue-strength-first-plan.md",
+      "plans/reboot/r5r-v3e-independent-review.json",
+      "plans/reboot/reboot-5-fixed-data-exposure-and-1m-workflow-pilot.md",
+      "r0/anhoku-strength-first/",
+      "scripts/__pycache__/",
+      "scripts/r5_cache_protocol_fixture.py",
+      "scripts/r5_group_replenishment.py",
+      "scripts/r5_group_replenishment_fixture.py",
+      "scripts/r5_repair_v3.py",
+      "scripts/r5_repair_workflow.py",
+      "scripts/strength_first_browser_harness.mjs",
+      "scripts/strength_first_browser_worker.js",
+      "scripts/strength_first_preflight.py",
+      "scripts/strength_first_trainer.py",
+      "scripts/test_strength_first_preflight.py"
+    ],
+    "gpuRentalAuthorized": false,
+    "preflight": {
+      "bytes": 113076,
+      "path": "out/anhoku-strength-first/step1/preflight.json",
+      "sha256": "22eb4cd8c0e5efb4a6c277e655afe67574c76c8b3425d5333f13a3d99a8a1b22"
+    },
+    "trainingStarted": false
+  },
+  "status": "valid",
+  "supersededMeasurements": [
+    {
+      "artifacts": {
+        "audit": {
+          "bytes": 84368,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted/audit.json",
+          "sha256": "2b1daafda4c4d05c691e2ff278bf75b89d96fe9d2ae2e1a2f27117a2058edffc"
+        },
+        "rawGames": {
+          "bytes": 546673,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted/self-play-games.jsonl",
+          "sha256": "be16948018547fad6c2d13d25632f6fed8227468f15addc9d4e828bba355ba0d"
+        },
+        "report": {
+          "bytes": 3502,
+          "path": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted/self-play-report.json",
+          "sha256": "c4e6bdcba20dd73b0ae66141eefdf620168ba7bdebd3ec6c5d5de573518c7bf1"
+        }
+      },
+      "directory": "out/anhoku-strength-first/step1/native-c16-vs-handcrafted",
+      "excluded": true,
+      "fallbacks": 18,
+      "label": "c16",
+      "missingMoves": 0,
+      "reason": "nonzero emergency fallbacks invalidate strength measurement"
+    },
+    {
+      "artifacts": {
+        "audit": {
+          "bytes": 84520,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted/audit.json",
+          "sha256": "2341d5cdff4ff5e2dc836ca6333759502f6fdf23deed4398169b7d48e0e28bde"
+        },
+        "rawGames": {
+          "bytes": 555337,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted/self-play-games.jsonl",
+          "sha256": "e0ccd1ed8644822a8dd464f47698a4d16ba0481d48c8a5bd9f88f46292e5baec"
+        },
+        "report": {
+          "bytes": 3507,
+          "path": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted/self-play-report.json",
+          "sha256": "c29e223b8003201067a69062009778fa52f084b85c5bb998ef89310ecf7388d1"
+        }
+      },
+      "directory": "out/anhoku-strength-first/step1/native-current17-vs-handcrafted",
+      "excluded": true,
+      "fallbacks": 2,
+      "label": "current-seed17",
+      "missingMoves": 0,
+      "reason": "nonzero emergency fallbacks invalidate strength measurement"
+    },
+    {
+      "artifacts": {
+        "audit": {
+          "bytes": 84455,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted/audit.json",
+          "sha256": "d7b211f0c6afef1d05a4f55a8fb705a06b47364ff88ad75a50b933c9c833c361"
+        },
+        "rawGames": {
+          "bytes": 546305,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted/self-play-games.jsonl",
+          "sha256": "2b95438b45c55f07978b79db9622ce03c3f58c21cf1c2e86931288177300f3c5"
+        },
+        "report": {
+          "bytes": 3507,
+          "path": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted/self-play-report.json",
+          "sha256": "8047e8cc17ee3f896dba27a342496c9e6d1bb477864ea6a5dc3229f9944dd032"
+        }
+      },
+      "directory": "out/anhoku-strength-first/step1/native-compact-vs-handcrafted",
+      "excluded": true,
+      "fallbacks": 2,
+      "label": "compact",
+      "missingMoves": 0,
+      "reason": "nonzero emergency fallbacks invalidate strength measurement"
+    }
+  ],
+  "wasmBuilds": {
+    "width256": {
+      "features": [
+        "anhoku",
+        "nnue-l1-256"
+      ],
+      "manifest": {
+        "bytes": 1433,
+        "path": "out/anhoku-strength-first/step1/wasm-compact-256/build-manifest.json",
+        "sha256": "8540243225f1451fe314891d56f072e7a8fbd31e1be3b8533a291016041d2d5a"
+      },
+      "source": {
+        "bytes": 191831,
+        "path": "haitaka_wasm/src/lib.rs",
+        "sha256": "f3687d03db82bad893a475be1543d011a5cbab6349f868853e68588714170056"
+      },
+      "wasm": {
+        "bytes": 18412528,
+        "sha256": "37eae6978fb45b1c48d991323e02766354d17463e0129bfa05d4f81bd3852ac1"
+      }
+    },
+    "width512": {
+      "features": [
+        "anhoku"
+      ],
+      "manifest": {
+        "bytes": 1406,
+        "path": "out/anhoku-strength-first/step1/wasm-current-512/build-manifest.json",
+        "sha256": "6f53aaead5e338358f8ccdc765bcbfb8ccdeff61add928fb66aca6c9345fd50b"
+      },
+      "source": {
+        "bytes": 191831,
+        "path": "haitaka_wasm/src/lib.rs",
+        "sha256": "f3687d03db82bad893a475be1543d011a5cbab6349f868853e68588714170056"
+      },
+      "wasm": {
+        "bytes": 18403416,
+        "sha256": "9674518f9ecf1e5f5f7a79e8e3e190c4d70cd9a86be36e14cdc147a19e7391a8"
+      }
+    }
+  }
+}

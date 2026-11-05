@@ -1,0 +1,37 @@
+{
+  "schema": "haitaka-anhoku-strength-first-checkpoint-selection-independent-review-v2",
+  "reviewedAt": "2026-09-14",
+  "reviewer": {
+    "configuration": "Astra medium",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "medium",
+    "agentId": "01a09e62-5815-7ed3-a064-f818cbfec2a6",
+    "nickname": "Planck"
+  },
+  "reviewedContract": {
+    "path": "r0/anhoku-strength-first/step10-checkpoint-selection-contract-v1.json",
+    "sha256": "e49936562e9af368637969c987045713391bd7dcc84e90c3f1b4ed29b77dc5be"
+  },
+  "priorReview": {
+    "path": "r0/anhoku-strength-first/step10-checkpoint-selection-review-v1.json",
+    "sha256": "f6f97a81f3bd3798ddeb448e15e641ecdac2cdc7d81a2a4140a095a030137950",
+    "verdict": "approve-with-required-amendments"
+  },
+  "verdict": "approve",
+  "assessment": "All six required amendments are adequately addressed. The same-run early-selection versus update-2688 comparison meaningfully tests the stated hypothesis, conditional on one fresh seed, the reused Model B corpus/validation set, and the new native 1,000 ms endpoint.",
+  "remainingDesignChanges": [],
+  "executionReadiness": {
+    "designReady": true,
+    "launchReady": false,
+    "separateExecutionAuthorizationRequired": true,
+    "unresolvedGates": [
+      "hash-bound Step 10 runner and resolved configuration",
+      "hash-bound opening generator build and independent opening validation",
+      "hash-bound corpus-family exclusion receipt",
+      "hash-bound match runner and analyzer",
+      "fresh throughput, storage, and cost forecast",
+      "explicit user authorization for any GPU rental or training"
+    ]
+  },
+  "boundary": "Approval does not fill any placeholder or change any authorization flag. Handcrafted remains production, deployment remains unauthorized, the failed Step 9 confirmation remains closed, and no experimental compute was run."
+}

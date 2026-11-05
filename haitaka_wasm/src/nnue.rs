@@ -290,6 +290,7 @@ impl FeatureFamily {
 
 #[derive(Debug, Clone)]
 pub struct NnueModel {
+    evaluation_multiplier: i32,
     description: String,
     family: FeatureFamily,
     transformer: FeatureTransformer,
@@ -426,6 +427,7 @@ impl R1SentinelNetwork {
             .collect();
         Self {
             model: NnueModel {
+                evaluation_multiplier: 1,
                 description: R1_SENTINEL_CONSTRUCTION.to_string(),
                 family,
                 transformer: FeatureTransformer {
@@ -602,6 +604,7 @@ impl NnueModel {
         reader.ensure_finished()?;
 
         Ok(Self {
+            evaluation_multiplier: 1,
             description,
             family,
             transformer,
@@ -621,6 +624,26 @@ impl NnueModel {
     /// The header must belong to a feature family recognized by this build.
     pub fn feature_family_from_header(bytes: &[u8]) -> Result<&'static str, NnueError> {
         Ok(read_feature_family(&mut ByteReader::new(bytes))?.name())
+    }
+
+    /// CPU diagnostic only; serialized weights and default evaluation are unchanged.
+    pub fn with_evaluation_multiplier(mut self, multiplier: i32) -> Result<Self, String> {
+        if !matches!(multiplier, 1 | 2) {
+            return Err("evaluation multiplier must be 1 or 2".to_string());
+        }
+        self.evaluation_multiplier = multiplier;
+        Ok(self)
+    }
+
+    fn scale_evaluation(&self, score: i32) -> i32 {
+        if self.evaluation_multiplier == 1 {
+            score
+        } else {
+            // Keep static scores outside the search mate band.
+            score
+                .saturating_mul(self.evaluation_multiplier)
+                .clamp(-28_975, 28_975)
+        }
     }
 
     pub fn evaluate(&self, board: &Board) -> i32 {
@@ -669,7 +692,7 @@ impl NnueModel {
         let output = bucket_network.output.forward_single(&hidden2_relu);
         let psqt = (our_accumulator.psqt[bucket] - their_accumulator.psqt[bucket]) / 2;
 
-        (psqt + output) / OUTPUT_SCALE
+        self.scale_evaluation((psqt + output) / OUTPUT_SCALE)
     }
 
     pub fn evaluate_full_refresh(&self, board: &Board) -> i32 {
@@ -712,7 +735,7 @@ impl NnueModel {
         let hidden2_relu = clipped_relu_array(hidden2);
         let output = bucket_network.output.forward_single(&hidden2_relu);
         let psqt = (our_accumulator.psqt[bucket] - their_accumulator.psqt[bucket]) / 2;
-        let score = (psqt + output) / OUTPUT_SCALE;
+        let score = self.scale_evaluation((psqt + output) / OUTPUT_SCALE);
 
         R1InferenceTrace {
             black_accumulator: state.perspective(Color::Black).sums,
@@ -1474,8 +1497,9 @@ fn fill_transformed_features(
 }
 
 fn clamp_transformed(value: i16) -> u8 {
-    let shifted = i32::from(value) >> WEIGHT_SCALE_BITS;
-    shifted.clamp(0, 127) as u8
+    // The serializer scales FT weights/biases by 127, already in activation
+    // units. Only affine hidden layers need the additional six-bit shift.
+    i32::from(value).clamp(0, 127) as u8
 }
 
 fn clipped_relu_array<const DIMENSIONS: usize>(input: [i32; DIMENSIONS]) -> [u8; DIMENSIONS] {
@@ -2308,6 +2332,60 @@ mod tests {
     use rand::prelude::IndexedRandom;
     use rand::{Rng, SeedableRng, rng, rngs::StdRng};
     use std::path::PathBuf;
+
+    #[test]
+    fn transformer_activation_preserves_serializer_scale() {
+        // serialize.py stores round(float_activation * 127).
+        for (encoded, expected) in [
+            (-128, 0),
+            (0, 0),
+            (1, 1),
+            (63, 63),
+            (64, 64),
+            (126, 126),
+            (127, 127),
+            (128, 127),
+        ] {
+            assert_eq!(clamp_transformed(encoded), expected);
+        }
+        // Hidden affine products, unlike FT accumulators, carry weight scale 64.
+        assert_eq!(
+            clipped_relu_array([63, 64, 127 * 64, 128 * 64]),
+            [0, 1, 127, 127]
+        );
+    }
+
+    #[test]
+    #[ignore = "requires HAITAKA_NNUE_TEST_MODEL"]
+    fn diagnostic_multiplier_matches_full_incremental_and_trace() {
+        let model = load_phase6_test_nnue().expect("explicit NNUE fixture must load");
+        let doubled = model.clone().with_evaluation_multiplier(2).unwrap();
+        assert!(model.clone().with_evaluation_multiplier(0).is_err());
+        assert!(model.clone().with_evaluation_multiplier(3).is_err());
+        assert_eq!(model.scale_evaluation(i32::MAX), i32::MAX);
+        assert_eq!(doubled.scale_evaluation(i32::MAX), 28_975);
+        assert_eq!(doubled.scale_evaluation(i32::MIN), -28_975);
+        let mut board = Board::startpos();
+        let mut rng = StdRng::seed_from_u64(20260908);
+        for _ in 0..32 {
+            let state = model.build_position_state_full(&board);
+            let expected = model
+                .evaluate_full_refresh(&board)
+                .saturating_mul(2)
+                .clamp(-28_975, 28_975);
+            assert_eq!(doubled.evaluate_from_state(&board, &state), expected);
+            assert_eq!(doubled.evaluate_full_refresh(&board), expected);
+            assert_eq!(
+                doubled.r1_inference_trace_from_state(&board, &state).score,
+                expected
+            );
+            let moves = collect_legal_moves(&board);
+            let Some(mv) = moves.choose(&mut rng) else {
+                break;
+            };
+            board.play_unchecked(*mv);
+        }
+    }
 
     fn load_test_nnue() -> Option<NnueModel> {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../shogi-878ca61334a7.nnue");
@@ -3205,6 +3283,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         NnueModel {
+            evaluation_multiplier: 1,
             description: "synthetic-donor".to_string(),
             family,
             transformer: FeatureTransformer {

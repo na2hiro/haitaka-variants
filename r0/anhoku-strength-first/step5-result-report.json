@@ -1,0 +1,530 @@
+{
+  "schema": "haitaka-strength-first-step5-result-v1",
+  "complete": true,
+  "contract": {
+    "path": "r0/anhoku-strength-first/step5-scale-time-v1.json",
+    "bytes": 3910,
+    "sha256": "6594a1774666f7a5145e78356933d9a50d641c868a69829fa9db38164ebc708e"
+  },
+  "scope": "reused-development-only-no-promotion",
+  "diagnostic": {
+    "parents": 128,
+    "defaultParityWithStep4": 128,
+    "childStaticScalingChecks": 8290,
+    "changedChoices": 29,
+    "newLabels": 24,
+    "scale1MeanRegret": 0.046450520833333335,
+    "scale2MeanRegret": 0.05367838541666667,
+    "scale2MinusScale1": {
+      "mean": 0.0072278645833333335,
+      "lower95": -0.001368421052631579,
+      "upper95": 0.0221008064516129,
+      "openingGroups": 54
+    },
+    "searchNodes": 8560000,
+    "nodeBudgetSearchSensitivity": {
+      "1": {
+        "alphaBetaNodes": 358219,
+        "qsearchNodes": 921781,
+        "meanCompletedDepth": 2.5390625,
+        "partialIterations": 128
+      },
+      "2": {
+        "alphaBetaNodes": 404226,
+        "qsearchNodes": 875774,
+        "meanCompletedDepth": 2.6328125,
+        "partialIterations": 128
+      }
+    }
+  },
+  "games": {
+    "scale2-vs-scale1-100ms": {
+      "games": 64,
+      "wins": 30,
+      "losses": 34,
+      "draws": 0,
+      "score": {
+        "mean": 0.46875,
+        "lower95": 0.359375,
+        "upper95": 0.578125,
+        "groups": 32
+      },
+      "averagePlies": 47.53125,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 89.27092643589742,
+      "telemetry": {
+        "a": {
+          "totalNodes": 34024538,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 34024538,
+          "completedDepth": 6,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 136913.17065,
+          "aggregateNps": 248511.79647996856,
+          "qnodes": 55759110,
+          "aggregateQnps": 407258.91990727925,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 130403,
+          "qsearchCheckMoveTries": 3080724,
+          "qsearchDeltaPrunes": 23147642
+        },
+        "b": {
+          "totalNodes": 29596565,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 29596565,
+          "completedDepth": 6,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 134648.98756799998,
+          "aggregateNps": 219805.32891161353,
+          "qnodes": 54401326,
+          "aggregateQnps": 404023.2829268502,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 678832,
+          "qsearchCheckMoveTries": 2683806,
+          "qsearchDeltaPrunes": 19225761
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-scale1-100ms/self-play-report.json",
+        "bytes": 4041,
+        "sha256": "e4a6d030ee4b3d098acea1ead9493b7240a04ab5347080f21f9984ca22468365"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-scale1-100ms/self-play-games.jsonl",
+        "bytes": 135073,
+        "sha256": "f4eee0f118a92a83b35dcff8c0efc2750cbb4d6345ccb07d99540f199dfd60d5"
+      }
+    },
+    "scale2-vs-scale1-1000ms": {
+      "games": 64,
+      "wins": 30,
+      "losses": 34,
+      "draws": 0,
+      "score": {
+        "mean": 0.46875,
+        "lower95": 0.390625,
+        "upper95": 0.5625,
+        "groups": 32
+      },
+      "averagePlies": 47.09375,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 891.8511727694093,
+      "telemetry": {
+        "a": {
+          "totalNodes": 340211301,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 340211301,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1354491.810893,
+          "aggregateNps": 251172.65255055533,
+          "qnodes": 542669277,
+          "aggregateQnps": 400644.1918923265,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 1044527,
+          "qsearchCheckMoveTries": 31017979,
+          "qsearchDeltaPrunes": 272563915
+        },
+        "b": {
+          "totalNodes": 301555713,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 301555713,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1333547.623834,
+          "aggregateNps": 226130.44154584888,
+          "qnodes": 529135697,
+          "aggregateQnps": 396788.00182532275,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 6112013,
+          "qsearchCheckMoveTries": 27284189,
+          "qsearchDeltaPrunes": 234863608
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-scale1-1000ms/self-play-report.json",
+        "bytes": 4057,
+        "sha256": "f29a61e7ecbd6b969e4c5f285ae0fed3f066b2b1308676bde731d75cfc4cdd68"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-scale1-1000ms/self-play-games.jsonl",
+        "bytes": 136057,
+        "sha256": "786f99aea821ad8eafba196c95658e8f7852620fd78f81a9530af26e48c2fda5"
+      }
+    },
+    "scale1-vs-handcrafted-100ms": {
+      "games": 64,
+      "wins": 43,
+      "losses": 21,
+      "draws": 0,
+      "score": {
+        "mean": 0.671875,
+        "lower95": 0.5625,
+        "upper95": 0.765625,
+        "groups": 32
+      },
+      "averagePlies": 44.765625,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 90.44138200523562,
+      "telemetry": {
+        "a": {
+          "totalNodes": 28127564,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 28127564,
+          "completedDepth": 6,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 126570.18462099995,
+          "aggregateNps": 222228.98768951627,
+          "qnodes": 50071804,
+          "aggregateQnps": 395605.04829738796,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 547250,
+          "qsearchCheckMoveTries": 2355011,
+          "qsearchDeltaPrunes": 19275804
+        },
+        "b": {
+          "totalNodes": 20658515,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 20658515,
+          "completedDepth": 6,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 132544.374824,
+          "aggregateNps": 155861.12218969353,
+          "qnodes": 43193238,
+          "aggregateQnps": 325877.56407885626,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 1164307,
+          "qsearchCheckMoveTries": 1860760,
+          "qsearchDeltaPrunes": 17799132
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale1-vs-handcrafted-100ms/self-play-report.json",
+        "bytes": 3834,
+        "sha256": "131677edefc3a5ac39b69575da0ebcfe341837d32840d47f21e9c6256be9575e"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale1-vs-handcrafted-100ms/self-play-games.jsonl",
+        "bytes": 133777,
+        "sha256": "364ca4b8aa8ba15152700d063fdf33cc1ad9e8d3c8fbb28eca7869dd70b32ac4"
+      }
+    },
+    "scale1-vs-handcrafted-1000ms": {
+      "games": 64,
+      "wins": 42,
+      "losses": 22,
+      "draws": 0,
+      "score": {
+        "mean": 0.65625,
+        "lower95": 0.53125,
+        "upper95": 0.765625,
+        "groups": 32
+      },
+      "averagePlies": 49.71875,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 901.5488202781269,
+      "telemetry": {
+        "a": {
+          "totalNodes": 312440435,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 312440435,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1398471.5022450003,
+          "aggregateNps": 223415.660954429,
+          "qnodes": 548406060,
+          "aggregateQnps": 392146.7538806693,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 6608490,
+          "qsearchCheckMoveTries": 26797136,
+          "qsearchDeltaPrunes": 225720339
+        },
+        "b": {
+          "totalNodes": 228236800,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 228236800,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1470256.8438799998,
+          "aggregateNps": 155236.00583805772,
+          "qnodes": 469018279,
+          "aggregateQnps": 319004.3161181711,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 15442610,
+          "qsearchCheckMoveTries": 19886179,
+          "qsearchDeltaPrunes": 202316021
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale1-vs-handcrafted-1000ms/self-play-report.json",
+        "bytes": 3853,
+        "sha256": "448d533711388c24df36e16d7f71ca2698400bc93258937b04a3b515b5202ccd"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale1-vs-handcrafted-1000ms/self-play-games.jsonl",
+        "bytes": 137359,
+        "sha256": "7470a1a2245d271890c5be319fdeea9e0670153a371486a8322ffb131cc1c5d6"
+      }
+    },
+    "scale2-vs-handcrafted-100ms": {
+      "games": 64,
+      "wins": 39,
+      "losses": 25,
+      "draws": 0,
+      "score": {
+        "mean": 0.609375,
+        "lower95": 0.5,
+        "upper95": 0.71875,
+        "groups": 32
+      },
+      "averagePlies": 43.671875,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 88.87114156672632,
+      "telemetry": {
+        "a": {
+          "totalNodes": 30069402,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 30069402,
+          "completedDepth": 7,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 121634.633271,
+          "aggregateNps": 247210.85756065758,
+          "qnodes": 48378519,
+          "aggregateQnps": 397736.3823033317,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 100917,
+          "qsearchCheckMoveTries": 2539594,
+          "qsearchDeltaPrunes": 20032376
+        },
+        "b": {
+          "totalNodes": 20843185,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 20843185,
+          "completedDepth": 6,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 126760.20740800006,
+          "aggregateNps": 164430.03231221085,
+          "qnodes": 42284615,
+          "aggregateQnps": 333579.56621118105,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 1023452,
+          "qsearchCheckMoveTries": 1731115,
+          "qsearchDeltaPrunes": 16450904
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-handcrafted-100ms/self-play-report.json",
+        "bytes": 3832,
+        "sha256": "14889e322ae510bf10ba0b29cd834856e28325c4deb65f06b8dbe0605816a539"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-handcrafted-100ms/self-play-games.jsonl",
+        "bytes": 133178,
+        "sha256": "d2bb4ce214d61efcdc85777b7eab2606673626f769567bc1df1314aa16c0b653"
+      }
+    },
+    "scale2-vs-handcrafted-1000ms": {
+      "games": 64,
+      "wins": 37,
+      "losses": 27,
+      "draws": 0,
+      "score": {
+        "mean": 0.578125,
+        "lower95": 0.46875,
+        "upper95": 0.6875,
+        "groups": 32
+      },
+      "averagePlies": 47.484375,
+      "cappedGames": 0,
+      "meanEngineElapsedMsPerPly": 893.9932383974995,
+      "telemetry": {
+        "a": {
+          "totalNodes": 335300974,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 335300974,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1333465.9917830003,
+          "aggregateNps": 251450.7127037138,
+          "qnodes": 528298232,
+          "aggregateQnps": 396184.25610810163,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 994921,
+          "qsearchCheckMoveTries": 33552699,
+          "qsearchDeltaPrunes": 251671377
+        },
+        "b": {
+          "totalNodes": 220969511,
+          "requestedBudgetNodes": 0,
+          "consumedBudgetNodes": 0,
+          "alphaBetaNodes": 220969511,
+          "completedDepth": 8,
+          "incompleteIterations": 0,
+          "nodeBudgetCapHits": 0,
+          "fallbacks": 0,
+          "totalElapsedMs": 1383379.4597069991,
+          "aggregateNps": 159731.66975227572,
+          "qnodes": 448342047,
+          "aggregateQnps": 324091.8779399538,
+          "qsearchMaxPly": 8,
+          "qsearchCapHits": 12457050,
+          "qsearchCheckMoveTries": 22404773,
+          "qsearchDeltaPrunes": 198059136
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-handcrafted-1000ms/self-play-report.json",
+        "bytes": 3861,
+        "sha256": "a9d568e9069fbb1bbb32ebbbd272bf65884a113e2fd3342247e61fae9e0f24d3"
+      },
+      "records": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/games/scale2-vs-handcrafted-1000ms/self-play-games.jsonl",
+        "bytes": 136260,
+        "sha256": "c016cf4fdac544ab524db4dbcb36aafa41954e1c36807b6ce6d96d0ecadbbba8"
+      }
+    }
+  },
+  "scoreChange1000Minus100Ms": {
+    "scale2-vs-scale1": {
+      "mean": 0.0,
+      "lower95": -0.140625,
+      "upper95": 0.140625,
+      "groups": 32
+    },
+    "scale1-vs-handcrafted": {
+      "mean": -0.015625,
+      "lower95": -0.171875,
+      "upper95": 0.140625,
+      "groups": 32
+    },
+    "scale2-vs-handcrafted": {
+      "mean": -0.03125,
+      "lower95": -0.1875,
+      "upper95": 0.125,
+      "groups": 32
+    }
+  },
+  "limitations": [
+    "32 reused development openings; exploratory intervals, no multiplicity correction.",
+    "Native arm64 with eight concurrent single-thread games; not browser latency or target-device validation.",
+    "Both opponents receive the same time budget. Relative score changes do not directly measure 1-second versus 100-ms strength for the same model.",
+    "Root regret is restricted to the expanded union and handcrafted teacher, not an objective game-theoretic label.",
+    "Production model and timing remain unchanged."
+  ],
+  "deviations": [
+    "First game launch parsed stable-ID TSV as bare SFEN and failed before any game search. Converted the same 32 openings to bare SFEN, retained stable IDs here, and resumed completed probes/labels without rerunning."
+  ],
+  "browserTimingSmoke": {
+    "100": {
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/browser-timing-100ms.json",
+        "bytes": 99357,
+        "sha256": "c969e5084cdb3a83f4ddce441a3393fc4e09a3de72325bd9024d34f3bd1280b9"
+      },
+      "timing": {
+        "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+        "latenessSampleCount": 16,
+        "deadlineSampleCount": 16,
+        "p95LatenessMs": 3.100000023841858,
+        "p99LatenessMs": 3.100000023841858,
+        "maxLatenessMs": 3.100000023841858,
+        "p95ElapsedMs": 103.10000002384186,
+        "p99ElapsedMs": 103.10000002384186,
+        "maxElapsedMs": 103.10000002384186
+      },
+      "candidate": {
+        "searches": 8,
+        "alphaBetaNodes": 76330,
+        "qnodes": 79857,
+        "totalNodes": 156187,
+        "completedDepthSum": 33,
+        "completedDepthMax": 5,
+        "elapsedMs": 803.3000000119209,
+        "missingMoves": 0,
+        "emergencyFallbacks": 0,
+        "unsearchedMoves": 0,
+        "completedDepthMean": 4.125,
+        "alphaBetaPlusQnodes": 156187
+      },
+      "scope": "local Ubuntu single-worker archived Step1 width256 WASM; two-ply capped timing smoke only, no game-strength claim; opening IDs generated by harness map by SFEN to frozen IDs 001,003,005,007"
+    },
+    "1000": {
+      "report": {
+        "path": "out/anhoku-strength-first/step5-scale-time-20260908-v1/browser-timing-1000ms.json",
+        "bytes": 100267,
+        "sha256": "cef068f30c33148e1a7e710e753d894182ff9b93c4e1a15d3da92882830b36ca"
+      },
+      "timing": {
+        "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+        "latenessSampleCount": 16,
+        "deadlineSampleCount": 16,
+        "p95LatenessMs": 2.800000011920929,
+        "p99LatenessMs": 2.800000011920929,
+        "maxLatenessMs": 2.800000011920929,
+        "p95ElapsedMs": 1002.8000000119209,
+        "p99ElapsedMs": 1002.8000000119209,
+        "maxElapsedMs": 1002.8000000119209
+      },
+      "candidate": {
+        "searches": 8,
+        "alphaBetaNodes": 778321,
+        "qnodes": 859835,
+        "totalNodes": 1638156,
+        "completedDepthSum": 46,
+        "completedDepthMax": 7,
+        "elapsedMs": 8003.000000059605,
+        "missingMoves": 0,
+        "emergencyFallbacks": 0,
+        "unsearchedMoves": 0,
+        "completedDepthMean": 5.75,
+        "alphaBetaPlusQnodes": 1638156
+      },
+      "scope": "local Ubuntu single-worker archived Step1 width256 WASM; two-ply capped timing smoke only, no game-strength claim; opening IDs generated by harness map by SFEN to frozen IDs 001,003,005,007"
+    }
+  },
+  "recommendation": {
+    "evaluationMultiplier": 1,
+    "nextPrimaryEvaluationMovetimeMs": 1000,
+    "retain100msSecondaryCheck": true,
+    "productionChanged": false,
+    "reason": "No demonstrated benefit from scale 2 in direct paired games or restricted regret. One second is practical in the small browser timing smoke, but relative strength gain from extra time is not established.",
+    "nextExperiment": "Prioritize CPU diagnosis of integer export versus full-precision disagreement on new development positions; keep the selected candidate and scale1 fixed. New training is outside this experiment and requires separate GPU permission if needed."
+  },
+  "completion": {
+    "elapsedSeconds": 1312.1277267932892,
+    "complete": true
+  }
+}

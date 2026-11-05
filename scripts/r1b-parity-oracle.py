@@ -447,8 +447,8 @@ def integer_trace(network: IntegerNetwork, position, black_rows, white_rows):
     their = 1 - our
     transformed = np.concatenate(
         [
-            np.clip(accumulators[our].astype(np.int32) >> 6, 0, 127),
-            np.clip(accumulators[their].astype(np.int32) >> 6, 0, 127),
+            np.clip(accumulators[our].astype(np.int32), 0, 127),
+            np.clip(accumulators[their].astype(np.int32), 0, 127),
         ]
     ).astype("u1")
     bucket = int(position["outputBucket"])

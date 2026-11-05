@@ -1,0 +1,114 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step2-runner-report-v1",
+  "generatedAt": "2026-09-07T06:31:42+09:00",
+  "status": "complete-pre-gpu",
+  "scope": "Step 2 runner plus fully resolved Step 3 configuration and cost forecast; paid execution remains approval-gated",
+  "artifacts": {
+    "runner": {
+      "path": "scripts/strength_first_trainer.py",
+      "bytes": 190018,
+      "sha256": "3d2e8f7f28dff8af6f5b17b2d4b2e9789d2cc053a30a30e313c3dc2268b1484c",
+      "version": "haitaka-anhoku-strength-first-trainer-v3"
+    },
+    "resolvedConfig": {
+      "path": "r0/anhoku-strength-first/step3-experiment-v1.json",
+      "bytes": 15986,
+      "sha256": "aa99bfc826cfb73d2d86955c46e4d228a15c4e36cda36a01f260d517a83b8591"
+    },
+    "realCpuFixture": {
+      "path": "out/anhoku-strength-first/step2/real-cpu-fixture-v10/report.json",
+      "bytes": 5017,
+      "sha256": "3526c5f3bdf9eb1d629dfb444b69d7eff4dd13bc7340ab9eddc43ed8434acac6"
+    },
+    "liveQuote": {
+      "path": "out/anhoku-strength-first/step3-live-vast-offer-12239064.json",
+      "bytes": 1244,
+      "sha256": "740ed156c80bea6ddcb079b36a64df3a71537866a347fca94d6fa26117c43b85"
+    },
+    "followUpReview": {
+      "path": "r0/anhoku-strength-first/step2-independent-review-v2.json",
+      "bytes": 6969,
+      "sha256": "d19e929c9dc3d315175d4e371141bd2dda5d82945a5f600c422b64adc90d44ea",
+      "verdict": "passed-pre-gpu"
+    }
+  },
+  "requirements": {
+    "allHyperparametersStrictlyResolvedAndConsumed": true,
+    "optimizerParameterGroupsAndMultipliersVerified": true,
+    "finiteFinalPartialBatches": true,
+    "deterministicSeedEpochShuffle": true,
+    "fixedSinglePassValidationOrder": true,
+    "examplesPassesUpdatesAndCursorSeparate": true,
+    "immutableBestScheduledFinalCheckpoints": true,
+    "atomicResumeStateWithOptimizerScheduleRngCursor": true,
+    "interruptedVsUninterruptedFixtureExact": true,
+    "selectedCheckpointExportBoundToRunAndSelectionHistory": true,
+    "atomicExport": true,
+    "fullIntegerNativeWasmParityRequiredBeforeGames": true,
+    "quantizationErrorSeparate": true,
+    "phaseStatusDonorFeatureScoreGradientUpdateTimingDiagnostics": true,
+    "approvalAndContinuationReceiptsHashBound": true,
+    "strengthStopRuleRecomputedFromRawGames": true,
+    "throughputForecastRecomputedAndHorizonEnforced": true
+  },
+  "fixtureResult": {
+    "passed": true,
+    "records": 9,
+    "batchSize": 5,
+    "observedBatchSizes": [5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4],
+    "updates": 12,
+    "examples": 54,
+    "initialLoss": 0.016923984719647303,
+    "finalLoss": 0.01691286928123898,
+    "weightsExact": true,
+    "optimizerExact": true,
+    "predictionsExact": true,
+    "traceExact": true,
+    "cursorExact": true,
+    "integerExportsExact": true,
+    "integerExportSha256": "7d2185dfdaad9eaeb6a2b727cf908f9bdeb258865018c7553b3f0bf03722c8dd"
+  },
+  "resolvedFirstRental": {
+    "provider": "Vast.ai",
+    "offerId": 12239064,
+    "gpu": "RTX 4090",
+    "gpuMemoryMegabytes": 24564,
+    "diskGigabytes": 50,
+    "verified": true,
+    "reliability": 0.9981716,
+    "quotedCombinedHourlyRateUsd": 0.4625925925925926,
+    "maximumAcceptedCombinedHourlyRateUsd": 0.75,
+    "maximumRentedUptimeHours": 4.0,
+    "maximumTotalCostUsd": 5.0,
+    "freshTrainingStopUpdate": 128,
+    "probeMaximumGpuHours": 0.25,
+    "quoteObservedAt": "2026-09-07T06:31:42+09:00",
+    "quoteValidUntil": "2026-09-07T10:31:42+09:00",
+    "binding": false
+  },
+  "forecast": {
+    "historicalAnchor": "768 updates in approximately 661 seconds on RTX 4080 SUPER",
+    "firstRunTrainingGpuHours": 2.0,
+    "firstRunReservedRentedUptimeHours": 4.0,
+    "firstRunEnvelopeUsd": 5.0,
+    "threeRunTrainingGpuHours": 6.0,
+    "threeRunReservedRentedUptimeHours": 12.0,
+    "threeRunForecastAtMaximumAcceptedRateUsd": 9.0,
+    "threeRunReservedTotalCostUsd": 15.0,
+    "globalTournamentCeilingGpuHours": 24.0,
+    "globalTournamentCeilingUsd": 25.0,
+    "requiredActionAfterProbe": "replace the historical forecast with a measured-rate lower bound and maximum planned update before any continuation"
+  },
+  "remainingPreGameGates": [
+    "CUDA production-loop, RNG/optimizer resume, and committed-state preflight on the approved instance",
+    "128-update measured throughput report and budget decision",
+    "candidate-specific full-precision to integer quantization measurement",
+    "integer-reference/native/WASM exact parity on the matching width-256 runtime build",
+    "hash-bound candidate runtime receipt before raw strength games"
+  ],
+  "authorization": {
+    "gpuRentalApproved": false,
+    "trainingStarted": false,
+    "activeVastInstances": 0
+  }
+}
