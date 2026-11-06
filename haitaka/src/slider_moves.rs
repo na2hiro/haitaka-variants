@@ -29,8 +29,8 @@ include!(concat!(env!("OUT_DIR"), "/sliding_moves_table.rs"));
 /// Get rook moves.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "small-board"), doc = "```")]
-#[cfg_attr(feature = "small-board", doc = "```ignore")]
+#[cfg_attr(not(feature = "variant-board"), doc = "```")]
+#[cfg_attr(feature = "variant-board", doc = "```ignore")]
 /// use haitaka::*;
 /// let occ = bitboard! {
 ///     . . . . . . . . .
@@ -130,8 +130,8 @@ const BISHOP_RAY_MASKS: [(u128, u128, u128, u128); Square::NUM] = {
 /// Get bishop moves.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "small-board"), doc = "```")]
-#[cfg_attr(feature = "small-board", doc = "```ignore")]
+#[cfg_attr(not(feature = "variant-board"), doc = "```")]
+#[cfg_attr(feature = "variant-board", doc = "```ignore")]
 /// use haitaka::*;
 /// let occ = bitboard! {
 ///     . . . . . . . . .

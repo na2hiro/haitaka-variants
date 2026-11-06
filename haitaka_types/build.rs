@@ -7,6 +7,9 @@ fn main() {
         "GOROGORO",
         "GOROGORO_PLUS",
         "MINISHOGI_KINGIN",
+        "HEIAN_8X8",
+        "HEIAN_9X8",
+        "HEIAN_9X9",
     ];
     let selected: Vec<_> = rules
         .iter()
@@ -14,18 +17,30 @@ fn main() {
         .collect();
     assert!(
         selected.len() <= 1,
-        "small-shogi rule features are mutually exclusive"
+        "board rule features are mutually exclusive"
     );
     assert!(
-        env::var_os("CARGO_FEATURE_SMALL_BOARD").is_none() || selected.len() == 1,
-        "small-board requires exactly one small-shogi rule feature"
+        env::var_os("CARGO_FEATURE_VARIANT_BOARD").is_none() || selected.len() == 1,
+        "variant-board requires exactly one geometry/rule feature"
     );
     let (width, height) = match selected.first().map(|rule| **rule) {
         Some("JUDKINS") => (6, 6),
+        Some("HEIAN_8X8") => (8, 8),
+        Some("HEIAN_9X8") => (9, 8),
+        Some("HEIAN_9X9") => (9, 9),
         Some("GOROGORO" | "GOROGORO_PLUS") => (5, 6),
         Some(_) => (5, 5),
         None => (9, 9),
     };
+    assert!(
+        env::var_os("CARGO_FEATURE_COMPACT_BOARD").is_none() || selected.len() == 1,
+        "compact-board requires a rule feature"
+    );
+    assert!(
+        env::var_os("CARGO_FEATURE_SCALAR64").is_none()
+            || (selected.len() == 1 && width * height <= 64),
+        "scalar64 requires a <=64-square rule"
+    );
     let names = [
         "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
     ];

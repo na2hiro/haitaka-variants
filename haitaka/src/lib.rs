@@ -2,7 +2,7 @@
 #![cfg_attr(
     not(any(
         feature = "donor-category",
-        feature = "small-board",
+        feature = "variant-board",
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
@@ -19,8 +19,8 @@
     doc = include_str!("../README.md")
 )]
 #![cfg_attr(
-    feature = "small-board",
-    doc = "Small-board shogi, with rules selected at compile time.\n```\nuse haitaka::*;\nlet board = Board::startpos();\nassert_eq!(board.to_string(), SelectedRule::STARTPOS);\nassert_eq!(core::mem::size_of::<BitBoard>(), 8);\n```"
+    feature = "variant-board",
+    doc = "Small-board shogi, with rules selected at compile time.\n```\nuse haitaka::*;\nlet board = Board::startpos();\nassert_eq!(board.to_string(), SelectedRule::STARTPOS);\nassert_eq!(core::mem::size_of::<BitBoard>(), if Square::NUM <= 64 { 8 } else { 16 });\n```"
 )]
 
 //! # Examples
@@ -208,12 +208,12 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
-#[cfg_attr(feature = "small-board", path = "small_attacks.rs")]
+#[cfg_attr(feature = "compact-board", path = "small_attacks.rs")]
 pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod history;
-#[cfg_attr(feature = "small-board", path = "small_slider_moves.rs")]
+#[cfg_attr(feature = "compact-board", path = "small_slider_moves.rs")]
 pub mod slider_moves;
 #[cfg(all(
     feature = "donor-category",

@@ -4,7 +4,7 @@ mod piece_moves;
 pub use piece_moves::*;
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests;
 
 // The private `commoner` module defines the private Commoner trait.
@@ -1661,7 +1661,7 @@ impl Board {
     /// Is this move legal?
     #[inline(always)]
     pub fn is_legal(&self, mv: Move) -> bool {
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         self.is_legal_board_move(mv) || self.is_legal_drop(mv)
@@ -1676,7 +1676,7 @@ impl Board {
             return self
                 .generate_capture_king_moves(BitBoard::FULL, false, true, |mvs| mvs.has(mv));
         }
-        if self.immediate_winner().is_some() {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         if let Move::Drop { piece, to } = mv {
@@ -1796,7 +1796,7 @@ impl Board {
             return self
                 .generate_capture_king_moves(BitBoard::FULL, true, false, |mvs| mvs.has(mv));
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         if let Move::BoardMove {
@@ -1919,7 +1919,7 @@ impl Board {
             return self
                 .generate_capture_king_moves(BitBoard::FULL, true, false, |mvs| mvs.has(mv));
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         if let Move::BoardMove {
@@ -2102,7 +2102,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2120,7 +2120,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2167,7 +2167,7 @@ impl Board {
         if crate::hand_rules::allows_ignored_check() {
             return self.generate_capture_king_moves(BitBoard::FULL, true, true, listener);
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         abort_if! {
@@ -2195,7 +2195,7 @@ impl Board {
         if crate::hand_rules::allows_ignored_check() {
             return self.generate_capture_king_moves(BitBoard::FULL, true, true, listener);
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         // The neko variants always go through the king-safety-filtered drop and
@@ -2223,6 +2223,9 @@ impl Board {
 
     /// Generate all legal board moves.
     pub fn generate_board_moves(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         debug_assert!(self.inner.hash() != 0);
         self.generate_board_moves_for(BitBoard::FULL, listener)
     }
@@ -2235,7 +2238,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2253,7 +2256,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2302,6 +2305,9 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         // The neko variants generate a broad superset and verify each move's king
         // safety on the post-move position (pins are disabled for these variants).
         #[cfg(any(
@@ -2372,7 +2378,7 @@ impl Board {
     // batching example is ignored for all of those builds.
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2387,7 +2393,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2424,7 +2430,7 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
-        if self.immediate_winner().is_some() {
+        if self.immediate_winner().is_some() || self.is_rule_draw() {
             return false;
         }
         if cfg!(feature = "fushiyo") {
@@ -2437,6 +2443,9 @@ impl Board {
     }
 
     fn generate_drops_without_outcome(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() {
+            return false;
+        }
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",
@@ -2513,7 +2522,7 @@ impl Board {
                 false
             });
         }
-        if self.immediate_winner().is_some() {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         // The neko variants try every empty square and verify king safety per drop.
@@ -2669,7 +2678,7 @@ impl Board {
                 false
             });
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         let color = self.side_to_move();
@@ -2952,7 +2961,7 @@ impl Board {
                 false
             });
         }
-        if self.immediate_winner().is_some() {
+        if self.is_rule_draw() || self.immediate_winner().is_some() {
             return false;
         }
         let their_color = !self.side_to_move();

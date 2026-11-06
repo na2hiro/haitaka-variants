@@ -240,8 +240,8 @@ pub const fn prom_zone(color: Color) -> BitBoard {
 /// can not be dropped.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "small-board"), doc = "```")]
-#[cfg_attr(feature = "small-board", doc = "```ignore")]
+#[cfg_attr(not(feature = "variant-board"), doc = "```")]
+#[cfg_attr(feature = "variant-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// let no_drops = no_fly_zone(Color::White, Piece::Pawn);
 /// let proms = prom_zone(Color::White);
@@ -319,8 +319,8 @@ impl Rank {
     /// "SOUTH" given the usual board diagrams.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::SOUTH[2], bitboard! {
     ///     . . . . . . . . .
@@ -342,8 +342,8 @@ impl Rank {
     /// "NORTH" from the point of view of Gote.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::NORTH[2], bitboard! {
     ///     X X X X X X X X X
@@ -363,8 +363,8 @@ impl Rank {
 
     /// Get a bitboard with all squares on this rank set.
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::A as usize, 0);
     /// assert_eq!(Rank::H.bitboard(), bitboard! {
@@ -388,8 +388,8 @@ impl Rank {
     ///
     /// This mirrors the rank in the fifth E rank.
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::A.flip(), Rank::I);
     /// ```
@@ -401,8 +401,8 @@ impl Rank {
     /// Return the BitBoard for all ranks "north" of this rank.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::A.north(), BitBoard::EMPTY);
     /// assert_eq!(Rank::C.north(), bitboard!{
@@ -425,8 +425,8 @@ impl Rank {
     /// Return the BitBoard for all ranks "south" of this rank.
     ///  
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::I.south(), BitBoard::EMPTY);
     /// assert_eq!(Rank::G.south(), bitboard!{
@@ -450,8 +450,8 @@ impl Rank {
     /// This flips the rank if viewing from Black's perspective.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Rank::A.relative_to(Color::White), Rank::A);
     /// assert_eq!(Rank::A.relative_to(Color::Black), Rank::I);

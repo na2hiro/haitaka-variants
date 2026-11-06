@@ -63,6 +63,7 @@ pub struct DfpnResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DfpnInterruptionReason {
+    UnsupportedRuleset,
     NodeBudget,
     Deadline,
 }
@@ -70,6 +71,7 @@ pub enum DfpnInterruptionReason {
 impl DfpnInterruptionReason {
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::UnsupportedRuleset => "unsupported-ruleset",
             Self::NodeBudget => "node-budget",
             Self::Deadline => "deadline",
         }
@@ -426,6 +428,9 @@ impl Board {
         if crate::hand_rules::allows_ignored_check() {
             return disabled_capture_king_dfpn();
         }
+        if !SelectedRule::ALLOW_DFPN {
+            return unsupported_ruleset();
+        }
         let history = PositionHistory::new(self.clone());
         DfpnSolver::new(self.side_to_move(), *options).solve(self, &history)
     }
@@ -435,6 +440,9 @@ impl Board {
         options: &DfpnOptions,
         history: &PositionHistory,
     ) -> Result<DfpnResult, &'static str> {
+        if !SelectedRule::ALLOW_DFPN {
+            return Err("DFPN_UNSUPPORTED_RULESET");
+        }
         if !history.matches_current(self) {
             return Err("DFPN history current position does not match root");
         }
@@ -442,6 +450,23 @@ impl Board {
             return Ok(disabled_capture_king_dfpn());
         }
         Ok(DfpnSolver::new(self.side_to_move(), *options).solve(self, history))
+    }
+}
+
+fn unsupported_ruleset() -> DfpnResult {
+    DfpnResult {
+        status: DfpnStatus::Unknown,
+        pv: Vec::new(),
+        completed: false,
+        stats: DfpnStats {
+            nodes: 0,
+            tt_hits: 0,
+            tt_stores: 0,
+            tt_collisions: 0,
+            elapsed_ms: 0.0,
+            repetition_hits: 0,
+        },
+        interruption_reason: Some(DfpnInterruptionReason::UnsupportedRuleset),
     }
 }
 
@@ -684,7 +709,7 @@ fn mid(current: u32, target: u32) -> u32 {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
 

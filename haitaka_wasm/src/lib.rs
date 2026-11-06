@@ -18,8 +18,8 @@ use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
-    HistoryAdjudication, Move, Piece, PositionHistory,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus, HistoryAdjudication, Move,
+    Piece, PositionHistory, RuleSpec, SelectedRule,
 };
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
@@ -2022,6 +2022,15 @@ impl UsiSession {
     /// Side-to-move variant wins include `winner black` or `winner white` in
     /// the gameover line; `bestmove resign` remains a terminal sentinel.
     pub fn terminal_notifications(&self) -> Vec<String> {
+        if self.board.is_rule_draw() {
+            return vec![
+                format!(
+                    "info string gameover only-kings-draw rules {}",
+                    haitaka::HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
+        }
         let history_result = self.history.adjudication();
         if history_result != HistoryAdjudication::Ongoing {
             return vec![
@@ -2355,7 +2364,7 @@ fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
 }
 
 fn dfpn_budget_allows(timeout_ms: u32) -> bool {
-    timeout_ms == 0 || timeout_ms >= 4
+    SelectedRule::ALLOW_DFPN && (timeout_ms == 0 || timeout_ms >= 4)
 }
 
 fn dfpn_reserved_alpha_beta_ms(timeout_ms: u32) -> u32 {
@@ -3522,6 +3531,9 @@ pub fn dfpn_impl(
     tt_megabytes: usize,
     max_pv_moves: usize,
 ) -> Result<CoreDfpnResult, String> {
+    if !SelectedRule::ALLOW_DFPN {
+        return Err(format!("DFPN_UNSUPPORTED_RULESET: {}", SelectedRule::NAME));
+    }
     let board = parse_dfpn_board(sfen)?;
     let options = DfpnOptions {
         max_nodes,
@@ -4301,6 +4313,9 @@ fn has_both_kings(board: &Board) -> bool {
 }
 
 fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
+    if board.is_rule_draw() {
+        return Some(0);
+    }
     let us = board.side_to_move();
     if let Some(winner) = board.immediate_winner() {
         Some(terminal_score_for_winner(us, winner, ply))
@@ -4464,7 +4479,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
     #[cfg(not(any(
@@ -6644,3 +6659,6 @@ mod minishogi_tests;
 
 #[cfg(all(test, feature = "small-board", not(target_arch = "wasm32")))]
 mod small_shogi_tests;
+
+#[cfg(all(test, feature = "heian", not(target_arch = "wasm32")))]
+mod heian_tests;

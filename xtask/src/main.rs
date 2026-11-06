@@ -944,6 +944,9 @@ fn required_learn_feature_for_ruleset(ruleset: &str) -> Result<Option<&'static s
 
 fn default_rule_id(ruleset: &str) -> u32 {
     match ruleset {
+        "heian-8x8" => 12,
+        "heian-9x8" => 13,
+        "heian-9x9" => 14,
         "minishogi" => 51,
         "judkins" => 52,
         "gorogoro" => 96,
@@ -977,6 +980,9 @@ fn inferred_package_features(ruleset: &str) -> Option<String> {
 
 fn inferred_package_feature(ruleset: &str) -> Option<&'static str> {
     match ruleset {
+        "heian-8x8" => Some("heian-8x8"),
+        "heian-9x8" => Some("heian-9x8"),
+        "heian-9x9" => Some("heian-9x9"),
         "minishogi" => Some("minishogi"),
         "judkins" => Some("judkins"),
         "gorogoro" => Some("gorogoro"),

@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(not(feature = "small-board"), doc = include_str!("../README.md"))]
+#![cfg_attr(not(feature = "variant-board"), doc = include_str!("../README.md"))]
 #![cfg_attr(
-    feature = "small-board",
-    doc = "Compact small-board shogi types.\n```\nuse haitaka_types::*;\nassert_eq!(Square::NUM, BOARD_WIDTH * BOARD_HEIGHT);\nassert_eq!(core::mem::size_of::<BitBoard>(), 8);\n```"
+    feature = "variant-board",
+    doc = "Compact small-board shogi types.\n```\nuse haitaka_types::*;\nassert_eq!(Square::NUM, BOARD_WIDTH * BOARD_HEIGHT);\nassert_eq!(core::mem::size_of::<BitBoard>(), if Square::NUM <= 64 { 8 } else { 16 });\n```"
 )]
 #[cfg(any(
     all(
@@ -115,15 +115,15 @@
 compile_error!("variant rule features are mutually exclusive");
 pub mod bitboard;
 pub mod color;
-#[cfg_attr(feature = "small-board", path = "minishogi/file.rs")]
+#[cfg_attr(feature = "compact-board", path = "minishogi/file.rs")]
 pub mod file;
 pub mod helpers;
 pub mod piece;
-#[cfg_attr(feature = "small-board", path = "minishogi/rank.rs")]
+#[cfg_attr(feature = "compact-board", path = "minishogi/rank.rs")]
 pub mod rank;
 pub mod shogi_move;
 pub mod sliders;
-#[cfg_attr(feature = "small-board", path = "minishogi/square.rs")]
+#[cfg_attr(feature = "compact-board", path = "minishogi/square.rs")]
 pub mod square;
 
 pub use bitboard::*;
@@ -142,7 +142,7 @@ pub use geometry::{
 };
 
 #[cfg(all(
-    feature = "small-board",
+    feature = "variant-board",
     any(
         feature = "annan",
         feature = "anhoku",
@@ -158,7 +158,7 @@ pub use geometry::{
         feature = "anki"
     )
 ))]
-compile_error!("small-board and movement-donor rule features are mutually exclusive");
+compile_error!("board rule and movement-donor rule features are mutually exclusive");
 
 pub mod packed_coordinates;
 

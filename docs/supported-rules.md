@@ -92,3 +92,7 @@ Seven additional composable rules are supported: `nakamaware`, `fushiyo`,
 `share`, `zoshoku`, `babanuki`, `tensuu`, and `suika`. See
 [Composable hand rules](hand-rules.md) for precise behavior, configuration,
 composition constraints, NNUE compatibility, and verification commands.
+
+## Historical shogi
+
+The compile-time `heian-8x8`, `heian-9x8` and `heian-9x9` modes support Shogitter rules 12, 13 and 14. They discard captures, promote to canonical golds and draw with only kings remaining. See [Heian rules and verification](heian.md) for usage and [the roadmap](../plans/historical-shogi/README.md) for later stages.

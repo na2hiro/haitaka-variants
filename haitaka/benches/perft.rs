@@ -4,9 +4,9 @@
 use std::time::Duration;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use haitaka::{Board, Color};
+use haitaka::{Board, Color, RuleSpec};
 
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 const POSITIONS: &[&str] = &[
     "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
     "ln1g5/1r4k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b b BG2SLPnp 61",
@@ -21,10 +21,16 @@ const POSITIONS: &[&str] = &[
     "3pk/5/3G1/5/K4 b P 1",
 ];
 
-#[cfg(all(feature = "small-board", not(feature = "minishogi")))]
+#[cfg(all(feature = "variant-board", not(feature = "minishogi")))]
 const POSITIONS: &[&str] = &[
     haitaka::SFEN_STARTPOS,
-    if cfg!(feature = "judkins") {
+    if cfg!(feature = "heian-8x8") {
+        "7k/8/8/5s2/8/8/8/K7 b - 1"
+    } else if cfg!(feature = "heian-9x8") {
+        "8k/9/9/6s2/9/9/9/K8 b - 1"
+    } else if cfg!(feature = "heian-9x9") {
+        "8k/9/9/6s2/9/9/9/9/K8 b - 1"
+    } else if cfg!(feature = "judkins") {
         "5k/6/2+s3/6/6/K5 b - 1"
     } else if cfg!(any(feature = "gorogoro", feature = "gorogoro-plus")) {
         "4k/5/2+s2/5/5/K4 b - 1"
@@ -85,7 +91,7 @@ fn perft_tsume(board: &Board, depth: u8) -> u32 {
 pub fn criterion_benchmark(criterion: &mut Criterion) {
     let startpos = Board::startpos();
     let endgamepos: Board = POSITIONS[1].parse().unwrap();
-    let tsume = if cfg!(all(feature = "small-board", not(feature = "minishogi"))) {
+    let tsume = if cfg!(all(feature = "variant-board", not(feature = "minishogi"))) {
         if cfg!(feature = "judkins") {
             "5k/6/4G1/4S1/6/6 b - 1"
         } else if cfg!(any(feature = "gorogoro", feature = "gorogoro-plus")) {
@@ -98,7 +104,11 @@ pub fn criterion_benchmark(criterion: &mut Criterion) {
     } else {
         "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1"
     };
-    let tsumepos: Board = Board::tsume(tsume).unwrap();
+    let tsumepos = if haitaka::SelectedRule::CAPTURE_TO_HAND {
+        Some(Board::tsume(tsume).unwrap())
+    } else {
+        None
+    };
 
     let positions = POSITIONS
         .iter()
@@ -162,14 +172,16 @@ pub fn criterion_benchmark(criterion: &mut Criterion) {
                 let depth = black_box(3);
                 black_box(perft(pos, depth));
             });
-        })
-        .bench_function("Tsume perft 3", |b| {
+        });
+    if let Some(tsumepos) = tsumepos {
+        criterion.bench_function("Tsume perft 3", |b| {
             b.iter(|| {
                 let pos = black_box(&tsumepos);
                 let depth = black_box(3);
                 black_box(perft_tsume(pos, depth));
             });
         });
+    }
 }
 
 criterion_group! {

@@ -112,8 +112,8 @@ const POSD: BitBoard = BitBoard::new(POS_MASK);
 /// ```
 ///
 /// # Examples
-#[cfg_attr(not(feature = "small-board"), doc = "```")]
-#[cfg_attr(feature = "small-board", doc = "```ignore")]
+#[cfg_attr(not(feature = "variant-board"), doc = "```")]
+#[cfg_attr(feature = "variant-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// assert_eq!(POS_DIA[8], bitboard! {
 ///     X . . . . . . . .
@@ -188,8 +188,8 @@ pub const POS_DIA: [BitBoard; 17] = [
 /// ```
 ///
 /// # Examples
-#[cfg_attr(not(feature = "small-board"), doc = "```")]
-#[cfg_attr(feature = "small-board", doc = "```ignore")]
+#[cfg_attr(not(feature = "variant-board"), doc = "```")]
+#[cfg_attr(feature = "variant-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// assert_eq!(NEG_DIA[8], bitboard! {
 ///     . . . . . . . . X
@@ -248,8 +248,8 @@ pub const NEG_DIA: [BitBoard; 17] = [
 impl Square {
     /// Make a square from a file and a rank.
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::new(File::One, Rank::A), Square::A1);
     /// assert_eq!(Square::new(File::Two, Rank::B), Square::B2);
@@ -261,8 +261,8 @@ impl Square {
 
     /// Get the file of this square.
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.file(), File::One);
     /// assert_eq!(Square::B2.file(), File::Two);
@@ -274,8 +274,8 @@ impl Square {
 
     /// Get the rank of this square.
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.rank(), Rank::A);
     /// assert_eq!(Square::B2.rank(), Rank::B);
@@ -286,8 +286,8 @@ impl Square {
     }
 
     /// Get a bitboard with this square set.
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::G8.bitboard(), bitboard! {
     ///     . . . . . . . . .
@@ -309,8 +309,8 @@ impl Square {
     /// Get the bitboard with the "up" (forward-slanting "/") diagonal for this square.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert_eq!(Square::E5.up_diagonal(), bitboard! {
     ///     . . . . . . . . X
@@ -348,8 +348,8 @@ impl Square {
     /// Get the bitboard with the "down" (backwards-slanting "\") diagonal for this square.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert_eq!(Square::E5.down_diagonal(), bitboard! {
     ///     X . . . . . . . .
@@ -395,8 +395,8 @@ impl Square {
     /// See [`Square::try_offset`] for a non-panicking variant.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.offset(2, 1), Square::B3);
     /// assert_eq!(Square::B3.offset(-2, -1), Square::A1);  
@@ -417,8 +417,8 @@ impl Square {
     /// See [`Square::offset`]'s panics.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert_eq!(Square::A1.try_offset(1, 1), Some(Square::B2));
     /// assert_eq!(Square::E5.try_offset(-1, -1), Some(Square::D4));
@@ -448,8 +448,8 @@ impl Square {
     /// Mirrors square in the central File::Five.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.flip_file(), Square::A9);
     /// ```
@@ -463,8 +463,8 @@ impl Square {
     /// Mirrors square in the central Rank::E.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.flip_rank(), Square::I1);
     /// ```
@@ -478,8 +478,8 @@ impl Square {
     /// This rotates the square around the center square E5.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.flip(), Square::I9);
     /// assert_eq!(Square::E5.flip(), Square::E5);
@@ -499,8 +499,8 @@ impl Square {
     /// mirror symmetry (flipping the ranks).
     ///   
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(Square::A1.relative_to(Color::White), Square::I9);
     /// assert_eq!(Square::E5.relative_to(Color::White), Square::E5);

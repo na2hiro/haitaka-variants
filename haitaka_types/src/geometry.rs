@@ -124,6 +124,81 @@ pub trait RuleSpec {
     /// Native inventory in Piece's hand order: P, L, N, S, B, R, G.
     const INVENTORY: [u8; 7];
     const REPETITION: RepetitionRule;
+    const CAPTURE_TO_HAND: bool = true;
+    /// Canonical gold promotions lose their original material identity.
+    const GOLD_AGGREGATE_INVENTORY: bool = false;
+    const ALLOWED_PIECES: u16 = (1 << crate::Piece::NUM) - 1;
+    const ALLOW_PROMOTED_SFEN: bool = true;
+    const ONLY_KINGS_DRAW: bool = false;
+    const ALLOW_DFPN: bool = true;
+    const ALLOW_STANDARD_MODELS: bool = Self::Geometry::WIDTH == 9 && Self::Geometry::HEIGHT == 9;
+    const PROMOTIONS: [Option<crate::Piece>; crate::Piece::NUM] = {
+        use crate::Piece::*;
+        [
+            Some(Tokin),
+            Some(PLance),
+            Some(PKnight),
+            Some(PSilver),
+            Some(PBishop),
+            Some(PRook),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ]
+    };
+    /// Keep the original branch-free shogi promotion implementation when its
+    /// mapping is unchanged. Derived from the map so custom rules cannot forget it.
+    const USE_STANDARD_PROMOTIONS: bool = {
+        use crate::Piece::*;
+        let standard = [
+            Some(Tokin),
+            Some(PLance),
+            Some(PKnight),
+            Some(PSilver),
+            Some(PBishop),
+            Some(PRook),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ];
+        let mut same = true;
+        let mut i = 0;
+        while i < crate::Piece::NUM {
+            let a = match Self::PROMOTIONS[i] {
+                Some(piece) => piece as u8,
+                None => u8::MAX,
+            };
+            let b = match standard[i] {
+                Some(piece) => piece as u8,
+                None => u8::MAX,
+            };
+            if a != b {
+                same = false;
+                break;
+            }
+            i += 1;
+        }
+        same
+    };
+    const MAX_BOARD_PIECES: usize = {
+        let mut count = 2;
+        let mut i = 0;
+        while i < Self::INVENTORY.len() {
+            count += Self::INVENTORY[i] as usize;
+            i += 1;
+        }
+        count
+    };
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,6 +319,80 @@ small_rule!(
     [0, 0, 0, 4, 2, 2, 4]
 );
 
+macro_rules! heian_rule {
+    ($type:ident, $feature:literal, $id:literal, $w:literal, $h:literal, $start:literal, $inventory:expr) => {
+        pub struct $type;
+        impl RuleSpec for $type {
+            type Geometry = Rect<$w, $h>;
+            const NAME: &'static str = $feature;
+            const RULE_ID: u32 = $id;
+            const PROMOTION_RANKS: usize = 3;
+            const STARTPOS: &'static str = $start;
+            const INVENTORY: [u8; 7] = $inventory;
+            const REPETITION: RepetitionRule = RepetitionRule::Draw;
+            const CAPTURE_TO_HAND: bool = false;
+            const GOLD_AGGREGATE_INVENTORY: bool = true;
+            const ALLOWED_PIECES: u16 = 0xcf;
+            const ALLOW_PROMOTED_SFEN: bool = false;
+            const ONLY_KINGS_DRAW: bool = true;
+            const ALLOW_DFPN: bool = false;
+            const ALLOW_STANDARD_MODELS: bool = false;
+            const PROMOTIONS: [Option<crate::Piece>; crate::Piece::NUM] = {
+                use crate::Piece::*;
+                [
+                    Some(Gold),
+                    Some(Gold),
+                    Some(Gold),
+                    Some(Gold),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ]
+            };
+        }
+    };
+}
+heian_rule!(
+    Heian8x8,
+    "heian-8x8",
+    12,
+    8,
+    8,
+    "lnsgksnl/8/pppppppp/8/8/PPPPPPPP/8/LNSKGSNL b - 1",
+    [16, 4, 4, 4, 0, 0, 2]
+);
+heian_rule!(
+    Heian9x8,
+    "heian-9x8",
+    13,
+    9,
+    8,
+    "lnsgkgsnl/9/ppppppppp/9/9/PPPPPPPPP/9/LNSGKGSNL b - 1",
+    [18, 4, 4, 4, 0, 0, 4]
+);
+heian_rule!(
+    Heian9x9,
+    "heian-9x9",
+    14,
+    9,
+    9,
+    "lnsgkgsnl/9/ppppppppp/9/9/9/PPPPPPPPP/9/LNSGKGSNL b - 1",
+    [18, 4, 4, 4, 0, 0, 4]
+);
+#[cfg(feature = "heian-8x8")]
+pub type SelectedRule = Heian8x8;
+#[cfg(feature = "heian-9x8")]
+pub type SelectedRule = Heian9x8;
+#[cfg(feature = "heian-9x9")]
+pub type SelectedRule = Heian9x9;
+
 #[cfg(feature = "minishogi")]
 pub type SelectedRule = Minishogi;
 #[cfg(feature = "judkins")]
@@ -254,7 +403,7 @@ pub type SelectedRule = Gorogoro;
 pub type SelectedRule = GorogoroPlus;
 #[cfg(feature = "minishogi-kingin")]
 pub type SelectedRule = MinishogiKingin;
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 pub type SelectedRule = ConfiguredShogi;
 pub type SelectedGeometry = <SelectedRule as RuleSpec>::Geometry;
 pub const BOARD_WIDTH: usize = SelectedGeometry::WIDTH;

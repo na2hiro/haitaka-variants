@@ -123,6 +123,20 @@ impl Board {
     /// In order to also support handicap games (without too much fuss), we
     /// only check that the piece count does not exceed the expected maximum.
     pub(super) fn piece_counts_are_valid(&self) -> bool {
+        if SelectedRule::GOLD_AGGREGATE_INVENTORY {
+            soft_assert!(self.hands().iter().flatten().all(|&n| n == 0));
+            soft_assert!(self.occupied().len() as usize <= SelectedRule::MAX_BOARD_PIECES);
+            for piece in Piece::ALL {
+                let count = self.pieces(piece).len() as usize;
+                soft_assert!(
+                    count == 0 || SelectedRule::ALLOWED_PIECES & (1 << piece as usize) != 0
+                );
+                if piece != Piece::Gold && (piece as usize) < Piece::HAND_NUM {
+                    soft_assert!(count <= SelectedRule::INVENTORY[piece as usize] as usize);
+                }
+            }
+            return true;
+        }
         let &hands = self.hands();
         if cfg!(feature = "share") && hands[0] != hands[1] {
             return false;
