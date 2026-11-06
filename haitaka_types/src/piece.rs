@@ -66,28 +66,31 @@ impl Piece {
         let mut inventory = [0; Self::NUM];
         let mut i = 0;
         while i < Self::HAND_NUM {
-            inventory[i] = SelectedRule::INVENTORY[i];
+            inventory[i] = if SelectedRule::CAPTURE_TO_HAND {
+                SelectedRule::INVENTORY[i]
+            } else {
+                0
+            };
             i += 1;
         }
         inventory
     };
 
-    // piece -> promoted piece (promoted pieces map to themselves)
-    const PROMOTED: [Self; Self::NUM] = [
-        Piece::Tokin,
-        Piece::PLance,
-        Piece::PKnight,
-        Piece::PSilver,
-        Piece::PBishop,
-        Piece::PRook,
-        Piece::Gold,
-        Piece::King,
-        Piece::Tokin,
-        Piece::PLance,
-        Piece::PKnight,
-        Piece::PSilver,
-        Piece::PBishop,
-        Piece::PRook,
+    const STANDARD_PROMOTED: [Self; Self::NUM] = [
+        Self::Tokin,
+        Self::PLance,
+        Self::PKnight,
+        Self::PSilver,
+        Self::PBishop,
+        Self::PRook,
+        Self::Gold,
+        Self::King,
+        Self::Tokin,
+        Self::PLance,
+        Self::PKnight,
+        Self::PSilver,
+        Self::PBishop,
+        Self::PRook,
     ];
 
     // promoted piece -> piece (unpromoted pieces map to themselves)
@@ -123,15 +126,19 @@ impl Piece {
     /// Can this piece ever promote?
     #[inline(always)]
     pub const fn is_promotable(self) -> bool {
-        (self as usize) < Self::Gold as usize
+        if SelectedRule::USE_STANDARD_PROMOTIONS {
+            (self as usize) < Self::Gold as usize
+        } else {
+            SelectedRule::PROMOTIONS[self as usize].is_some()
+        }
     }
 
     /// Can this piece with given color promote on the given square?
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.can_promote(Color::Black, Square::C1));
     /// assert!(Piece::Pawn.can_promote(Color::White, Square::G1));
@@ -157,7 +164,7 @@ impl Piece {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -175,7 +182,7 @@ impl Piece {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -284,7 +291,7 @@ impl Piece {
     ///
     #[inline(always)]
     pub const fn can_drop(self, color: Color, square: Square) -> bool {
-        !self.must_promote(color, square)
+        SelectedRule::CAPTURE_TO_HAND && !self.must_promote(color, square)
     }
 
     /// Promote this piece.
@@ -292,7 +299,14 @@ impl Piece {
     /// Never panics. If the piece cannot be promoted, it the same piece is returned.
     #[inline(always)]
     pub const fn promote(self) -> Self {
-        Self::PROMOTED[self as usize]
+        if SelectedRule::USE_STANDARD_PROMOTIONS {
+            Self::STANDARD_PROMOTED[self as usize]
+        } else {
+            match SelectedRule::PROMOTIONS[self as usize] {
+                Some(piece) => piece,
+                None => self,
+            }
+        }
     }
 
     /// Unpromote this piece.

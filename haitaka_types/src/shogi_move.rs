@@ -119,8 +119,8 @@ impl Move {
     /// use [`Move::from_str`].
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::{Move, Square, Piece};
     ///
     /// let mv = Move::parse("P*7b").unwrap();
@@ -210,8 +210,8 @@ impl FromStr for Move {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// use core::str::FromStr;
     ///

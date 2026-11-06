@@ -388,7 +388,7 @@ pub fn validate_hash_size_mb(size_mb: u32) -> Result<usize, String> {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
 

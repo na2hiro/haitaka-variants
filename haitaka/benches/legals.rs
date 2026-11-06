@@ -16,7 +16,7 @@ use haitaka::{
 };
 
 // Input positions for testing
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 const POSITIONS: &[&str] = &[
     "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
     "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62",
@@ -30,10 +30,16 @@ const POSITIONS: &[&str] = &[
     "3pk/5/3G1/5/K4 b P 1",
 ];
 
-#[cfg(all(feature = "small-board", not(feature = "minishogi")))]
+#[cfg(all(feature = "variant-board", not(feature = "minishogi")))]
 const POSITIONS: &[&str] = &[
     haitaka::SFEN_STARTPOS,
-    if cfg!(feature = "judkins") {
+    if cfg!(feature = "heian-8x8") {
+        "7k/8/8/5s2/8/8/8/K7 b - 1"
+    } else if cfg!(feature = "heian-9x8") {
+        "8k/9/9/6s2/9/9/9/K8 b - 1"
+    } else if cfg!(feature = "heian-9x9") {
+        "8k/9/9/6s2/9/9/9/9/K8 b - 1"
+    } else if cfg!(feature = "judkins") {
         "5k/6/2+s3/6/6/K5 b - 1"
     } else if cfg!(any(feature = "gorogoro", feature = "gorogoro-plus")) {
         "4k/5/2+s2/5/5/K4 b - 1"

@@ -84,8 +84,8 @@ impl Board {
     /// Get a board with the default start position.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// assert_eq!(Board::startpos(), SFEN_STARTPOS.parse().unwrap());
     /// ```
@@ -237,7 +237,7 @@ impl Board {
     /// # Examples
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -255,7 +255,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -319,8 +319,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.sliders(Color::White), bitboard! {
@@ -360,7 +360,7 @@ impl Board {
     /// # Examples
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -378,7 +378,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -418,7 +418,7 @@ impl Board {
     /// # Examples
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -436,7 +436,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -472,7 +472,7 @@ impl Board {
     /// # Examples
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -490,7 +490,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -533,7 +533,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -551,7 +551,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -589,7 +589,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -607,7 +607,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -651,7 +651,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -669,7 +669,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -709,8 +709,8 @@ impl Board {
     /// non-handicap games is by convention 1.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board = Board::startpos();
     /// assert_eq!(board.move_number(), 1);
@@ -726,8 +726,8 @@ impl Board {
     /// Get the [`Piece`] on `square`, if there is one.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.piece_on(Square::E5), None);
@@ -745,8 +745,8 @@ impl Board {
     /// Get the [`Color`] of the piece on `square`, if there is one.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.color_on(Square::E5), None);
@@ -769,8 +769,8 @@ impl Board {
     /// This is a convenience function, mainly useful in parsing of SFEN strings.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// let piece = ColoredPiece { piece: Piece::King, color: Color::Black };
@@ -797,8 +797,8 @@ impl Board {
     /// dropping a double-pawn.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka::*;
     /// let board = Board::default();
     /// for &square in Square::ALL.iter() {
@@ -827,8 +827,8 @@ impl Board {
     /// This function panics if `color` has no King.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let board = Board::startpos();
     /// assert_eq!(board.king(Color::White), Square::A5);
@@ -839,6 +839,14 @@ impl Board {
         self.colored_pieces(color, Piece::King)
             .next_square()
             .expect("No king was found.")
+    }
+
+    /// Rule-level draw independent of preceding position history.
+    #[inline(always)]
+    pub fn is_rule_draw(&self) -> bool {
+        SelectedRule::ONLY_KINGS_DRAW
+            && self.occupied() == self.pieces(Piece::King)
+            && self.pieces(Piece::King).len() == 2
     }
 
     /// Get the status of the game.
@@ -872,6 +880,9 @@ impl Board {
     ///   fourth time, and this was not caused by a sequence of continuous checks.
     ///
     pub fn status(&self) -> GameStatus {
+        if self.is_rule_draw() {
+            return GameStatus::Drawn;
+        }
         if self.generate_moves(|_| true) {
             GameStatus::Ongoing
         } else {
@@ -893,8 +904,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka::*;
     /// let board1 = Board::startpos();
     /// let board2: Board = SFEN_STARTPOS.parse().unwrap();
@@ -952,7 +963,7 @@ impl Board {
     /// ## Legal moves
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -970,7 +981,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1027,7 +1038,7 @@ impl Board {
     /// # Examples
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1045,7 +1056,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1110,7 +1121,9 @@ impl Board {
                 // remove capture
                 self.inner.xor_square(capture, !color, to);
                 // take in hand
-                self.inner.take_in_hand(color, capture.unpromote());
+                if SelectedRule::CAPTURE_TO_HAND {
+                    self.inner.take_in_hand(color, capture.unpromote());
+                }
 
                 // update pawn_on_file
                 if capture == Piece::Pawn {
@@ -1271,8 +1284,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "small-board"), doc = "```")]
-    #[cfg_attr(feature = "small-board", doc = "```ignore")]
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let sfen1: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL b - 5";
     /// let sfen2: &str = "lnsgkgsnl/1r5b1/p1ppppppp/9/1p5P1/9/PPPPPPP1P/1B5R1/LNSGKGSNL w - 6";

@@ -24,3 +24,7 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 `tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
 `haitaka_learn` covers NNUE data generation, training orchestration, export, and verification for the 9x9 rule modes above. Use the matching Cargo feature for variant workflows. Minishogi currently uses handcrafted evaluation; dedicated NNUE training is a later step.
+
+## Historical shogi
+
+The compile-time `heian-8x8`, `heian-9x8` and `heian-9x9` modes support Shogitter rules 12, 13 and 14. They discard captures, promote to canonical golds and draw with only kings remaining. See [Heian rules and verification](heian.md) for usage and [the roadmap](../plans/historical-shogi/README.md) for later stages.

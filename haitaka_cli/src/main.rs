@@ -910,7 +910,11 @@ fn package_manifest(args: &PackageArgs, nnue: Option<NnueArtifact>) -> EnginePac
         },
         capabilities: ManifestCapabilities {
             protocols: vec!["shogitter-direct-v1", "usi-wasm-v1"],
-            commands: vec!["search", "iterative-search", "perft", "dfpn"],
+            commands: if SelectedRule::ALLOW_DFPN {
+                vec!["search", "iterative-search", "perft", "dfpn"]
+            } else {
+                vec!["search", "iterative-search", "perft"]
+            },
             supports_ponder: false,
             supports_movetime: true,
             supports_depth: true,
@@ -3725,7 +3729,7 @@ fn package(args: PackageArgs) -> Result<()> {
             default_ruleset()
         );
     }
-    if cfg!(feature = "small-board") && args.nnue.is_some() {
+    if !SelectedRule::ALLOW_STANDARD_MODELS && args.nnue.is_some() {
         bail!("{} does not support 9x9 NNUE models", SelectedRule::NAME);
     }
     let staging = package_staging_dir()?;
@@ -3858,7 +3862,7 @@ fn git_commit() -> String {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
     use serde_json::Value;

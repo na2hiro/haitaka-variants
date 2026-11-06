@@ -4,7 +4,7 @@ mod piece_moves;
 pub use piece_moves::*;
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests;
 
 // The private `commoner` module defines the private Commoner trait.
@@ -1532,11 +1532,17 @@ impl Board {
     /// Is this move legal?
     #[inline(always)]
     pub fn is_legal(&self, mv: Move) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         self.is_legal_board_move(mv) || self.is_legal_drop(mv)
     }
 
     /// Is this move a legal drop?
     pub fn is_legal_drop(&self, mv: Move) -> bool {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() {
+            return false;
+        }
         if let Move::Drop { piece, to } = mv {
             let color = self.side_to_move();
 
@@ -1650,6 +1656,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         if let Move::BoardMove {
             from,
             to,
@@ -1763,6 +1772,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn is_legal_board_move(&self, mv: Move) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         if let Move::BoardMove {
             from,
             to,
@@ -1943,7 +1955,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1961,7 +1973,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2005,6 +2017,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         abort_if! {
             self.generate_drops(&mut listener),
             self.generate_board_moves(&mut listener)
@@ -2027,6 +2042,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_moves(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         // The neko variants always go through the king-safety-filtered drop and
         // board-move generators (see `generate_drops`/`generate_board_moves_for`),
         // so there is no separate in-check evasion path here.
@@ -2052,6 +2070,9 @@ impl Board {
 
     /// Generate all legal board moves.
     pub fn generate_board_moves(&self, listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         debug_assert!(self.inner.hash() != 0);
         self.generate_board_moves_for(BitBoard::FULL, listener)
     }
@@ -2064,7 +2085,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2082,7 +2103,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2117,6 +2138,9 @@ impl Board {
         mask: BitBoard,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         // The neko variants generate a broad superset and verify each move's king
         // safety on the post-move position (pins are disabled for these variants).
         #[cfg(any(
@@ -2187,7 +2211,7 @@ impl Board {
     // batching example is ignored for all of those builds.
     #[cfg_attr(
         not(any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2202,7 +2226,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "small-board",
+            feature = "variant-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2239,6 +2263,9 @@ impl Board {
     /// assert_eq!(num_drops, empty_squares.len());
     /// ```
     pub fn generate_drops(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() {
+            return false;
+        }
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",
@@ -2302,6 +2329,9 @@ impl Board {
         piece: Piece,
         mut listener: impl FnMut(PieceMoves) -> bool,
     ) -> bool {
+        if !SelectedRule::CAPTURE_TO_HAND || self.is_rule_draw() {
+            return false;
+        }
         // The neko variants try every empty square and verify king safety per drop.
         #[cfg(any(
             feature = "neko",
@@ -2417,6 +2447,9 @@ impl Board {
         feature = "anki"
     )))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         let color = self.side_to_move();
         let their_color = !color;
         if !self.has(their_color, Piece::King) {
@@ -2659,6 +2692,9 @@ impl Board {
         feature = "anki"
     ))]
     pub fn generate_checks(&self, mut listener: impl FnMut(PieceMoves) -> bool) -> bool {
+        if self.is_rule_draw() {
+            return false;
+        }
         let their_color = !self.side_to_move();
         if !self.has(their_color, Piece::King) {
             return false;

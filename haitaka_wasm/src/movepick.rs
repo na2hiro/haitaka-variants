@@ -587,7 +587,7 @@ fn piece_value(piece: Piece) -> i32 {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "small-board"))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use std::str::FromStr;
 

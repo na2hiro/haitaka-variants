@@ -1,4 +1,4 @@
-#![cfg(not(feature = "small-board"))]
+#![cfg(not(feature = "variant-board"))]
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
