@@ -8,6 +8,8 @@ pub const ANHOKU_HISTORY_RULES_VERSION: &str = "anhoku-history-adjudication-v1";
 /// History contract of the selected game mode.
 pub const HISTORY_RULES_VERSION: &str = if cfg!(feature = "minishogi") {
     "minishogi-shogitter-history-adjudication-v1"
+} else if cfg!(feature = "small-board") {
+    "small-shogi-shogitter-history-adjudication-v1"
 } else {
     ANHOKU_HISTORY_RULES_VERSION
 };
@@ -148,7 +150,7 @@ impl PositionHistory {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
     use crate::Move;

@@ -89,8 +89,8 @@ pub const fn get_lance_moves_slow(square: Square, blockers: BitBoard, color: Col
 /// Rook pseudo-attacks from square.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// assert_eq!(rook_pseudo_attacks(Square::E5), bitboard! {
 ///     . . . . X . . . .
@@ -137,8 +137,8 @@ pub const fn rook_pseudo_attacks(square: Square) -> BitBoard {
 /// Bishop pseudo-attacks.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// assert_eq!(bishop_pseudo_attacks(Square::E5), bitboard! {
 ///     X . . . . . . . X
@@ -195,8 +195,8 @@ pub const fn bishop_pseudo_attacks(square: Square) -> BitBoard {
 ///
 /// # Examples
 ///
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// assert_eq!(lance_pseudo_attacks(Color::Black, Square::A1), BitBoard::EMPTY);
 /// assert_eq!(lance_pseudo_attacks(Color::White, Square::I1), BitBoard::EMPTY);
@@ -300,8 +300,8 @@ pub const fn lance_pseudo_attacks(color: Color, square: Square) -> BitBoard {
 /// The implementation uses the Qugiy algorithm.
 ///
 /// # Example
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// let occ = bitboard! {
 ///      . . . . . X X X X
@@ -372,8 +372,8 @@ pub const fn get_lance_moves(color: Color, square: Square, occ: BitBoard) -> Bit
 /// Return a BitBoard of Rook moves on its file, up to the first blocking pieces (if any).
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// let occ = bitboard! {
 ///     . . . . . . . . .
@@ -435,8 +435,8 @@ const ROOK_RANK_MASKS: [(u128, u128); Square::NUM] = {
 /// Return a BitBoard of Rook moves on its rank, up to the first blocking pieces (if any).
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// use haitaka_types::*;
 /// let occ = bitboard! {
 ///     . . . . . . . . .
@@ -483,8 +483,8 @@ pub const fn get_rook_rank_moves(square: Square, occ: BitBoard) -> BitBoard {
 /// The `from` and `to` square are not included in the returns [`BitBoard`].
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let rays = get_between_rays(Square::E2, Square::E7);
 /// assert_eq!(rays, bitboard! {
@@ -543,8 +543,8 @@ pub const fn get_between_rays(from: Square, to: Square) -> BitBoard {
 /// These rays include the `from` and `to` square.
 ///
 /// # Examples
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let rays = line_ray(Square::B1, Square::I8);
 /// assert_eq!(rays, bitboard! {

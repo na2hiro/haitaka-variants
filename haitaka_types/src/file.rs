@@ -53,8 +53,8 @@ impl File {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(File::Five.flip(), File::Five);
     /// assert_eq!(File::One.flip(), File::Nine);
@@ -69,8 +69,8 @@ impl File {
     /// File 1 is the east-most file board diagrams.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(File::Eight.bitboard(), bitboard! {
     ///     . X . . . . . . .
@@ -93,8 +93,8 @@ impl File {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert_eq!(File::Nine.west(), BitBoard::EMPTY);
     /// assert_eq!(File::Eight.west(), File::Nine.bitboard());
@@ -119,8 +119,8 @@ impl File {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert_eq!(File::One.east(), BitBoard::EMPTY);
     /// assert_eq!(File::Two.east(), File::One.bitboard());

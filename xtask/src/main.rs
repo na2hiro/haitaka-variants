@@ -945,6 +945,10 @@ fn required_learn_feature_for_ruleset(ruleset: &str) -> Result<Option<&'static s
 fn default_rule_id(ruleset: &str) -> u32 {
     match ruleset {
         "minishogi" => 51,
+        "judkins" => 52,
+        "gorogoro" => 96,
+        "gorogoro-plus" => 97,
+        "minishogi-kingin" => 110,
         "annan" => 26,
         "anhoku" => 55,
         "antouzai" => 95,
@@ -974,6 +978,10 @@ fn inferred_package_features(ruleset: &str) -> Option<String> {
 fn inferred_package_feature(ruleset: &str) -> Option<&'static str> {
     match ruleset {
         "minishogi" => Some("minishogi"),
+        "judkins" => Some("judkins"),
+        "gorogoro" => Some("gorogoro"),
+        "gorogoro-plus" => Some("gorogoro-plus"),
+        "minishogi-kingin" => Some("minishogi-kingin"),
         "annan" => Some("annan"),
         "anhoku" => Some("anhoku"),
         "antouzai" => Some("antouzai"),

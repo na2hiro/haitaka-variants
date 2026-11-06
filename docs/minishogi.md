@@ -1,5 +1,7 @@
 # Minishogi and compile-time board storage
 
+Additional ordinary-movement small rules are documented in [small-shogi.md](small-shogi.md).
+
 The `minishogi` Cargo feature supports Shogitter's 5五将棋, rule ID 51,
 including legal moves, DFPN, handcrafted search, native USI, direct WASM,
 and Shogitter Engine Package v1.

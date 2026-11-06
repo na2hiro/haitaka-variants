@@ -1,7 +1,6 @@
 //! Compact file coordinates for the selected small board.
 use crate::*;
 include!(concat!(env!("OUT_DIR"), "/file.rs"));
-crate::helpers::enum_char_conv! { File, FileParseError { One = '1', Two = '2', Three = '3', Four = '4', Five = '5' } }
 impl File {
     pub const fn flip(self) -> Self {
         Self::index_const(Self::NUM - 1 - self as usize)

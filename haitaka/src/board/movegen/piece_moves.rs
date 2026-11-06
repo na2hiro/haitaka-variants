@@ -358,7 +358,7 @@ impl ExactSizeIterator for PieceMovesIter {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
 

@@ -1,4 +1,4 @@
-#![cfg(not(feature = "minishogi"))]
+#![cfg(not(feature = "small-board"))]
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;

@@ -4464,7 +4464,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
     #[cfg(not(any(
@@ -6641,3 +6641,6 @@ mod tests {
 
 #[cfg(all(test, feature = "minishogi", not(target_arch = "wasm32")))]
 mod minishogi_tests;
+
+#[cfg(all(test, feature = "small-board", not(target_arch = "wasm32")))]
+mod small_shogi_tests;
