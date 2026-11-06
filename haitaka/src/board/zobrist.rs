@@ -285,7 +285,7 @@ impl ZobristBoard {
         feature = "anki"
     ))
 ))]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use crate::Board;
 

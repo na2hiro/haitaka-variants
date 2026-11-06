@@ -189,9 +189,72 @@ impl RuleSpec for Minishogi {
     const REPETITION: RepetitionRule = RepetitionRule::Draw;
 }
 
+macro_rules! small_rule {
+    ($type:ident, $name:literal, $id:literal, $w:literal, $h:literal, $promotion:literal, $start:literal, $inventory:expr) => {
+        pub struct $type;
+        impl RuleSpec for $type {
+            type Geometry = Rect<$w, $h>;
+            const NAME: &'static str = $name;
+            const RULE_ID: u32 = $id;
+            const PROMOTION_RANKS: usize = $promotion;
+            const STARTPOS: &'static str = $start;
+            const INVENTORY: [u8; 7] = $inventory;
+            const REPETITION: RepetitionRule = RepetitionRule::Draw;
+        }
+    };
+}
+small_rule!(
+    Judkins,
+    "judkins",
+    52,
+    6,
+    6,
+    2,
+    "rbnsgk/5p/6/6/P5/KGSNBR b - 1",
+    [2, 0, 2, 2, 2, 2, 2]
+);
+small_rule!(
+    Gorogoro,
+    "gorogoro",
+    96,
+    5,
+    6,
+    2,
+    "sgkgs/5/1ppp1/1PPP1/5/SGKGS b - 1",
+    [6, 0, 0, 4, 0, 0, 4]
+);
+small_rule!(
+    GorogoroPlus,
+    "gorogoro-plus",
+    97,
+    5,
+    6,
+    2,
+    "sgkgs/5/1ppp1/1PPP1/5/SGKGS b NLnl 1",
+    [6, 2, 2, 4, 0, 0, 4]
+);
+small_rule!(
+    MinishogiKingin,
+    "minishogi-kingin",
+    110,
+    5,
+    5,
+    1,
+    "sgkgs/5/5/5/SGKGS b RBrb 1",
+    [0, 0, 0, 4, 2, 2, 4]
+);
+
 #[cfg(feature = "minishogi")]
 pub type SelectedRule = Minishogi;
-#[cfg(not(feature = "minishogi"))]
+#[cfg(feature = "judkins")]
+pub type SelectedRule = Judkins;
+#[cfg(feature = "gorogoro")]
+pub type SelectedRule = Gorogoro;
+#[cfg(feature = "gorogoro-plus")]
+pub type SelectedRule = GorogoroPlus;
+#[cfg(feature = "minishogi-kingin")]
+pub type SelectedRule = MinishogiKingin;
+#[cfg(not(feature = "small-board"))]
 pub type SelectedRule = ConfiguredShogi;
 pub type SelectedGeometry = <SelectedRule as RuleSpec>::Geometry;
 pub const BOARD_WIDTH: usize = SelectedGeometry::WIDTH;

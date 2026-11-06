@@ -20,8 +20,8 @@ impl Board {
     /// Parse a SFEN string. You can also parse the board with [`FromStr`].
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board = Board::from_sfen(STARTPOS).unwrap();
@@ -90,8 +90,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     /// // from_sfen will fail - since there is only one King on board
@@ -278,8 +278,8 @@ impl FromStr for Board {
     /// See also: [`Board::from_sfen`].
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board: Board = STARTPOS.parse().unwrap();
@@ -297,8 +297,8 @@ impl Display for Board {
     /// Display the board.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board: Board = SFEN_6PIECE_HANDICAP.parse().unwrap();
     /// assert_eq!(format!("{}", board), SFEN_6PIECE_HANDICAP);
@@ -441,7 +441,7 @@ mod nekoneko_tests {
         feature = "anki"
     ))
 ))]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
 

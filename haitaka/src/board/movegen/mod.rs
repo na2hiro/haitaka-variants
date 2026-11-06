@@ -4,7 +4,7 @@ mod piece_moves;
 pub use piece_moves::*;
 
 #[cfg(test)]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests;
 
 // The private `commoner` module defines the private Commoner trait.
@@ -1943,7 +1943,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1961,7 +1961,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2064,7 +2064,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2082,7 +2082,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2187,7 +2187,7 @@ impl Board {
     // batching example is ignored for all of those builds.
     #[cfg_attr(
         not(any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2202,7 +2202,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",

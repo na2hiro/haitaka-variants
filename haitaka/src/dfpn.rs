@@ -669,7 +669,7 @@ fn mid(current: u32, target: u32) -> u32 {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
 

@@ -1,7 +1,6 @@
 //! Promotion and drop regions of the selected small board.
 use crate::*;
 include!(concat!(env!("OUT_DIR"), "/rank.rs"));
-crate::helpers::enum_char_conv! { Rank, RankParseError { A = 'a', B = 'b', C = 'c', D = 'd', E = 'e' } }
 impl Rank {
     pub const RANK: [BitBoard; Self::NUM] = {
         let mut out = [BitBoard::EMPTY; Self::NUM];

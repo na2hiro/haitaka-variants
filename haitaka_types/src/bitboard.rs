@@ -2,9 +2,9 @@
 use crate::{File, Rank, Square};
 use core::ops::*;
 
-#[cfg(feature = "minishogi")]
+#[cfg(feature = "small-board")]
 pub type BitBoardWord = u64;
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 pub type BitBoardWord = u128;
 
 /// A [bitboard](https://www.chessprogramming.org/Bitboards).
@@ -14,8 +14,8 @@ pub type BitBoardWord = u128;
 ///
 /// # Examples
 ///  
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let a1 = Square::A1.bitboard();
 /// let b1 = Square::B1.bitboard();
@@ -31,7 +31,7 @@ pub type BitBoardWord = u128;
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct BitBoard(
-    /// The selected native word (`u64` for minishogi, otherwise `u128`).
+    /// The selected native word (`u64` for small boards, otherwise `u128`).
     pub BitBoardWord,
 );
 
@@ -157,8 +157,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY.dec(), BitBoard::FULL);
     /// assert_eq!(Square::A1.bitboard().dec(), BitBoard::EMPTY);
@@ -172,8 +172,8 @@ impl BitBoard {
     /// Shift left along files ("down" the board towards rank I).
     ///
     /// # Example
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -214,8 +214,8 @@ impl BitBoard {
     ///
     /// # Example
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -316,8 +316,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -360,8 +360,8 @@ impl BitBoard {
     ///
     /// # Example
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -402,8 +402,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// let bb = Square::A1.bitboard();
     /// let shifted = bb.shift(Square::B1, Square::G2);
@@ -444,8 +444,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY, bitboard! {
     ///     . . . . . . . . .
@@ -465,8 +465,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::FULL, bitboard! {
     ///     X X X X X X X X X
@@ -486,8 +486,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EDGES, bitboard! {
     ///     X X X X X X X X X
@@ -536,8 +536,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::CORNERS, bitboard! {
     ///     X . . . . . . . X
@@ -575,8 +575,8 @@ impl BitBoard {
     /// This mirrors the bitboard vertically in file 5.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -602,7 +602,7 @@ impl BitBoard {
     /// });
     /// ```
     #[inline(always)]
-    #[cfg(not(feature = "minishogi"))]
+    #[cfg(not(feature = "small-board"))]
     pub const fn flip_files(self) -> Self {
         const FILE_MASKS: [u128; 9] = [
             0x1FF,       // File 1
@@ -634,8 +634,8 @@ impl BitBoard {
     /// This mirrors the bitboard horizontally in rank E.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -661,7 +661,7 @@ impl BitBoard {
     /// });
     /// ```
     #[inline(always)]
-    #[cfg(not(feature = "minishogi"))]
+    #[cfg(not(feature = "small-board"))]
     pub const fn flip_ranks(self) -> Self {
         const RANK_ONE: u128 = 0x1008040201008040201;
 
@@ -696,8 +696,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     X . . . . . . . .
@@ -726,7 +726,7 @@ impl BitBoard {
     /// assert_eq!(bb.flip_files().flip_ranks(), rr);
     /// assert_eq!(bb.flip_ranks().flip_files(), rr);
     /// ```
-    #[cfg(feature = "minishogi")]
+    #[cfg(feature = "small-board")]
     pub const fn flip_files(self) -> Self {
         let mut out = Self::EMPTY;
         let mut i = 0;
@@ -739,7 +739,7 @@ impl BitBoard {
         }
         out
     }
-    #[cfg(feature = "minishogi")]
+    #[cfg(feature = "small-board")]
     pub const fn flip_ranks(self) -> Self {
         let mut out = Self::EMPTY;
         let mut i = 0;
@@ -771,8 +771,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY.len(), 0);
     /// let bb = bitboard! {
@@ -812,8 +812,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -847,8 +847,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// let bb = Square::E5.bitboard();
     /// let ff = bb.rm(Square::E5);
@@ -865,8 +865,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb_a = bitboard! {
     ///     X X X . . . . . .
@@ -901,8 +901,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let big = bitboard! {
     ///     . . . . . . . . .
@@ -939,8 +939,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -974,8 +974,8 @@ impl BitBoard {
     /// Checks if the [`BitBoard`] is empty.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert!(BitBoard::EMPTY.is_empty());
     /// let bb = bitboard! {
@@ -1002,8 +1002,8 @@ impl BitBoard {
     /// "First" means the first square when scanning from A1 to I9.
     ///
     /// # Examples
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert!(BitBoard::EMPTY.next_square().is_none());
     /// let bb = bitboard! {
@@ -1035,8 +1035,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = BitBoard::FULL;
     /// let squares = &Square::ALL;
@@ -1053,8 +1053,8 @@ impl BitBoard {
     ///
     /// Subsets are produced in lexicographic order. Each subset is greater than the last.
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -1172,8 +1172,8 @@ impl Iterator for BitBoardSubsetIter {
 ///
 /// # Example
 ///
-#[cfg_attr(not(feature = "minishogi"), doc = "```")]
-#[cfg_attr(feature = "minishogi", doc = "```ignore")]
+#[cfg_attr(not(feature = "small-board"), doc = "```")]
+#[cfg_attr(feature = "small-board", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let bb = bitboard! {
 ///     . . . X . . . . .
@@ -1190,6 +1190,22 @@ impl Iterator for BitBoardSubsetIter {
 /// ```
 #[macro_export]
 macro_rules! bitboard {
+    (
+        $a6:tt $a5:tt $a4:tt $a3:tt $a2:tt $a1:tt
+        $b6:tt $b5:tt $b4:tt $b3:tt $b2:tt $b1:tt
+        $c6:tt $c5:tt $c4:tt $c3:tt $c2:tt $c1:tt
+        $d6:tt $d5:tt $d4:tt $d3:tt $d2:tt $d1:tt
+        $e6:tt $e5:tt $e4:tt $e3:tt $e2:tt $e1:tt
+        $f6:tt $f5:tt $f4:tt $f3:tt $f2:tt $f1:tt
+    ) => { $crate::bitboard! { @__inner $a1 $b1 $c1 $d1 $e1 $f1 $a2 $b2 $c2 $d2 $e2 $f2 $a3 $b3 $c3 $d3 $e3 $f3 $a4 $b4 $c4 $d4 $e4 $f4 $a5 $b5 $c5 $d5 $e5 $f5 $a6 $b6 $c6 $d6 $e6 $f6 } };
+    (
+        $a5:tt $a4:tt $a3:tt $a2:tt $a1:tt
+        $b5:tt $b4:tt $b3:tt $b2:tt $b1:tt
+        $c5:tt $c4:tt $c3:tt $c2:tt $c1:tt
+        $d5:tt $d4:tt $d3:tt $d2:tt $d1:tt
+        $e5:tt $e4:tt $e3:tt $e2:tt $e1:tt
+        $f5:tt $f4:tt $f3:tt $f2:tt $f1:tt
+    ) => { $crate::bitboard! { @__inner $a1 $b1 $c1 $d1 $e1 $f1 $a2 $b2 $c2 $d2 $e2 $f2 $a3 $b3 $c3 $d3 $e3 $f3 $a4 $b4 $c4 $d4 $e4 $f4 $a5 $b5 $c5 $d5 $e5 $f5 } };
     (        $a5:tt $a4:tt $a3:tt $a2:tt $a1:tt
         $b5:tt $b4:tt $b3:tt $b2:tt $b1:tt
         $c5:tt $c4:tt $c3:tt $c2:tt $c1:tt

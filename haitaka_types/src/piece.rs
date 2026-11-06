@@ -130,8 +130,8 @@ impl Piece {
     ///
     /// # Examples
     ///
-    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
-    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
+    #[cfg_attr(not(feature = "small-board"), doc = "```")]
+    #[cfg_attr(feature = "small-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.can_promote(Color::Black, Square::C1));
     /// assert!(Piece::Pawn.can_promote(Color::White, Square::G1));
@@ -157,7 +157,7 @@ impl Piece {
     ///
     #[cfg_attr(
         not(any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -175,7 +175,7 @@ impl Piece {
     )]
     #[cfg_attr(
         any(
-            feature = "minishogi",
+            feature = "small-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",

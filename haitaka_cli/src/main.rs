@@ -3725,8 +3725,8 @@ fn package(args: PackageArgs) -> Result<()> {
             default_ruleset()
         );
     }
-    if cfg!(feature = "minishogi") && args.nnue.is_some() {
-        bail!("minishogi does not support 9x9 NNUE models");
+    if cfg!(feature = "small-board") && args.nnue.is_some() {
+        bail!("{} does not support 9x9 NNUE models", SelectedRule::NAME);
     }
     let staging = package_staging_dir()?;
     let result = package_in_staging(args, &staging);
@@ -3858,7 +3858,7 @@ fn git_commit() -> String {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "minishogi"))]
+#[cfg(not(feature = "small-board"))]
 mod tests {
     use super::*;
     use serde_json::Value;
