@@ -16,10 +16,18 @@ use haitaka::{
 };
 
 // Input positions for testing
+#[cfg(not(feature = "minishogi"))]
 const POSITIONS: &[&str] = &[
     "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
     "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62",
     "ln1gk1snl/1r5b1/p1ppppgpp/1s4p2/1p7/P1P3R2/1P1PPPP1P/1BG3S2/LNS1KG1NL b P",
+];
+
+#[cfg(feature = "minishogi")]
+const POSITIONS: &[&str] = &[
+    haitaka::SFEN_STARTPOS,
+    "4k/2+s2/2R2/5/K4 b - 1",
+    "3pk/5/3G1/5/K4 b P 1",
 ];
 
 // Testing the legality of BoardMoves. This is a speed and stress test for `Board::is_legal`

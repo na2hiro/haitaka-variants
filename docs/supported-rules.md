@@ -1,6 +1,7 @@
 # Supported Rules
 
 - (default:) 本将棋
+- `minishogi`: 5五将棋 (Shogitter rule 51), with a compact 64-bit board, a one-rank promotion zone, and Shogitter-compatible repetition. See [the rule and storage documentation](minishogi.md).
 - `annan`: 安南将棋. When a piece B is placed behind a piece A and they're on the same side, A moves as if it's B.
 - `anhoku`: 安北将棋. When a piece B is placed in front of a piece A and they're on the same side, A moves as if it's B.
 - `antouzai`: 安東西将棋. Friendly pieces immediately left and right of A donate movement to A. If both adjacent donors exist, A can move as the union of both donor movement types.
@@ -14,7 +15,7 @@
 - `yokonekoneko`: 横ネコネコ将棋. Same as `nekoneko` but **horizontal**.
 - `tenkyo`: 点鏡将棋. A piece moves as the piece on the point-symmetric square around 5,5, regardless of color. The center square reflects to itself.
 
-The variant feature flags are mutually exclusive compile-time engine modes. `annan` keeps its custom start position; the other variants currently use the standard shogi start position until variant-specific openings are documented.
+The variant feature flags are mutually exclusive compile-time engine modes. `minishogi` uses its 5x5 start position, `annan` keeps its custom start position, and the other variants currently use the standard shogi start position until variant-specific openings are documented.
 
 `taimen` and `haimen` are "donor" variants like `annan`/`anhoku`, but the donating piece is an enemy rather than a friendly piece, and captures, promotion, and drops still use the physical moving piece.
 
@@ -22,4 +23,4 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 
 `tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
-`haitaka_learn` now covers NNUE data generation, training orchestration, export, and verification for all of the supported rule modes above. Use the matching Cargo feature for variant workflows.
+`haitaka_learn` covers NNUE data generation, training orchestration, export, and verification for the 9x9 rule modes above. Use the matching Cargo feature for variant workflows. Minishogi currently uses handcrafted evaluation; dedicated NNUE training is a later step.

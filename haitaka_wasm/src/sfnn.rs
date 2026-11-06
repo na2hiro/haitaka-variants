@@ -89,6 +89,11 @@ pub struct SfnnModel {
 impl SfnnModel {
     /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
     pub fn from_bytes(nn: &[u8], progress: &[u8], arch: &str) -> Result<Self, SfnnError> {
+        if cfg!(feature = "minishogi") {
+            return Err(invalid(
+                "SFNN_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by minishogi",
+            ));
+        }
         let width = match arch {
             MICRO_ARCH => 2048,
             MINI_ARCH => 4096,
@@ -499,6 +504,7 @@ impl<'a> Reader<'a> {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
     #[test]

@@ -62,16 +62,15 @@ impl Piece {
     pub const HAND_NUM: usize = 7;
 
     /// Max number of pieces for a piece type to have in hand
-    pub const MAX_HAND: [u8; Self::NUM] = [
-        18, // Pawn
-        4,  // Lance
-        4,  // Knight
-        4,  // Silver
-        2,  // Bishop
-        2,  // Rook
-        4,  // Gold
-        0, 0, 0, 0, 0, 0, 0,
-    ];
+    pub const MAX_HAND: [u8; Self::NUM] = {
+        let mut inventory = [0; Self::NUM];
+        let mut i = 0;
+        while i < Self::HAND_NUM {
+            inventory[i] = SelectedRule::INVENTORY[i];
+            i += 1;
+        }
+        inventory
+    };
 
     // piece -> promoted piece (promoted pieces map to themselves)
     const PROMOTED: [Self; Self::NUM] = [
@@ -131,7 +130,8 @@ impl Piece {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.can_promote(Color::Black, Square::C1));
     /// assert!(Piece::Pawn.can_promote(Color::White, Square::G1));
@@ -145,8 +145,8 @@ impl Piece {
         } else {
             let rank = square.rank() as usize;
             match color {
-                Color::White => rank > 5,
-                Color::Black => rank < 3,
+                Color::White => rank >= Rank::NUM - SelectedRule::PROMOTION_RANKS,
+                Color::Black => rank < SelectedRule::PROMOTION_RANKS,
             }
         }
     }
@@ -157,6 +157,7 @@ impl Piece {
     ///
     #[cfg_attr(
         not(any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -174,6 +175,7 @@ impl Piece {
     )]
     #[cfg_attr(
         any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -233,7 +235,7 @@ impl Piece {
             let rank = square.rank() as usize;
             match color {
                 Color::White => {
-                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 8
+                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank + 1 == Rank::NUM
                 }
                 Color::Black => {
                     matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 0
@@ -256,13 +258,13 @@ impl Piece {
         )))]
         {
             let rank = square.rank() as usize;
-            if 1 < rank && rank < 7 {
+            if 1 < rank && rank + 2 < Rank::NUM {
                 return false;
             }
             match color {
                 Color::White => match self {
-                    Self::Pawn | Self::Lance => rank == 8,
-                    Self::Knight => rank >= 7,
+                    Self::Pawn | Self::Lance => rank + 1 == Rank::NUM,
+                    Self::Knight => rank + 2 >= Rank::NUM,
                     _ => false,
                 },
                 Color::Black => match self {

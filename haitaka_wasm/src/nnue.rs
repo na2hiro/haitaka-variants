@@ -578,6 +578,11 @@ fn read_feature_family(reader: &mut ByteReader<'_>) -> Result<FeatureFamily, Nnu
 
 impl NnueModel {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
+        if cfg!(feature = "minishogi") {
+            return Err(NnueError::new(
+                "NNUE_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by minishogi",
+            ));
+        }
         let mut reader = ByteReader::new(bytes);
         let family = read_feature_family(&mut reader)?;
         if !family_supported_by_build(family) {
@@ -2303,6 +2308,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
     use rand::prelude::IndexedRandom;

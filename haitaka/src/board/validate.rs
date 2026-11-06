@@ -116,10 +116,12 @@ impl Board {
             debug_assert!(piece != Piece::King);
 
             let num_board_pieces = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
-            let max_num = Piece::MAX_HAND[index];
-            let sum = hands[0][index] + hands[1][index] + num_board_pieces;
+            let max_num = SelectedRule::INVENTORY[index];
+            let sum = u16::from(hands[0][index])
+                + u16::from(hands[1][index])
+                + u16::from(num_board_pieces);
 
-            soft_assert!(sum <= max_num);
+            soft_assert!(sum <= u16::from(max_num));
         }
         true
     }
@@ -131,7 +133,7 @@ impl Board {
             let piece = Piece::index_const(index);
             let num = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
             let sum = hands[0][index] + hands[1][index] + num;
-            let missing = Piece::MAX_HAND[index] - sum;
+            let missing = SelectedRule::INVENTORY[index] - sum;
             self.unchecked_set_hand(Color::White, piece, missing);
         }
     }

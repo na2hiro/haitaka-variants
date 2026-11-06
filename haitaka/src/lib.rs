@@ -1,6 +1,7 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(
     not(any(
+        feature = "minishogi",
         feature = "annan",
         feature = "anhoku",
         feature = "antouzai",
@@ -15,6 +16,10 @@
         feature = "anki"
     )),
     doc = include_str!("../README.md")
+)]
+#![cfg_attr(
+    feature = "minishogi",
+    doc = "Five-by-five shogi, compatible with Shogitter rule 51.\n```\nuse haitaka::*;\nlet board = Board::startpos();\nassert_eq!(board.to_string(), \"rbsgk/4p/5/P4/KGSBR b - 1\");\nassert_eq!(core::mem::size_of::<BitBoard>(), 8);\n```"
 )]
 
 //! # Examples
@@ -148,6 +153,10 @@ pub use bitboard::*;
 pub use color::*;
 pub use dfpn::*;
 pub use file::*;
+pub use haitaka_types::{
+    BOARD_HEIGHT, BOARD_WIDTH, BoardGeometry, RuleSpec, SelectedGeometry, SelectedRule,
+    fixed_bitboard, geometry, packed_coordinates,
+};
 pub use history::*;
 pub use piece::*;
 pub use rank::*;
@@ -155,10 +164,12 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
+#[cfg_attr(feature = "minishogi", path = "small_attacks.rs")]
 pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod history;
+#[cfg_attr(feature = "minishogi", path = "small_slider_moves.rs")]
 pub mod slider_moves;
 #[cfg(any(
     feature = "annan",

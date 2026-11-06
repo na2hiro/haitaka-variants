@@ -2,6 +2,11 @@
 use crate::{File, Rank, Square};
 use core::ops::*;
 
+#[cfg(feature = "minishogi")]
+pub type BitBoardWord = u64;
+#[cfg(not(feature = "minishogi"))]
+pub type BitBoardWord = u128;
+
 /// A [bitboard](https://www.chessprogramming.org/Bitboards).
 /// A bitboard is an ordered set of squares. The set contains a square if bit `1 << square as usize` is set.
 ///
@@ -9,7 +14,8 @@ use core::ops::*;
 ///
 /// # Examples
 ///  
-/// ```
+#[cfg_attr(not(feature = "minishogi"), doc = "```")]
+#[cfg_attr(feature = "minishogi", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let a1 = Square::A1.bitboard();
 /// let b1 = Square::B1.bitboard();
@@ -25,8 +31,8 @@ use core::ops::*;
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct BitBoard(
-    /// The backing [`u128`].
-    pub u128,
+    /// The selected native word (`u64` for minishogi, otherwise `u128`).
+    pub BitBoardWord,
 );
 
 macro_rules! impl_math_ops {
@@ -151,7 +157,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY.dec(), BitBoard::FULL);
     /// assert_eq!(Square::A1.bitboard().dec(), BitBoard::EMPTY);
@@ -165,7 +172,8 @@ impl BitBoard {
     /// Shift left along files ("down" the board towards rank I).
     ///
     /// # Example
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -195,7 +203,7 @@ impl BitBoard {
     pub const fn shl(self, rhs: usize) -> Self {
         if rhs == 0 {
             self
-        } else if rhs >= 9 {
+        } else if rhs >= Rank::NUM {
             BitBoard::EMPTY
         } else {
             BitBoard::new((self.0 << rhs) & Rank::SOUTH[rhs - 1].0)
@@ -206,7 +214,8 @@ impl BitBoard {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -237,10 +246,10 @@ impl BitBoard {
     pub const fn shr(self, rhs: usize) -> Self {
         if rhs == 0 {
             self
-        } else if rhs >= 9 {
+        } else if rhs >= Rank::NUM {
             BitBoard::EMPTY
         } else {
-            BitBoard::new((self.0 >> rhs) & Rank::NORTH[9 - rhs].0)
+            BitBoard::new((self.0 >> rhs) & Rank::NORTH[Rank::NUM - rhs].0)
         }
     }
 
@@ -269,7 +278,7 @@ impl BitBoard {
     ///
     #[inline(always)]
     pub const fn shift_along_file(self, dy: i32) -> Self {
-        if dy < -9 || dy > 9 {
+        if dy < -(Rank::NUM as i32) || dy > Rank::NUM as i32 {
             panic!("Shift amount out of range");
         }
         if dy <= 0 {
@@ -289,7 +298,7 @@ impl BitBoard {
     ///
     #[inline(always)]
     pub const fn shift_along_rank(self, dx: i32) -> Self {
-        if dx < -9 || dx > 9 {
+        if dx < -(File::NUM as i32) || dx > File::NUM as i32 {
             panic!("Shift amount out of range");
         }
         if dx <= 0 {
@@ -307,7 +316,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -335,7 +345,11 @@ impl BitBoard {
     /// ```
     #[inline(always)]
     pub const fn shift_east(self, dx: usize) -> Self {
-        BitBoard(self.0 >> (9 * dx))
+        if dx >= File::NUM {
+            Self::EMPTY
+        } else {
+            BitBoard(self.0 >> (Rank::NUM * dx))
+        }
     }
 
     /// Shift the bit set pattern left (west).
@@ -346,7 +360,8 @@ impl BitBoard {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb1 = bitboard! {
     ///     . . . . . . X X X
@@ -373,7 +388,11 @@ impl BitBoard {
     /// assert_eq!(bb1.shift_west(1), bb2);
     #[inline(always)]
     pub const fn shift_west(self, dx: usize) -> Self {
-        BitBoard((self.0 << (9 * dx)) & BitBoard::BOARD_MASK)
+        if dx >= File::NUM {
+            Self::EMPTY
+        } else {
+            BitBoard::new(self.0 << (Rank::NUM * dx))
+        }
     }
 
     /// Shift bit set pattern so that square 'from' is mapped to square 'to'.
@@ -383,7 +402,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// use haitaka_types::*;
     /// let bb = Square::A1.bitboard();
     /// let shifted = bb.shift(Square::B1, Square::G2);
@@ -405,8 +425,9 @@ impl BitBoard {
     // BOARD_MASK during comparisons, so not when called BitBoard::new.
     // This would make it possible to get rid of BitBoard::new.
 
-    /// Mask to select only the first 81 bits used in a the board position.
-    pub const BOARD_MASK: u128 = (1 << Square::NUM) - 1;
+    /// Mask for the active squares, including the full-word boundary case.
+    pub const BOARD_MASK: BitBoardWord =
+        BitBoardWord::MAX >> (BitBoardWord::BITS as usize - Square::NUM);
 
     /// Create a new `BitBoard`.
     ///
@@ -415,7 +436,7 @@ impl BitBoard {
     /// `BitBoard::new(value)` does ensure the high bits are set to zero. In some
     /// internal functions we do want to use the full `u128` bit set.
     #[inline(always)]
-    pub const fn new(value: u128) -> Self {
+    pub const fn new(value: BitBoardWord) -> Self {
         Self(value & Self::BOARD_MASK)
     }
 
@@ -423,7 +444,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY, bitboard! {
     ///     . . . . . . . . .
@@ -443,7 +465,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::FULL, bitboard! {
     ///     X X X X X X X X X
@@ -463,7 +486,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EDGES, bitboard! {
     ///     X X X X X X X X X
@@ -478,37 +502,42 @@ impl BitBoard {
     /// });
     /// ```
     pub const EDGES: Self = Self::__EDGES;
-    const __EDGES: Self = bitboard! {
-        X X X X X X X X X
-        X . . . . . . . X
-        X . . . . . . . X
-        X . . . . . . . X
-        X . . . . . . . X
-        X . . . . . . . X
-        X . . . . . . . X
-        X . . . . . . . X
-        X X X X X X X X X
+    const __EDGES: Self = {
+        let mut bits: BitBoardWord = 0;
+        let mut i = 0;
+        while i < Square::NUM {
+            let file = i / Rank::NUM;
+            let rank = i % Rank::NUM;
+            if file == 0 || file + 1 == File::NUM || rank == 0 || rank + 1 == Rank::NUM {
+                bits |= 1 << i;
+            }
+            i += 1;
+        }
+        Self(bits)
     };
 
     /// The non-edges of the board.
     pub const INNER: Self = Self::__INNER;
-    const __INNER: Self = bitboard! {
-        . . . . . . . . .
-        . X X X X X X X .
-        . X X X X X X X .
-        . X X X X X X X .
-        . X X X X X X X .
-        . X X X X X X X .
-        . X X X X X X X .
-        . X X X X X X X .
-        . . . . . . . . .
+    const __INNER: Self = {
+        let mut bits: BitBoardWord = 0;
+        let mut i = 0;
+        while i < Square::NUM {
+            let file = i / Rank::NUM;
+            let rank = i % Rank::NUM;
+            if file > 0 && file + 1 < File::NUM && rank > 0 && rank + 1 < Rank::NUM {
+                bits |= 1 << i;
+            }
+            i += 1;
+        }
+        Self(bits)
     };
 
     /// The corners of the board.
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::CORNERS, bitboard! {
     ///     X . . . . . . . X
@@ -523,16 +552,18 @@ impl BitBoard {
     /// });
     /// ```
     pub const CORNERS: Self = Self::__CORNERS;
-    const __CORNERS: Self = bitboard! {
-        X . . . . . . . X
-        . . . . . . . . .
-        . . . . . . . . .
-        . . . . . . . . .
-        . . . . . . . . .
-        . . . . . . . . .
-        . . . . . . . . .
-        . . . . . . . . .
-        X . . . . . . . X
+    const __CORNERS: Self = {
+        let mut bits: BitBoardWord = 0;
+        let mut i = 0;
+        while i < Square::NUM {
+            let file = i / Rank::NUM;
+            let rank = i % Rank::NUM;
+            if (file == 0 || file + 1 == File::NUM) && (rank == 0 || rank + 1 == Rank::NUM) {
+                bits |= 1 << i;
+            }
+            i += 1;
+        }
+        Self(bits)
     };
 
     // The 9x9 board makes it a bit more complicated to flip files and ranks.
@@ -544,7 +575,8 @@ impl BitBoard {
     /// This mirrors the bitboard vertically in file 5.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -570,6 +602,7 @@ impl BitBoard {
     /// });
     /// ```
     #[inline(always)]
+    #[cfg(not(feature = "minishogi"))]
     pub const fn flip_files(self) -> Self {
         const FILE_MASKS: [u128; 9] = [
             0x1FF,       // File 1
@@ -601,7 +634,8 @@ impl BitBoard {
     /// This mirrors the bitboard horizontally in rank E.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -627,6 +661,7 @@ impl BitBoard {
     /// });
     /// ```
     #[inline(always)]
+    #[cfg(not(feature = "minishogi"))]
     pub const fn flip_ranks(self) -> Self {
         const RANK_ONE: u128 = 0x1008040201008040201;
 
@@ -661,7 +696,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     X . . . . . . . .
@@ -690,9 +726,35 @@ impl BitBoard {
     /// assert_eq!(bb.flip_files().flip_ranks(), rr);
     /// assert_eq!(bb.flip_ranks().flip_files(), rr);
     /// ```
+    #[cfg(feature = "minishogi")]
+    pub const fn flip_files(self) -> Self {
+        let mut out = Self::EMPTY;
+        let mut i = 0;
+        while i < Square::NUM {
+            let sq = Square::index_const(i);
+            if self.has(sq) {
+                out.0 |= sq.flip_file().bitboard().0;
+            }
+            i += 1;
+        }
+        out
+    }
+    #[cfg(feature = "minishogi")]
+    pub const fn flip_ranks(self) -> Self {
+        let mut out = Self::EMPTY;
+        let mut i = 0;
+        while i < Square::NUM {
+            let sq = Square::index_const(i);
+            if self.has(sq) {
+                out.0 |= sq.flip_rank().bitboard().0;
+            }
+            i += 1;
+        }
+        out
+    }
     #[inline(always)]
     pub const fn rotate(self) -> Self {
-        Self(self.0.reverse_bits() >> (128 - Square::NUM))
+        Self(self.0.reverse_bits() >> (BitBoardWord::BITS as usize - Square::NUM))
     }
 
     /// Reverse the bits of this bitboard.
@@ -709,7 +771,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert_eq!(BitBoard::EMPTY.len(), 0);
     /// let bb = bitboard! {
@@ -742,14 +805,15 @@ impl BitBoard {
     /// are assumed to be zero.
     #[inline(always)]
     pub const fn count_zeros(self) -> u32 {
-        self.0.count_zeros() - 47
+        self.0.count_zeros() - (BitBoardWord::BITS as usize - Square::NUM) as u32
     }
 
     /// Check if a [`Square`] is set.
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -773,7 +837,7 @@ impl BitBoard {
         // Warning: This is an optimized version of `has`
         // which relies on the file-major mapping of squares to bits.
         // Changing that layout will break this function.
-        self.0 & (1u128 << square as usize) != 0
+        self.0 & ((1 as BitBoardWord) << square as usize) != 0
     }
 
     /// Remove a square from this [`BitBoard`].
@@ -783,7 +847,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// use haitaka_types::*;
     /// let bb = Square::E5.bitboard();
     /// let ff = bb.rm(Square::E5);
@@ -800,7 +865,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb_a = bitboard! {
     ///     X X X . . . . . .
@@ -835,7 +901,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let big = bitboard! {
     ///     . . . . . . . . .
@@ -872,7 +939,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -906,7 +974,8 @@ impl BitBoard {
     /// Checks if the [`BitBoard`] is empty.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert!(BitBoard::EMPTY.is_empty());
     /// let bb = bitboard! {
@@ -933,7 +1002,8 @@ impl BitBoard {
     /// "First" means the first square when scanning from A1 to I9.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// assert!(BitBoard::EMPTY.next_square().is_none());
     /// let bb = bitboard! {
@@ -965,7 +1035,8 @@ impl BitBoard {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = BitBoard::FULL;
     /// let squares = &Square::ALL;
@@ -982,7 +1053,8 @@ impl BitBoard {
     ///
     /// Subsets are produced in lexicographic order. Each subset is greater than the last.
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka_types::*;
     /// let bb = bitboard! {
     ///     . . . . . . . . .
@@ -1100,7 +1172,8 @@ impl Iterator for BitBoardSubsetIter {
 ///
 /// # Example
 ///
-/// ```
+#[cfg_attr(not(feature = "minishogi"), doc = "```")]
+#[cfg_attr(feature = "minishogi", doc = "```ignore")]
 /// # use haitaka_types::*;
 /// let bb = bitboard! {
 ///     . . . X . . . . .
@@ -1117,6 +1190,12 @@ impl Iterator for BitBoardSubsetIter {
 /// ```
 #[macro_export]
 macro_rules! bitboard {
+    (        $a5:tt $a4:tt $a3:tt $a2:tt $a1:tt
+        $b5:tt $b4:tt $b3:tt $b2:tt $b1:tt
+        $c5:tt $c4:tt $c3:tt $c2:tt $c1:tt
+        $d5:tt $d4:tt $d3:tt $d2:tt $d1:tt
+        $e5:tt $e4:tt $e3:tt $e2:tt $e1:tt
+    ) => { $crate::bitboard! { @__inner $a1 $b1 $c1 $d1 $e1 $a2 $b2 $c2 $d2 $e2 $a3 $b3 $c3 $d3 $e3 $a4 $b4 $c4 $d4 $e4 $a5 $b5 $c5 $d5 $e5 } };
     (   $a9:tt $a8:tt $a7:tt $a6:tt $a5:tt $a4:tt $a3:tt $a2:tt $a1:tt
         $b9:tt $b8:tt $b7:tt $b6:tt $b5:tt $b4:tt $b3:tt $b2:tt $b1:tt
         $c9:tt $c8:tt $c7:tt $c6:tt $c5:tt $c4:tt $c3:tt $c2:tt $c1:tt
@@ -1149,7 +1228,7 @@ macro_rules! bitboard {
                 }
                 index += 1;
             )*
-            let _ = index;
+            assert!(index == $crate::Square::NUM, "bitboard literal does not match selected board");
             bitboard
         };
         BITBOARD

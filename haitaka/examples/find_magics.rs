@@ -96,7 +96,7 @@ const fn merge(x: u128) -> u64 {
 // its own slot.
 
 const fn get_magic_index(magic: &MagicEntry, blockers: &BitBoard) -> usize {
-    let blockers = merge(blockers.0 & magic.mask);
+    let blockers = merge(blockers.0 as u128 & magic.mask);
     let hash = blockers.wrapping_mul(magic.magic);
     // magic.offset as usize +
     (hash >> magic.shift) as usize
@@ -156,7 +156,7 @@ fn find_magic(
     assert!(index_bits == mask.len() as u8);
     assert!(0 < index_bits && index_bits <= 14);
 
-    let mask: u128 = mask.0;
+    let mask: u128 = mask.0 as u128;
 
     // It's guaranteed that we can comfortably hash all blocker configurations
     // with `mask.count_ones()` bits, since that is the max. number of different
@@ -311,7 +311,8 @@ fn try_make_table(
         // In other words, the blockers with the smallest footprint (smallest MSB bit) are
         // generated first.
         // https://www.chessprogramming.org/Traversing_Subsets_of_a_Set#All_Subsets_of_any_Set
-        blockers.0 = blockers.0.wrapping_sub(magic_entry.mask) & magic_entry.mask;
+        blockers.0 = blockers.0.wrapping_sub(magic_entry.mask as BitBoardWord)
+            & magic_entry.mask as BitBoardWord;
         if blockers.is_empty() {
             // We came full circle
             break;

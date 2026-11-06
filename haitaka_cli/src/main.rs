@@ -12,8 +12,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use haitaka::{
-    ANHOKU_HISTORY_RULES_VERSION, Board, Color, GameStatus, HistoryAdjudication, Move, Piece,
-    PositionHistory, SFEN_STARTPOS,
+    Board, Color, GameStatus, HISTORY_RULES_VERSION, HistoryAdjudication, Move, Piece,
+    PositionHistory, RuleSpec, SFEN_STARTPOS, SelectedRule,
 };
 use haitaka_wasm::{
     NnueModel, SEARCH_NODE_BUDGET_MAX_DEPTH, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
@@ -862,68 +862,17 @@ fn main() -> Result<()> {
 }
 
 fn default_ruleset() -> &'static str {
-    if cfg!(feature = "annan") {
-        "annan"
-    } else if cfg!(feature = "anhoku") {
-        "anhoku"
-    } else if cfg!(feature = "antouzai") {
-        "antouzai"
-    } else if cfg!(feature = "taimen") {
-        "taimen"
-    } else if cfg!(feature = "haimen") {
-        "haimen"
-    } else if cfg!(feature = "neko") {
-        "neko"
-    } else if cfg!(feature = "nekoneko") {
-        "nekoneko"
-    } else if cfg!(feature = "yokoneko") {
-        "yokoneko"
-    } else if cfg!(feature = "yokonekoneko") {
-        "yokonekoneko"
-    } else if cfg!(feature = "tenkyo") {
-        "tenkyo"
-    } else if cfg!(feature = "tenjiku") {
-        "tenjiku"
-    } else if cfg!(feature = "anki") {
-        "anki"
-    } else {
-        "standard"
-    }
+    SelectedRule::NAME
 }
 
 fn default_rule_id() -> u32 {
-    if cfg!(feature = "annan") {
-        26
-    } else if cfg!(feature = "anhoku") {
-        55
-    } else if cfg!(feature = "antouzai") {
-        95
-    } else if cfg!(feature = "taimen") {
-        72
-    } else if cfg!(feature = "haimen") {
-        74
-    } else if cfg!(feature = "neko") {
-        130
-    } else if cfg!(feature = "nekoneko") {
-        131
-    } else if cfg!(feature = "yokoneko") {
-        132
-    } else if cfg!(feature = "yokonekoneko") {
-        133
-    } else if cfg!(feature = "tenkyo") {
-        151
-    } else if cfg!(feature = "tenjiku") {
-        56
-    } else if cfg!(feature = "anki") {
-        94
-    } else {
-        0
-    }
+    SelectedRule::RULE_ID
 }
 
 fn profile_display_ruleset(ruleset: &str) -> String {
     match ruleset {
         "standard" => "Standard".to_string(),
+        "minishogi" => "Minishogi".to_string(),
         "annan" => "Annan".to_string(),
         "anhoku" => "Anhoku".to_string(),
         "antouzai" => "Antouzai".to_string(),
@@ -2774,7 +2723,7 @@ fn game_json_record(game_index: u32, result: &GameResult) -> GameJsonRecord {
         winner: result.winner.map(seat_name).map(str::to_string),
         termination_schema: SELF_PLAY_TERMINATION_SCHEMA,
         termination_reason: result.termination_reason.as_str(),
-        history_rules_version: ANHOKU_HISTORY_RULES_VERSION,
+        history_rules_version: HISTORY_RULES_VERSION,
         plies: result.plies,
         total_nodes: result.total_nodes,
         requested_budget_nodes: result.requested_budget_nodes,
@@ -3769,6 +3718,16 @@ fn default_target_identifier() -> String {
 }
 
 fn package(args: PackageArgs) -> Result<()> {
+    if args.ruleset != default_ruleset() {
+        bail!(
+            "package ruleset {} does not match compiled ruleset {}",
+            args.ruleset,
+            default_ruleset()
+        );
+    }
+    if cfg!(feature = "minishogi") && args.nnue.is_some() {
+        bail!("minishogi does not support 9x9 NNUE models");
+    }
     let staging = package_staging_dir()?;
     let result = package_in_staging(args, &staging);
     if staging.exists() {
@@ -3899,6 +3858,7 @@ fn git_commit() -> String {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
     use serde_json::Value;
@@ -5144,7 +5104,7 @@ mod tests {
         assert_eq!(json["schemaVersion"], 3);
         assert_eq!(json["terminationSchema"], SELF_PLAY_TERMINATION_SCHEMA);
         assert_eq!(json["terminationReason"], "king-captured");
-        assert_eq!(json["historyRulesVersion"], ANHOKU_HISTORY_RULES_VERSION);
+        assert_eq!(json["historyRulesVersion"], HISTORY_RULES_VERSION);
         assert_eq!(json["gameIndex"], 7);
         assert_eq!(json["pairIndex"], 3);
         assert_eq!(json["aColor"], "black");

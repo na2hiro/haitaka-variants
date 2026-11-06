@@ -4,6 +4,7 @@ mod piece_moves;
 pub use piece_moves::*;
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests;
 
 // The private `commoner` module defines the private Commoner trait.
@@ -1539,7 +1540,8 @@ impl Board {
         if let Move::Drop { piece, to } = mv {
             let color = self.side_to_move();
 
-            if piece == Piece::King
+            if piece as usize >= Piece::HAND_NUM
+                || !self.has_in_hand(color, piece)
                 || self.occupied().has(to)
                 || no_fly_zone(color, piece).has(to)
                 || (piece == Piece::Pawn && !self.pawn_drop_ok(color, to))
@@ -1676,7 +1678,7 @@ impl Board {
             if promotion {
                 // `from` or `to` must be in the promotion zone
                 let zone = prom_zone(color);
-                if !(zone.has(to) || zone.has(from)) {
+                if !piece.is_promotable() || !(zone.has(to) || zone.has(from)) {
                     return false;
                 }
             } else if piece.must_promote(color, to) {
@@ -1941,6 +1943,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -1958,6 +1961,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2060,6 +2064,7 @@ impl Board {
     ///
     #[cfg_attr(
         not(any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2077,6 +2082,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
+            feature = "minishogi",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -2181,6 +2187,7 @@ impl Board {
     // batching example is ignored for all of those builds.
     #[cfg_attr(
         not(any(
+            feature = "minishogi",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2195,6 +2202,7 @@ impl Board {
     )]
     #[cfg_attr(
         any(
+            feature = "minishogi",
             feature = "taimen",
             feature = "haimen",
             feature = "neko",
@@ -2475,7 +2483,7 @@ impl Board {
         let lances = self.pieces(Piece::Lance);
         let our_sliders = ours & (rooks | bishops | lances);
 
-        let mut off_the_x_ray: [Option<BitBoard>; 81] = [None; 81];
+        let mut off_the_x_ray: [Option<BitBoard>; Square::NUM] = [None; Square::NUM];
 
         for slider in our_sliders {
             let between = get_between_rays(slider, their_king);

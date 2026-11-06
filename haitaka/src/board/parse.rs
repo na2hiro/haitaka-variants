@@ -20,7 +20,8 @@ impl Board {
     /// Parse a SFEN string. You can also parse the board with [`FromStr`].
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board = Board::from_sfen(STARTPOS).unwrap();
@@ -89,7 +90,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     /// // from_sfen will fail - since there is only one King on board
@@ -106,6 +108,9 @@ impl Board {
         if board.side_to_move() != Color::Black {
             Err(SFENParseError::InvalidSideToMove)
         } else {
+            if !board.piece_counts_are_valid() {
+                return Err(SFENParseError::InvalidBoard);
+            }
             board.piece_counts_make_valid();
             board.validate_after_parse(true)?;
             Ok(board)
@@ -163,14 +168,20 @@ impl Board {
                     if prom {
                         return Err(());
                     };
-                    file -= offset as usize; // let it panic!
+                    if offset == 0 {
+                        return Err(());
+                    }
+                    file = file.checked_sub(offset as usize).ok_or(())?;
                 } else if c == '+' {
                     if prom {
                         return Err(());
                     };
                     prom = true;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    file -= 1; // let it panic
+                    file = file.checked_sub(1).ok_or(())?;
+                    if prom && !piece.is_promotable() {
+                        return Err(());
+                    }
                     let piece = if prom { piece.promote() } else { piece };
                     let square = Square::new(File::try_index(file).ok_or(())?, rank);
                     board.unchecked_put(color, piece, square);
@@ -179,12 +190,12 @@ impl Board {
                     return Err(());
                 }
             }
-            if file != 0 {
+            if file != 0 || prom {
                 return Err(());
             }
         }
         if let Some(last_rank) = last_rank {
-            if last_rank == 8 || !strict {
+            if last_rank + 1 == Rank::NUM || !strict {
                 return Ok(());
             }
         }
@@ -203,9 +214,14 @@ impl Board {
                 if c == '-' {
                     empty = true;
                 } else if let Some(num) = c.to_digit(10) {
-                    count = 10 * count + num;
+                    count = count
+                        .checked_mul(10)
+                        .and_then(|n| n.checked_add(num))
+                        .ok_or(())?;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    if count > u8::MAX as u32 {
+                    if piece as usize >= Piece::HAND_NUM
+                        || count > u32::from(Piece::MAX_HAND[piece as usize])
+                    {
                         return Err(()); // way... too large
                     }
                     board.unchecked_set_hand(
@@ -262,7 +278,8 @@ impl FromStr for Board {
     /// See also: [`Board::from_sfen`].
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board: Board = STARTPOS.parse().unwrap();
@@ -280,7 +297,8 @@ impl Display for Board {
     /// Display the board.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "minishogi"), doc = "```")]
+    #[cfg_attr(feature = "minishogi", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board: Board = SFEN_6PIECE_HANDICAP.parse().unwrap();
     /// assert_eq!(format!("{}", board), SFEN_6PIECE_HANDICAP);
@@ -308,7 +326,7 @@ impl Display for Board {
             if empty > 0 {
                 write!(f, "{}", empty)?;
             }
-            if (rank as usize) < 8 {
+            if (rank as usize) + 1 < Rank::NUM {
                 write!(f, "/")?;
             }
         }
@@ -423,6 +441,7 @@ mod nekoneko_tests {
         feature = "anki"
     ))
 ))]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
 

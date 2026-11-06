@@ -1,4 +1,7 @@
-use haitaka::{Color, Move, Piece, Square};
+use haitaka::packed_coordinates::{CoordinateCode, MoveCoordinates};
+use haitaka::{BoardGeometry, Color, Move, Piece, SelectedGeometry, Square};
+type SelectedMoveCode = <SelectedGeometry as BoardGeometry>::MoveCode;
+type PackedMoveRaw = <SelectedMoveCode as CoordinateCode>::Raw;
 
 pub const DEFAULT_HASH_MB: usize = 16;
 pub const MIN_HASH_MB: usize = 1;
@@ -53,70 +56,60 @@ impl Bound {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct PackedMove(u16);
+pub struct PackedMove(PackedMoveRaw);
 
 impl PackedMove {
-    const NONE: Self = Self(0);
-    const TO_MASK: u16 = 0x007F;
-    const FROM_MASK: u16 = 0x3F80;
-    const FROM_SHIFT: u16 = 7;
-    const DROP_FLAG: u16 = 0x4000;
-    const PROMOTION_FLAG: u16 = 0x8000;
-
-    pub const fn none() -> Self {
-        Self::NONE
+    pub fn none() -> Self {
+        Self(SelectedMoveCode::NONE.raw())
     }
-
     pub fn from_move(mv: Move) -> Self {
-        match mv {
+        let fields = match mv {
             Move::Drop { piece, to } => {
-                let piece_index = piece as u16;
-                if piece_index >= Piece::HAND_NUM as u16 {
-                    return Self::NONE;
+                if piece as usize >= Piece::HAND_NUM {
+                    return Self::none();
                 }
-                Self((to as u16) | (piece_index << Self::FROM_SHIFT) | Self::DROP_FLAG)
+                MoveCoordinates {
+                    from_or_piece: piece as u16,
+                    to: to as u16,
+                    drop: true,
+                    promotion: false,
+                }
             }
             Move::BoardMove {
                 from,
                 to,
                 promotion,
-            } => {
-                let mut value = (to as u16) | ((from as u16) << Self::FROM_SHIFT);
-                if promotion {
-                    value |= Self::PROMOTION_FLAG;
-                }
-                Self(value)
-            }
-        }
+            } => MoveCoordinates {
+                from_or_piece: from as u16,
+                to: to as u16,
+                drop: false,
+                promotion,
+            },
+        };
+        SelectedMoveCode::pack(fields)
+            .map(|code| Self(code.raw()))
+            .unwrap_or_else(Self::none)
     }
-
     pub fn to_move(self) -> Option<Move> {
-        if self.0 == 0 {
-            return None;
-        }
-
-        let to = Square::try_index((self.0 & Self::TO_MASK) as usize)?;
-        let from_or_piece = ((self.0 & Self::FROM_MASK) >> Self::FROM_SHIFT) as usize;
-        let is_drop = (self.0 & Self::DROP_FLAG) != 0;
-        let is_promotion = (self.0 & Self::PROMOTION_FLAG) != 0;
-
-        if is_drop {
-            if is_promotion || from_or_piece >= Piece::HAND_NUM {
+        let fields = SelectedMoveCode::from_raw(self.0).unpack()?;
+        let to = Square::try_index(fields.to as usize)?;
+        if fields.drop {
+            if fields.from_or_piece as usize >= Piece::HAND_NUM {
                 return None;
             }
-            let piece = Piece::try_index(from_or_piece)?;
-            Some(Move::Drop { piece, to })
-        } else {
-            let from = Square::try_index(from_or_piece)?;
-            Some(Move::BoardMove {
-                from,
+            Some(Move::Drop {
+                piece: Piece::try_index(fields.from_or_piece as usize)?,
                 to,
-                promotion: is_promotion,
+            })
+        } else {
+            Some(Move::BoardMove {
+                from: Square::try_index(fields.from_or_piece as usize)?,
+                to,
+                promotion: fields.promotion,
             })
         }
     }
-
-    const fn raw(self) -> u16 {
+    fn raw(self) -> PackedMoveRaw {
         self.0
     }
 }
@@ -136,12 +129,12 @@ struct TtEntry {
     key16: u16,
     depth8: u8,
     gen_bound8: u8,
-    move16: u16,
+    move16: PackedMoveRaw,
     score16: i16,
     eval16: i16,
 }
 
-const _: () = assert!(std::mem::size_of::<TtEntry>() == 10);
+const _: () = assert!(Square::NUM > 128 || std::mem::size_of::<TtEntry>() == 10);
 
 impl TtEntry {
     const fn empty() -> Self {
@@ -395,6 +388,7 @@ pub fn validate_hash_size_mb(size_mb: u32) -> Result<usize, String> {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
 
@@ -434,10 +428,7 @@ mod tests {
     #[test]
     fn invalid_packed_moves_decode_to_none() {
         assert_eq!(PackedMove::none().to_move(), None);
-        assert_eq!(
-            PackedMove(PackedMove::DROP_FLAG | PackedMove::PROMOTION_FLAG).to_move(),
-            None
-        );
+        assert_eq!(PackedMove((1 << 14) | (1 << 15)).to_move(), None);
         assert_eq!(PackedMove(81).to_move(), None);
     }
 

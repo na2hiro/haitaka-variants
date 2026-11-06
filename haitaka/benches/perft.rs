@@ -6,11 +6,19 @@ use std::time::Duration;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use haitaka::{Board, Color};
 
+#[cfg(not(feature = "minishogi"))]
 const POSITIONS: &[&str] = &[
     "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
     "ln1g5/1r4k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b b BG2SLPnp 61",
     "ln1g5/1r2S1k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b w BGSLPnp 62",
     "ln1gk1snl/1r5b1/p1ppppgpp/1s4p2/1p7/P1P3R2/1P1PPPP1P/1BG3S2/LNS1KG1NL b P",
+];
+
+#[cfg(feature = "minishogi")]
+const POSITIONS: &[&str] = &[
+    haitaka::SFEN_STARTPOS,
+    "4k/2+s2/2R2/5/K4 b - 1",
+    "3pk/5/3G1/5/K4 b P 1",
 ];
 
 fn perft(board: &Board, depth: u8) -> u32 {
@@ -64,11 +72,12 @@ fn perft_tsume(board: &Board, depth: u8) -> u32 {
 
 pub fn criterion_benchmark(criterion: &mut Criterion) {
     let startpos = Board::startpos();
-    let endgamepos: Board =
-        "ln1g5/1r4k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b b BG2SLPnp 61"
-            .parse()
-            .unwrap();
-    let tsume: &str = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
+    let endgamepos: Board = POSITIONS[1].parse().unwrap();
+    let tsume = if cfg!(feature = "minishogi") {
+        "4k/5/3G1/3R1/5 b - 1"
+    } else {
+        "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1"
+    };
     let tsumepos: Board = Board::tsume(tsume).unwrap();
 
     let positions = POSITIONS

@@ -1,3 +1,4 @@
+#![cfg(not(feature = "minishogi"))]
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;

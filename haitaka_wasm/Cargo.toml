@@ -44,3 +44,5 @@ yokonekoneko = ["haitaka/yokonekoneko"]
 tenkyo = ["haitaka/tenkyo"]
 tenjiku = ["haitaka/tenjiku"]
 anki = ["haitaka/anki"]
+
+minishogi = ["haitaka/minishogi"]

@@ -54,3 +54,5 @@ yokonekoneko = ["haitaka-types/yokonekoneko"]
 tenkyo = ["haitaka-types/tenkyo"]
 tenjiku = ["haitaka-types/tenjiku"]
 anki = ["haitaka-types/anki"]
+
+minishogi = ["haitaka-types/minishogi"]
