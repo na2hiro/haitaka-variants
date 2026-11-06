@@ -2,7 +2,7 @@
 
 Haitaka Variantsは、変則将棋AIやその機械学習に関するリポジトリです！これは`haitaka`というモダンで高速な本将棋の合法手生成エンジンを以下の点で拡張したものです。
 
-- 現在は、安南、安北、安東西といった役割変化系のルールに対応しています。 ([supported-rules.md](./docs/supported-rules.md))
+- 現在は、安南、安北、安東西といった役割変化系のルールと、[5五将棋](./docs/minishogi.md)に対応しています。 ([supported-rules.md](./docs/supported-rules.md))
   - bitboardを使用した高速な合法手生成ができ、手元のM4 Mac上におけるperftの計算では約1億NPS出ます。
   - ルールごとの拡張に当たってRustのfeature機能を使っているため、使用されないルール個別のコードはコンパイル時に取り除かれるため、拡張によるオーバーヘッドが少なくなっています。
 - 簡単な反復深化alphabeta探索による思考

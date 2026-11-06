@@ -1,6 +1,7 @@
 # Supported Rules
 
 - (default:) 本将棋
+- `minishogi`: 5五将棋 (Shogitter rule 51), with a compact 64-bit board, a one-rank promotion zone, and Shogitter-compatible repetition. See [the rule and storage documentation](minishogi.md).
 - `annan`: 安南将棋. When a piece B is placed behind a piece A and they're on the same side, A moves as if it's B.
 - `anhoku`: 安北将棋. When a piece B is placed in front of a piece A and they're on the same side, A moves as if it's B.
 - `antouzai`: 安東西将棋. Friendly pieces immediately left and right of A donate movement to A. If both adjacent donors exist, A can move as the union of both donor movement types.
@@ -83,7 +84,7 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 
 `tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
-`haitaka_learn` now covers NNUE data generation, training orchestration, export, and verification for all of the supported rule modes above. Use the matching Cargo feature for variant workflows.
+`haitaka_learn` covers NNUE data generation, training orchestration, export, and verification for the 9x9 rule modes above. Use the matching Cargo feature for variant workflows. Minishogi currently uses handcrafted evaluation; dedicated NNUE training is a later step.
 
 ## Capture and hand rules
 

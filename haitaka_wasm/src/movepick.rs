@@ -593,6 +593,7 @@ fn piece_value(piece: Piece) -> i32 {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use std::str::FromStr;
 

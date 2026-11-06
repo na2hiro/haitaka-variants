@@ -5,6 +5,13 @@ use crate::{Board, Color};
 /// Frozen Anhoku history/adjudication rules used by search and game records.
 pub const ANHOKU_HISTORY_RULES_VERSION: &str = "anhoku-history-adjudication-v1";
 
+/// History contract of the selected game mode.
+pub const HISTORY_RULES_VERSION: &str = if cfg!(feature = "minishogi") {
+    "minishogi-shogitter-history-adjudication-v1"
+} else {
+    ANHOKU_HISTORY_RULES_VERSION
+};
+
 /// A result which can be determined from the ordered position history alone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HistoryAdjudication {
@@ -141,6 +148,7 @@ impl PositionHistory {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
     use crate::Move;

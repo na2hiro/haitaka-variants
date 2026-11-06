@@ -75,3 +75,5 @@ zoshoku = ["hand-category"]
 babanuki = ["hand-category"]
 tensuu = ["hand-category", "win-condition-category"]
 suika = ["hand-category", "win-condition-category"]
+
+minishogi = ["haitaka-types/minishogi"]

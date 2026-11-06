@@ -50,3 +50,5 @@ zoshoku = ["hand-category", "haitaka/zoshoku", "haitaka_wasm/zoshoku"]
 babanuki = ["hand-category", "haitaka/babanuki", "haitaka_wasm/babanuki"]
 tensuu = ["hand-category", "haitaka/tensuu", "haitaka_wasm/tensuu", "win-condition-category"]
 suika = ["hand-category", "haitaka/suika", "haitaka_wasm/suika", "win-condition-category"]
+
+minishogi = ["haitaka/minishogi", "haitaka_wasm/minishogi"]

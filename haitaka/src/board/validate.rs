@@ -168,7 +168,7 @@ impl Board {
             debug_assert!(piece != Piece::King);
 
             let num_board_pieces = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
-            let max_num = Piece::MAX_HAND[index];
+            let max_num = SelectedRule::INVENTORY[index];
             let sum = u64::from(hands[0][index])
                 + if cfg!(feature = "share") {
                     0
@@ -189,7 +189,7 @@ impl Board {
             let piece = Piece::index_const(index);
             let num = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
             let sum = hands[0][index] + hands[1][index] + u32::from(num);
-            let missing = u32::from(Piece::MAX_HAND[index]).saturating_sub(sum);
+            let missing = u32::from(SelectedRule::INVENTORY[index]).saturating_sub(sum);
             self.unchecked_set_hand(Color::White, piece, missing);
         }
     }

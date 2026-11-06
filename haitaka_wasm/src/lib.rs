@@ -2028,7 +2028,7 @@ impl UsiSession {
                 format!(
                     "info string gameover {} rules {}",
                     history_result.as_str(),
-                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                    haitaka::HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ];
@@ -2048,7 +2048,7 @@ impl UsiSession {
             return vec![
                 format!(
                     "info string gameover no-legal-move{winner} rules {}",
-                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                    haitaka::HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ];
@@ -4464,6 +4464,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(not(feature = "minishogi"))]
 mod tests {
     use super::*;
     #[cfg(not(any(
@@ -4779,7 +4780,7 @@ mod tests {
             vec![
                 format!(
                     "info string gameover no-legal-move{winner} rules {}",
-                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                    haitaka::HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ]
@@ -6637,3 +6638,6 @@ mod tests {
         assert_eq!(perft_bulk(&Board::startpos(), 4), 605_424);
     }
 }
+
+#[cfg(all(test, feature = "minishogi", not(target_arch = "wasm32")))]
+mod minishogi_tests;
