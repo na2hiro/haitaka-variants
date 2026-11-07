@@ -62,7 +62,7 @@ SFEN/USIへ新しい文字を割り当てず、数値座標と将棋ったーの
 ```
 
 `path` は1個か2個の着地点。二枚取りの途中の捕獲、居食いで元のマスへ戻る手、
-一段目だけで終える手も区別する。成りは経路を完了したときだけ確定する。
+一段目だけで終える手も区別する。人間が一段目で終える場合は、移動中の獅子を再クリックする。成りは経路を完了したときだけ確定する。
 玉を取ってその場で終局した場合は、一段目までの経路が完了手になる。
 手番と探索深さ、千日手履歴は経路全体で1回だけ進む。
 
@@ -137,4 +137,5 @@ CHU_PERFT=1 pnpm exec vitest run app/bot/chushogiReference.test.ts
 node scripts/verify-chushogi.mjs
 ```
 
-計画と検証記録: [第3段階](../plans/historical-shogi/03-chu.md)。
+計画: [第3段階](../plans/historical-shogi/03-chu.md)。
+[機械可読の検証記録](../plans/historical-shogi/03-chu-verification.json)。
