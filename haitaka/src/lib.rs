@@ -283,3 +283,26 @@ compile_error!("babanuki and suika are mutually exclusive hand rules");
     ))
 ))]
 compile_error!("hand-category is internal; select a concrete rule");
+
+#[cfg(feature = "extended-rules")]
+pub mod extended;
+
+#[cfg(all(
+    feature = "shoshogi",
+    any(
+        feature = "variant-board",
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    )
+))]
+compile_error!("shoshogi cannot be combined with another ruleset");

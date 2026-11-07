@@ -60,6 +60,9 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Versioned JSON API for extended rules (stdin input; no SFEN/USI).
+    #[cfg(feature = "shoshogi")]
+    Json(extended::JsonArgs),
     /// Play or debug one side against the built-in search.
     Play(PlayArgs),
     /// Run the engine as a minimal USI subprocess.
@@ -327,7 +330,7 @@ struct ManifestRule {
     position_format: &'static str,
     #[serde(rename = "moveFormat")]
     move_format: &'static str,
-    startpos: &'static str,
+    startpos: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -868,7 +871,14 @@ struct SelfPlayReportOutput {
 }
 
 fn main() -> Result<()> {
-    match Cli::parse().command {
+    let command = Cli::parse().command;
+    #[cfg(feature = "shoshogi")]
+    if !matches!(command, Command::Json(_) | Command::Package(_)) {
+        bail!("shoshogi supports only json and package; SFEN/USI commands are unavailable");
+    }
+    match command {
+        #[cfg(feature = "shoshogi")]
+        Command::Json(args) => extended::run(args),
         Command::Play(args) => play(args),
         Command::Usi(args) => usi(args),
         Command::SelfPlay(args) => self_play(args),
@@ -878,7 +888,11 @@ fn main() -> Result<()> {
 }
 
 fn default_ruleset() -> &'static str {
-    SelectedRule::NAME
+    if cfg!(feature = "shoshogi") {
+        "shoshogi"
+    } else {
+        SelectedRule::NAME
+    }
 }
 
 fn active_rule_profile() -> String {
@@ -915,7 +929,11 @@ fn has_auxiliary_rules() -> bool {
 }
 
 fn default_rule_id() -> u32 {
-    SelectedRule::RULE_ID
+    if cfg!(feature = "shoshogi") {
+        43
+    } else {
+        SelectedRule::RULE_ID
+    }
 }
 
 fn profile_display_ruleset(ruleset: &str) -> String {
@@ -974,8 +992,12 @@ fn package_manifest(
             wasm: WASM_BINDGEN_WASM,
         },
         capabilities: ManifestCapabilities {
-            protocols: vec!["shogitter-direct-v1", "usi-wasm-v1"],
-            commands: if SelectedRule::ALLOW_DFPN {
+            protocols: if cfg!(feature = "shoshogi") {
+                vec!["haitaka-json-v1"]
+            } else {
+                vec!["shogitter-direct-v1", "usi-wasm-v1"]
+            },
+            commands: if !cfg!(feature = "shoshogi") && SelectedRule::ALLOW_DFPN {
                 vec!["search", "iterative-search", "perft", "dfpn"]
             } else {
                 vec!["search", "iterative-search", "perft"]
@@ -990,9 +1012,17 @@ fn package_manifest(
             rules: vec![ManifestRule {
                 rule_id,
                 variant: args.ruleset.clone(),
-                position_format: "sfen",
-                move_format: "usi",
-                startpos: SFEN_STARTPOS,
+                position_format: if cfg!(feature = "shoshogi") {
+                    "haitaka-json-v1"
+                } else {
+                    "sfen"
+                },
+                move_format: if cfg!(feature = "shoshogi") {
+                    "haitaka-json-v1"
+                } else {
+                    "usi"
+                },
+                startpos: default_startpos(),
             }],
             nnue,
         }],
@@ -1856,7 +1886,7 @@ impl Drop for UsiEngineClient {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "shoshogi")))]
 fn parse_usi_info_telemetry(line: &str) -> UsiInfoTelemetry {
     let mut telemetry = UsiInfoTelemetry::default();
     merge_usi_info_telemetry(&mut telemetry, line);
@@ -3856,8 +3886,11 @@ fn package(args: PackageArgs) -> Result<()> {
             default_ruleset()
         );
     }
-    if !SelectedRule::ALLOW_STANDARD_MODELS && args.nnue.is_some() {
-        bail!("{} does not support 9x9 NNUE models", SelectedRule::NAME);
+    if (cfg!(feature = "shoshogi") || !SelectedRule::ALLOW_STANDARD_MODELS) && args.nnue.is_some() {
+        bail!("{} does not support 9x9 NNUE models", default_ruleset());
+    }
+    if cfg!(feature = "shoshogi") && args.rule_id != 43 {
+        bail!("shoshogi package requires rule ID 43");
     }
     let staging = package_staging_dir()?;
     let result = package_in_staging(args, &staging);
@@ -3991,7 +4024,7 @@ fn git_commit() -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "shoshogi")))]
 #[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
@@ -6059,5 +6092,18 @@ mod hand_rule_tests {
             terminal_adjudication(&b, &history, Color::Black).unwrap().0,
             Some(Seat::B)
         );
+    }
+}
+
+#[cfg(feature = "shoshogi")]
+mod extended;
+fn default_startpos() -> String {
+    #[cfg(feature = "shoshogi")]
+    {
+        haitaka::extended::start_position_json()
+    }
+    #[cfg(not(feature = "shoshogi"))]
+    {
+        SFEN_STARTPOS.to_string()
     }
 }
