@@ -76,3 +76,9 @@ extended-rules = ["dep:serde", "dep:serde_json"]
 shoshogi = ["extended-rules"]
 
 chushogi = ["extended-rules"]
+
+classical-rules = ["extended-rules"]
+torishogi = ["classical-rules"]
+washogi = ["classical-rules"]
+heian-dai = ["classical-rules"]
+daishogi = ["classical-rules"]

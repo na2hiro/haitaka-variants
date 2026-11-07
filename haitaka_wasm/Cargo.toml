@@ -63,3 +63,11 @@ heian-9x9 = ["heian", "haitaka/heian-9x9"]
 extended-json = ["haitaka/extended-rules"]
 shoshogi = ["extended-json", "haitaka/shoshogi"]
 chushogi = ["extended-json", "haitaka/chushogi"]
+
+torishogi = ["extended-json", "haitaka/torishogi"]
+
+washogi = ["extended-json", "haitaka/washogi"]
+
+heian-dai = ["extended-json", "haitaka/heian-dai"]
+
+daishogi = ["extended-json", "haitaka/daishogi"]
