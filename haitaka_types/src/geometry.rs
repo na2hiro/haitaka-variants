@@ -69,6 +69,7 @@ pub trait BoardGeometry {
 }
 
 /// A rectangular board. Implementations select the smallest scalar or word array.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rect<const WIDTH: usize, const HEIGHT: usize>;
 
 macro_rules! geometry {

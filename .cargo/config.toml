@@ -19,3 +19,4 @@ pack-yokoneko = "run -p xtask -- package --ruleset yokoneko --rule-id 132 --feat
 pack-yokonekoneko = "run -p xtask -- package --ruleset yokonekoneko --rule-id 133 --features yokonekoneko --output target/haitaka-variants-yokonekoneko.tgz"
 pack-minishogi = "run -p xtask -- package --ruleset minishogi"
 pack-shoshogi = "run -p xtask -- package --ruleset shoshogi --output target/haitaka-variants-shoshogi.tgz"
+pack-chushogi = "run -p xtask -- package --ruleset chushogi --output target/haitaka-variants-chushogi.tgz"

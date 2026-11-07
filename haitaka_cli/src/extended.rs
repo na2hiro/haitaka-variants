@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use clap::{Parser, ValueEnum};
-use haitaka::extended::*;
+use haitaka::extended::compiled::*;
 use std::io::{self, BufRead, Read};
 #[derive(Debug, Clone, ValueEnum)]
 enum Action {
@@ -36,16 +36,16 @@ pub fn run(args: JsonArgs) -> Result<()> {
         // JSON-lines verifier: useful for reference engines, no subprocess per position.
         for line in io::stdin().lock().lines() {
             let input = line?;
-            let game = ShoGame::parse(&input).map_err(|e| anyhow!(e))?;
+            let game = CompiledGame::parse(&input).map_err(|e| anyhow!(e))?;
             let mut transitions = vec![];
             for mv in game.moves() {
                 let mut next = game.clone();
                 next.play(mv).map_err(|e| anyhow!(e))?;
-                transitions.push(serde_json::json!({"move":mv,"position":next.current().to_wire(),"outcome":next.outcome(),"hash":format!("{:016x}",next.current().hash())}));
+                transitions.push(serde_json::json!({"move":mv,"position":next.current().to_wire(),"outcome":next.outcome(),"hash":format!("{:016x}",next.position_hash())}));
             }
             println!(
                 "{}",
-                serde_json::json!({"position":game.current().to_wire(),"moves":game.moves(),"outcome":game.outcome(),"hash":format!("{:016x}",game.current().hash()),"transitions":transitions})
+                serde_json::json!({"position":game.current().to_wire(),"moves":game.moves(),"outcome":game.outcome(),"hash":format!("{:016x}",game.position_hash()),"transitions":transitions})
             );
         }
         return Ok(());

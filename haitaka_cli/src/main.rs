@@ -61,7 +61,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Versioned JSON API for extended rules (stdin input; no SFEN/USI).
-    #[cfg(feature = "shoshogi")]
+    #[cfg(feature = "extended-json")]
     Json(extended::JsonArgs),
     /// Play or debug one side against the built-in search.
     Play(PlayArgs),
@@ -872,12 +872,12 @@ struct SelfPlayReportOutput {
 
 fn main() -> Result<()> {
     let command = Cli::parse().command;
-    #[cfg(feature = "shoshogi")]
+    #[cfg(feature = "extended-json")]
     if !matches!(command, Command::Json(_) | Command::Package(_)) {
-        bail!("shoshogi supports only json and package; SFEN/USI commands are unavailable");
+        bail!("extended rules support only json and package; SFEN/USI commands are unavailable");
     }
     match command {
-        #[cfg(feature = "shoshogi")]
+        #[cfg(feature = "extended-json")]
         Command::Json(args) => extended::run(args),
         Command::Play(args) => play(args),
         Command::Usi(args) => usi(args),
@@ -888,9 +888,12 @@ fn main() -> Result<()> {
 }
 
 fn default_ruleset() -> &'static str {
-    if cfg!(feature = "shoshogi") {
-        "shoshogi"
-    } else {
+    #[cfg(feature = "extended-json")]
+    {
+        haitaka::extended::compiled::NAME
+    }
+    #[cfg(not(feature = "extended-json"))]
+    {
         SelectedRule::NAME
     }
 }
@@ -929,13 +932,25 @@ fn has_auxiliary_rules() -> bool {
 }
 
 fn default_rule_id() -> u32 {
-    if cfg!(feature = "shoshogi") {
-        43
-    } else {
+    #[cfg(feature = "extended-json")]
+    {
+        haitaka::extended::compiled::RULE_ID
+    }
+    #[cfg(not(feature = "extended-json"))]
+    {
         SelectedRule::RULE_ID
     }
 }
-
+fn default_position_format() -> &'static str {
+    #[cfg(feature = "extended-json")]
+    {
+        haitaka::extended::compiled::PROTOCOL
+    }
+    #[cfg(not(feature = "extended-json"))]
+    {
+        "sfen"
+    }
+}
 fn profile_display_ruleset(ruleset: &str) -> String {
     match ruleset {
         "standard" => "Standard".to_string(),
@@ -992,12 +1007,12 @@ fn package_manifest(
             wasm: WASM_BINDGEN_WASM,
         },
         capabilities: ManifestCapabilities {
-            protocols: if cfg!(feature = "shoshogi") {
-                vec!["haitaka-json-v1"]
+            protocols: if cfg!(feature = "extended-json") {
+                vec![default_position_format()]
             } else {
                 vec!["shogitter-direct-v1", "usi-wasm-v1"]
             },
-            commands: if !cfg!(feature = "shoshogi") && SelectedRule::ALLOW_DFPN {
+            commands: if !cfg!(feature = "extended-json") && SelectedRule::ALLOW_DFPN {
                 vec!["search", "iterative-search", "perft", "dfpn"]
             } else {
                 vec!["search", "iterative-search", "perft"]
@@ -1012,13 +1027,9 @@ fn package_manifest(
             rules: vec![ManifestRule {
                 rule_id,
                 variant: args.ruleset.clone(),
-                position_format: if cfg!(feature = "shoshogi") {
-                    "haitaka-json-v1"
-                } else {
-                    "sfen"
-                },
-                move_format: if cfg!(feature = "shoshogi") {
-                    "haitaka-json-v1"
+                position_format: default_position_format(),
+                move_format: if cfg!(feature = "extended-json") {
+                    default_position_format()
                 } else {
                     "usi"
                 },
@@ -1886,7 +1897,7 @@ impl Drop for UsiEngineClient {
     }
 }
 
-#[cfg(all(test, not(feature = "shoshogi")))]
+#[cfg(all(test, not(feature = "extended-json")))]
 fn parse_usi_info_telemetry(line: &str) -> UsiInfoTelemetry {
     let mut telemetry = UsiInfoTelemetry::default();
     merge_usi_info_telemetry(&mut telemetry, line);
@@ -3886,11 +3897,17 @@ fn package(args: PackageArgs) -> Result<()> {
             default_ruleset()
         );
     }
-    if (cfg!(feature = "shoshogi") || !SelectedRule::ALLOW_STANDARD_MODELS) && args.nnue.is_some() {
+    if (cfg!(feature = "extended-json") || !SelectedRule::ALLOW_STANDARD_MODELS)
+        && args.nnue.is_some()
+    {
         bail!("{} does not support 9x9 NNUE models", default_ruleset());
     }
-    if cfg!(feature = "shoshogi") && args.rule_id != 43 {
-        bail!("shoshogi package requires rule ID 43");
+    if cfg!(feature = "extended-json") && args.rule_id != default_rule_id() {
+        bail!(
+            "{} package requires rule ID {}",
+            default_ruleset(),
+            default_rule_id()
+        );
     }
     let staging = package_staging_dir()?;
     let result = package_in_staging(args, &staging);
@@ -4024,7 +4041,7 @@ fn git_commit() -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-#[cfg(all(test, not(feature = "shoshogi")))]
+#[cfg(all(test, not(feature = "extended-json")))]
 #[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
@@ -6095,14 +6112,14 @@ mod hand_rule_tests {
     }
 }
 
-#[cfg(feature = "shoshogi")]
+#[cfg(feature = "extended-json")]
 mod extended;
 fn default_startpos() -> String {
-    #[cfg(feature = "shoshogi")]
+    #[cfg(feature = "extended-json")]
     {
-        haitaka::extended::start_position_json()
+        haitaka::extended::compiled::start_position_json()
     }
-    #[cfg(not(feature = "shoshogi"))]
+    #[cfg(not(feature = "extended-json"))]
     {
         SFEN_STARTPOS.to_string()
     }

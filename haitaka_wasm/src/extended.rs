@@ -1,6 +1,6 @@
 //! The Sho build exports only the explicit JSON protocol. Ordinary Rust APIs
 //! remain available to legacy native consumers, but are not exposed to JS.
-use haitaka::extended as core;
+use haitaka::extended::compiled as core;
 use wasm_bindgen::prelude::*;
 fn js(result: Result<String, String>) -> Result<String, JsValue> {
     result.map_err(|e| JsValue::from_str(&e))
@@ -46,13 +46,13 @@ pub fn search_json(
 #[wasm_bindgen(js_name=load_nnue)]
 pub fn reject_nnue(_bytes: &[u8]) -> Result<String, JsValue> {
     Err(JsValue::from_str(
-        "NNUE_UNSUPPORTED_RULESET: shoshogi requires handcrafted evaluation",
+        "NNUE_UNSUPPORTED_RULESET: extended rules require handcrafted evaluation",
     ))
 }
 #[wasm_bindgen(js_name=load_sfnn)]
 pub fn reject_sfnn(_nn: &[u8], _progress: &[u8], _arch: &str) -> Result<String, JsValue> {
     Err(JsValue::from_str(
-        "SFNN_UNSUPPORTED_RULESET: shoshogi requires handcrafted evaluation",
+        "SFNN_UNSUPPORTED_RULESET: extended rules require handcrafted evaluation",
     ))
 }
 

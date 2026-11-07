@@ -1,4 +1,4 @@
-#![cfg(not(any(feature = "variant-board", feature = "shoshogi")))]
+#![cfg(not(any(feature = "variant-board", feature = "extended-json")))]
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
