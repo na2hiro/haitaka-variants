@@ -28,3 +28,7 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 ## Historical shogi
 
 The compile-time `heian-8x8`, `heian-9x8` and `heian-9x9` modes support Shogitter rules 12, 13 and 14. They discard captures, promote to canonical golds and draw with only kings remaining. See [Heian rules and verification](heian.md) for usage and [the roadmap](../plans/historical-shogi/README.md) for later stages.
+
+The `shoshogi` (43) and `chushogi` (48) modes support multiple royal pieces and completed lion turns through explicit JSON APIs. See [Sho](shoshogi.md) and [Chu](chushogi.md).
+
+The `torishogi` (16), `washogi` (50), `heian-dai` (15) and `daishogi` (49) modes use JSON v3 with rule-local piece IDs. Tori includes reserves and drops; Heian Dai and Dai preserve ambiguous promotion origins. All use handcrafted evaluation. See [adopted rules, API and verification](classical-stage4.md).
