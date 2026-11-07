@@ -44,4 +44,6 @@ heian-8x8 = ["compact-board", "scalar64", "heian", "haitaka/heian-8x8", "haitaka
 heian-9x8 = ["compact-board", "heian", "haitaka/heian-9x8", "haitaka_wasm/heian-9x8"]
 heian-9x9 = ["heian", "haitaka/heian-9x9", "haitaka_wasm/heian-9x9"]
 
-shoshogi = ["haitaka/shoshogi", "haitaka_wasm/shoshogi"]
+extended-json = ["haitaka/extended-rules", "haitaka_wasm/extended-json"]
+shoshogi = ["extended-json", "haitaka/shoshogi", "haitaka_wasm/shoshogi"]
+chushogi = ["extended-json", "haitaka/chushogi", "haitaka_wasm/chushogi"]

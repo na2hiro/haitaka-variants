@@ -74,3 +74,5 @@ heian-9x9 = ["heian", "haitaka-types/heian-9x9"]
 
 extended-rules = ["dep:serde", "dep:serde_json"]
 shoshogi = ["extended-rules"]
+
+chushogi = ["extended-rules"]

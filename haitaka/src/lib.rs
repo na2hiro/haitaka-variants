@@ -195,7 +195,7 @@ pub use slider_moves::*;
 pub mod extended;
 
 #[cfg(all(
-    feature = "shoshogi",
+    any(feature = "shoshogi", feature = "chushogi"),
     any(
         feature = "variant-board",
         feature = "annan",
@@ -212,4 +212,6 @@ pub mod extended;
         feature = "anki"
     )
 ))]
-compile_error!("shoshogi cannot be combined with another ruleset");
+compile_error!("extended rules cannot be combined with another ruleset");
+#[cfg(all(feature = "shoshogi", feature = "chushogi"))]
+compile_error!("select exactly one extended ruleset");

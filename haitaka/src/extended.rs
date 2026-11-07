@@ -1,12 +1,10 @@
 //! Rule-local pieces and capture-royal games. The ordinary 14-piece Board is unchanged.
 //! Wire coordinates are one-based, file-major; no invented SFEN/USI piece letters.
+use haitaka_types::fixed_bitboard::SquareSet;
 use haitaka_types::geometry::{BoardGeometry, Rect};
 use instant::Instant;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, HashMap},
-    marker::PhantomData,
-};
+use std::{collections::BTreeMap, marker::PhantomData};
 
 pub const PROTOCOL: &str = "haitaka-json-v1";
 const MATE: i32 = 30_000;
@@ -84,8 +82,17 @@ const SHO_PIECES: &[PieceDef] = &[
 /// This backend currently implements discard captures, ordinary promotion, and loss
 /// when every royal is captured. Check exposure is legal. Other policies must get
 /// explicit implementations, rather than silently using these semantics.
-pub trait CaptureRoyalRule: Clone + PartialEq + Eq {
-    type Geometry: BoardGeometry;
+pub trait PositionState:
+    Clone + Default + core::fmt::Debug + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+{
+    fn hash_bytes(&self, add: &mut impl FnMut(u8));
+}
+impl PositionState for RuleState {
+    fn hash_bytes(&self, _add: &mut impl FnMut(u8)) {}
+}
+pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
+    type Geometry: BoardGeometry + Clone + core::fmt::Debug + PartialEq + Eq;
+    type State: PositionState;
     const ID: u32;
     const PIECES: &'static [PieceDef];
     const INVENTORY: &'static [usize];
@@ -96,6 +103,7 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq {
 pub struct Shoshogi;
 impl CaptureRoyalRule for Shoshogi {
     type Geometry = Rect<9, 9>;
+    type State = RuleState;
     const ID: u32 = 43;
     const PIECES: &'static [PieceDef] = SHO_PIECES;
     const INVENTORY: &'static [usize] = &[9, 2, 2, 2, 1, 1, 2, 1, 1];
@@ -149,11 +157,11 @@ pub struct PlacedPiece {
 pub struct RuleState {}
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct WirePosition {
+pub struct WirePosition<S = RuleState> {
     pub side_to_move: u8,
     pub pieces: Vec<PlacedPiece>,
     pub hands: [BTreeMap<String, u16>; 2],
-    pub state: RuleState,
+    pub state: S,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -181,6 +189,8 @@ struct Cell {
 pub struct Position<R: CaptureRoyalRule> {
     cells: Vec<Option<Cell>>,
     side: u8,
+    state: R::State,
+    occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
     rule: PhantomData<R>,
 }
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
@@ -229,7 +239,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             R::Geometry::HEIGHT - 1 - y
         }
     }
-    pub fn from_wire(wire: &WirePosition) -> Result<Self, String> {
+    pub fn from_wire(wire: &WirePosition<R::State>) -> Result<Self, String> {
         if wire.side_to_move > 1 {
             return Err("sideToMove must be 0 or 1".into());
         }
@@ -239,6 +249,8 @@ impl<R: CaptureRoyalRule> Position<R> {
         let mut pos = Self {
             cells: vec![None; R::Geometry::SQUARES],
             side: wire.side_to_move,
+            state: wire.state.clone(),
+            occupied: [<R::Geometry as BoardGeometry>::Bits::EMPTY; 2],
             rule: PhantomData,
         };
         let mut count = vec![vec![0; R::INVENTORY.len()]; 2];
@@ -262,6 +274,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             if count[p.color as usize][def.base] > R::INVENTORY[def.base] {
                 return Err(format!("piece inventory exceeded: {}", p.piece));
             }
+            pos.occupied[p.color as usize] = pos.occupied[p.color as usize].with(i);
             pos.cells[i] = Some(Cell {
                 piece: PieceId(id as u16),
                 color: p.color,
@@ -272,7 +285,7 @@ impl<R: CaptureRoyalRule> Position<R> {
         }
         Ok(pos)
     }
-    pub fn to_wire(&self) -> WirePosition {
+    pub fn to_wire(&self) -> WirePosition<R::State> {
         WirePosition {
             side_to_move: self.side,
             pieces: self
@@ -288,7 +301,7 @@ impl<R: CaptureRoyalRule> Position<R> {
                 })
                 .collect(),
             hands: Default::default(),
-            state: RuleState {},
+            state: self.state.clone(),
         }
     }
     fn royals(&self, color: u8) -> usize {
@@ -323,6 +336,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             add(b);
         }
         add(self.side);
+        self.state.hash_bytes(&mut add);
         for c in &self.cells {
             match c {
                 None => add(0),
@@ -338,27 +352,34 @@ impl<R: CaptureRoyalRule> Position<R> {
         hash
     }
     fn targets(&self, from: usize, cell: Cell) -> Vec<usize> {
+        self.geometric_targets(from, cell, false)
+    }
+    fn geometric_targets(&self, from: usize, cell: Cell, include_friendly: bool) -> Vec<usize> {
         let sign = if cell.color == 0 { 1 } else { -1 };
         let def = Self::def(cell);
         let mut out = vec![];
         for &(x, y) in def.steps {
             if let Some(to) = R::Geometry::offset(from, x * sign, y * sign)
-                && self.cells[to].is_none_or(|c| c.color != cell.color)
+                && (include_friendly || self.cells[to].is_none_or(|c| c.color != cell.color))
             {
                 out.push(to);
             }
         }
+        let blockers = self.occupied[0].union(self.occupied[1]);
         for &(x, y) in def.rays {
-            let mut p = from;
-            while let Some(to) = R::Geometry::offset(p, x * sign, y * sign) {
-                if let Some(c) = self.cells[to] {
-                    if c.color != cell.color {
-                        out.push(to);
-                    }
-                    break;
-                }
+            let mut ray = R::Geometry::ray(
+                from,
+                x * sign,
+                y * sign,
+                blockers,
+                <R::Geometry as BoardGeometry>::Bits::FULL,
+            );
+            if !include_friendly {
+                ray = ray.intersection(self.occupied[cell.color as usize].complement());
+            }
+            while let Some(to) = ray.first() {
                 out.push(to);
-                p = to;
+                ray = ray.without(to);
             }
         }
         out
@@ -375,7 +396,10 @@ impl<R: CaptureRoyalRule> Position<R> {
             })
         })
     }
-    pub fn moves(&self) -> Vec<JsonMove> {
+    pub fn moves(&self) -> Vec<JsonMove>
+    where
+        R: CaptureRoyalRule<State = RuleState>,
+    {
         if self.capture_outcome() != Outcome::ONGOING {
             return vec![];
         }
@@ -412,15 +436,28 @@ impl<R: CaptureRoyalRule> Position<R> {
         out.sort();
         out
     }
-    fn play_unchecked(&self, mv: JsonMove) -> Self {
+    fn set_cell(&mut self, square: usize, cell: Option<Cell>) {
+        if let Some(old) = self.cells[square] {
+            self.occupied[old.color as usize] = self.occupied[old.color as usize].without(square);
+        }
+        self.cells[square] = cell;
+        if let Some(new) = cell {
+            self.occupied[new.color as usize] = self.occupied[new.color as usize].with(square);
+        }
+    }
+    fn play_unchecked(&self, mv: JsonMove) -> Self
+    where
+        R: CaptureRoyalRule<State = RuleState>,
+    {
         let mut next = self.clone();
         let from = Self::index(mv.from).unwrap();
         let to = Self::index(mv.to).unwrap();
-        let mut cell = next.cells[from].take().unwrap();
+        let mut cell = next.cells[from].unwrap();
+        next.set_cell(from, None);
         if mv.promotion {
             cell.piece = Self::def(cell).promotion.unwrap();
         }
-        next.cells[to] = Some(cell);
+        next.set_cell(to, Some(cell));
         next.side ^= 1;
         next
     }
@@ -449,7 +486,7 @@ impl<R: CaptureRoyalRule> Position<R> {
 pub struct Game<R: CaptureRoyalRule> {
     pub history: Vec<Position<R>>,
 }
-impl<R: CaptureRoyalRule> Game<R> {
+impl<R: CaptureRoyalRule<State = RuleState>> Game<R> {
     pub fn parse(json: &str) -> Result<Self, String> {
         let req: PositionRequest = serde_json::from_str(json).map_err(|e| e.to_string())?;
         if req.schema_version != 1 || req.rule_id != R::ID {
@@ -499,6 +536,9 @@ impl<R: CaptureRoyalRule> Game<R> {
             return Err("history must end at position".into());
         }
         Ok(game)
+    }
+    pub fn position_hash(&self) -> u64 {
+        self.current().hash()
     }
     pub fn current(&self) -> &Position<R> {
         self.history.last().unwrap()
@@ -617,238 +657,29 @@ pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
     Ok(serde_json::json!({"nodes":nodes,"elapsedMs":elapsed,"nps":(nodes as f64*1000./elapsed.max(0.001)) as u64}).to_string())
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchResult {
-    pub schema_version: u8,
-    pub best_move: Option<JsonMove>,
-    pub completed_depth: u8,
-    pub timed_out: bool,
-    pub node_limit_reached: bool,
-    pub elapsed_ms: f64,
-    pub states: u64,
-    pub nps: u64,
-    pub score: i32,
-    pub outcome: Outcome,
-}
-#[derive(Clone, Copy)]
-struct Entry {
-    depth: u8,
-    score: i32,
-    bound: u8,
-    best: Option<JsonMove>,
-}
-struct Search {
-    start: Instant,
-    timeout_ms: u32,
-    limit: u64,
-    nodes: u64,
-    stopped: bool,
-    tt: HashMap<u64, Entry>,
-}
-impl Search {
-    fn expired(&mut self) -> bool {
-        if self.nodes >= self.limit
-            || self.start.elapsed().as_millis() >= u128::from(self.timeout_ms)
-        {
-            self.stopped = true;
-        }
-        self.stopped
-    }
-    fn ordered<R: CaptureRoyalRule>(&self, g: &Game<R>, best: Option<JsonMove>) -> Vec<JsonMove> {
-        let p = g.current();
-        let mut moves = p.moves();
-        moves.sort_by_cached_key(|m| {
-            let victim = p.cells[Position::<R>::index(m.to).unwrap()]
-                .map_or(0, |c| Position::<R>::def(c).value);
-            -(if Some(*m) == best { 100_000 } else { 0 }
-                + victim * 10
-                + if m.promotion { 500 } else { 0 })
-        });
-        moves
-    }
-    fn terminal<R: CaptureRoyalRule>(&self, g: &Game<R>, ply: i32) -> Option<i32> {
-        let outcome = g.outcome();
-        if outcome == Outcome::ONGOING {
-            None
-        } else {
-            Some(outcome.winner.map_or(0, |w| {
-                if w == g.current().side {
-                    MATE - ply
-                } else {
-                    -MATE + ply
-                }
-            }))
-        }
-    }
-    fn qsearch<R: CaptureRoyalRule>(
-        &mut self,
-        g: &mut Game<R>,
-        mut alpha: i32,
-        beta: i32,
-        left: u8,
-        ply: i32,
-    ) -> i32 {
-        if self.expired() {
-            return 0;
-        }
-        self.nodes += 1;
-        if let Some(v) = self.terminal(g, ply) {
-            return v;
-        }
-        let stand = g.current().evaluate();
-        if stand >= beta {
-            return stand;
-        }
-        alpha = alpha.max(stand);
-        if left == 0 {
-            return alpha;
-        }
-        for mv in self.ordered(g, None) {
-            if g.current().cells[Position::<R>::index(mv.to).unwrap()].is_none() && !mv.promotion {
-                continue;
-            }
-            g.push(mv);
-            let v = -self.qsearch(g, -beta, -alpha, left - 1, ply + 1);
-            g.history.pop();
-            if self.stopped {
-                return 0;
-            }
-            if v >= beta {
-                return v;
-            }
-            alpha = alpha.max(v);
-        }
-        alpha
-    }
-    fn negamax<R: CaptureRoyalRule>(
-        &mut self,
-        g: &mut Game<R>,
-        depth: u8,
-        mut alpha: i32,
-        beta: i32,
-        ply: i32,
-    ) -> (i32, Option<JsonMove>) {
-        if self.expired() {
-            return (0, None);
-        }
-        self.nodes += 1;
-        if let Some(v) = self.terminal(g, ply) {
-            return (v, None);
-        }
-        if depth == 0 {
-            return (self.qsearch(g, alpha, beta, 4, ply), None);
-        }
-        let key = g.context_key();
-        let entry = self.tt.get(&key).copied();
-        let original = alpha;
-        if let Some(e) = entry
-            && e.depth >= depth
-            && (e.bound == 0 || e.bound == 1 && e.score >= beta || e.bound == 2 && e.score <= alpha)
-        {
-            return (e.score, e.best);
-        }
-        let moves = self.ordered(g, entry.and_then(|e| e.best));
-        if moves.is_empty() {
-            return (g.current().evaluate(), None);
-        }
-        let mut score = -MATE - 1;
-        let mut best = None;
-        for mv in moves {
-            g.push(mv);
-            let value = -self.negamax(g, depth - 1, -beta, -alpha, ply + 1).0;
-            g.history.pop();
-            if self.stopped {
-                return (0, None);
-            }
-            if value > score {
-                score = value;
-                best = Some(mv);
-            }
-            alpha = alpha.max(value);
-            if alpha >= beta {
-                break;
-            }
-        }
-        if self.tt.len() >= 65_536 {
-            self.tt.clear();
-        }
-        self.tt.insert(
-            key,
-            Entry {
-                depth,
-                score,
-                bound: if score <= original {
-                    2
-                } else if score >= beta {
-                    1
-                } else {
-                    0
-                },
-                best,
-            },
-        );
-        (score, best)
-    }
-}
+mod search;
+pub use search::SearchResult;
 pub fn search_json(
     json: &str,
     max_depth: u8,
     timeout_ms: u32,
     node_budget: u32,
 ) -> Result<String, String> {
-    if max_depth == 0 || max_depth > 100 || timeout_ms == 0 {
-        return Err("depth must be 1..100 and timeoutMs must be positive".into());
-    }
     let mut game = ShoGame::parse(json)?;
-    let outcome = game.outcome();
-    let fallback = game.moves().first().copied();
-    let mut search = Search {
-        start: Instant::now(),
-        timeout_ms,
-        limit: if node_budget == 0 {
-            u64::MAX
-        } else {
-            u64::from(node_budget)
-        },
-        nodes: 0,
-        stopped: false,
-        tt: HashMap::new(),
-    };
-    let mut best_move = fallback;
-    let mut completed_depth = 0;
-    let mut score = search
-        .terminal(&game, 0)
-        .unwrap_or_else(|| game.current().evaluate());
-    if outcome == Outcome::ONGOING && fallback.is_some() {
-        for depth in 1..=max_depth {
-            let (v, mv) = search.negamax(&mut game, depth, -MATE - 1, MATE + 1, 0);
-            if search.stopped {
-                break;
-            }
-            score = v;
-            best_move = mv;
-            completed_depth = depth;
-            if score.abs() >= MATE - i32::from(depth) {
-                break;
-            }
-        }
-    }
-    let elapsed_ms = search.start.elapsed().as_secs_f64() * 1000.;
-    serde_json::to_string(&SearchResult {
-        schema_version: 1,
-        best_move,
-        completed_depth,
-        timed_out: search.stopped && elapsed_ms >= f64::from(timeout_ms),
-        node_limit_reached: search.stopped && search.nodes >= search.limit,
-        elapsed_ms,
-        states: search.nodes,
-        nps: (search.nodes as f64 * 1000. / elapsed_ms.max(0.001)) as u64,
-        score,
-        outcome,
-    })
-    .map_err(|e| e.to_string())
+    search::search_json(&mut game, max_depth, timeout_ms, node_budget)
 }
-
+#[cfg(feature = "chushogi")]
+pub mod chu;
+#[cfg(feature = "shoshogi")]
+pub mod compiled {
+    pub use super::{
+        PROTOCOL, ShoGame as CompiledGame, apply_move_json, inspect_json, legal_moves_json,
+        perft_json, search_json, start_position_json, validate_position_json,
+    };
+    pub const NAME: &str = "shoshogi";
+    pub const RULE_ID: u32 = 43;
+}
+#[cfg(feature = "chushogi")]
+pub use chu as compiled;
 #[cfg(test)]
 mod tests;
