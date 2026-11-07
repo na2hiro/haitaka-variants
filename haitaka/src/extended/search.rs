@@ -1,4 +1,4 @@
-//! Search over completed turns, shared by the v1 and v2 rule backends.
+//! Search over completed turns, shared by the v1, v2 and v3 rule backends.
 use super::{Game, JsonMove, MATE, Outcome, Position, Shoshogi};
 use instant::Instant;
 use serde::Serialize;

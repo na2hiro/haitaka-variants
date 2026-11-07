@@ -288,7 +288,11 @@ compile_error!("hand-category is internal; select a concrete rule");
 pub mod extended;
 
 #[cfg(all(
-    any(feature = "shoshogi", feature = "chushogi"),
+    any(
+        feature = "shoshogi",
+        feature = "chushogi",
+        feature = "classical-rules"
+    ),
     any(
         feature = "variant-board",
         feature = "annan",
@@ -308,3 +312,15 @@ pub mod extended;
 compile_error!("extended rules cannot be combined with another ruleset");
 #[cfg(all(feature = "shoshogi", feature = "chushogi"))]
 compile_error!("select exactly one extended ruleset");
+
+#[cfg(feature = "extended-rules")]
+const _: () = assert!(
+    (cfg!(feature = "shoshogi") as u8
+        + cfg!(feature = "chushogi") as u8
+        + cfg!(feature = "torishogi") as u8
+        + cfg!(feature = "washogi") as u8
+        + cfg!(feature = "heian-dai") as u8
+        + cfg!(feature = "daishogi") as u8)
+        <= 1,
+    "select exactly one extended ruleset"
+);

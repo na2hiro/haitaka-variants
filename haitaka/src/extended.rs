@@ -24,7 +24,7 @@ const DIAG: &[(isize, isize)] = &[(-1, -1), (1, -1), (-1, 1), (1, 1)];
 const ORTH: &[(isize, isize)] = &[(0, -1), (-1, 0), (1, 0), (0, 1)];
 const ELEPHANT: &[(isize, isize)] = &[(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (1, 1)];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PieceId(pub u16);
 /// Identity, movement, promotion, inventory origin and royal role are rule-local.
 pub struct PieceDef {
@@ -79,31 +79,118 @@ const SHO_PIECES: &[PieceDef] = &[
     piece!("cg", KING, &[], None, 8, true, 0, 2100),
 ];
 
-/// This backend currently implements discard captures, ordinary promotion, and loss
-/// when every royal is captured. Check exposure is legal. Other policies must get
-/// explicit implementations, rather than silently using these semantics.
+/// Rule-local state that contributes to repetition and search identity.
 pub trait PositionState:
     Clone + Default + core::fmt::Debug + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
 {
     fn hash_bytes(&self, add: &mut impl FnMut(u8));
+    fn senjishi(&self) -> bool {
+        false
+    }
+    fn set_senjishi(&mut self, value: bool) {
+        debug_assert!(!value);
+    }
 }
 impl PositionState for RuleState {
     fn hash_bytes(&self, _add: &mut impl FnMut(u8)) {}
 }
+/// Rule-local reserve storage; discard games carry no hand allocation.
+pub trait Reserve: Clone + Default + core::fmt::Debug + PartialEq + Eq {
+    const ENABLED: bool;
+    fn count(&self, color: u8, piece: PieceId) -> u16;
+    fn set(&mut self, color: u8, piece: PieceId, count: u16);
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NoHands;
+impl Reserve for NoHands {
+    const ENABLED: bool = false;
+    fn count(&self, _color: u8, _piece: PieceId) -> u16 {
+        0
+    }
+    fn set(&mut self, _color: u8, _piece: PieceId, count: u16) {
+        assert_eq!(count, 0);
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Hands<const N: usize>([[u16; N]; 2]);
+impl<const N: usize> Default for Hands<N> {
+    fn default() -> Self {
+        Self([[0; N]; 2])
+    }
+}
+impl<const N: usize> Reserve for Hands<N> {
+    const ENABLED: bool = true;
+    fn count(&self, color: u8, piece: PieceId) -> u16 {
+        self.0[color as usize]
+            .get(piece.0 as usize)
+            .copied()
+            .unwrap_or(0)
+    }
+    fn set(&mut self, color: u8, piece: PieceId, count: u16) {
+        self.0[color as usize][piece.0 as usize] = count;
+    }
+}
+pub trait Placement:
+    Clone + core::fmt::Debug + PartialEq + Eq + Serialize + for<'de> Deserialize<'de>
+{
+    fn at(&self) -> [u16; 2];
+    fn piece(&self) -> &str;
+    fn color(&self) -> u8;
+    fn origin(&self) -> Option<&str>;
+    fn make(at: [u16; 2], piece: &str, color: u8, origin: Option<&str>) -> Self;
+}
+impl Placement for PlacedPiece {
+    fn at(&self) -> [u16; 2] {
+        self.at
+    }
+    fn piece(&self) -> &str {
+        &self.piece
+    }
+    fn color(&self) -> u8 {
+        self.color
+    }
+    fn origin(&self) -> Option<&str> {
+        None
+    }
+    fn make(at: [u16; 2], piece: &str, color: u8, origin: Option<&str>) -> Self {
+        assert!(origin.is_none());
+        Self {
+            at,
+            piece: piece.into(),
+            color,
+        }
+    }
+}
 pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     type Geometry: BoardGeometry + Clone + core::fmt::Debug + PartialEq + Eq;
     type State: PositionState;
+    type Hands: Reserve;
+    type Placement: Placement;
+    fn origin(_piece: PieceId) -> Option<&'static str> {
+        None
+    }
+    fn capture_return(_piece: PieceId) -> Option<PieceId> {
+        None
+    }
+    fn file_limit(_piece: PieceId) -> usize {
+        0
+    }
+    fn ray_limit(_piece: PieceId, _dx: isize, _dy: isize) -> Option<usize> {
+        None
+    }
     const ID: u32;
     const PIECES: &'static [PieceDef];
     const INVENTORY: &'static [usize];
     const PROMOTION_RANKS: usize;
-    fn initial() -> Vec<PlacedPiece>;
+    fn initial() -> Vec<Self::Placement>;
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Shoshogi;
 impl CaptureRoyalRule for Shoshogi {
     type Geometry = Rect<9, 9>;
     type State = RuleState;
+    type Hands = NoHands;
+    type Placement = PlacedPiece;
     const ID: u32 = 43;
     const PIECES: &'static [PieceDef] = SHO_PIECES;
     const INVENTORY: &'static [usize] = &[9, 2, 2, 2, 1, 1, 2, 1, 1];
@@ -157,9 +244,9 @@ pub struct PlacedPiece {
 pub struct RuleState {}
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct WirePosition<S = RuleState> {
+pub struct WirePosition<S = RuleState, P = PlacedPiece> {
     pub side_to_move: u8,
-    pub pieces: Vec<PlacedPiece>,
+    pub pieces: Vec<P>,
     pub hands: [BTreeMap<String, u16>; 2],
     pub state: S,
 }
@@ -190,6 +277,7 @@ pub struct Position<R: CaptureRoyalRule> {
     cells: Vec<Option<Cell>>,
     side: u8,
     state: R::State,
+    hands: R::Hands,
     occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
     rule: PhantomData<R>,
 }
@@ -239,53 +327,81 @@ impl<R: CaptureRoyalRule> Position<R> {
             R::Geometry::HEIGHT - 1 - y
         }
     }
-    pub fn from_wire(wire: &WirePosition<R::State>) -> Result<Self, String> {
+    pub fn from_wire(wire: &WirePosition<R::State, R::Placement>) -> Result<Self, String> {
         if wire.side_to_move > 1 {
             return Err("sideToMove must be 0 or 1".into());
         }
-        if wire.hands.iter().any(|h| !h.is_empty()) {
+        if !R::Hands::ENABLED && wire.hands.iter().any(|h| !h.is_empty()) {
             return Err("this rule has no hands; hands must be [{},{}]".into());
         }
         let mut pos = Self {
             cells: vec![None; R::Geometry::SQUARES],
             side: wire.side_to_move,
             state: wire.state.clone(),
+            hands: R::Hands::default(),
             occupied: [<R::Geometry as BoardGeometry>::Bits::EMPTY; 2],
             rule: PhantomData,
         };
         let mut count = vec![vec![0; R::INVENTORY.len()]; 2];
         for p in &wire.pieces {
-            if p.color > 1 {
+            let (at, piece, color, origin) = (p.at(), p.piece(), p.color(), p.origin());
+            if color > 1 {
                 return Err("piece color must be 0 or 1".into());
             }
             let id = R::PIECES
                 .iter()
-                .position(|d| d.id == p.piece)
-                .ok_or_else(|| format!("unknown piece ID: {}", p.piece))?;
-            let i = Self::index(p.at)?;
+                .enumerate()
+                .position(|(i, d)| d.id == piece && R::origin(PieceId(i as u16)) == origin)
+                .ok_or_else(|| format!("unknown piece ID or origin: {piece} {origin:?}"))?;
+            let i = Self::index(at)?;
             if pos.cells[i].is_some() {
                 return Err("duplicate square".into());
             }
             let def = &R::PIECES[id];
-            if pos.relative_rank(i, p.color) < def.dead_ranks {
+            if pos.relative_rank(i, color) < def.dead_ranks {
                 return Err("unpromoted piece on a dead rank".into());
             }
-            count[p.color as usize][def.base] += 1;
-            if count[p.color as usize][def.base] > R::INVENTORY[def.base] {
-                return Err(format!("piece inventory exceeded: {}", p.piece));
+            count[color as usize][def.base] += 1;
+            pos.set_cell(
+                i,
+                Some(Cell {
+                    piece: PieceId(id as u16),
+                    color,
+                }),
+            );
+        }
+        for color in 0..2u8 {
+            for (species, &amount) in &wire.hands[color as usize] {
+                let id = R::PIECES
+                    .iter()
+                    .enumerate()
+                    .find(|(i, d)| {
+                        d.id == species
+                            && R::origin(PieceId(*i as u16)).is_none()
+                            && R::capture_return(PieceId(*i as u16)) == Some(PieceId(*i as u16))
+                    })
+                    .map(|(i, _)| PieceId(i as u16))
+                    .ok_or_else(|| format!("unknown or non-droppable hand piece: {species}"))?;
+                pos.hands.set(color, id, amount);
+                count[color as usize][R::PIECES[id.0 as usize].base] += usize::from(amount);
             }
-            pos.occupied[p.color as usize] = pos.occupied[p.color as usize].with(i);
-            pos.cells[i] = Some(Cell {
-                piece: PieceId(id as u16),
-                color: p.color,
-            });
+        }
+        for (base, &initial) in R::INVENTORY.iter().enumerate() {
+            let exceeded = if R::Hands::ENABLED {
+                count[0][base] + count[1][base] > initial * 2
+            } else {
+                count.iter().any(|c| c[base] > initial)
+            };
+            if exceeded {
+                return Err(format!("piece inventory exceeded for base {base}"));
+            }
         }
         if pos.royals(0) == 0 && pos.royals(1) == 0 {
             return Err("both sides lack every royal".into());
         }
         Ok(pos)
     }
-    pub fn to_wire(&self) -> WirePosition<R::State> {
+    pub fn to_wire(&self) -> WirePosition<R::State, R::Placement> {
         WirePosition {
             side_to_move: self.side,
             pieces: self
@@ -293,14 +409,26 @@ impl<R: CaptureRoyalRule> Position<R> {
                 .iter()
                 .enumerate()
                 .filter_map(|(i, c)| {
-                    c.map(|c| PlacedPiece {
-                        at: Self::at(i),
-                        piece: Self::def(c).id.into(),
-                        color: c.color,
+                    c.map(|c| {
+                        R::Placement::make(
+                            Self::at(i),
+                            Self::def(c).id,
+                            c.color,
+                            R::origin(c.piece),
+                        )
                     })
                 })
                 .collect(),
-            hands: Default::default(),
+            hands: std::array::from_fn(|color| {
+                R::PIECES
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(id, def)| {
+                        let count = self.hands.count(color as u8, PieceId(id as u16));
+                        (count > 0).then(|| (def.id.to_string(), count))
+                    })
+                    .collect()
+            }),
             state: self.state.clone(),
         }
     }
@@ -345,7 +473,31 @@ impl<R: CaptureRoyalRule> Position<R> {
                     for b in Self::def(*c).id.bytes() {
                         add(b);
                     }
+                    if let Some(origin) = R::origin(c.piece) {
+                        add(254);
+                        for b in origin.bytes() {
+                            add(b);
+                        }
+                    }
                     add(0);
+                }
+            }
+        }
+        if R::Hands::ENABLED {
+            add(255);
+            for color in 0..2u8 {
+                for (id, def) in R::PIECES.iter().enumerate() {
+                    let count = self.hands.count(color, PieceId(id as u16));
+                    if count > 0 {
+                        add(color + 1);
+                        for b in def.id.bytes() {
+                            add(b);
+                        }
+                        add(0);
+                        for b in count.to_le_bytes() {
+                            add(b);
+                        }
+                    }
                 }
             }
         }
@@ -367,6 +519,22 @@ impl<R: CaptureRoyalRule> Position<R> {
         }
         let blockers = self.occupied[0].union(self.occupied[1]);
         for &(x, y) in def.rays {
+            if let Some(limit) = R::ray_limit(cell.piece, x, y) {
+                let mut current = from;
+                for _ in 0..limit {
+                    let Some(to) = R::Geometry::offset(current, x * sign, y * sign) else {
+                        break;
+                    };
+                    if include_friendly || self.cells[to].is_none_or(|c| c.color != cell.color) {
+                        out.push(to);
+                    }
+                    if blockers.contains(to) {
+                        break;
+                    }
+                    current = to;
+                }
+                continue;
+            }
             let mut ray = R::Geometry::ray(
                 from,
                 x * sign,
@@ -398,7 +566,7 @@ impl<R: CaptureRoyalRule> Position<R> {
     }
     pub fn moves(&self) -> Vec<JsonMove>
     where
-        R: CaptureRoyalRule<State = RuleState>,
+        R: CaptureRoyalRule<State = RuleState, Placement = PlacedPiece>,
     {
         if self.capture_outcome() != Outcome::ONGOING {
             return vec![];
@@ -447,7 +615,7 @@ impl<R: CaptureRoyalRule> Position<R> {
     }
     fn play_unchecked(&self, mv: JsonMove) -> Self
     where
-        R: CaptureRoyalRule<State = RuleState>,
+        R: CaptureRoyalRule<State = RuleState, Placement = PlacedPiece>,
     {
         let mut next = self.clone();
         let from = Self::index(mv.from).unwrap();
@@ -478,7 +646,20 @@ impl<R: CaptureRoyalRule> Position<R> {
                 })
             })
             .sum();
-        sum.clamp(-MATE + 1000, MATE - 1000)
+        let reserve: i32 = (0..2u8)
+            .map(|color| {
+                R::PIECES
+                    .iter()
+                    .enumerate()
+                    .map(|(id, d)| {
+                        i32::from(self.hands.count(color, PieceId(id as u16)))
+                            * d.value
+                            * if color == self.side { 1 } else { -1 }
+                    })
+                    .sum::<i32>()
+            })
+            .sum();
+        (sum + reserve).clamp(-MATE + 1000, MATE - 1000)
     }
 }
 
@@ -486,7 +667,7 @@ impl<R: CaptureRoyalRule> Position<R> {
 pub struct Game<R: CaptureRoyalRule> {
     pub history: Vec<Position<R>>,
 }
-impl<R: CaptureRoyalRule<State = RuleState>> Game<R> {
+impl<R: CaptureRoyalRule<State = RuleState, Placement = PlacedPiece>> Game<R> {
     pub fn parse(json: &str) -> Result<Self, String> {
         let req: PositionRequest = serde_json::from_str(json).map_err(|e| e.to_string())?;
         if req.schema_version != 1 || req.rule_id != R::ID {
@@ -657,6 +838,7 @@ pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
     Ok(serde_json::json!({"nodes":nodes,"elapsedMs":elapsed,"nps":(nodes as f64*1000./elapsed.max(0.001)) as u64}).to_string())
 }
 
+pub mod path;
 mod search;
 pub use search::SearchResult;
 pub fn search_json(
@@ -683,3 +865,13 @@ pub mod compiled {
 pub use chu as compiled;
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "classical-rules")]
+pub mod classical;
+#[cfg(any(
+    feature = "torishogi",
+    feature = "washogi",
+    feature = "heian-dai",
+    feature = "daishogi"
+))]
+pub use classical::compiled;
