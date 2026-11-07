@@ -567,7 +567,7 @@ impl SearchContext<'_> {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub struct SearchResult {
     best_move: Option<String>,
     root_result: SearchRootResult,
@@ -579,171 +579,171 @@ pub struct SearchResult {
     qsearch_stats: SearchQsearchStats,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 impl SearchResult {
-    #[wasm_bindgen(getter, js_name = bestMove)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = bestMove))]
     pub fn best_move(&self) -> Option<String> {
         self.best_move.clone()
     }
 
-    #[wasm_bindgen(getter, js_name = playMoveBestSoFar)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = playMoveBestSoFar))]
     pub fn play_move_best_so_far(&self) -> Option<String> {
         self.root_result.play_move_best_so_far.clone()
     }
 
-    #[wasm_bindgen(getter, js_name = playMoveWasSearched)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = playMoveWasSearched))]
     pub fn play_move_was_searched(&self) -> bool {
         self.root_result.play_move_was_searched
     }
 
-    #[wasm_bindgen(getter, js_name = lastCompletedIterationValue)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = lastCompletedIterationValue))]
     pub fn last_completed_iteration_value(&self) -> Option<i32> {
         self.root_result.last_completed_iteration_value
     }
 
-    #[wasm_bindgen(getter, js_name = completedIterationDepth)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = completedIterationDepth))]
     pub fn completed_iteration_depth(&self) -> u32 {
         u32::from(self.root_result.completed_iteration_depth)
     }
 
-    #[wasm_bindgen(getter, js_name = completedRootMovesInInterruptedIteration)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = completedRootMovesInInterruptedIteration))]
     pub fn completed_root_moves_in_interrupted_iteration(&self) -> u32 {
         self.root_result
             .completed_root_moves_in_interrupted_iteration
     }
 
-    #[wasm_bindgen(getter, js_name = partialRootState)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = partialRootState))]
     pub fn partial_root_state(&self) -> bool {
         self.root_result.partial_root_state
     }
 
-    #[wasm_bindgen(getter, js_name = interruptionReason)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = interruptionReason))]
     pub fn interruption_reason(&self) -> String {
         self.root_result.interruption_reason.as_str().to_string()
     }
 
-    #[wasm_bindgen(getter, js_name = emergencyFallbackUsed)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = emergencyFallbackUsed))]
     pub fn emergency_fallback_used(&self) -> bool {
         self.root_result.emergency_fallback_used
     }
 
-    #[wasm_bindgen(getter, js_name = missingMove)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = missingMove))]
     pub fn missing_move(&self) -> bool {
         self.root_result.missing_move
     }
 
-    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = elapsedMs))]
     pub fn elapsed_ms(&self) -> f64 {
         self.elapsed_ms
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn states(&self) -> f64 {
         self.states as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn nps(&self) -> f64 {
         self.nps
     }
 
-    #[wasm_bindgen(getter, js_name = ttProbes)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttProbes))]
     pub fn tt_probes(&self) -> f64 {
         self.tt_stats.tt_probes as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttHits))]
     pub fn tt_hits(&self) -> f64 {
         self.tt_stats.tt_hits as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttCutoffs))]
     pub fn tt_cutoffs(&self) -> f64 {
         self.tt_stats.tt_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttStores)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttStores))]
     pub fn tt_stores(&self) -> f64 {
         self.tt_stats.tt_stores as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttCollisions))]
     pub fn tt_collisions(&self) -> f64 {
         self.tt_stats.tt_collisions as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttHashfull)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttHashfull))]
     pub fn tt_hashfull(&self) -> f64 {
         self.tt_stats.tt_hashfull as f64
     }
 
-    #[wasm_bindgen(getter, js_name = betaCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = betaCutoffs))]
     pub fn beta_cutoffs(&self) -> f64 {
         self.ordering_stats.beta_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = firstMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = firstMoveCutoffs))]
     pub fn first_move_cutoffs(&self) -> f64 {
         self.ordering_stats.first_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = hashMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = hashMoveTries))]
     pub fn hash_move_tries(&self) -> f64 {
         self.ordering_stats.hash_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = hashMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = hashMoveCutoffs))]
     pub fn hash_move_cutoffs(&self) -> f64 {
         self.ordering_stats.hash_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = killerMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = killerMoveTries))]
     pub fn killer_move_tries(&self) -> f64 {
         self.ordering_stats.killer_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = killerMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = killerMoveCutoffs))]
     pub fn killer_move_cutoffs(&self) -> f64 {
         self.ordering_stats.killer_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = historyMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = historyMoveTries))]
     pub fn history_move_tries(&self) -> f64 {
         self.ordering_stats.history_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = historyMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = historyMoveCutoffs))]
     pub fn history_move_cutoffs(&self) -> f64 {
         self.ordering_stats.history_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn qnodes(&self) -> f64 {
         self.qsearch_stats.qnodes as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchMaxPly)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchMaxPly))]
     pub fn qsearch_max_ply(&self) -> u32 {
         u32::from(self.qsearch_stats.qsearch_max_ply)
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchCapHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchCapHits))]
     pub fn qsearch_cap_hits(&self) -> f64 {
         self.qsearch_stats.qsearch_cap_hits as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchCheckMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchCheckMoveTries))]
     pub fn qsearch_check_move_tries(&self) -> f64 {
         self.qsearch_stats.qsearch_check_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchDeltaPrunes)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchDeltaPrunes))]
     pub fn qsearch_delta_prunes(&self) -> f64 {
         self.qsearch_stats.qsearch_delta_prunes as f64
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub struct IterativeSearchResult {
     best_move: Option<String>,
     root_result: SearchRootResult,
@@ -759,180 +759,180 @@ pub struct IterativeSearchResult {
     dfpn: Option<DfpnSummary>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 impl IterativeSearchResult {
-    #[wasm_bindgen(getter, js_name = bestMove)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = bestMove))]
     pub fn best_move(&self) -> Option<String> {
         self.best_move.clone()
     }
 
-    #[wasm_bindgen(getter, js_name = playMoveBestSoFar)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = playMoveBestSoFar))]
     pub fn play_move_best_so_far(&self) -> Option<String> {
         self.root_result.play_move_best_so_far.clone()
     }
 
-    #[wasm_bindgen(getter, js_name = playMoveWasSearched)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = playMoveWasSearched))]
     pub fn play_move_was_searched(&self) -> bool {
         self.root_result.play_move_was_searched
     }
 
-    #[wasm_bindgen(getter, js_name = lastCompletedIterationValue)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = lastCompletedIterationValue))]
     pub fn last_completed_iteration_value(&self) -> Option<i32> {
         self.root_result.last_completed_iteration_value
     }
 
-    #[wasm_bindgen(getter, js_name = completedRootMovesInInterruptedIteration)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = completedRootMovesInInterruptedIteration))]
     pub fn completed_root_moves_in_interrupted_iteration(&self) -> u32 {
         self.root_result
             .completed_root_moves_in_interrupted_iteration
     }
 
-    #[wasm_bindgen(getter, js_name = partialRootState)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = partialRootState))]
     pub fn partial_root_state(&self) -> bool {
         self.root_result.partial_root_state
     }
 
-    #[wasm_bindgen(getter, js_name = interruptionReason)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = interruptionReason))]
     pub fn interruption_reason(&self) -> String {
         self.root_result.interruption_reason.as_str().to_string()
     }
 
-    #[wasm_bindgen(getter, js_name = emergencyFallbackUsed)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = emergencyFallbackUsed))]
     pub fn emergency_fallback_used(&self) -> bool {
         self.root_result.emergency_fallback_used
     }
 
-    #[wasm_bindgen(getter, js_name = missingMove)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = missingMove))]
     pub fn missing_move(&self) -> bool {
         self.root_result.missing_move
     }
 
-    #[wasm_bindgen(getter, js_name = completedDepth)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = completedDepth))]
     pub fn completed_depth(&self) -> u32 {
         u32::from(self.completed_depth)
     }
 
-    #[wasm_bindgen(getter, js_name = completedIterationDepth)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = completedIterationDepth))]
     pub fn completed_iteration_depth(&self) -> u32 {
         u32::from(self.root_result.completed_iteration_depth)
     }
 
-    #[wasm_bindgen(getter, js_name = timedOut)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = timedOut))]
     pub fn timed_out(&self) -> bool {
         self.timed_out
     }
 
-    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = elapsedMs))]
     pub fn elapsed_ms(&self) -> f64 {
         self.elapsed_ms
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn states(&self) -> f64 {
         self.states as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn nps(&self) -> f64 {
         self.nps
     }
 
-    #[wasm_bindgen(getter, js_name = ttProbes)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttProbes))]
     pub fn tt_probes(&self) -> f64 {
         self.tt_stats.tt_probes as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttHits))]
     pub fn tt_hits(&self) -> f64 {
         self.tt_stats.tt_hits as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttCutoffs))]
     pub fn tt_cutoffs(&self) -> f64 {
         self.tt_stats.tt_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttStores)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttStores))]
     pub fn tt_stores(&self) -> f64 {
         self.tt_stats.tt_stores as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttCollisions))]
     pub fn tt_collisions(&self) -> f64 {
         self.tt_stats.tt_collisions as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttHashfull)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttHashfull))]
     pub fn tt_hashfull(&self) -> f64 {
         self.tt_stats.tt_hashfull as f64
     }
 
-    #[wasm_bindgen(getter, js_name = betaCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = betaCutoffs))]
     pub fn beta_cutoffs(&self) -> f64 {
         self.ordering_stats.beta_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = firstMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = firstMoveCutoffs))]
     pub fn first_move_cutoffs(&self) -> f64 {
         self.ordering_stats.first_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = hashMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = hashMoveTries))]
     pub fn hash_move_tries(&self) -> f64 {
         self.ordering_stats.hash_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = hashMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = hashMoveCutoffs))]
     pub fn hash_move_cutoffs(&self) -> f64 {
         self.ordering_stats.hash_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = killerMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = killerMoveTries))]
     pub fn killer_move_tries(&self) -> f64 {
         self.ordering_stats.killer_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = killerMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = killerMoveCutoffs))]
     pub fn killer_move_cutoffs(&self) -> f64 {
         self.ordering_stats.killer_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter, js_name = historyMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = historyMoveTries))]
     pub fn history_move_tries(&self) -> f64 {
         self.ordering_stats.history_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = historyMoveCutoffs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = historyMoveCutoffs))]
     pub fn history_move_cutoffs(&self) -> f64 {
         self.ordering_stats.history_move_cutoffs as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn qnodes(&self) -> f64 {
         self.qsearch_stats.qnodes as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchMaxPly)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchMaxPly))]
     pub fn qsearch_max_ply(&self) -> u32 {
         u32::from(self.qsearch_stats.qsearch_max_ply)
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchCapHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchCapHits))]
     pub fn qsearch_cap_hits(&self) -> f64 {
         self.qsearch_stats.qsearch_cap_hits as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchCheckMoveTries)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchCheckMoveTries))]
     pub fn qsearch_check_move_tries(&self) -> f64 {
         self.qsearch_stats.qsearch_check_move_tries as f64
     }
 
-    #[wasm_bindgen(getter, js_name = qsearchDeltaPrunes)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = qsearchDeltaPrunes))]
     pub fn qsearch_delta_prunes(&self) -> f64 {
         self.qsearch_stats.qsearch_delta_prunes as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn iterations(&self) -> js_sys::Array {
         let array = js_sys::Array::new();
         for iteration in &self.iterations {
@@ -941,7 +941,7 @@ impl IterativeSearchResult {
         array
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn dfpn(&self) -> JsValue {
         self.dfpn
             .as_ref()
@@ -950,7 +950,7 @@ impl IterativeSearchResult {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub struct PerftResult {
     elapsed_ms: f64,
     nodes: u64,
@@ -1139,25 +1139,25 @@ fn dfpn_summary_to_js_value(summary: &DfpnSummary) -> JsValue {
     object.into()
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 impl PerftResult {
-    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = elapsedMs))]
     pub fn elapsed_ms(&self) -> f64 {
         self.elapsed_ms
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn nodes(&self) -> f64 {
         self.nodes as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn nps(&self) -> f64 {
         self.nps
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub struct DfpnResult {
     status: String,
     pv: Vec<String>,
@@ -1171,14 +1171,14 @@ pub struct DfpnResult {
     interruption_reason: Option<String>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 impl DfpnResult {
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn status(&self) -> String {
         self.status.clone()
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn pv(&self) -> js_sys::Array {
         let array = js_sys::Array::new();
         for mv in &self.pv {
@@ -1187,42 +1187,42 @@ impl DfpnResult {
         array
     }
 
-    #[wasm_bindgen(getter, js_name = elapsedMs)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = elapsedMs))]
     pub fn elapsed_ms(&self) -> f64 {
         self.elapsed_ms
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn nodes(&self) -> f64 {
         self.nodes as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttHits))]
     pub fn tt_hits(&self) -> f64 {
         self.tt_hits as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttStores)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttStores))]
     pub fn tt_stores(&self) -> f64 {
         self.tt_stores as f64
     }
 
-    #[wasm_bindgen(getter, js_name = ttCollisions)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = ttCollisions))]
     pub fn tt_collisions(&self) -> f64 {
         self.tt_collisions as f64
     }
 
-    #[wasm_bindgen(getter, js_name = repetitionHits)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = repetitionHits))]
     pub fn repetition_hits(&self) -> f64 {
         self.repetition_hits as f64
     }
 
-    #[wasm_bindgen(getter)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter))]
     pub fn completed(&self) -> bool {
         self.completed
     }
 
-    #[wasm_bindgen(getter, js_name = interruptionReason)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(getter, js_name = interruptionReason))]
     pub fn interruption_reason(&self) -> Option<String> {
         self.interruption_reason.clone()
     }
@@ -3463,55 +3463,55 @@ fn optional_u64_from_f64(name: &str, value: Option<f64>) -> Result<Option<u64>, 
     Ok(Some(value as u64))
 }
 
-#[wasm_bindgen(js_name = best_move)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = best_move))]
 pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
     best_move_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
 }
 
-#[wasm_bindgen(js_name = load_nnue)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = load_nnue))]
 pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
 }
 
-#[wasm_bindgen(js_name = load_sfnn)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = load_sfnn))]
 pub fn load_sfnn(nn_bytes: &[u8], progress_bytes: &[u8], arch: &str) -> Result<String, JsValue> {
     load_sfnn_impl(nn_bytes, progress_bytes, arch).map_err(|err| JsValue::from_str(&err))
 }
 
-#[wasm_bindgen(js_name = set_hash_size_mb)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = set_hash_size_mb))]
 pub fn set_hash_size_mb(size_mb: u32) -> Result<(), JsValue> {
     let size = tt::validate_hash_size_mb(size_mb).map_err(|err| JsValue::from_str(&err))?;
     search_tt_slot().write().unwrap().resize(size);
     Ok(())
 }
 
-#[wasm_bindgen(js_name = clear_hash)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = clear_hash))]
 pub fn clear_hash() {
     search_tt_slot().write().unwrap().clear();
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub struct UsiEngine {
     session: UsiSession,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 impl UsiEngine {
-    #[wasm_bindgen(constructor)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(constructor))]
     pub fn new() -> Self {
         Self {
             session: UsiSession::default(),
         }
     }
 
-    #[wasm_bindgen(js_name = load_nnue)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = load_nnue))]
     pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, JsValue> {
         self.session
             .load_nnue(bytes)
             .map_err(|err| JsValue::from_str(&err))
     }
 
-    #[wasm_bindgen(js_name = load_sfnn)]
+    #[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = load_sfnn))]
     pub fn load_sfnn(
         &mut self,
         nn_bytes: &[u8],
@@ -3547,7 +3547,7 @@ impl Default for UsiEngine {
     }
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
     let summary = search_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))?;
     Ok(SearchResult {
@@ -3562,7 +3562,7 @@ pub fn search(sfen: &str, depth: u8) -> Result<SearchResult, JsValue> {
     })
 }
 
-#[wasm_bindgen(js_name = search_iterative_deepening)]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen(js_name = search_iterative_deepening))]
 pub fn search_iterative_deepening(
     sfen: &str,
     max_depth: u8,
@@ -3586,12 +3586,12 @@ pub fn search_iterative_deepening(
     })
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub fn perft(sfen: &str, depth: u8) -> Result<PerftResult, JsValue> {
     perft_impl(sfen, depth).map_err(|err| JsValue::from_str(&err))
 }
 
-#[wasm_bindgen]
+#[cfg_attr(not(feature = "shoshogi"), wasm_bindgen)]
 pub fn dfpn(
     sfen: &str,
     max_nodes: Option<f64>,
@@ -4321,7 +4321,7 @@ fn search_tt_slot() -> &'static RwLock<TranspositionTable> {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-#[cfg(not(feature = "variant-board"))]
+#[cfg(not(any(feature = "variant-board", feature = "shoshogi")))]
 mod tests {
     use super::*;
     #[cfg(not(any(
@@ -6121,3 +6121,6 @@ mod small_shogi_tests;
 
 #[cfg(all(test, feature = "heian", not(target_arch = "wasm32")))]
 mod heian_tests;
+
+#[cfg(feature = "shoshogi")]
+mod extended;

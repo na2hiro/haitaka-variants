@@ -90,7 +90,7 @@ pub struct SfnnModel {
 impl SfnnModel {
     /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
     pub fn from_bytes(nn: &[u8], progress: &[u8], arch: &str) -> Result<Self, SfnnError> {
-        if !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
+        if cfg!(feature = "shoshogi") || !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
             return Err(invalid(format!(
                 "SFNN_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
                 haitaka::SelectedRule::NAME
@@ -506,7 +506,7 @@ impl<'a> Reader<'a> {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "variant-board"))]
+#[cfg(not(any(feature = "variant-board", feature = "shoshogi")))]
 mod tests {
     use super::*;
     #[test]

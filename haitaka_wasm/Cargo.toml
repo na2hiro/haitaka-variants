@@ -59,3 +59,5 @@ heian = ["variant-board", "haitaka/heian"]
 heian-8x8 = ["compact-board", "scalar64", "heian", "haitaka/heian-8x8"]
 heian-9x8 = ["compact-board", "heian", "haitaka/heian-9x8"]
 heian-9x9 = ["heian", "haitaka/heian-9x9"]
+
+shoshogi = ["haitaka/shoshogi"]

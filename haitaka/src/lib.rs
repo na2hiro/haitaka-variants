@@ -190,3 +190,26 @@ pub mod variant_rules;
 pub use attacks::*;
 pub use board::*;
 pub use slider_moves::*;
+
+#[cfg(feature = "extended-rules")]
+pub mod extended;
+
+#[cfg(all(
+    feature = "shoshogi",
+    any(
+        feature = "variant-board",
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    )
+))]
+compile_error!("shoshogi cannot be combined with another ruleset");
