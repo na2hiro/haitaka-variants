@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "stage": 2,
+  "status": "complete",
+  "date": "2026-11-07",
+  "ruleId": 43,
+  "ruleset": "shoshogi",
+  "protocol": "haitaka-json-v1",
+  "engineCommit": "ee002bb679e047bbfa873d68ff3b43536b7488a0",
+  "frontendCommit": "31eb78eeae16c8b2b41c3e2f49c32c9af6c385bd",
+  "baselineEngineCommit": "3f31d0eaa73c2aa4d708bf5d430cecc2f7507245",
+  "referenceCommit": "c646a1f55e3d5672afc728fa77e5a7c4229b8c97",
+  "referenceCoreLastChangedCommit": "4a80d43f8ecace05464b62091174c0dd95f0f2b9",
+  "reference": {
+    "seed": "0x43cf2026",
+    "positions": 167,
+    "transitions": 4896,
+    "randomPositions": 128,
+    "fixedPositions": 14,
+    "historyPositions": 24
+  },
+  "nativeWasmParity": {
+    "positions": 167,
+    "transitions": 4896,
+    "perftDepth3": 17368,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 1,
+        "from": [
+          1,
+          7
+        ],
+        "to": [
+          1,
+          6
+        ],
+        "promotion": false
+      },
+      "completedDepth": 2,
+      "states": 1000,
+      "score": 0
+    },
+    "wasmBytes": 257365
+  },
+  "independentShogitterPerft": [
+    26,
+    676,
+    17368
+  ],
+  "browser": {
+    "runtime": "Google Chrome 155",
+    "baseURL": "http://localhost:3002",
+    "passed": 4,
+    "scenarios": [
+      "initial AI reply",
+      "elephant promotion to prince and AI reply",
+      "king capture with surviving prince and AI reply",
+      "last royal capture ends game"
+    ]
+  },
+  "rustTests": {
+    "shoshogi": {
+      "passed": 121,
+      "failed": 0,
+      "ignored": 5
+    },
+    "standard": {
+      "passed": 263,
+      "failed": 0,
+      "ignored": 5
+    },
+    "regressions": {
+      "gorogoro-plus": {
+        "passed": 13,
+        "failed": 0,
+        "ignored": 31
+      },
+      "gorogoro": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-8x8": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-9x8": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-9x9": {
+        "passed": 27,
+        "failed": 0,
+        "ignored": 33
+      },
+      "judkins": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "minishogi-kingin": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "minishogi": {
+        "passed": 29,
+        "failed": 0,
+        "ignored": 31
+      }
+    }
+  },
+  "frontendChecks": {
+    "typecheck": "passed",
+    "prettier": "passed",
+    "eslint": "passed",
+    "legacyAndJsonUnitTests": 75,
+    "referenceTestsWithIndependentPerft": 4
+  },
+  "standardNativePerformance": [
+    {
+      "name": "startpos",
+      "nodes": 10000,
+      "beforeMedianMs": 30.3032185,
+      "afterMedianMs": 29.069115,
+      "medianPairedChangePercent": 0.24219715948566867,
+      "searchResultsMatch": true
+    },
+    {
+      "name": "endgame",
+      "nodes": 10000,
+      "beforeMedianMs": 67.005485,
+      "afterMedianMs": 69.2892285,
+      "medianPairedChangePercent": -1.1938896842577928,
+      "searchResultsMatch": true
+    }
+  ],
+  "standardWasmPerformance": [
+    {
+      "name": "startpos",
+      "depth": 4,
+      "nodes": 719731,
+      "beforeMedianMs": 28.34999990463257,
+      "afterMedianMs": 27.850000381469727,
+      "medianPairedChangePercent": -1.879859805767975
+    },
+    {
+      "name": "endgame",
+      "depth": 3,
+      "nodes": 3107043,
+      "beforeMedianMs": 40.90000009536743,
+      "afterMedianMs": 53.84999942779541,
+      "medianPairedChangePercent": -0.34964995070354554
+    }
+  ],
+  "artifacts": {
+    "nativeCli": "target/haitaka-shoshogi",
+    "package": "target/haitaka-variants-shoshogi.tgz",
+    "wasmDirectory": "target/wasm-shoshogi",
+    "wasmSha256": "4c0141ca467bee21cb76f9e83c3bc8926f9c3d122a2d1a03a7e15a1267a562d6",
+    "frontendWasmBytes": 257387
+  },
+  "limitations": [
+    "handcrafted evaluation only; strength not calibrated",
+    "v1 supports only completed ordinary moves and promotion; no multi-step moves or extra state",
+    "no automatic stalemate or king-only draw; matches Shogitter rule 43"
+  ],
+  "reproduction": [
+    "cargo test --release -p haitaka -p haitaka_wasm -p haitaka_cli --features shoshogi",
+    "cd ../shogitter-3 && SHO_PERFT=1 pnpm exec vitest run app/bot/shoshogiReference.test.ts",
+    "node scripts/verify-shoshogi.mjs",
+    "cargo pack-shoshogi"
+  ]
+}
