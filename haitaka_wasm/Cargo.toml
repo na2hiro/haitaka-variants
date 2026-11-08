@@ -71,3 +71,5 @@ washogi = ["extended-json", "haitaka/washogi"]
 heian-dai = ["extended-json", "haitaka/heian-dai"]
 
 daishogi = ["extended-json", "haitaka/daishogi"]
+
+tenjiku-dai = ["extended-json", "haitaka/tenjiku-dai"]

@@ -3,45 +3,47 @@ use serde::{Deserializer, Serializer};
 use std::ops::Deref;
 /// Fixed-size path codec retains both hops and returning-to-source moves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Path {
-    steps: [[u16; 2]; 2],
+pub struct BoundedPath<const N: usize> {
+    steps: [[u16; 2]; N],
     len: u8,
 }
-impl Path {
-    pub fn one(to: [u16; 2]) -> Self {
-        Self {
-            steps: [to, [0, 0]],
-            len: 1,
+pub type Path = BoundedPath<2>;
+impl<const N: usize> BoundedPath<N> {
+    pub fn from_steps(steps: &[[u16; 2]]) -> Option<Self> {
+        if steps.is_empty() || steps.len() > N || steps.len() > 255 {
+            return None;
         }
+        let mut out = Self {
+            steps: [[0, 0]; N],
+            len: steps.len() as u8,
+        };
+        out.steps[..steps.len()].copy_from_slice(steps);
+        Some(out)
+    }
+    pub fn one(to: [u16; 2]) -> Self {
+        Self::from_steps(&[to]).unwrap()
     }
     pub fn two(first: [u16; 2], last: [u16; 2]) -> Self {
-        Self {
-            steps: [first, last],
-            len: 2,
-        }
+        Self::from_steps(&[first, last]).unwrap()
     }
 }
-impl Deref for Path {
+impl<const N: usize> Deref for BoundedPath<N> {
     type Target = [[u16; 2]];
     fn deref(&self) -> &Self::Target {
         &self.steps[..self.len as usize]
     }
 }
-impl Serialize for Path {
+impl<const N: usize> Serialize for BoundedPath<N> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         self.deref().serialize(s)
     }
 }
-impl<'de> Deserialize<'de> for Path {
+impl<'de, const N: usize> Deserialize<'de> for BoundedPath<N> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let steps = Vec::<[u16; 2]>::deserialize(d)?;
-        match steps.as_slice() {
-            [a] => Ok(Self::one(*a)),
-            [a, b] => Ok(Self::two(*a, *b)),
-            _ => Err(serde::de::Error::custom(
-                "path must contain one or two destinations",
-            )),
-        }
+        Self::from_steps(&steps).ok_or_else(|| {
+            serde::de::Error::custom(format!("path must contain 1..{N} destinations"))
+        })
     }
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]

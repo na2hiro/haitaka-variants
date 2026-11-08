@@ -82,3 +82,5 @@ torishogi = ["classical-rules"]
 washogi = ["classical-rules"]
 heian-dai = ["classical-rules"]
 daishogi = ["classical-rules"]
+
+tenjiku-dai = ["classical-rules"]
