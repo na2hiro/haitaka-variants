@@ -88,3 +88,5 @@ tenjiku-dai = ["classical-rules"]
 dai-dai = ["classical-rules"]
 
 maka-dai-dai = ["classical-rules"]
+
+taishogi = ["classical-rules"]

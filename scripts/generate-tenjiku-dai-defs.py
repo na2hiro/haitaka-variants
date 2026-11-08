@@ -4,17 +4,17 @@ from pathlib import Path
 import argparse
 parser=argparse.ArgumentParser(description='Generate large-rule movement tables from resolved Shogitter definitions')
 parser.add_argument('input',type=Path)
-parser.add_argument('--ruleset',default='tenjiku-dai',choices=['tenjiku-dai','dai-dai','maka-dai-dai'])
+parser.add_argument('--ruleset',default='tenjiku-dai',choices=['tenjiku-dai','dai-dai','maka-dai-dai','taishogi'])
 args=parser.parse_args()
 q=json.loads(args.input.read_text());r=q['rule'];size=r['size'][0];bases=list(r['nari']);pieces={p['species']:p for p in q['pieces']};incoming={v:k for k,v in r['nari'].items()if v}
-expected={'tenjiku-dai':(59,16),'dai-dai':(60,17),'maka-dai-dai':(61,19)}[args.ruleset]
+expected={'tenjiku-dai':(59,16),'dai-dai':(60,17),'maka-dai-dai':(61,19),'taishogi':(63,25)}[args.ruleset]
 if (q['ruleId'],size)!=expected or r['size']!=[size,size]:
  raise SystemExit('resolved rule ID/geometry does not match --ruleset')
 ids=list(pieces);variants=[(id,None)for id in ids]
 reverse=collections.defaultdict(list)
 for base,to in r['nari'].items():
  if to:reverse[to].append(base)
-if args.ruleset=='maka-dai-dai':
+if args.ruleset in ['maka-dai-dai','taishogi']:
  for to,fronts in reverse.items():
   if len(fronts)>1:variants.extend((to,base)for base in fronts)
 idx={pair:i for i,pair in enumerate(variants)}
