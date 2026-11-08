@@ -50,7 +50,9 @@ type Geometry = Rect<25, 25>;
 #[cfg(feature = "taikyoku")]
 type Geometry = Rect<36, 36>;
 type Pos = Position<LargeRule>;
+mod effects;
 mod hash;
+use effects::{EffectContext, settle_residents};
 use hash::TimelineEntry;
 pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -266,8 +268,11 @@ fn active(p: &Pos, ignore: Option<usize>) -> Vec<Resident> {
     if !ORDERED_EFFECTS {
         return vec![];
     }
+    active_order(order(p, &p.state.shitenno, ignore))
+}
+fn active_order(residents: impl IntoIterator<Item = Resident>) -> Vec<Resident> {
     let mut out: Vec<Resident> = vec![];
-    for r in order(p, &p.state.shitenno, ignore) {
+    for r in residents {
         let i = Pos::index(r.at).unwrap();
         if !out
             .iter()
@@ -283,6 +288,7 @@ fn frozen(i: usize, color: u8, actives: &[Resident]) -> bool {
         .iter()
         .any(|p| p.color != color && adjacent(Pos::index(p.at).unwrap(), i))
 }
+#[cfg(test)]
 fn fires(p: &Pos) -> Vec<Resident> {
     if !ORDERED_EFFECTS {
         return vec![];
@@ -342,6 +348,16 @@ fn targets_to(
     ignore: Option<usize>,
     wanted: Option<usize>,
 ) -> Vec<Target> {
+    targets_with_active(p, from, status, ignore, wanted, None)
+}
+fn targets_with_active(
+    p: &Pos,
+    from: usize,
+    status: Option<u8>,
+    ignore: Option<usize>,
+    wanted: Option<usize>,
+    cached_active: Option<&[Resident]>,
+) -> Vec<Target> {
     let Some(c) = at_cell(p, from, ignore) else {
         return vec![];
     };
@@ -389,8 +405,18 @@ fn targets_to(
             .collect();
     }
     let m = &MOVEMENT[c.piece.0 as usize];
-    if status.is_none() && frozen(from, c.color, &active(p, ignore)) {
-        return vec![];
+    if status.is_none() {
+        let computed;
+        let actives = match cached_active {
+            Some(a) => a,
+            None => {
+                computed = active(p, ignore);
+                &computed
+            }
+        };
+        if frozen(from, c.color, actives) {
+            return vec![];
+        }
     }
     let prims = if let Some(s) = status {
         m.states.get(s as usize).copied().unwrap_or(&[])
@@ -611,7 +637,60 @@ fn hop(p: &mut Pos, from: usize, to: usize, through: bool, d: &mut Delta) {
     d.set(p, from, None);
     d.set(p, to, Some(mover));
 }
-fn finish(p: &mut Pos, to: usize, resident_fires: &[Resident], d: &mut Delta) {
+fn finish(p: &mut Pos, to: usize, effects: &EffectContext, d: &mut Delta) {
+    if !ORDERED_EFFECTS {
+        return;
+    }
+    #[cfg(test)]
+    let expected = {
+        let mut copy = p.clone();
+        let mut delta = Delta::new(&copy);
+        finish_reference(&mut copy, to, &effects.resident_fires, &mut delta);
+        copy
+    };
+    if let Some(moved) = p.cells[to] {
+        if effects.resident_fires.iter().any(|r| {
+            r.color != moved.color
+                && adjacent(Pos::index(r.at).unwrap(), to)
+                && p.cells[Pos::index(r.at).unwrap()].is_some_and(fire)
+        }) {
+            d.set(p, to, None);
+        }
+    }
+    settle_residents(p, to);
+    let actives = active_order(p.state.shitenno.iter().cloned());
+    let mut burnt = BTreeSet::new();
+    // Only the moving piece can introduce a new fire at a new square.
+    for i in effects
+        .fire_squares
+        .iter()
+        .copied()
+        .chain((!effects.fire_squares.contains(&to)).then_some(to))
+    {
+        let Some(c) = p.cells[i] else {
+            continue;
+        };
+        if !fire(c) || frozen(i, c.color, &actives) {
+            continue;
+        }
+        for &(dx, dy) in KING {
+            if let Some(j) = Geometry::offset(i, dx, dy) {
+                if p.cells[j].is_some_and(|v| v.color != c.color) {
+                    burnt.insert(j);
+                }
+            }
+        }
+    }
+    for i in burnt {
+        d.set(p, i, None);
+    }
+    settle_residents(p, to);
+    #[cfg(test)]
+    assert_eq!(*p, expected, "shared effects must equal full-board effects");
+}
+
+#[cfg(test)]
+fn finish_reference(p: &mut Pos, to: usize, resident_fires: &[Resident], d: &mut Delta) {
     if !ORDERED_EFFECTS {
         return;
     }
@@ -708,7 +787,7 @@ fn next_promotion(p: &Pos, from: usize, to: usize, prior: Option<PieceId>) -> Op
 }
 struct Enumeration<'a> {
     original: &'a Pos,
-    resident_fires: Vec<Resident>,
+    effects: EffectContext,
     pending: Option<Pending>,
     wanted: Option<LargeMove>,
     stop: &'a mut dyn FnMut() -> bool,
@@ -751,9 +830,9 @@ impl Enumeration<'_> {
                 undo.set(p, to, Some(c));
             }
             if !early {
-                finish(p, to, &self.resident_fires, &mut undo);
+                finish(p, to, &self.effects, &mut undo);
             } else {
-                p.state.shitenno = order(p, &p.state.shitenno, None);
+                settle_residents(p, to);
             }
             let legal = file_allowed(p, to);
             undo.restore(p);
@@ -780,7 +859,7 @@ impl Enumeration<'_> {
             .wanted
             .and_then(|w| w.path.get(path.len()).copied())
             .and_then(|at| Pos::index(at).ok());
-        for t in targets_to(p, from, status, None, wanted) {
+        for t in targets_with_active(p, from, status, None, wanted, Some(&self.effects.actives)) {
             if (self.stop)() {
                 return None;
             }
@@ -842,7 +921,7 @@ fn enumerate(
     let mut scratch = p.clone();
     let mut e = Enumeration {
         original: p,
-        resident_fires: fires(p),
+        effects: EffectContext::new(p),
         pending,
         wanted,
         stop,
@@ -1034,7 +1113,7 @@ impl LargeGame {
         Ok(())
     }
     fn push(&mut self, m: LargeMove) {
-        let resident = fires(&self.position);
+        let effects = EffectContext::new(&self.position);
         let mut delta = Delta::new(&self.position);
         let mut from = Pos::index(m.from).unwrap();
         let mut status = None;
@@ -1057,10 +1136,9 @@ impl LargeGame {
             delta.set(&mut self.position, from, Some(c));
         }
         if !early {
-            finish(&mut self.position, from, &resident, &mut delta);
+            finish(&mut self.position, from, &effects, &mut delta);
         } else {
-            self.position.state.shitenno =
-                order(&self.position, &self.position.state.shitenno, None);
+            settle_residents(&mut self.position, from);
         }
         self.position.side ^= 1;
         let previous = *self.timeline.last().unwrap();
