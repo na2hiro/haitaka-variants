@@ -661,6 +661,13 @@ const PIECES: &[PieceDef] = &[
         value: 450,
     },
 ];
+const ORIGINS: &[Option<&str>] = &[
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+    None, None,
+];
 const MOVEMENT: &[Movement] = &[
     Movement {
         root: &[Primitive {

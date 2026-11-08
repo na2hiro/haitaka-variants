@@ -179,6 +179,8 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
         None
     }
     const ALLOW_NO_ROYALS: bool = false;
+    /// Conversion rules conserve piece counts, but not each base species.
+    const CONVERTS_INVENTORY: bool = false;
     const ID: u32;
     const PIECES: &'static [PieceDef];
     const INVENTORY: &'static [usize];
@@ -387,7 +389,16 @@ impl<R: CaptureRoyalRule> Position<R> {
                 count[color as usize][R::PIECES[id.0 as usize].base] += usize::from(amount);
             }
         }
+        if R::CONVERTS_INVENTORY {
+            let maximum: usize = R::INVENTORY.iter().sum();
+            if count.iter().any(|c| c.iter().sum::<usize>() > maximum) {
+                return Err("piece count exceeds initial per-side inventory".into());
+            }
+        }
         for (base, &initial) in R::INVENTORY.iter().enumerate() {
+            if R::CONVERTS_INVENTORY {
+                break;
+            }
             let exceeded = if R::Hands::ENABLED {
                 count[0][base] + count[1][base] > initial * 2
             } else {
@@ -877,7 +888,7 @@ pub mod classical;
 ))]
 pub use classical::compiled;
 
-#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai"))]
+#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai", feature = "maka-dai-dai"))]
 pub mod large;
-#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai"))]
+#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai", feature = "maka-dai-dai"))]
 pub use large::compiled;
