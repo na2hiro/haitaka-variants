@@ -50,7 +50,7 @@ pub(super) fn full(p: &Pos) -> u64 {
 pub(super) fn updated(mut key: u64, p: &Pos, delta: &Delta) -> u64 {
     // Delta retains each square's first value even if a multi-hop move changes
     // it repeatedly. XOR only its old/final identities after all turn effects.
-    for &(i, old) in &delta.squares {
+    for &(i, old) in delta.squares.iter() {
         key ^= cell(i, old) ^ cell(i, p.cells[i]);
     }
     key ^ side(delta.side) ^ side(p.side) ^ state(&delta.state) ^ state(&p.state)

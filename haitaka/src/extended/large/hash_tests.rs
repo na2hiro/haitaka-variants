@@ -310,3 +310,36 @@ fn benchmark_full_fnv_and_delta_key() {
         })
     );
 }
+
+#[test]
+fn inline_delta_spills_without_losing_any_square_and_restores_its_clone() {
+    let mut p = LargeGame::parse(&compiled::start_position_json())
+        .unwrap()
+        .position;
+    let original = p.clone();
+    let key = hash::full(&p);
+    let occupied: Vec<_> = p
+        .cells
+        .iter()
+        .enumerate()
+        .filter_map(|(i, c)| c.map(|_| i))
+        .collect();
+    assert!(occupied.len() > 4);
+    let mut delta = Delta::new(&p);
+    for &i in &occupied {
+        delta.set(&mut p, i, None);
+        // Repeated touches retain the first old value, including after spill.
+        delta.set(&mut p, i, original.cells[i]);
+        delta.set(&mut p, i, None);
+    }
+    assert_eq!(delta.squares.iter().count(), occupied.len());
+    p.side ^= 1;
+    p.state.senjishi = !p.state.senjishi;
+    assert_eq!(hash::updated(key, &p, &delta), hash::full(&p));
+    let mut restored_clone = p.clone();
+    delta.clone().restore(&mut restored_clone);
+    assert_eq!(restored_clone, original);
+    delta.restore(&mut p);
+    assert_eq!(p, original);
+    assert_eq!(hash::full(&p), key);
+}
