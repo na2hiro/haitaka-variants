@@ -40,3 +40,5 @@ The `dai-dai` mode supports Dai Dai Shogi (60) on a 17x17 board, with mandatory 
 The `maka-dai-dai` mode supports Maka Dai Dai Shogi (61) on a 19x19 board, with capture-dependent conversions, ambiguous gold origins, emperor movement and JSON v4. See [adopted rules and verification](maka-dai-dai.md).
 
 The `taishogi` mode supports Tai Shogi (63) on a 25x25 board, with the royal set ix/cg/uc, Maka-style conversions, gold/elephant promotion origins and JSON v4. See [adopted rules and verification](taishogi.md).
+
+The `taikyoku` mode supports Taikyoku Shogi (64) on a 36x36 board, with four-hop Bunju turns, transit captures, finite jumps, 11-rank optional promotions and JSON v5. This completes all 14 historical shogi rules. See [adopted rules and verification](taikyoku.md).
