@@ -23,6 +23,7 @@ def main():
     baseline = json.loads(BASELINE.read_text())
     choices = {r['name']: r for r in baseline['rules']}
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--engine-dir', type=Path, default=ROOT, help='Engine checkout to build; benchmark inputs/harness remain fixed')
     parser.add_argument('--rules', nargs='+', choices=list(choices), default=list(choices))
     parser.add_argument('--output', type=Path, default=ROOT / 'target/perft-benchmark/results.json')
     parser.add_argument('--cpu', type=int, default=None)
@@ -30,6 +31,7 @@ def main():
     parser.add_argument('--samples', type=int, default=3)
     parser.add_argument('--compare', type=Path, help='Previous result with the same rules/depths/CPU/settings')
     args = parser.parse_args()
+    engine = args.engine_dir.resolve()
     if args.seconds < 3 or args.samples < 3 or args.samples % 2 == 0:
         parser.error('use >=3 seconds and an odd sample count >=3')
     if len(set(args.rules)) != len(args.rules):
@@ -45,14 +47,14 @@ def main():
     (bench / 'bins').mkdir(exist_ok=True)
     source = Path(__file__).with_suffix('.rs').read_text()
     (bench / 'src/main.rs').write_text(source)
-    version = next(p['version'] for p in tomllib.loads((ROOT / 'Cargo.lock').read_text())['package'] if p['name'] == 'serde_json')
+    version = next(p['version'] for p in tomllib.loads((engine / 'Cargo.lock').read_text())['package'] if p['name'] == 'serde_json')
     cargo = f'''[package]
 name = "haitaka-perft-benchmark"
 version = "0.0.0"
 edition = "2024"
 [workspace]
 [dependencies]
-haitaka = {{ path = {json.dumps(str(ROOT / 'haitaka'))}, default-features = false }}
+haitaka = {{ path = {json.dumps(str(engine / 'haitaka'))}, default-features = false }}
 serde_json = "={version}"
 [profile.release]
 opt-level = 3
@@ -66,10 +68,10 @@ extended = []
             features = (['extended'] if r['extended'] else []) + ['haitaka/' + name]
             cargo += name + ' = ' + json.dumps(features) + '\n'
     (bench / 'Cargo.toml').write_text(cargo)
-    shutil.copy2(ROOT / 'Cargo.lock', bench / 'Cargo.lock')
-    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    diff = subprocess.check_output(['git', 'diff', 'HEAD', '--', 'haitaka', 'haitaka_types'], cwd=ROOT)
-    status = subprocess.check_output(['git', 'status', '--porcelain', '--', 'haitaka', 'haitaka_types'], cwd=ROOT, text=True)
+    shutil.copy2(engine / 'Cargo.lock', bench / 'Cargo.lock')
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=engine, text=True).strip()
+    diff = subprocess.check_output(['git', 'diff', 'HEAD', '--', 'haitaka', 'haitaka_types'], cwd=engine)
+    status = subprocess.check_output(['git', 'status', '--porcelain', '--', 'haitaka', 'haitaka_types'], cwd=engine, text=True)
     # Build all selected binaries first so compilation cannot contaminate timing.
     for name in args.rules:
         command = ['cargo', 'build', '--offline', '--release', '--manifest-path', str(bench / 'Cargo.toml'), '--target-dir', str(ROOT / 'target'), '--bin', 'haitaka-perft-benchmark']
@@ -84,9 +86,11 @@ extended = []
         print('built', name, flush=True)
     cpu_model = next((s.split(':', 1)[1].strip() for s in Path('/proc/cpuinfo').read_text().splitlines() if s.startswith('model name')), 'unknown')
     report = {
-        'schemaVersion': 1, 'gitCommit': commit, 'engineStatus': status,
+        'schemaVersion': 1, 'gitCommit': commit, 'engineStatus': status, 'engineDirectory': str(engine),
         'engineTrackedDiffSha256': hashlib.sha256(diff).hexdigest(),
         'baselineSha256': hashlib.sha256(BASELINE.read_bytes()).hexdigest(),
+        'dependencyLockSha256': hashlib.sha256((engine / 'Cargo.lock').read_bytes()).hexdigest(),
+        'effectiveDependencyLockSha256': hashlib.sha256((bench / 'Cargo.lock').read_bytes()).hexdigest(),
         'harnessSha256': hashlib.sha256(source.encode()).hexdigest(),
         'cpu': cpu_model, 'logicalCpuAffinity': cpu, 'threads': 1,
         'compiler': subprocess.check_output(['rustc', '--version'], text=True).strip(),
@@ -96,6 +100,9 @@ extended = []
     }
     previous = json.loads(args.compare.read_text()) if args.compare else None
     if previous:
+        for key in ['dependencyLockSha256', 'effectiveDependencyLockSha256']:
+            if key in previous and previous[key] != report[key]:
+                raise ValueError(f'comparison dependency lock differs: {key}')
         for key in ['cpu', 'logicalCpuAffinity', 'compiler', 'minimumBatchSeconds', 'samplesPerRule', 'harnessSha256']:
             if previous.get(key) != report[key]:
                 raise ValueError(f'comparison setting differs: {key}')
