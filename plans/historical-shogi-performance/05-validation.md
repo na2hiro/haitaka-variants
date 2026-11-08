@@ -50,3 +50,19 @@ python3 scripts/perft-benchmark.py --output target/perft-final.json
 採用しなかった試作も理由を記録する。前後の結果・コマンド・環境・コミットをresultsへ保存し、
 READMEの進捗を更新する。最後に全対応表・ビルド手順・API互換性・計測済み改善率を更新する。
 対象変更だけを明示的にコミットし、学習関連など既存のユーザー変更は残す。
+
+## 最終比較の準備（継続実行中）
+
+最適化前のe7ab6efをtarget/perft-originalに独立checkoutした。
+scripts/perft-benchmark.pyの--engine-dirで、そのcheckoutと最終実装を同一Rustハーネスで測る。
+Rust側の計時ループ・葉まで適用する条件は変更しない。
+
+途中局面はscripts/perft-position-benchmark.pyを使う。
+元のperft-benchmark.rsのimportsとmeasure()をそのまま共有し、JSONの復元を計時から除く。
+参照コーパスから固定seed対局の途中、疎な多駒移動/特殊効果、獅子・奔鷲のpendingを選び、
+入力JSON・SHA・由来のコーパスと行番号を保存する。--calibrateを最適化前のcheckoutで実行し、
+期待葉数を凍結してから前後を各3秒以上×3回で比較する。
+
+フロントエンドは既存のlocalhost:3002を利用する。generatedのWASMとbindgen JSを同時更新し、
+core・AI CI・通常app・typecheck・lintと、既存の古将棋82件を含むChromeテストを行う。
+ユーザーの指示により第5段階まで続け、クリティカルな問題以外で段階ごとに停止しない。
