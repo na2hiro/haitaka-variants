@@ -219,7 +219,7 @@ impl Delta {
         p.side = self.side;
     }
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Target {
     to: usize,
     through: bool,
@@ -358,6 +358,29 @@ fn targets_with_active(
     wanted: Option<usize>,
     cached_active: Option<&[Resident]>,
 ) -> Vec<Target> {
+    let result = targets_selected(p, from, status, ignore, wanted, cached_active);
+    #[cfg(test)]
+    if let Some(to) = wanted {
+        let expected: Vec<_> =
+            known_target_tests::reference(p, from, status, ignore, wanted, cached_active)
+                .into_iter()
+                .filter(|t| t.to == to)
+                .collect();
+        assert_eq!(
+            result, expected,
+            "known destination and continuation metadata"
+        );
+    }
+    result
+}
+fn targets_selected(
+    p: &Pos,
+    from: usize,
+    status: Option<u8>,
+    ignore: Option<usize>,
+    wanted: Option<usize>,
+    cached_active: Option<&[Resident]>,
+) -> Vec<Target> {
     let Some(c) = at_cell(p, from, ignore) else {
         return vec![];
     };
@@ -469,7 +492,9 @@ fn targets_with_active(
             }
         }
         if blocked {
-            prohibited.insert(now);
+            if wanted.is_none_or(|w| w == now) {
+                prohibited.insert(now);
+            }
             continue;
         }
         let ray = matches!(prim.kind, 2 | 6 | 100 | 102) || prim.limit > 0;
@@ -491,19 +516,21 @@ fn targets_with_active(
             if v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id)) {
                 break;
             }
-            if let Some(t) = raw.iter_mut().find(|t| t.0 == now) {
-                t.2 |= prim.kind == 100;
-                if t.1 == -2 && prim.next != -2 {
-                    t.1 = prim.next;
+            if wanted.is_none_or(|w| w == now) {
+                if let Some(t) = raw.iter_mut().find(|t| t.0 == now) {
+                    t.2 |= prim.kind == 100;
+                    if t.1 == -2 && prim.next != -2 {
+                        t.1 = prim.next;
+                    }
+                } else {
+                    raw.push((now, prim.next, prim.kind == 100));
                 }
-            } else {
-                raw.push((now, prim.next, prim.kind == 100));
             }
             if prim.kind == 102 && v.is_none() {
                 for (tx, ty) in [(-dy, dx), (dy, -dx)] {
                     let mut turn = now;
                     while let Some(j) = Geometry::offset(turn, tx, ty) {
-                        if !raw.iter().any(|r| r.0 == j) {
+                        if wanted.is_none_or(|w| w == j) && !raw.iter().any(|r| r.0 == j) {
                             raw.push((j, prim.next, false));
                         }
                         if at_cell(p, j, ignore).is_some() {
@@ -542,7 +569,10 @@ fn targets_with_active(
                     if step == 1 {
                         next.insert(to);
                     } else if !v.is_some_and(|v| v.color == c.color) {
-                        if !adjacent(from, to) && !raw.iter().any(|r| r.0 == to) {
+                        if wanted.is_none_or(|w| w == to)
+                            && !adjacent(from, to)
+                            && !raw.iter().any(|r| r.0 == to)
+                        {
                             raw.push((to, -2, false));
                         }
                         if v.is_none() {
@@ -1120,10 +1150,17 @@ impl LargeGame {
         let mut target = None;
         for &at in m.path.iter() {
             let to = Pos::index(at).unwrap();
-            let t = targets_to(&self.position, from, status, None, Some(to))
-                .into_iter()
-                .find(|t| t.to == to)
-                .unwrap();
+            let t = targets_with_active(
+                &self.position,
+                from,
+                status,
+                None,
+                Some(to),
+                Some(&effects.actives),
+            )
+            .into_iter()
+            .find(|t| t.to == to)
+            .unwrap();
             status = t.next;
             target = next_promotion(&self.position, from, to, target);
             hop(&mut self.position, from, to, t.through, &mut delta);
@@ -1368,3 +1405,7 @@ mod taikyoku_tests;
 #[cfg(test)]
 #[path = "large/hash_tests.rs"]
 mod hash_tests;
+
+#[cfg(test)]
+#[path = "large/known_target_tests.rs"]
+mod known_target_tests;
