@@ -50,7 +50,9 @@ type Geometry = Rect<25, 25>;
 #[cfg(feature = "taikyoku")]
 type Geometry = Rect<36, 36>;
 type Pos = Position<LargeRule>;
+mod delta;
 mod effects;
+use delta::SquareChanges;
 mod hash;
 use effects::{EffectContext, settle_residents};
 use hash::TimelineEntry;
@@ -191,14 +193,14 @@ pub struct Request {
 }
 #[derive(Clone, Debug)]
 struct Delta {
-    squares: Vec<(usize, Option<Cell>)>,
+    squares: SquareChanges,
     state: TenjikuState,
     side: u8,
 }
 impl Delta {
     fn new(p: &Pos) -> Self {
         Self {
-            squares: vec![],
+            squares: SquareChanges::default(),
             state: p.state.clone(),
             side: p.side,
         }
@@ -212,7 +214,7 @@ impl Delta {
         }
     }
     fn restore(self, p: &mut Pos) {
-        for (i, c) in self.squares {
+        for &(i, c) in self.squares.iter() {
             p.set_cell(i, c);
         }
         p.state = self.state;
