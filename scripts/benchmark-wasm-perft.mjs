@@ -59,8 +59,8 @@ for(const rule of rules){
    newSamples.push(batch(current.engine,c.input,c.depth,c.expected));
   }
   const previous=summarize(oldSamples),next=summarize(newSamples);
-  const memory=current.instance.memory.buffer.byteLength;assert(memory<=64*1024*1024);
-  report.cases.push({id:c.id,rule,depth:c.depth,nodesPerPerft:c.expected,inputSha256:sha(c.input),before:previous,after:next,speedup:next.medianNps/previous.medianNps,beforeWasmSha256:old.wasmSha256,afterWasmSha256:current.wasmSha256,beforeWasmBytes:old.wasmBytes,afterWasmBytes:current.wasmBytes,initializationMs:current.initializationMs,linearMemoryBytes:memory});
+  const memory=current.instance.memory.buffer.byteLength,beforeMemory=old.instance.memory.buffer.byteLength;assert(memory<=64*1024*1024&&beforeMemory<=64*1024*1024);
+  report.cases.push({id:c.id,rule,depth:c.depth,nodesPerPerft:c.expected,inputSha256:sha(c.input),before:previous,after:next,speedup:next.medianNps/previous.medianNps,beforeWasmSha256:old.wasmSha256,afterWasmSha256:current.wasmSha256,beforeWasmBytes:old.wasmBytes,afterWasmBytes:current.wasmBytes,initializationMs:current.initializationMs,linearMemoryBytes:memory,beforeLinearMemoryBytes:beforeMemory});
   writeFileSync(output,JSON.stringify(report,null,2)+'\n');
   console.log(c.id,Math.round(previous.medianNps),Math.round(next.medianNps),'x'+(next.medianNps/previous.medianNps).toFixed(2),previous.needsRemeasurement||next.needsRemeasurement?'remeasure':'');
  }

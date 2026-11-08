@@ -1,0 +1,107 @@
+{
+  "rule": "taikyoku",
+  "positions": 2199,
+  "transitions": 253099,
+  "native": {
+    "positions": 2199,
+    "transitions": 253099,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 550,
+      "transitions": 63272,
+      "initializationMs": 1.251600999996299,
+      "linearMemoryBytes": 1703936
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 550,
+      "transitions": 58536,
+      "initializationMs": 0.8249509999877773,
+      "linearMemoryBytes": 1703936
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 550,
+      "transitions": 71340,
+      "initializationMs": 0.725867000001017,
+      "linearMemoryBytes": 1703936
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 549,
+      "transitions": 59951,
+      "initializationMs": 0.8148240000009537,
+      "linearMemoryBytes": 1703936
+    }
+  ],
+  "perft": [
+    282,
+    79035
+  ],
+  "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+  "beforeWasmSha256": "dfd1f52f942d217f6788aaf38487c972452ef49baa7f84550ce6f1c2db39bf81",
+  "afterWasmSha256": "ac9b2d173cc94b39b19d4b0397320552085eed213d5e46347fe6944a39685ead",
+  "linearMemoryBytes": 1703936,
+  "wasmBytes": 408813,
+  "lowBudgetElapsedMs": 1.001341,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.001526
+    },
+    {
+      "pendingHops": 2,
+      "elapsedMs": 1.001946
+    },
+    {
+      "pendingHops": 3,
+      "elapsedMs": 1.03364
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "schemaVersion": 5,
+      "from": [
+        1,
+        26
+      ],
+      "path": [
+        [
+          1,
+          25
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "schemaVersion": 5,
+      "from": [
+        1,
+        26
+      ],
+      "path": [
+        [
+          1,
+          25
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  }
+}

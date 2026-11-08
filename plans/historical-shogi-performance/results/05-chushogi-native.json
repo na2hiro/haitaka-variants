@@ -1,0 +1,9 @@
+{
+  "rule": "chushogi",
+  "positions": 242,
+  "transitions": 16121,
+  "byteIdentical": true,
+  "outputSha256": "cd1f0261902cf295ac3db4adc1fc6b78b46cd6b0a13eed0c72d10761bf91a459",
+  "reference": "/home/na2hiro/proj/haitaka-variants/target/chushogi-reference-output.jsonl",
+  "native": "Fresh binary; golden corpus reused from previous independent Shogitter comparison."
+}

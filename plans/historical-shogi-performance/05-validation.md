@@ -1,6 +1,9 @@
 # 第5段階と各段階の検証条件
 
-状態: 実行中。14ルールの現行Native/WASM再生成、全体テスト、最終の前後測定を行う。
+状態: 完了。全14ルールの新Native/WASM・6,209局面/526,295遷移、
+Rust/core/AI/app/型/lint、Chrome82件、Native32・固定16・実WASM11の前後比較、
+全14ルールの通常5秒思考と64MiB制約が通過した。
+[最終記録](results/05-final.json) / [比較表](../../docs/historical-shogi-performance.md)。
 
 ## 正しさを先に確認
 
@@ -51,7 +54,7 @@ python3 scripts/perft-benchmark.py --output target/perft-final.json
 READMEの進捗を更新する。最後に全対応表・ビルド手順・API互換性・計測済み改善率を更新する。
 対象変更だけを明示的にコミットし、学習関連など既存のユーザー変更は残す。
 
-## 最終比較の準備（継続実行中）
+## 最終比較の実行条件
 
 最適化前のe7ab6efをtarget/perft-originalに独立checkoutした。
 scripts/perft-benchmark.pyの--engine-dirで、そのcheckoutと最終実装を同一Rustハーネスで測る。
@@ -63,6 +66,19 @@ Rust側の計時ループ・葉まで適用する条件は変更しない。
 入力JSON・SHA・由来のコーパスと行番号を保存する。--calibrateを最適化前のcheckoutで実行し、
 期待葉数を凍結してから前後を各3秒以上×3回で比較する。
 
-フロントエンドは既存のlocalhost:3002を利用する。generatedのWASMとbindgen JSを同時更新し、
-core・AI CI・通常app・typecheck・lintと、既存の古将棋82件を含むChromeテストを行う。
+フロントエンドは既存のlocalhost:3002を利用した。generatedのWASMとbindgen JSを同時更新し、
+core・AI CI・通常app・typecheck・lintと、古将棋77件と小盤5件、計82件のChromeテストを行う。
 ユーザーの指示により第5段階まで続け、クリティカルな問題以外で段階ごとに停止しない。
+
+最終Native比較はtarget/perft-originalをe7ab6efとd95f3b3へ順に切り替え、
+両版を同一パスでビルドする。crate識別子・コード配置へパス差が混じる条件を避ける。
+初期32ルールも固定16局面も、engineDirectory・依存ロック・ハーネス・CPUを一致させる。
+独立checkoutを使うため、ユーザーの作業ブランチや学習関連変更は切り替えない。
+
+初期32ルールの最終比較は全葉数が一致し、各3秒以上×3回、全サンプル幅5%以内。
+対象8ルールは1.39〜4.11倍、非対象に5%以上の低下なし。
+非対象24ルール中23は前後バイナリも完全一致した。
+[変更前](results/05-native-before.json) / [変更後](results/05-native-after.json) /
+[生成物の一致と非対象確認](results/05-native-binary-identity.json)。
+固定16局面・実WASM11ケースの比較も完了し、全サンプル幅5%以内。
+通常5秒予算も全14ルールで合法な完了手、初期化5秒・64MiB以内を確認した。

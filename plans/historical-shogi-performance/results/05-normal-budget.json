@@ -1,0 +1,310 @@
+{
+  "node": "v26.8.1",
+  "budgetMs": 5000,
+  "scope": "Actual refreshed frontend WASM; normal search budget (soft deadline), legal complete move and post-search linear memory. Elapsed time is recorded without equating search states with perft NPS.",
+  "rules": [
+    {
+      "rule": "heian-8x8",
+      "initializationMs": 2.3912229999999965,
+      "linearMemoryBytes": 34930688,
+      "wallElapsedMs": 5000.899249,
+      "wasmSha256": "5d2c74b04585d4d110e85617a546a29fd8a5aed28290c8965caced9ca57ec494",
+      "bestMove": "1f1e",
+      "elapsedMs": 4989.886295,
+      "completedDepth": 8,
+      "states": 1413317
+    },
+    {
+      "rule": "heian-9x8",
+      "initializationMs": 2.6350060000004305,
+      "linearMemoryBytes": 35127296,
+      "wallElapsedMs": 5000.852089,
+      "wasmSha256": "0e620108925e54a8596e96bdfa5a863e5e86e983981d0ad0a0a67cf787fdb3de",
+      "bestMove": "1f1e",
+      "elapsedMs": 4990.191591000001,
+      "completedDepth": 7,
+      "states": 1212225
+    },
+    {
+      "rule": "heian-9x9",
+      "initializationMs": 22.58323500000006,
+      "linearMemoryBytes": 52822016,
+      "wallElapsedMs": 5000.8982909999995,
+      "wasmSha256": "8be7c1a5daa539c019f5393f27a745cc2ad8f834ba514d816f04ac2499eb7ea0",
+      "bestMove": "1g1f",
+      "elapsedMs": 4990.1081859999995,
+      "completedDepth": 7,
+      "states": 1244799
+    },
+    {
+      "rule": "shoshogi",
+      "initializationMs": 1.5225529999988794,
+      "linearMemoryBytes": 7995392,
+      "wallElapsedMs": 5002.219225000001,
+      "wasmSha256": "346d061a8d7772c3cb5b12be02ee1c30f8171bd68ec82d9a30b13e968e0bde39",
+      "bestMove": {
+        "schemaVersion": 1,
+        "from": [
+          7,
+          7
+        ],
+        "to": [
+          7,
+          6
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.001926999999,
+      "completedDepth": 6,
+      "states": 1697783
+    },
+    {
+      "rule": "chushogi",
+      "initializationMs": 1.6853679999985616,
+      "linearMemoryBytes": 1900544,
+      "wallElapsedMs": 5012.724805999998,
+      "wasmSha256": "801b5125b092375b478e90fe6951001b9a8beb9a1ca4caf2a94851d9c426b8f4",
+      "bestMove": {
+        "schemaVersion": 2,
+        "from": [
+          5,
+          9
+        ],
+        "path": [
+          [
+            5,
+            8
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.0020620000005,
+      "completedDepth": 4,
+      "states": 195532
+    },
+    {
+      "rule": "torishogi",
+      "initializationMs": 1.781198000000586,
+      "linearMemoryBytes": 2490368,
+      "wallElapsedMs": 5002.235106,
+      "wasmSha256": "b3e2bea939bce9764fd91737790a6b5b2ecef90a6ae495f68e696c8279e38ab4",
+      "bestMove": {
+        "kind": "move",
+        "schemaVersion": 3,
+        "from": [
+          3,
+          4
+        ],
+        "path": [
+          [
+            3,
+            3
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.001918999999,
+      "completedDepth": 5,
+      "states": 107282
+    },
+    {
+      "rule": "washogi",
+      "initializationMs": 1.770578999999998,
+      "linearMemoryBytes": 2490368,
+      "wallElapsedMs": 5002.751991000001,
+      "wasmSha256": "72ec5e756b336a390d783870cdf4f584fcc2fb66031208631246ef7833cdbf8d",
+      "bestMove": {
+        "kind": "move",
+        "schemaVersion": 3,
+        "from": [
+          8,
+          9
+        ],
+        "path": [
+          [
+            6,
+            7
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.002361,
+      "completedDepth": 4,
+      "states": 119988
+    },
+    {
+      "rule": "heian-dai",
+      "initializationMs": 2.0068309999987832,
+      "linearMemoryBytes": 2490368,
+      "wallElapsedMs": 5004.357978,
+      "wasmSha256": "27a8950f960644b1fc60b10708f28ce62eb60585c1c88a2e1fe7aed465c5c0ad",
+      "bestMove": {
+        "kind": "move",
+        "schemaVersion": 3,
+        "from": [
+          1,
+          11
+        ],
+        "path": [
+          [
+            1,
+            10
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.001978,
+      "completedDepth": 5,
+      "states": 192002
+    },
+    {
+      "rule": "daishogi",
+      "initializationMs": 1.8428669999993872,
+      "linearMemoryBytes": 1900544,
+      "wallElapsedMs": 5004.624724000001,
+      "wasmSha256": "1583cac39928371e9389073a374d4c0d3761bfc20a09edc5ef840ad5eabada8f",
+      "bestMove": {
+        "kind": "move",
+        "schemaVersion": 3,
+        "from": [
+          6,
+          11
+        ],
+        "path": [
+          [
+            6,
+            10
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.002359,
+      "completedDepth": 3,
+      "states": 89517
+    },
+    {
+      "rule": "tenjiku-dai",
+      "initializationMs": 1.876338999994914,
+      "linearMemoryBytes": 1245184,
+      "wallElapsedMs": 5004.850433,
+      "wasmSha256": "65694c6ff57a1271efbece917d3071b1ccb29ba8c687310ff98ebed9c42e1651",
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          7,
+          13
+        ],
+        "path": [
+          [
+            7,
+            7
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.00317,
+      "completedDepth": 1,
+      "states": 74197
+    },
+    {
+      "rule": "dai-dai",
+      "initializationMs": 1.8233050000053481,
+      "linearMemoryBytes": 1245184,
+      "wallElapsedMs": 5007.6759170000005,
+      "wasmSha256": "5b6177ade6baea71c3cfba2f0d7b5071ce731819089be9517d8b0e1e322ed92b",
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          2,
+          16
+        ],
+        "path": [
+          [
+            3,
+            15
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.0023599999995,
+      "completedDepth": 3,
+      "states": 37046
+    },
+    {
+      "rule": "maka-dai-dai",
+      "initializationMs": 1.8094879999989644,
+      "linearMemoryBytes": 1376256,
+      "wallElapsedMs": 5007.640738000002,
+      "wasmSha256": "fa0f08ebd3cbbb535dbaa01fa977984880b8e6c0150ba938813bbfcf3ace8c37",
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          12,
+          14
+        ],
+        "path": [
+          [
+            12,
+            13
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.003053,
+      "completedDepth": 3,
+      "states": 110989
+    },
+    {
+      "rule": "taishogi",
+      "initializationMs": 1.8338589999984833,
+      "linearMemoryBytes": 1507328,
+      "wallElapsedMs": 5005.285661000002,
+      "wasmSha256": "4e96853954fbe115ff5b97d318920dc893c967886a8d4deb9f30648985d4a822",
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          13,
+          20
+        ],
+        "path": [
+          [
+            11,
+            18
+          ],
+          [
+            10,
+            17
+          ]
+        ],
+        "promotion": false
+      },
+      "elapsedMs": 5000.002925000001,
+      "completedDepth": 2,
+      "states": 15744
+    },
+    {
+      "rule": "taikyoku",
+      "initializationMs": 2.4493359999978566,
+      "linearMemoryBytes": 1507328,
+      "wallElapsedMs": 5009.304669999998,
+      "wasmSha256": "c4c29d4481b49048fb92a006871094fc484c4db40c501505657239b192fb41e0",
+      "bestMove": {
+        "schemaVersion": 5,
+        "from": [
+          5,
+          34
+        ],
+        "path": [
+          [
+            36,
+            3
+          ]
+        ],
+        "promotion": true
+      },
+      "elapsedMs": 5000.005276000001,
+      "completedDepth": 1,
+      "states": 27480
+    }
+  ]
+}

@@ -100,9 +100,9 @@ extended = []
     }
     previous = json.loads(args.compare.read_text()) if args.compare else None
     if previous:
-        for key in ['dependencyLockSha256', 'effectiveDependencyLockSha256']:
+        for key in ['engineDirectory', 'dependencyLockSha256', 'effectiveDependencyLockSha256']:
             if key in previous and previous[key] != report[key]:
-                raise ValueError(f'comparison dependency lock differs: {key}')
+                raise ValueError(f'comparison engine path or dependency lock differs: {key}')
         for key in ['cpu', 'logicalCpuAffinity', 'compiler', 'minimumBatchSeconds', 'samplesPerRule', 'harnessSha256']:
             if previous.get(key) != report[key]:
                 raise ValueError(f'comparison setting differs: {key}')
