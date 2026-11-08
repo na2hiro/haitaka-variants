@@ -18,16 +18,27 @@ pub const RULE_ID: u32 = 60;
 pub const NAME: &str = "maka-dai-dai";
 #[cfg(feature = "maka-dai-dai")]
 pub const RULE_ID: u32 = 61;
-const MAKA_PROMOTION: bool = cfg!(feature = "maka-dai-dai");
-const CAPTURE_PROMOTION: bool = cfg!(any(feature = "dai-dai", feature = "maka-dai-dai"));
+#[cfg(feature = "taishogi")]
+pub const NAME: &str = "taishogi";
+#[cfg(feature = "taishogi")]
+pub const RULE_ID: u32 = 63;
+const MAKA_PROMOTION: bool = cfg!(any(feature = "maka-dai-dai", feature = "taishogi"));
+const CAPTURE_PROMOTION: bool = cfg!(any(
+    feature = "dai-dai",
+    feature = "maka-dai-dai",
+    feature = "taishogi"
+));
 const BOARD_SIZE: usize = Geometry::HEIGHT;
 const MAX_HOPS: usize = 3;
+const ORDERED_EFFECTS: bool = cfg!(feature = "tenjiku-dai");
 #[cfg(feature = "tenjiku-dai")]
 type Geometry = Rect<16, 16>;
 #[cfg(feature = "dai-dai")]
 type Geometry = Rect<17, 17>;
 #[cfg(feature = "maka-dai-dai")]
 type Geometry = Rect<19, 19>;
+#[cfg(feature = "taishogi")]
+type Geometry = Rect<25, 25>;
 type Pos = Position<LargeRule>;
 pub type TurnPath = BoundedPath<3>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +101,8 @@ include!("large/tenjiku_defs.rs");
 include!("large/dai_dai_defs.rs");
 #[cfg(feature = "maka-dai-dai")]
 include!("large/maka_dai_dai_defs.rs");
+#[cfg(feature = "taishogi")]
+include!("large/taishogi_defs.rs");
 impl CaptureRoyalRule for LargeRule {
     type Geometry = Geometry;
     type State = TenjikuState;
@@ -225,6 +238,9 @@ fn order(p: &Pos, previous: &[Resident], ignore: Option<usize>) -> Vec<Resident>
     out
 }
 fn active(p: &Pos, ignore: Option<usize>) -> Vec<Resident> {
+    if !ORDERED_EFFECTS {
+        return vec![];
+    }
     let mut out: Vec<Resident> = vec![];
     for r in order(p, &p.state.shitenno, ignore) {
         let i = Pos::index(r.at).unwrap();
@@ -243,6 +259,9 @@ fn frozen(i: usize, color: u8, actives: &[Resident]) -> bool {
         .any(|p| p.color != color && adjacent(Pos::index(p.at).unwrap(), i))
 }
 fn fires(p: &Pos) -> Vec<Resident> {
+    if !ORDERED_EFFECTS {
+        return vec![];
+    }
     let a = active(p, None);
     p.cells
         .iter()
@@ -257,6 +276,13 @@ fn fires(p: &Pos) -> Vec<Resident> {
         .collect()
 }
 fn validate_state(p: &Pos) -> Result<(), String> {
+    if !ORDERED_EFFECTS {
+        return if p.state.shitenno.is_empty() {
+            Ok(())
+        } else {
+            Err("this ruleset has no ordered resident effects".into())
+        };
+    }
     let normalized = order(p, &p.state.shitenno, None);
     if normalized != p.state.shitenno
         || p.state
@@ -282,10 +308,37 @@ fn capture_outcome(p: &Pos) -> Outcome {
     }
 }
 fn targets(p: &Pos, from: usize, status: Option<u8>, ignore: Option<usize>) -> Vec<Target> {
+    targets_to(p, from, status, ignore, None)
+}
+fn targets_to(
+    p: &Pos,
+    from: usize,
+    status: Option<u8>,
+    ignore: Option<usize>,
+    wanted: Option<usize>,
+) -> Vec<Target> {
     let Some(c) = at_cell(p, from, ignore) else {
         return vec![];
     };
     if MAKA_PROMOTION && Pos::def(c).id == "ix" {
+        if let Some(to) = wanted {
+            if at_cell(p, to, ignore).is_none() {
+                return vec![Target { to, next: None }];
+            }
+            if at_cell(p, to, ignore).is_some_and(|v| v.color == c.color) {
+                return vec![];
+            }
+            let defended = p.cells.iter().enumerate().any(|(i, v)| {
+                Some(i) != ignore
+                    && v.is_some_and(|v| v.color != c.color && Pos::def(v).id != "ix")
+                    && targets(p, i, None, ignore).iter().any(|t| t.to == to)
+            });
+            return if defended {
+                vec![]
+            } else {
+                vec![Target { to, next: None }]
+            };
+        }
         let mut defended = BTreeSet::new();
         for (i, v) in p.cells.iter().enumerate() {
             if Some(i) != ignore && v.is_some_and(|v| v.color != c.color && Pos::def(v).id != "ix")
@@ -472,6 +525,9 @@ fn hop(p: &mut Pos, from: usize, to: usize, d: &mut Delta) {
     d.set(p, to, Some(mover));
 }
 fn finish(p: &mut Pos, to: usize, resident_fires: &[Resident], d: &mut Delta) {
+    if !ORDERED_EFFECTS {
+        return;
+    }
     if let Some(moved) = p.cells[to] {
         if resident_fires.iter().any(|r| {
             r.color != moved.color
@@ -632,7 +688,11 @@ impl Enumeration<'_> {
         target: Option<PieceId>,
         first: Option<(usize, Option<Cell>)>,
     ) -> Option<bool> {
-        for t in targets(p, from, status, None) {
+        let wanted = self
+            .wanted
+            .and_then(|w| w.path.get(path.len()).copied())
+            .and_then(|at| Pos::index(at).ok());
+        for t in targets_to(p, from, status, None, wanted) {
             if (self.stop)() {
                 return None;
             }
@@ -774,7 +834,7 @@ impl LargeGame {
             let mut status = None;
             for &at in pending.path.iter() {
                 let to = Pos::index(at)?;
-                let t = targets(&p, from, status, None)
+                let t = targets_to(&p, from, status, None, Some(to))
                     .into_iter()
                     .find(|t| t.to == to)
                     .ok_or("invalid pending hop")?;
@@ -893,7 +953,7 @@ impl LargeGame {
         let mut target = None;
         for &at in m.path.iter() {
             let to = Pos::index(at).unwrap();
-            status = targets(&self.position, from, status, None)
+            status = targets_to(&self.position, from, status, None, Some(to))
                 .into_iter()
                 .find(|t| t.to == to)
                 .unwrap()
@@ -1078,3 +1138,7 @@ mod tests;
 #[cfg(all(test, feature = "maka-dai-dai"))]
 #[path = "large/maka_dai_dai_tests.rs"]
 mod maka_dai_dai_tests;
+
+#[cfg(all(test, feature = "taishogi"))]
+#[path = "large/taishogi_tests.rs"]
+mod taishogi_tests;

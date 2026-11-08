@@ -888,7 +888,17 @@ pub mod classical;
 ))]
 pub use classical::compiled;
 
-#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai", feature = "maka-dai-dai"))]
+#[cfg(any(
+    feature = "tenjiku-dai",
+    feature = "dai-dai",
+    feature = "maka-dai-dai",
+    feature = "taishogi"
+))]
 pub mod large;
-#[cfg(any(feature = "tenjiku-dai", feature = "dai-dai", feature = "maka-dai-dai"))]
+#[cfg(any(
+    feature = "tenjiku-dai",
+    feature = "dai-dai",
+    feature = "maka-dai-dai",
+    feature = "taishogi"
+))]
 pub use large::compiled;
