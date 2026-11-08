@@ -1,0 +1,263 @@
+{
+  "stage": "04B-no-hands-scratch",
+  "status": "rejected",
+  "baseCommit": "109a8ee",
+  "sourcePatch": "04b-scratch-narrowed.patch",
+  "trials": [
+    "04b-scratch-v1-after.json",
+    "04b-scratch-v2-after.json",
+    "04b-scratch-narrowed-after.json",
+    "04b-scratch-v1-profile.json",
+    "04b-scratch-v2-profile.json",
+    "04b-scratch-narrowed-profile.json",
+    "04b-scratch-v2.patch",
+    "04b-scratch-narrowed.patch"
+  ],
+  "decision": "Reject the scratch prototype entirely. Heian Dai improves about 7.6%, but even the Heian-only narrowed dispatch leaves Washogi about 7.1% below the original copy path. Do not accept a non-target regression above 5%. Restore original copy validator/generator for all checked classical rules. Subsequent 04C and final runs verify restoration.",
+  "correctness": {
+    "unitTestsPerClassicalRule": 35,
+    "rules": [
+      "washogi",
+      "heian-dai",
+      "daishogi",
+      "torishogi"
+    ],
+    "freshNativeAndWasm": [
+      {
+        "file": "04b-scratch-washogi-verification.json",
+        "rule": "washogi",
+        "positions": 218,
+        "transitions": 8008,
+        "native": {
+          "positions": 218,
+          "transitions": 8008,
+          "byteIdentical": true
+        },
+        "legacyPositionAndContextHashDifferences": 0,
+        "partitions": [
+          {
+            "index": 0,
+            "count": 4,
+            "positions": 55,
+            "transitions": 2103,
+            "initializationMs": 1.1826970000001893,
+            "linearMemoryBytes": 1310720
+          },
+          {
+            "index": 1,
+            "count": 4,
+            "positions": 55,
+            "transitions": 1902,
+            "initializationMs": 0.5031180000000859,
+            "linearMemoryBytes": 1310720
+          },
+          {
+            "index": 2,
+            "count": 4,
+            "positions": 54,
+            "transitions": 2078,
+            "initializationMs": 0.6422890000001189,
+            "linearMemoryBytes": 1310720
+          },
+          {
+            "index": 3,
+            "count": 4,
+            "positions": 54,
+            "transitions": 1925,
+            "initializationMs": 0.5934650000001511,
+            "linearMemoryBytes": 1310720
+          }
+        ],
+        "perft": [
+          51,
+          2601
+        ],
+        "inputSha256": "ade06076c68ef789c745a891b5ec597d522c5d204be33d2a33ffcfd10ba2fb06",
+        "beforeWasmSha256": "7ac6a137632b538513e417d32f4095c136a993204415fb66762edb11b4e0538a",
+        "afterWasmSha256": "e9f8bfdf0fc0aa448f1a265c6c6ecc739b60b9c6d6faee414184611c9ce7ddb4",
+        "linearMemoryBytes": 1310720,
+        "wasmBytes": 324806,
+        "lowBudgetElapsedMs": 1.001668,
+        "pendingFallbacks": [],
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              8,
+              9
+            ],
+            "path": [
+              [
+                6,
+                7
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "beforeSearch": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              8,
+              9
+            ],
+            "path": [
+              [
+                6,
+                7
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        }
+      },
+      {
+        "file": "04b-scratch-heian-dai-verification.json",
+        "rule": "heian-dai",
+        "positions": 198,
+        "transitions": 6578,
+        "native": {
+          "positions": 198,
+          "transitions": 6578,
+          "byteIdentical": true
+        },
+        "legacyPositionAndContextHashDifferences": 0,
+        "partitions": [
+          {
+            "index": 0,
+            "count": 4,
+            "positions": 50,
+            "transitions": 1468,
+            "initializationMs": 1.0037210000000414,
+            "linearMemoryBytes": 1310720
+          },
+          {
+            "index": 1,
+            "count": 4,
+            "positions": 50,
+            "transitions": 1879,
+            "initializationMs": 0.56924099999992,
+            "linearMemoryBytes": 1376256
+          },
+          {
+            "index": 2,
+            "count": 4,
+            "positions": 49,
+            "transitions": 1439,
+            "initializationMs": 1.2022199999998975,
+            "linearMemoryBytes": 1310720
+          },
+          {
+            "index": 3,
+            "count": 4,
+            "positions": 49,
+            "transitions": 1792,
+            "initializationMs": 0.6042230000000473,
+            "linearMemoryBytes": 1310720
+          }
+        ],
+        "perft": [
+          29,
+          841
+        ],
+        "inputSha256": "760eb46aa0778ab119bd557aad149af33b95f8b13bffc4d9502724b7247dabf4",
+        "beforeWasmSha256": "0acb049404cd2e7b53336953cd6f3db0888d71c30d1eb2f9d41f51b3c4af5977",
+        "afterWasmSha256": "8594bc894fae4a001dd46f146613d9cbb14fa66b556572caa8d7e886c60a89da",
+        "linearMemoryBytes": 1376256,
+        "wasmBytes": 327049,
+        "lowBudgetElapsedMs": 1.001639,
+        "pendingFallbacks": [],
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              1,
+              11
+            ],
+            "path": [
+              [
+                1,
+                10
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "beforeSearch": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              1,
+              11
+            ],
+            "path": [
+              [
+                1,
+                10
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        }
+      }
+    ],
+    "differences": 0
+  },
+  "performance": [
+    {
+      "rule": "daishogi",
+      "beforeNps": 4826330.415514382,
+      "afterNps": 4684170.394394518,
+      "sampleRangePercent": 1.4563578015953427,
+      "speedup": 0.9705449049524487
+    },
+    {
+      "rule": "torishogi",
+      "beforeNps": 1100309.7388100757,
+      "afterNps": 1100129.6400731294,
+      "sampleRangePercent": 3.8192673009752154,
+      "speedup": 0.9998363199646483
+    },
+    {
+      "rule": "washogi",
+      "beforeNps": 1634941.4579968236,
+      "afterNps": 1518180.969964719,
+      "sampleRangePercent": 2.1418569825760514,
+      "speedup": 0.9285843003974203
+    },
+    {
+      "rule": "heian-dai",
+      "beforeNps": 1443510.5137770476,
+      "afterNps": 1553041.4073523062,
+      "sampleRangePercent": 0.8871272810037079,
+      "speedup": 1.0758781404983766
+    },
+    {
+      "rule": "standard",
+      "beforeNps": 18691358.996023204,
+      "afterNps": 18700796.884214707,
+      "sampleRangePercent": 0.3935499834909484,
+      "speedup": 1.0005049332257494
+    }
+  ],
+  "allocationNote": "Scratch saves Heian Dai alloc/realloc events 6171550→4649162 and cumulative requested bytes 1710488752→933217600 per perft(4), but allocation savings do not outweigh the non-target NPS regression. Inclusive timer profile is diagnostic, not production NPS.",
+  "unresolvedCriticalProblems": [],
+  "nextStage": "04C-inline-delta"
+}

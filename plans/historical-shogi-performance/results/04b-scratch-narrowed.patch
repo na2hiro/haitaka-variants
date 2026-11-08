@@ -1,0 +1,214 @@
+diff --git a/haitaka/src/extended/classical.rs b/haitaka/src/extended/classical.rs
+index f1c57ea..db9c443 100644
+--- a/haitaka/src/extended/classical.rs
++++ b/haitaka/src/extended/classical.rs
+@@ -508,6 +508,66 @@ impl<R: ClassicalRule> Position<R> {
+         }
+         Some(true)
+     }
++    fn classical_acceptable_in_place(
++        &mut self,
++        mv: ClassicalMove<R>,
++        stop: &mut dyn FnMut() -> bool,
++    ) -> Option<bool> {
++        if stop() {
++            return None;
++        }
++        let ClassicalMove::Move {
++            from,
++            path,
++            promotion,
++            ..
++        } = mv
++        else {
++            return self.classical_acceptable_copy(mv, stop);
++        };
++        debug_assert!(!R::Hands::ENABLED);
++        #[cfg(test)]
++        let original = self.clone();
++        let side = self.side;
++        let state = self.state.clone();
++        // Path has at most two hops: original square plus two destinations.
++        let mut changed = [(0usize, None); 3];
++        let mut len = 0;
++        let mut from = Self::index(from).unwrap();
++        for &at in path.iter() {
++            let to = Self::index(at).unwrap();
++            for i in [from, to] {
++                if !changed[..len].iter().any(|&(j, _)| i == j) {
++                    changed[len] = (i, self.cells[i]);
++                    len += 1;
++                }
++            }
++            self.classical_hop(from, to);
++            from = to;
++        }
++        if promotion {
++            let mut c = self.cells[from].unwrap();
++            c.piece = Self::def(c).promotion.unwrap();
++            self.set_cell(from, Some(c));
++        }
++        self.side ^= 1;
++        let legal = self.classical_file_allowed(from)
++            && (!R::CHECK || !self.classical_checked_for_legality(side));
++        for &(i, c) in &changed[..len] {
++            self.set_cell(i, c);
++        }
++        self.side = side;
++        self.state = state;
++        #[cfg(test)]
++        {
++            assert_eq!(*self, original);
++            assert_eq!(
++                Some(legal),
++                original.classical_acceptable_copy(mv, &mut || false)
++            );
++        }
++        Some(legal)
++    }
+     fn classical_append(
+         &self,
+         out: &mut Vec<ClassicalMove<R>>,
+@@ -520,6 +580,18 @@ impl<R: ClassicalRule> Position<R> {
+         }
+         Some(out.len() >= limit)
+     }
++    fn classical_append_in_place(
++        &mut self,
++        out: &mut Vec<ClassicalMove<R>>,
++        mv: ClassicalMove<R>,
++        limit: usize,
++        stop: &mut dyn FnMut() -> bool,
++    ) -> Option<bool> {
++        if self.classical_acceptable_in_place(mv, stop)? {
++            out.push(mv);
++        }
++        Some(out.len() >= limit)
++    }
+     pub fn classical_moves(
+         &self,
+         limit: usize,
+@@ -529,6 +601,22 @@ impl<R: ClassicalRule> Position<R> {
+         if self.capture_outcome() != Outcome::ONGOING || limit == 0 {
+             return Some(out);
+         }
++        // Adopted for Heian Dai only; Washogi scratch regressed in measurement.
++        // No reserve mutation or recursive pawn-drop mate here.
++        // This scratch belongs to one generator call and never escapes it.
++        let mut scratch = if R::ID == 15 && !R::Hands::ENABLED {
++            Some(self.clone())
++        } else {
++            None
++        };
++        macro_rules! append {
++            ($mv:expr, $limit:expr, $stop:expr $(,)?) => {{
++                match scratch.as_mut() {
++                    Some(board) => board.classical_append_in_place(&mut out, $mv, $limit, $stop),
++                    None => self.classical_append(&mut out, $mv, $limit, $stop),
++                }
++            }};
++        }
+         let mut pieces = self.occupied[self.side as usize];
+         while let Some(from) = pieces.first() {
+             if stop() {
+@@ -559,8 +647,7 @@ impl<R: ClassicalRule> Position<R> {
+                 let can = def.promotion.is_some() && zone;
+                 let must = can && (R::FORCED || self.relative_rank(to, c.color) < def.dead_ranks);
+                 if !must
+-                    && self.classical_append(
+-                        &mut out,
++                    && append!(
+                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), false),
+                         limit,
+                         stop,
+@@ -570,8 +657,7 @@ impl<R: ClassicalRule> Position<R> {
+                 }
+                 if can
+                     && follow.is_none()
+-                    && self.classical_append(
+-                        &mut out,
++                    && append!(
+                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), true),
+                         limit,
+                         stop,
+@@ -596,8 +682,7 @@ impl<R: ClassicalRule> Position<R> {
+                         if !mid.classical_capture_allowed(self, to, end, Some((from, victim))) {
+                             continue;
+                         }
+-                        if self.classical_append(
+-                            &mut out,
++                        if append!(
+                             ClassicalMove::board(
+                                 Self::at(from),
+                                 Path::two(Self::at(to), Self::at(end)),
+@@ -628,12 +713,7 @@ impl<R: ClassicalRule> Position<R> {
+                     {
+                         continue;
+                     }
+-                    if self.classical_append(
+-                        &mut out,
+-                        ClassicalMove::drop(id, Self::at(to)),
+-                        limit,
+-                        stop,
+-                    )? {
++                    if append!(ClassicalMove::drop(id, Self::at(to)), limit, stop,)? {
+                         return Some(out);
+                     }
+                 }
+diff --git a/haitaka/src/extended/classical/memory_tests.rs b/haitaka/src/extended/classical/memory_tests.rs
+index 98371e5..223952c 100644
+--- a/haitaka/src/extended/classical/memory_tests.rs
++++ b/haitaka/src/extended/classical/memory_tests.rs
+@@ -85,3 +85,39 @@ fn check_free_candidates_match_copy_oracle_through_fixed_seed_game() {
+     }
+     assert_eq!(g.to_json(), initial);
+ }
++
++fn scratch_game<R: ClassicalRule>() {
++    let p = Position::<R>::from_wire(&WirePosition {
++        side_to_move: 0,
++        pieces: R::initial(),
++        hands: Default::default(),
++        state: Default::default(),
++    })
++    .unwrap();
++    let mut game = ClassicalGame::<R>::root(p);
++    let mut seed = 0x5c4a7c01u32 + R::ID;
++    for _ in 0..128 {
++        let current = game.current();
++        let mut scratch = current.clone();
++        let moves = game.moves();
++        if moves.is_empty() {
++            break;
++        }
++        for &m in moves.iter().take(32) {
++            let result = scratch.classical_acceptable_in_place(m, &mut || false);
++            assert_eq!(result, current.classical_acceptable_copy(m, &mut || false));
++            assert_eq!(scratch, *current);
++            assert_eq!(scratch.classical_acceptable_in_place(m, &mut || true), None);
++            assert_eq!(scratch, *current);
++        }
++        seed ^= seed << 13;
++        seed ^= seed >> 17;
++        seed ^= seed << 5;
++        game.push(moves[seed as usize % moves.len()]);
++    }
++}
++#[test]
++fn no_hand_scratch_restores_all_fields_after_accept_reject_and_cancel() {
++    scratch_game::<Washogi>();
++    scratch_game::<HeianDai>();
++}
+diff --git a/scripts/profile-extended-hotspots.py b/scripts/profile-extended-hotspots.py
+index ef10b81..ea8b947 100644
+--- a/scripts/profile-extended-hotspots.py
++++ b/scripts/profile-extended-hotspots.py
+@@ -47,6 +47,8 @@ s,push_instrumented=span_call(s,s.index('fn push(&mut self, m: LargeMove)'),'let
+ large.write_text(s)
+ classical=dest/'haitaka/src/extended/classical.rs';s=classical.read_text()
+ for name,index in [('classical_acceptable',7),('classical_apply',8)]: s=span_function(s,name,index)
++if 'fn classical_acceptable_scratch(' in s: s=span_function(s,'classical_acceptable_scratch',7)
++if 'fn classical_acceptable_in_place(' in s: s=span_function(s,'classical_acceptable_in_place',7)
+ classical.write_text(s)
+ lib=dest/'haitaka/src/lib.rs';lib.write_text(lib.read_text()+'\npub mod hot_probe;\n')
+ (dest/'haitaka/src/hot_probe.rs').write_text('''use std::{cell::RefCell,time::Instant};
