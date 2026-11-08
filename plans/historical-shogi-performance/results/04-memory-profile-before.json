@@ -1,0 +1,457 @@
+{
+  "revision": "7285f24",
+  "sourceSha256": "be949d4a54c05c93baf8fcac6e407d959c5ceccc3b9aeba1e07c0014d89b6eaa",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "names": [
+    "enumeration_targets",
+    "push_targets",
+    "protected_inclusive",
+    "finish_inclusive",
+    "active_inclusive",
+    "order_inclusive",
+    "enumerate_inclusive",
+    "classical_candidate_inclusive",
+    "classical_apply_inclusive"
+  ],
+  "instrumentedEnumerationTargets": true,
+  "instrumentedPushTargets": true,
+  "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+  "rules": [
+    {
+      "allocationsPerPerft": 201370052,
+      "depth": 4,
+      "nodesPerPerft": 25451513,
+      "requestedAllocationBytesPerPerft": 74896148272,
+      "rule": "daishogi",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            25814816,
+            51629632
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4206147223,
+            4447013216
+          ],
+          "repetitions": 1,
+          "seconds": 11.132140352
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            25814816,
+            51629632
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4235494718,
+            4476805121
+          ],
+          "repetitions": 1,
+          "seconds": 11.188161293
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            25814816,
+            51629632
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4251659917,
+            4502332873
+          ],
+          "repetitions": 1,
+          "seconds": 11.284175903
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 995091,
+      "depth": 3,
+      "nodesPerPerft": 126574,
+      "requestedAllocationBytesPerPerft": 211115368,
+      "rule": "washogi",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4135232,
+            8270464
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2150986152,
+            526217712
+          ],
+          "repetitions": 32,
+          "seconds": 3.026429157
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4135232,
+            8270464
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2143530211,
+            524121477
+          ],
+          "repetitions": 32,
+          "seconds": 3.016122517
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4264458,
+            8528916
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2193615213,
+            539970218
+          ],
+          "repetitions": 33,
+          "seconds": 3.087779675
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 6171550,
+      "depth": 4,
+      "nodesPerPerft": 748121,
+      "requestedAllocationBytesPerPerft": 1710488752,
+      "rule": "heian-dai",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3870860,
+            7741240
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2178192570,
+            559372780
+          ],
+          "repetitions": 5,
+          "seconds": 3.100745969
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3870860,
+            7741240
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2182668464,
+            560678320
+          ],
+          "repetitions": 5,
+          "seconds": 3.104627245
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3870860,
+            7741240
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2185254818,
+            561054438
+          ],
+          "repetitions": 5,
+          "seconds": 3.108587708
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 235371,
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "requestedAllocationBytesPerPerft": 11482184,
+      "rule": "tenjiku-dai",
+      "samples": [
+        {
+          "calls": [
+            756645,
+            1268448,
+            0,
+            2534268,
+            1276843,
+            1276843,
+            9709,
+            0,
+            0
+          ],
+          "nanos": [
+            228701766,
+            636728447,
+            0,
+            370803086,
+            616809511,
+            559268119,
+            709329746,
+            0,
+            0
+          ],
+          "repetitions": 73,
+          "seconds": 3.035905377
+        },
+        {
+          "calls": [
+            746280,
+            1251072,
+            0,
+            2499552,
+            1259352,
+            1259352,
+            9576,
+            0,
+            0
+          ],
+          "nanos": [
+            224498443,
+            633130092,
+            0,
+            367142002,
+            610284615,
+            553152920,
+            699793420,
+            0,
+            0
+          ],
+          "repetitions": 72,
+          "seconds": 3.005505427
+        },
+        {
+          "calls": [
+            735915,
+            1233696,
+            0,
+            2464836,
+            1241861,
+            1241861,
+            9443,
+            0,
+            0
+          ],
+          "nanos": [
+            223071180,
+            653236357,
+            0,
+            372114480,
+            607418538,
+            550063607,
+            701844530,
+            0,
+            0
+          ],
+          "repetitions": 71,
+          "seconds": 3.031219739
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 1293093,
+      "depth": 2,
+      "nodesPerPerft": 79035,
+      "requestedAllocationBytesPerPerft": 138717952,
+      "rule": "taikyoku",
+      "samples": [
+        {
+          "calls": [
+            1247158,
+            873257,
+            0,
+            1744974,
+            0,
+            0,
+            3113,
+            0,
+            0
+          ],
+          "nanos": [
+            333564014,
+            1184427748,
+            0,
+            29489730,
+            0,
+            0,
+            1076393024,
+            0,
+            0
+          ],
+          "repetitions": 11,
+          "seconds": 3.140192981
+        },
+        {
+          "calls": [
+            1247158,
+            873257,
+            0,
+            1744974,
+            0,
+            0,
+            3113,
+            0,
+            0
+          ],
+          "nanos": [
+            330071057,
+            1167196118,
+            0,
+            29305080,
+            0,
+            0,
+            1053391758,
+            0,
+            0
+          ],
+          "repetitions": 11,
+          "seconds": 3.073256584
+        },
+        {
+          "calls": [
+            1247158,
+            873257,
+            0,
+            1744974,
+            0,
+            0,
+            3113,
+            0,
+            0
+          ],
+          "nanos": [
+            330559582,
+            1164657934,
+            0,
+            29285208,
+            0,
+            0,
+            1053131775,
+            0,
+            0
+          ],
+          "repetitions": 11,
+          "seconds": 3.068755181
+        }
+      ]
+    }
+  ]
+}
