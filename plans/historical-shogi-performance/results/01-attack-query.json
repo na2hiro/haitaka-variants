@@ -1,0 +1,306 @@
+{
+  "stage": "01-attack-query",
+  "status": "adopted",
+  "date": "2026-11-08",
+  "beforeCommit": "e7ab6efc40e8838d62185e6a69d96a3ad28041e8",
+  "afterCommit": "99998d8e7273b87ddf4e403d9435b05ccf397715",
+  "branch": "feat/classical-attack-query",
+  "changedFiles": [
+    "haitaka/src/extended/classical.rs",
+    "haitaka/src/extended/classical/attack_tests.rs"
+  ],
+  "implementation": {
+    "scope": "Only classical_acceptable check-legality for rule IDs 50 (Washogi) and 15 (Heian Dai).",
+    "method": "Enumerate royal targets and enemy occupied squares; compare mover-relative destination delta against steps/rays and inspect only intermediate ray blockers. No destination Vec.",
+    "unchanged": [
+      "Original attacked oracle and its other production callers",
+      "Other rules including Torishogi drop-mate and Dai check tolerance",
+      "Position copies, promotion, nifu, repetition, JSON and public hashes"
+    ]
+  },
+  "correctness": {
+    "unitCommands": [
+      "cargo test --release --workspace",
+      "cargo test --release -p haitaka --features washogi extended",
+      "cargo test --release -p haitaka --features heian-dai extended",
+      "cargo fmt --all --check",
+      "git diff --check"
+    ],
+    "unitResult": "Workspace passed; each extended feature run: 31 passed, 1 diagnostic benchmark ignored. Diagnostic run separately: 1 passed.",
+    "coverage": [
+      "Every piece and internal promoted origin, both colors, every source/target square on empty boards (Washogi, Heian Dai, Torishogi)",
+      "Friendly/enemy blockers, finite rays, edges",
+      "Fixed-seed legal walks (up to 128 plies) and first 16 candidate children, both colors",
+      "Pinned attacker, any-of-multiple royals, absent royals, opened ray and royal relocation"
+    ],
+    "referenceRepository": "/home/na2hiro/proj/shogitter-3",
+    "referenceCommit": "bdec1bbd3270b181cf05ac21e8b2ce652123c11f",
+    "referenceCommands": [
+      "CLASSICAL_RULE=washogi CLASSICAL_POSITIONS=128 pnpm exec vitest run app/bot/classicalReference.test.ts --maxWorkers=1",
+      "CLASSICAL_RULE=heian-dai CLASSICAL_POSITIONS=128 pnpm exec vitest run app/bot/classicalReference.test.ts --maxWorkers=1"
+    ],
+    "referenceResult": "4 passed, 3 skipped per rule; full legal sets, all transitions/outcomes and independent shallow perft matched.",
+    "positions": 416,
+    "transitions": 14586,
+    "differences": 0,
+    "rules": {
+      "washogi": {
+        "positions": 218,
+        "transitions": 8008,
+        "randomPositions": 128,
+        "fixedPositions": 90,
+        "perft": [
+          51,
+          2601
+        ]
+      },
+      "heian-dai": {
+        "positions": 198,
+        "transitions": 6578,
+        "randomPositions": 128,
+        "fixedPositions": 70,
+        "perft": [
+          29,
+          841
+        ]
+      }
+    },
+    "beforeAfterNative": [
+      {
+        "rule": "washogi",
+        "positions": 218,
+        "transitions": 8008,
+        "identical": true
+      },
+      {
+        "rule": "heian-dai",
+        "positions": 198,
+        "transitions": 6578,
+        "identical": true
+      }
+    ],
+    "inputAndOutputSha256": [
+      {
+        "rule": "washogi",
+        "kind": "input",
+        "path": "target/attack-stage1/washogi-before-input.jsonl",
+        "sha256": "ade06076c68ef789c745a891b5ec597d522c5d204be33d2a33ffcfd10ba2fb06"
+      },
+      {
+        "rule": "washogi",
+        "kind": "output",
+        "path": "target/attack-stage1/washogi-before-output.jsonl",
+        "sha256": "7609adc93a143b8e5f4018d79fbc10c98eff747f9f97ad825e66ab209ecf8603"
+      },
+      {
+        "rule": "heian-dai",
+        "kind": "input",
+        "path": "target/attack-stage1/heian-dai-before-input.jsonl",
+        "sha256": "760eb46aa0778ab119bd557aad149af33b95f8b13bffc4d9502724b7247dabf4"
+      },
+      {
+        "rule": "heian-dai",
+        "kind": "output",
+        "path": "target/attack-stage1/heian-dai-before-output.jsonl",
+        "sha256": "2109c90afb280723af351e02a28597932049942b39dd7d516339832a3cbb7a56"
+      }
+    ],
+    "hashCompatibility": "Both regenerated oracle files byte-identical to pre-change outputs; WASM canonicalization/history replay/public hashes also matched.",
+    "wasmCommands": [
+      "node scripts/verify-classical.mjs target washogi",
+      "node scripts/verify-classical.mjs target heian-dai"
+    ],
+    "wasm": {
+      "washogi": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1310720,
+        "lowBudgetElapsedMs": 1.001793,
+        "positions": 218,
+        "transitions": 8008,
+        "perftDepth2": 2601,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              8,
+              9
+            ],
+            "path": [
+              [
+                6,
+                7
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 322660
+      },
+      "heian-dai": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1376256,
+        "lowBudgetElapsedMs": 1.002605,
+        "positions": 198,
+        "transitions": 6578,
+        "perftDepth2": 841,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              1,
+              11
+            ],
+            "path": [
+              [
+                1,
+                10
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 324666
+      }
+    },
+    "wasmAdditionalChecks": [
+      "Native/WASM deterministic node-1000 search match",
+      "Legal fallback under 1ms timeout",
+      "Unsupported NNUE/SFNN/USI APIs remain unavailable"
+    ],
+    "deployment": "Native and actual target/wasm-* artifacts rebuilt and checked; frontend vendored WASM unchanged. Browser rollout is stage 5."
+  },
+  "performance": {
+    "beforeFile": "01-attack-query-before.json",
+    "afterFile": "01-attack-query-after.json",
+    "commands": [
+      "python3 scripts/perft-benchmark.py --rules washogi heian-dai daishogi torishogi standard --output target/perft-before-01.json",
+      "python3 scripts/perft-benchmark.py --rules washogi heian-dai daishogi torishogi standard --compare target/perft-before-01.json --output target/perft-after-01.json"
+    ],
+    "environment": {
+      "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+      "logicalCpuAffinity": 7,
+      "threads": 1,
+      "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "build": "Rust release, opt-level=3, codegen-units=1, lto=fat; workspace dependency versions",
+      "metric": "leaf nodes per second; actual perft with every move applied; no bulk counting; no transposition cache; no evaluation or pruning; root parsing excluded",
+      "minimumBatchSeconds": 3.0,
+      "samplesPerRule": 3,
+      "warmupPerftRuns": 1,
+      "baselineSha256": "bd17cc472fe8a81743064fd69ba97824c9de4f41a89d882ebdc2d55517ff97d4",
+      "harnessSha256": "b9e61ae2ab9cd92fcd234cdafe8526cfac721b6339e98eb644e51003d25956fe"
+    },
+    "sourceSha256": {
+      "haitaka/src/extended/classical.rs": "45c2d8794d924655d9fc31f46c941d0042f4645b2ac2eb511925c09434ded53e",
+      "haitaka/src/extended/classical/attack_tests.rs": "47bd9f20410ce496678924f6a337a34f77fd3fc01af9863e93a41aa137e38694"
+    },
+    "sameDepthAndLeafCounts": true,
+    "ruleResults": [
+      {
+        "rule": "washogi",
+        "depth": 3,
+        "nodesPerPerft": 126574,
+        "beforeNps": 676857.1652431254,
+        "afterNps": 1589992.0741681233,
+        "speedup": 2.3490806566212563,
+        "sampleRangePercent": 2.0062537518558354
+      },
+      {
+        "rule": "heian-dai",
+        "depth": 4,
+        "nodesPerPerft": 748121,
+        "beforeNps": 702758.9855171517,
+        "afterNps": 1444131.8756011026,
+        "speedup": 2.0549461555989694,
+        "sampleRangePercent": 0.38025367272325195
+      },
+      {
+        "rule": "daishogi",
+        "depth": 4,
+        "nodesPerPerft": 25451513,
+        "beforeNps": 3596953.721910585,
+        "afterNps": 3539764.3414988047,
+        "speedup": 0.9841006071155669,
+        "sampleRangePercent": 1.2397794988512345
+      },
+      {
+        "rule": "torishogi",
+        "depth": 5,
+        "nodesPerPerft": 2179749,
+        "beforeNps": 1121494.8548147609,
+        "afterNps": 1102526.5536649527,
+        "speedup": 0.983086591018787,
+        "sampleRangePercent": 0.7749822752904922
+      },
+      {
+        "rule": "standard",
+        "depth": 5,
+        "nodesPerPerft": 19861490,
+        "beforeNps": 18617624.687203545,
+        "afterNps": 18698232.6754969,
+        "speedup": 1.004329660182094,
+        "sampleRangePercent": 1.8864391743672382
+      }
+    ],
+    "nonTargetRegressions": [],
+    "sampleNoiseReviewed": true,
+    "noiseNote": "All before/after sample max/min ranges <5%; controls within 2% of before. No competing builds/oracle/browser verification during timing.",
+    "isolatedAttackQueries": {
+      "command": "taskset -c 7 cargo test --release -p haitaka --features washogi benchmark_old_and_direct_attack_queries -- --ignored --nocapture",
+      "method": "Same fixed-seed legal positions for old/direct, both colors, black_box; 3 alternating old/direct batches, each >=1 second. Washogi walk terminates at 77 positions; Heian Dai at 128. Diagnostic query distribution differs from perft candidates.",
+      "results": [
+        {
+          "directMedianNs": 470.7465710802427,
+          "directSamplesNs": [
+            470.2949861552121,
+            470.7465710802427,
+            476.1798330363631
+          ],
+          "oldMedianNs": 1555.755343841592,
+          "oldSamplesNs": [
+            1555.629901236488,
+            1555.755343841592,
+            1576.6701711738128
+          ],
+          "positions": 77,
+          "queriesPerPosition": 2,
+          "ruleId": 50,
+          "speedup": 3.3048681380122056
+        },
+        {
+          "directMedianNs": 459.4452504814477,
+          "directSamplesNs": [
+            456.6047920623904,
+            459.4452504814477,
+            470.00291934853226
+          ],
+          "oldMedianNs": 1458.8633760618932,
+          "oldSamplesNs": [
+            1458.1907151105825,
+            1458.8633760618932,
+            1462.2621617117327
+          ],
+          "positions": 128,
+          "queriesPerPosition": 2,
+          "ruleId": 15,
+          "speedup": 3.1752714268635187
+        }
+      ]
+    }
+  },
+  "decision": "adopt",
+  "reason": "2.35x Washogi and 2.05x Heian Dai perft, above +10% adoption goal; identical oracle and leaf counts, no >5% control regression.",
+  "remaining": [
+    "Original 2.8-3.6x / 2.5-3.1x perft projections were optimistic: isolated attack queries improved 3.30x / 3.18x rather than assumed 5-10x. Different query distribution prevents exact Amdahl attribution.",
+    "No reverse lookup table or board-copy/hash/effect/path optimization added; retain these for separate measured stages.",
+    "All-32-rule regression and frontend browser deployment remain stage 5."
+  ],
+  "nextStage": "02-incremental-hash (not started)"
+}

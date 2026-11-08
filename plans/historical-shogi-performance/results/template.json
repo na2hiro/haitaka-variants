@@ -1,0 +1,29 @@
+{
+  "stage": "NN-name",
+  "status": "not-started",
+  "beforeCommit": null,
+  "afterCommit": null,
+  "changedFiles": [],
+  "correctness": {
+    "unitCommands": [],
+    "referenceCommands": [],
+    "positions": null,
+    "transitions": null,
+    "differences": null,
+    "wasmCommands": [],
+    "hashCompatibility": null
+  },
+  "performance": {
+    "beforeFile": null,
+    "afterFile": null,
+    "inputSha256": null,
+    "sameDepthAndLeafCounts": null,
+    "ruleResults": [],
+    "nonTargetRegressions": [],
+    "sampleNoiseReviewed": false
+  },
+  "decision": null,
+  "reason": null,
+  "remaining": [],
+  "nextStage": null
+}
