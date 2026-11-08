@@ -1,0 +1,290 @@
+{
+  "date": "2026-11-08",
+  "ruleId": 60,
+  "ruleset": "dai-dai",
+  "status": "complete",
+  "stageFiveStatus": "in-progress: rules 59 and 60 complete; rules 61,63,64 not started",
+  "engineCommit": "cf920247894f94168025e0a04dd6bdd20a2010d9",
+  "shogitterCommit": "ee96c693fdb4fd5ec69ef0104d8d8bfb7679141e",
+  "referenceCommit": "ee96c693fdb4fd5ec69ef0104d8d8bfb7679141e",
+  "referenceStartCommit": "adc2a83fbbe61bc140eb09a6dfdf459e6a93836b",
+  "protocol": "haitaka-json-v4",
+  "schemaVersion": 4,
+  "geometry": {
+    "width": 17,
+    "height": 17,
+    "words": 5,
+    "squareIndex": "u16",
+    "lastIndex": 288
+  },
+  "inventory": {
+    "pieceIds": 85,
+    "baseKinds": 64,
+    "promotionSources": 21,
+    "initialPieces": 192,
+    "perSide": 96
+  },
+  "adoptedRules": [
+    "Capture-triggered mandatory promotion, deferred until completed turn or pass",
+    "No promotion target means unchanged species, including dead-rank survivors",
+    "A continuing hop that captures the last royal ends before deferred promotion",
+    "Atomic one-turn type102 hook rays turn once at an empty square and capture only at their destination",
+    "Komainu supports three hops, stops and returns; leap conditions require the exact referenced friendly squares",
+    "Lion restrictions apply only to bl/dh, not ie/go/lf; aa cannot provide tsukegui",
+    "No hands; only ah is royal; ignored check/checkmate are allowed; stalemate loses only when not checked",
+    "Repetition and continuous check use completed turns and include senjishi; shitenno must be empty"
+  ],
+  "reference": {
+    "seed": "0x60c02026",
+    "positions": 483,
+    "transitions": 20014,
+    "randomPositions": 128,
+    "fixedPositions": 355
+  },
+  "coverage": {
+    "pieceColorPairs": 170,
+    "promotingPieceColorPairs": 42,
+    "pieces": [
+      "aa",
+      "ab",
+      "ad",
+      "ae",
+      "af",
+      "ag",
+      "ah",
+      "am",
+      "an",
+      "bl",
+      "ci",
+      "cl",
+      "cm",
+      "co",
+      "cp",
+      "cr",
+      "cs",
+      "ct",
+      "dp",
+      "dq",
+      "dr",
+      "ds",
+      "dt",
+      "du",
+      "dv",
+      "fh",
+      "fx",
+      "fy",
+      "fz",
+      "ga",
+      "gb",
+      "gc",
+      "gd",
+      "ge",
+      "gf",
+      "gh",
+      "gj",
+      "gk",
+      "gl",
+      "gm",
+      "gn",
+      "go",
+      "hf",
+      "hg",
+      "hh",
+      "hi",
+      "hj",
+      "hk",
+      "hl",
+      "hm",
+      "hn",
+      "ho",
+      "hp",
+      "hq",
+      "hr",
+      "hs",
+      "ht",
+      "hu",
+      "hv",
+      "hw",
+      "hx",
+      "hy",
+      "hz",
+      "ia",
+      "ie",
+      "hb",
+      "he",
+      "dl",
+      "dm",
+      "zl",
+      "jr",
+      "jp",
+      "0e",
+      "ic",
+      "id",
+      "ig",
+      "hc",
+      "0c",
+      "dj",
+      "zm",
+      "0f",
+      "dh",
+      "jq",
+      "lf",
+      "0g"
+    ],
+    "promotionSources": [
+      "bl",
+      "co",
+      "cp",
+      "dt",
+      "dv",
+      "fh",
+      "gj",
+      "gk",
+      "gl",
+      "gm",
+      "gn",
+      "go",
+      "hf",
+      "hg",
+      "hi",
+      "hj",
+      "hk",
+      "hn",
+      "ho",
+      "hp",
+      "hq"
+    ],
+    "transitions": 20014,
+    "complete": true
+  },
+  "perft": [
+    63,
+    3951
+  ],
+  "wasm": {
+    "schemaVersion": 4,
+    "initializationMs": 2.387705000000004,
+    "linearMemoryBytes": 1245184,
+    "lowBudgetElapsedMs": 1.006803,
+    "positions": 483,
+    "transitions": 20014,
+    "perftDepth2": 3951,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          1,
+          12
+        ],
+        "path": [
+          [
+            1,
+            11
+          ]
+        ],
+        "promotion": false
+      },
+      "completedDepth": 1,
+      "states": 1000,
+      "score": 2
+    },
+    "wasmBytes": 339703
+  },
+  "browser": {
+    "newCasesPassed": 8,
+    "legacyCasesPassed": 48,
+    "totalPassed": 56,
+    "newSuiteDurationSeconds": 29.2,
+    "scenarios": [
+      "initial",
+      "promotion",
+      "noPromotion",
+      "hook and undo",
+      "aiThree",
+      "aiLion first-hop terminal before promotion",
+      "pending1",
+      "pending2"
+    ],
+    "browser": "installed Google Chrome",
+    "baseUrl": "http://localhost:3002",
+    "serverStartedByAgent": false
+  },
+  "tests": {
+    "rustWorkspaceRelease": "passed",
+    "extendedPassed": 35,
+    "daiDaiPassed": 9,
+    "tenjikuLargePassed": 16,
+    "corePassed": 2570,
+    "coreSkipped": 345,
+    "coreTodo": 1,
+    "aiCiPassed": 434,
+    "aiCiSkipped": 231,
+    "appFullPassed": 729,
+    "appFullSkipped": 11,
+    "finalDaiDaiProtocolPassed": 9,
+    "typecheck": "passed",
+    "eslintMaxWarnings0": "passed"
+  },
+  "package": {
+    "ruleId": 60,
+    "ruleset": "dai-dai",
+    "protocol": "haitaka-json-v4",
+    "bytes": 127066,
+    "rejectsOtherRule59": true,
+    "rejectsNNUE": true,
+    "rejectsUSI": true
+  },
+  "regression": {
+    "tenjikuNative": {
+      "positions": 352,
+      "transitions": 77025,
+      "exactMatch": true
+    },
+    "standardBinaryExactMatch": true,
+    "standardBinarySha256": "47d29e707543a43005a13fe4c686daf73af7a403fa078f9497ac5a495ae87c2a"
+  },
+  "generatedDefinitionsSha256": {
+    "tenjiku-dai": "46ba29d0aa09ef069d1e2296a06398da06639129570327bbf0d4771492c16669",
+    "dai-dai": "5f44b5e06d4977219e24ad30aec0850c53a39692fc747bc24502e68a7e5b8eb2"
+  },
+  "budgets": {
+    "initializationMs": 5000,
+    "linearMemoryBytes": 67108864,
+    "moveTimeMs": 5000,
+    "fallbackTestMs": 1
+  },
+  "artifacts": {
+    "referenceInput": "target/dai-dai-reference-input.jsonl",
+    "referenceOutput": "target/dai-dai-reference-output.jsonl",
+    "referenceOutputBytes": 84202859,
+    "differences": [],
+    "browserWasmBytes": 339725,
+    "package": "target/haitaka-dai-dai.tgz"
+  },
+  "commands": {
+    "reference": "DAIDAI_ORACLE=1 DAIDAI_POSITIONS=128 pnpm exec vitest run app/bot/daiDaiReference.test.ts",
+    "perft": "DAIDAI_PERFT=1 pnpm exec vitest run app/bot/daiDaiReference.test.ts",
+    "wasm": "node scripts/verify-dai-dai.mjs target",
+    "rust": "cargo test --release --workspace",
+    "ai": "CI=1 pnpm test:ai run",
+    "browser": "SKIP_WEB_SERVER=1 BASE_URL=http://localhost:3002 pnpm exec playwright test tests/haitaka-dai-dai.spec.ts --config .tmp/dai-dai.playwright.config.ts --project=chromium --workers=2 --reporter=line"
+  },
+  "validationNotes": [
+    "The full app suite passed before two additional protocol tests; the final nine protocol cases also passed",
+    "The first-hop royal browser fixture blocks alternative adjacent first hops so the AI cannot choose a legal two-hop capture ending in promotion",
+    "Browser assets are generated with wasm-bindgen --out-name haitaka_engine; renaming JS alone leaves incompatible WASM import names",
+    "Unoptimized full-workspace tests were stopped and replaced by release tests because of the long DFPN regression; full release workspace passed",
+    "Default all-rule deep AI perft was stopped and replaced with the normal CI scope; independent Dai Dai depth-2 perft passed"
+  ],
+  "next": {
+    "ruleId": 61,
+    "ruleset": "maka-dai-dai",
+    "status": "not-started"
+  },
+  "environment": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "node": "v26.8.1",
+    "chrome": "Google Chrome 155.0.8059.39",
+    "referenceWorktree": "/home/na2hiro/proj/shogitter-3"
+  }
+}
