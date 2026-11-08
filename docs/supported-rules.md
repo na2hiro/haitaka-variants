@@ -34,3 +34,5 @@ The `shoshogi` (43) and `chushogi` (48) modes support multiple royal pieces and 
 The `torishogi` (16), `washogi` (50), `heian-dai` (15) and `daishogi` (49) modes use JSON v3 with rule-local piece IDs. Tori includes reserves and drops; Heian Dai and Dai preserve ambiguous promotion origins. All use handcrafted evaluation. See [adopted rules, API and verification](classical-stage4.md).
 
 The `tenjiku-dai` mode supports Tenjiku Daishogi (59), with ordered freezing/burning effects, up to three hops per turn and JSON v4. It is separate from the 9x9 `tenjiku` mode (56). See [adopted rules and verification](tenjiku-dai.md).
+
+The `dai-dai` mode supports Dai Dai Shogi (60) on a 17x17 board, with mandatory capture promotions, atomic hook rays, three-hop komainu turns and JSON v4. See [adopted rules and verification](dai-dai.md).
