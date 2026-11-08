@@ -5,7 +5,11 @@ use super::search::SearchGame;
 use super::*;
 use std::collections::BTreeSet;
 
+#[cfg(not(feature = "taikyoku"))]
 pub const PROTOCOL: &str = "haitaka-json-v4";
+#[cfg(feature = "taikyoku")]
+pub const PROTOCOL: &str = "haitaka-json-v5";
+const SCHEMA_VERSION: u8 = if cfg!(feature = "taikyoku") { 5 } else { 4 };
 #[cfg(feature = "tenjiku-dai")]
 pub const NAME: &str = "tenjiku-dai";
 #[cfg(feature = "tenjiku-dai")]
@@ -22,6 +26,10 @@ pub const RULE_ID: u32 = 61;
 pub const NAME: &str = "taishogi";
 #[cfg(feature = "taishogi")]
 pub const RULE_ID: u32 = 63;
+#[cfg(feature = "taikyoku")]
+pub const NAME: &str = "taikyoku";
+#[cfg(feature = "taikyoku")]
+pub const RULE_ID: u32 = 64;
 const MAKA_PROMOTION: bool = cfg!(any(feature = "maka-dai-dai", feature = "taishogi"));
 const CAPTURE_PROMOTION: bool = cfg!(any(
     feature = "dai-dai",
@@ -29,7 +37,7 @@ const CAPTURE_PROMOTION: bool = cfg!(any(
     feature = "taishogi"
 ));
 const BOARD_SIZE: usize = Geometry::HEIGHT;
-const MAX_HOPS: usize = 3;
+const MAX_HOPS: usize = if cfg!(feature = "taikyoku") { 4 } else { 3 };
 const ORDERED_EFFECTS: bool = cfg!(feature = "tenjiku-dai");
 #[cfg(feature = "tenjiku-dai")]
 type Geometry = Rect<16, 16>;
@@ -39,8 +47,10 @@ type Geometry = Rect<17, 17>;
 type Geometry = Rect<19, 19>;
 #[cfg(feature = "taishogi")]
 type Geometry = Rect<25, 25>;
+#[cfg(feature = "taikyoku")]
+type Geometry = Rect<36, 36>;
 type Pos = Position<LargeRule>;
-pub type TurnPath = BoundedPath<3>;
+pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Resident {
@@ -86,6 +96,10 @@ struct Primitive {
     skip: u8,
     next: i8,
     occupied: &'static [Requirement],
+    #[cfg(feature = "taikyoku")]
+    empty: &'static [(isize, isize)],
+    #[cfg(feature = "taikyoku")]
+    jump_limit: u8,
 }
 struct Movement {
     root: &'static [Primitive],
@@ -103,6 +117,8 @@ include!("large/dai_dai_defs.rs");
 include!("large/maka_dai_dai_defs.rs");
 #[cfg(feature = "taishogi")]
 include!("large/taishogi_defs.rs");
+#[cfg(feature = "taikyoku")]
+include!("large/taikyoku_defs.rs");
 impl CaptureRoyalRule for LargeRule {
     type Geometry = Geometry;
     type State = TenjikuState;
@@ -116,7 +132,13 @@ impl CaptureRoyalRule for LargeRule {
     }
     const PIECES: &'static [PieceDef] = PIECES;
     const INVENTORY: &'static [usize] = INVENTORY;
-    const PROMOTION_RANKS: usize = if CAPTURE_PROMOTION { 0 } else { 5 };
+    const PROMOTION_RANKS: usize = if CAPTURE_PROMOTION {
+        0
+    } else if cfg!(feature = "taikyoku") {
+        11
+    } else {
+        5
+    };
     fn initial() -> Vec<ClassicalPiece> {
         INITIAL
             .iter()
@@ -135,7 +157,7 @@ pub struct LargeMove {
 impl LargeMove {
     fn new(from: usize, path: &[[u16; 2]], promotion: bool) -> Self {
         Self {
-            schema_version: 4,
+            schema_version: SCHEMA_VERSION,
             from: Pos::at(from),
             path: TurnPath::from_steps(path).unwrap(),
             promotion,
@@ -146,7 +168,7 @@ impl LargeMove {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Pending {
     pub from: [u16; 2],
-    pub path: BoundedPath<2>,
+    pub path: BoundedPath<{ MAX_HOPS - 1 }>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -196,6 +218,7 @@ impl Delta {
 #[derive(Clone, Copy, Debug)]
 struct Target {
     to: usize,
+    through: bool,
     next: Option<u8>,
 }
 fn adjacent(a: usize, b: usize) -> bool {
@@ -323,7 +346,11 @@ fn targets_to(
     if MAKA_PROMOTION && Pos::def(c).id == "ix" {
         if let Some(to) = wanted {
             if at_cell(p, to, ignore).is_none() {
-                return vec![Target { to, next: None }];
+                return vec![Target {
+                    to,
+                    next: None,
+                    through: false,
+                }];
             }
             if at_cell(p, to, ignore).is_some_and(|v| v.color == c.color) {
                 return vec![];
@@ -336,7 +363,11 @@ fn targets_to(
             return if defended {
                 vec![]
             } else {
-                vec![Target { to, next: None }]
+                vec![Target {
+                    to,
+                    next: None,
+                    through: false,
+                }]
             };
         }
         let mut defended = BTreeSet::new();
@@ -348,7 +379,11 @@ fn targets_to(
         }
         return (0..Geometry::SQUARES)
             .filter(|&i| at_cell(p, i, ignore).is_none() || !defended.contains(&i))
-            .map(|to| Target { to, next: None })
+            .map(|to| Target {
+                to,
+                next: None,
+                through: false,
+            })
             .collect();
     }
     let m = &MOVEMENT[c.piece.0 as usize];
@@ -360,7 +395,7 @@ fn targets_to(
     } else {
         m.root
     };
-    let mut raw: Vec<(usize, i8)> = vec![];
+    let mut raw: Vec<(usize, i8, bool)> = vec![];
     let mut prohibited = BTreeSet::new();
     let sign = if c.color == 0 { 1 } else { -1 };
     for prim in prims {
@@ -378,6 +413,19 @@ fn targets_to(
             continue;
         }
         let mut blocked = false;
+        #[cfg(feature = "taikyoku")]
+        for &(ex, ey) in prim.empty {
+            if Geometry::offset(
+                from,
+                dx + (if dx > 0 { 1 } else { -1 }) * ex,
+                dy + (if dy > 0 { 1 } else { -1 }) * ey,
+            )
+            .is_some_and(|i| at_cell(p, i, ignore).is_some())
+            {
+                blocked = true;
+                break;
+            }
+        }
         for r in prim.occupied {
             if let Some(i) = Geometry::offset(
                 from,
@@ -396,7 +444,7 @@ fn targets_to(
             prohibited.insert(now);
             continue;
         }
-        let ray = matches!(prim.kind, 2 | 6 | 102) || prim.limit > 0;
+        let ray = matches!(prim.kind, 2 | 6 | 100 | 102) || prim.limit > 0;
         let max = if prim.limit > 0 {
             usize::from(prim.limit)
         } else if ray {
@@ -404,24 +452,31 @@ fn targets_to(
         } else {
             1
         };
+        #[cfg(feature = "taikyoku")]
+        let mut jumps = 0;
         for _ in 0..max {
+            #[cfg(feature = "taikyoku")]
+            if jumps > prim.jump_limit {
+                break;
+            }
             let v = at_cell(p, now, ignore);
             if v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id)) {
                 break;
             }
             if let Some(t) = raw.iter_mut().find(|t| t.0 == now) {
+                t.2 |= prim.kind == 100;
                 if t.1 == -2 && prim.next != -2 {
                     t.1 = prim.next;
                 }
             } else {
-                raw.push((now, prim.next));
+                raw.push((now, prim.next, prim.kind == 100));
             }
             if prim.kind == 102 && v.is_none() {
                 for (tx, ty) in [(-dy, dx), (dy, -dx)] {
                     let mut turn = now;
                     while let Some(j) = Geometry::offset(turn, tx, ty) {
                         if !raw.iter().any(|r| r.0 == j) {
-                            raw.push((j, prim.next));
+                            raw.push((j, prim.next, false));
                         }
                         if at_cell(p, j, ignore).is_some() {
                             break;
@@ -430,7 +485,11 @@ fn targets_to(
                     }
                 }
             }
-            if !ray || (prim.kind != 6 && v.is_some()) {
+            #[cfg(feature = "taikyoku")]
+            if v.is_some() {
+                jumps += 1;
+            }
+            if !ray || (!matches!(prim.kind, 6 | 100) && v.is_some()) {
                 break;
             }
             let Some(next) = Geometry::offset(now, dx, dy) else {
@@ -456,7 +515,7 @@ fn targets_to(
                         next.insert(to);
                     } else if !v.is_some_and(|v| v.color == c.color) {
                         if !adjacent(from, to) && !raw.iter().any(|r| r.0 == to) {
-                            raw.push((to, -2));
+                            raw.push((to, -2, false));
                         }
                         if v.is_none() {
                             next.insert(to);
@@ -468,9 +527,10 @@ fn targets_to(
         }
     }
     raw.into_iter()
-        .filter(|(to, _)| !prohibited.contains(to))
-        .map(|(to, n)| Target {
+        .filter(|(to, _, _)| !prohibited.contains(to))
+        .map(|(to, n, through)| Target {
             to,
+            through,
             next: if n >= 0 && !(m.stop_capture && at_cell(p, to, ignore).is_some()) {
                 Some(n as u8)
             } else {
@@ -509,7 +569,9 @@ fn capture_allowed(
     }
     if let Some((source, v)) = first {
         if let Some(v) = v {
-            if Pos::def(v).id != "aa" && !(MAKA_PROMOTION && Pos::def(v).id == "cq") {
+            if Pos::def(v).id != "aa"
+                && !((MAKA_PROMOTION || cfg!(feature = "taikyoku")) && Pos::def(v).id == "cq")
+            {
                 return true;
             }
             return !protected(original, to, mover.color, source);
@@ -518,9 +580,32 @@ fn capture_allowed(
     }
     adjacent(from, to) || !protected(p, to, mover.color, from)
 }
-fn hop(p: &mut Pos, from: usize, to: usize, d: &mut Delta) {
+fn through_squares(from: usize, to: usize) -> Vec<usize> {
+    let (x, y) = Geometry::coordinates(from).unwrap();
+    let (u, v) = Geometry::coordinates(to).unwrap();
+    let (dx, dy) = (
+        (u as isize - x as isize).signum(),
+        (v as isize - y as isize).signum(),
+    );
+    let mut out = vec![];
+    let mut now = from;
+    while let Some(i) = Geometry::offset(now, dx, dy) {
+        if i == to {
+            break;
+        }
+        out.push(i);
+        now = i;
+    }
+    out
+}
+fn hop(p: &mut Pos, from: usize, to: usize, through: bool, d: &mut Delta) {
     let mover = p.cells[from].unwrap();
     p.state.senjishi = p.cells[to].is_some_and(lion) && !lion(mover);
+    if through {
+        for i in through_squares(from, to) {
+            d.set(p, i, None);
+        }
+    }
     d.set(p, from, None);
     d.set(p, to, Some(mover));
 }
@@ -613,7 +698,8 @@ fn next_promotion(p: &Pos, from: usize, to: usize, prior: Option<PieceId>) -> Op
             if CAPTURE_PROMOTION {
                 victim.is_some()
             } else {
-                p.relative_rank(from, c.color) < 5 || p.relative_rank(to, c.color) < 5
+                p.relative_rank(from, c.color) < LargeRule::PROMOTION_RANKS
+                    || p.relative_rank(to, c.color) < LargeRule::PROMOTION_RANKS
             }
         })
     })
@@ -713,7 +799,7 @@ impl Enumeration<'_> {
             let captured = p.cells[t.to];
             let eligible = next_promotion(p, from, t.to, target);
             let mut undo = Delta::new(p);
-            hop(p, from, t.to, &mut undo);
+            hop(p, from, t.to, t.through, &mut undo);
             path.push(Pos::at(t.to));
             let early = t.next.is_some() && capture_outcome(p) != Outcome::ONGOING;
             let can_stop = early || t.next.is_none() || !MOVEMENT[c.piece.0 as usize].no_stop;
@@ -802,7 +888,7 @@ impl LargeGame {
     }
     pub fn parse(json: &str) -> Result<Self, String> {
         let q: Request = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        if q.schema_version != 4 || q.rule_id != RULE_ID {
+        if q.schema_version != SCHEMA_VERSION || q.rule_id != RULE_ID {
             return Err("unsupported schemaVersion or ruleId".into());
         }
         let current = Pos::from_wire(&q.position)?;
@@ -839,7 +925,7 @@ impl LargeGame {
                     .find(|t| t.to == to)
                     .ok_or("invalid pending hop")?;
                 let mut d = Delta::new(&p);
-                hop(&mut p, from, to, &mut d);
+                hop(&mut p, from, to, t.through, &mut d);
                 status = t.next;
                 from = to;
             }
@@ -861,7 +947,7 @@ impl LargeGame {
     }
     pub fn to_json(&self) -> String {
         serde_json::to_string(&Request {
-            schema_version: 4,
+            schema_version: SCHEMA_VERSION,
             rule_id: RULE_ID,
             position: self.position.to_wire(),
             history: Some(History {
@@ -934,7 +1020,7 @@ impl LargeGame {
         }
     }
     pub fn play(&mut self, m: LargeMove) -> Result<(), String> {
-        if m.schema_version != 4
+        if m.schema_version != SCHEMA_VERSION
             || self.basic_outcome() != Outcome::ONGOING
             || enumerate(&self.position, self.prefix(), Some(m), 1, &mut || false)
                 .unwrap()
@@ -953,13 +1039,13 @@ impl LargeGame {
         let mut target = None;
         for &at in m.path.iter() {
             let to = Pos::index(at).unwrap();
-            status = targets_to(&self.position, from, status, None, Some(to))
+            let t = targets_to(&self.position, from, status, None, Some(to))
                 .into_iter()
                 .find(|t| t.to == to)
-                .unwrap()
-                .next;
+                .unwrap();
+            status = t.next;
             target = next_promotion(&self.position, from, to, target);
-            hop(&mut self.position, from, to, &mut delta);
+            hop(&mut self.position, from, to, t.through, &mut delta);
             from = to;
         }
         let early = status.is_some() && capture_outcome(&self.position) != Outcome::ONGOING;
@@ -1014,7 +1100,7 @@ impl LargeGame {
 }
 impl SearchGame for LargeGame {
     type Move = LargeMove;
-    const SCHEMA: u8 = 4;
+    const SCHEMA: u8 = SCHEMA_VERSION;
     fn moves(&self, limit: usize, stop: &mut dyn FnMut() -> bool) -> Option<Vec<LargeMove>> {
         enumerate(&self.position, self.prefix(), None, limit, stop)
     }
@@ -1051,6 +1137,32 @@ impl SearchGame for LargeGame {
             }
         }
         let end = Pos::index(*m.path.last().unwrap()).unwrap();
+        if m.path.len() == 1 {
+            let (x, y) = Geometry::coordinates(from).unwrap();
+            let (u, v) = Geometry::coordinates(end).unwrap();
+            let sign = if c.color == 0 { 1 } else { -1 };
+            let dir = (
+                ((u as isize - x as isize).signum()) * sign,
+                ((v as isize - y as isize).signum()) * sign,
+            );
+            if MOVEMENT[c.piece.0 as usize]
+                .root
+                .iter()
+                .any(|p| p.kind == 100 && p.delta == dir)
+            {
+                for i in through_squares(from, end) {
+                    if seen.insert(i) {
+                        if let Some(v) = p.cells[i] {
+                            value += if v.color == c.color {
+                                -Pos::def(v).value
+                            } else {
+                                Pos::def(v).value
+                            };
+                        }
+                    }
+                }
+            }
+        }
         let promoted = if m.promotion {
             Pos::def(c).promotion.map(|id| Cell {
                 piece: id,
@@ -1108,7 +1220,7 @@ pub mod compiled {
     }
     pub fn inspect_json(json: &str) -> Result<String, String> {
         let g = LargeGame::parse(json)?;
-        Ok(serde_json::json!({"schemaVersion":4,"positionHash":format!("{:016x}",g.position_hash()),"contextHash":format!("{:016x}",g.context_key()),"outcome":g.outcome()}).to_string())
+        Ok(serde_json::json!({"schemaVersion":SCHEMA_VERSION,"positionHash":format!("{:016x}",g.position_hash()),"contextHash":format!("{:016x}",g.context_key()),"outcome":g.outcome()}).to_string())
     }
     pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
         if depth > 4 {
@@ -1142,3 +1254,7 @@ mod maka_dai_dai_tests;
 #[cfg(all(test, feature = "taishogi"))]
 #[path = "large/taishogi_tests.rs"]
 mod taishogi_tests;
+
+#[cfg(all(test, feature = "taikyoku"))]
+#[path = "large/taikyoku_tests.rs"]
+mod taikyoku_tests;
