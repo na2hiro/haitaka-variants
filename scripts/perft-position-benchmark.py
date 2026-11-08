@@ -70,7 +70,7 @@ if args.calibrate:
 report={'schemaVersion':1,'gitCommit':subprocess.check_output(['git','rev-parse','HEAD'],cwd=engine,text=True).strip(),'engineDirectory':str(engine),'engineStatus':subprocess.check_output(['git','status','--porcelain','--','haitaka','haitaka_types'],cwd=engine,text=True),'compiler':subprocess.check_output(['rustc','--version'],text=True).strip(),'cpu':next(s.split(':',1)[1].strip() for s in Path('/proc/cpuinfo').read_text().splitlines() if s.startswith('model name')),'logicalCpuAffinity':args.cpu,'threads':1,'dependencyLockSha256':hashlib.sha256((engine/'Cargo.lock').read_bytes()).hexdigest(),'effectiveDependencyLockSha256':hashlib.sha256((bench/'Cargo.lock').read_bytes()).hexdigest(),'harnessSha256':hashlib.sha256(source.encode()).hexdigest(),'sharedTimingLoopSha256':hashlib.sha256(prefix.encode()).hexdigest(),'manifestSha256':hashlib.sha256(manifest_path.read_bytes()).hexdigest(),'minimumBatchSeconds':3,'samplesPerPosition':3,'timingScope':'Leaf-applied internal perft, no TT/bulk/evaluation/pruning; JSON parse/history replay excluded, warmup excluded. Same measure() as initial benchmark.','positions':[]}
 previous=json.loads(args.compare.read_text()) if args.compare else None
 if previous:
- for key in ['compiler','cpu','logicalCpuAffinity','dependencyLockSha256','effectiveDependencyLockSha256','harnessSha256','manifestSha256','minimumBatchSeconds','samplesPerPosition']:
+ for key in ['engineDirectory','compiler','cpu','logicalCpuAffinity','dependencyLockSha256','effectiveDependencyLockSha256','harnessSha256','manifestSha256','minimumBatchSeconds','samplesPerPosition']:
   assert previous[key]==report[key],key
 for p in cases:
  measured=run(p,3);result=measured['result'];assert result['nodesPerPerft']==p['expectedNodes']

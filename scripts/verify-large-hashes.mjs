@@ -30,7 +30,8 @@ async function load(dir) {
   const engine=await import(pathToFileURL(join(dir,basename+'.js')));
   const started=performance.now();
   const instance=engine.initSync({module:readFileSync(join(dir,basename+'_bg.wasm'))});
-  return {engine,instance,initializationMs:performance.now()-started};
+  const initializationMs=performance.now()-started;assert(initializationMs<5000);
+  return {engine,instance,initializationMs};
 }
 async function nativeOracle() {
   const child=spawn(join(root,'haitaka-'+rule),['json','oracle'],{stdio:['pipe','pipe','inherit']});

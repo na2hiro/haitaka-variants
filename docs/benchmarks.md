@@ -22,6 +22,13 @@ cargo bench -p haitaka --features annan --bench perft -- --noplot
 
 Use this to catch broad move-generation regressions and speed changes.
 
+For reproducible leaf-applied NPS across all 32 rules, use
+`scripts/perft-benchmark.py`. It pins one CPU, warms up, fixes depths and expected
+leaf counts, and records at least three seconds per sample and three samples.
+`scripts/perft-position-benchmark.py` applies the same timing loop to frozen JSON
+midgame and pending positions. See [historical performance](historical-shogi-performance.md)
+for inputs, before/after results, actual frontend WASM and verification evidence.
+
 ## DFPN
 
 ```bash

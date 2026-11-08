@@ -16,7 +16,9 @@ function position(w,h,pieces){
 }
 for(const [rule,w,h,start,counts]of cases){
  const dir=join(root,'wasm-'+rule);const engine=await import(pathToFileURL(join(dir,'haitaka_wasm.js')));
- const wasm=readFileSync(join(dir,'haitaka_wasm_bg.wasm'));engine.initSync({module:wasm});
+ const wasm=readFileSync(join(dir,'haitaka_wasm_bg.wasm'));
+ const initStarted=performance.now();const instance=engine.initSync({module:wasm});
+ const initializationMs=performance.now()-initStarted;assert(initializationMs<5000);
  for(let d=1;d<=3;d++){const result=engine.perft(start,d);assert.equal(result.nodes,counts[d-1]);result.free();}
  const result=engine.search_iterative_deepening(start,2,1000);const best=result.bestMove;assert(best);assert.equal(result.completedDepth,2);result.free();
  const session=new engine.UsiEngine();assert(session.send('usi').includes('usiok'));assert(session.send('isready').includes('readyok'));
@@ -31,5 +33,9 @@ for(const [rule,w,h,start,counts]of cases){
  assert.throws(()=>engine.load_nnue(new Uint8Array()),/UNSUPPORTED_RULESET/);
  assert.throws(()=>engine.load_sfnn(new Uint8Array(),new Uint8Array(),'SFNN_ka2_4096_8_64_progress8'),/UNSUPPORTED_RULESET/);
  assert.throws(()=>engine.dfpn(start,100,10,1,4),/DFPN_UNSUPPORTED_RULESET/);
- session.free();console.log(JSON.stringify({rule,perft:counts,best,reply,wasmBytes:wasm.length}));
+ const timed=engine.search_iterative_deepening(start,100,1);
+ const lowBudgetElapsedMs=timed.elapsedMs;assert(timed.bestMove);assert(timed.timedOut);
+ assert.deepEqual(session.send('position startpos moves '+timed.bestMove),[]);timed.free();
+ const linearMemoryBytes=instance.memory.buffer.byteLength;assert(linearMemoryBytes<=64*1024*1024);
+ session.free();console.log(JSON.stringify({rule,perft:counts,best,reply,wasmBytes:wasm.length,initializationMs,linearMemoryBytes,lowBudgetElapsedMs}));
 }
