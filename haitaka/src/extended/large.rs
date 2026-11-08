@@ -14,13 +14,20 @@ pub const RULE_ID: u32 = 59;
 pub const NAME: &str = "dai-dai";
 #[cfg(feature = "dai-dai")]
 pub const RULE_ID: u32 = 60;
-const CAPTURE_PROMOTION: bool = cfg!(feature = "dai-dai");
-const BOARD_SIZE: usize = if CAPTURE_PROMOTION { 17 } else { 16 };
+#[cfg(feature = "maka-dai-dai")]
+pub const NAME: &str = "maka-dai-dai";
+#[cfg(feature = "maka-dai-dai")]
+pub const RULE_ID: u32 = 61;
+const MAKA_PROMOTION: bool = cfg!(feature = "maka-dai-dai");
+const CAPTURE_PROMOTION: bool = cfg!(any(feature = "dai-dai", feature = "maka-dai-dai"));
+const BOARD_SIZE: usize = Geometry::HEIGHT;
 const MAX_HOPS: usize = 3;
 #[cfg(feature = "tenjiku-dai")]
 type Geometry = Rect<16, 16>;
 #[cfg(feature = "dai-dai")]
 type Geometry = Rect<17, 17>;
+#[cfg(feature = "maka-dai-dai")]
+type Geometry = Rect<19, 19>;
 type Pos = Position<LargeRule>;
 pub type TurnPath = BoundedPath<3>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,13 +88,19 @@ struct Movement {
 include!("large/tenjiku_defs.rs");
 #[cfg(feature = "dai-dai")]
 include!("large/dai_dai_defs.rs");
+#[cfg(feature = "maka-dai-dai")]
+include!("large/maka_dai_dai_defs.rs");
 impl CaptureRoyalRule for LargeRule {
     type Geometry = Geometry;
     type State = TenjikuState;
     type Hands = NoHands;
     type Placement = ClassicalPiece;
     const ID: u32 = RULE_ID;
-    const ALLOW_NO_ROYALS: bool = !CAPTURE_PROMOTION;
+    const ALLOW_NO_ROYALS: bool = RULE_ID != 60;
+    const CONVERTS_INVENTORY: bool = MAKA_PROMOTION;
+    fn origin(id: PieceId) -> Option<&'static str> {
+        ORIGINS[id.0 as usize]
+    }
     const PIECES: &'static [PieceDef] = PIECES;
     const INVENTORY: &'static [usize] = INVENTORY;
     const PROMOTION_RANKS: usize = if CAPTURE_PROMOTION { 0 } else { 5 };
@@ -272,6 +285,19 @@ fn targets(p: &Pos, from: usize, status: Option<u8>, ignore: Option<usize>) -> V
     let Some(c) = at_cell(p, from, ignore) else {
         return vec![];
     };
+    if MAKA_PROMOTION && Pos::def(c).id == "ix" {
+        let mut defended = BTreeSet::new();
+        for (i, v) in p.cells.iter().enumerate() {
+            if Some(i) != ignore && v.is_some_and(|v| v.color != c.color && Pos::def(v).id != "ix")
+            {
+                defended.extend(targets(p, i, None, ignore).into_iter().map(|t| t.to));
+            }
+        }
+        return (0..Geometry::SQUARES)
+            .filter(|&i| at_cell(p, i, ignore).is_none() || !defended.contains(&i))
+            .map(|to| Target { to, next: None })
+            .collect();
+    }
     let m = &MOVEMENT[c.piece.0 as usize];
     if status.is_none() && frozen(from, c.color, &active(p, ignore)) {
         return vec![];
@@ -430,7 +456,7 @@ fn capture_allowed(
     }
     if let Some((source, v)) = first {
         if let Some(v) = v {
-            if Pos::def(v).id != "aa" {
+            if Pos::def(v).id != "aa" && !(MAKA_PROMOTION && Pos::def(v).id == "cq") {
                 return true;
             }
             return !protected(original, to, mover.color, source);
@@ -504,6 +530,38 @@ fn attacked(p: &Pos, color: u8) -> bool {
         })
     })
 }
+fn next_promotion(p: &Pos, from: usize, to: usize, prior: Option<PieceId>) -> Option<PieceId> {
+    let c = p.cells[from].unwrap();
+    let def = Pos::def(c);
+    let victim = p.cells[to];
+    if MAKA_PROMOTION {
+        let special = victim.and_then(|v| match Pos::def(v).id {
+            "ih" | "iz" => Some("iz"),
+            "ii" | "jb" => Some("jb"),
+            _ => None,
+        });
+        if def.royal && special.is_some() {
+            return None;
+        }
+        let royal_promotion = def.promotion.is_some_and(|id| PIECES[id.0 as usize].royal);
+        if !def.royal && !royal_promotion {
+            if let Some(id) = special {
+                return Some(PieceId(
+                    PIECES.iter().position(|p| p.id == id).unwrap() as u16
+                ));
+            }
+        }
+    }
+    prior.or_else(|| {
+        def.promotion.filter(|_| {
+            if CAPTURE_PROMOTION {
+                victim.is_some()
+            } else {
+                p.relative_rank(from, c.color) < 5 || p.relative_rank(to, c.color) < 5
+            }
+        })
+    })
+}
 struct Enumeration<'a> {
     original: &'a Pos,
     resident_fires: Vec<Resident>,
@@ -519,16 +577,16 @@ impl Enumeration<'_> {
         p: &mut Pos,
         from: usize,
         path: &[[u16; 2]],
-        can: bool,
+        target: Option<PieceId>,
         early: bool,
     ) -> Option<bool> {
         let to = Pos::index(*path.last().unwrap()).unwrap();
         let c = p.cells[to].unwrap();
-        let must = can
+        let must = target.is_some()
             && !early
             && (CAPTURE_PROMOTION || p.relative_rank(to, c.color) < Pos::def(c).dead_ranks);
         for promotion in [false, true] {
-            if promotion && (!can || early) || !promotion && must {
+            if promotion && (target.is_none() || early) || !promotion && must {
                 continue;
             }
             let mv = LargeMove::new(from, path, promotion);
@@ -545,7 +603,7 @@ impl Enumeration<'_> {
             let mut undo = Delta::new(p);
             if promotion {
                 let mut c = c;
-                c.piece = Pos::def(c).promotion.unwrap();
+                c.piece = target.unwrap();
                 undo.set(p, to, Some(c));
             }
             if !early {
@@ -571,7 +629,7 @@ impl Enumeration<'_> {
         from: usize,
         status: Option<u8>,
         path: &mut Vec<[u16; 2]>,
-        can: bool,
+        target: Option<PieceId>,
         first: Option<(usize, Option<Cell>)>,
     ) -> Option<bool> {
         for t in targets(p, from, status, None) {
@@ -593,13 +651,7 @@ impl Enumeration<'_> {
             }
             let c = p.cells[from].unwrap();
             let captured = p.cells[t.to];
-            let eligible = can
-                || (Pos::def(c).promotion.is_some()
-                    && if CAPTURE_PROMOTION {
-                        captured.is_some()
-                    } else {
-                        p.relative_rank(from, c.color) < 5 || p.relative_rank(t.to, c.color) < 5
-                    });
+            let eligible = next_promotion(p, from, t.to, target);
             let mut undo = Delta::new(p);
             hop(p, from, t.to, &mut undo);
             path.push(Pos::at(t.to));
@@ -657,7 +709,7 @@ fn enumerate(
         {
             continue;
         }
-        if e.visit(&mut scratch, from, from, None, &mut vec![], false, None)? {
+        if e.visit(&mut scratch, from, from, None, &mut vec![], None, None)? {
             break;
         }
     }
@@ -838,6 +890,7 @@ impl LargeGame {
         let mut delta = Delta::new(&self.position);
         let mut from = Pos::index(m.from).unwrap();
         let mut status = None;
+        let mut target = None;
         for &at in m.path.iter() {
             let to = Pos::index(at).unwrap();
             status = targets(&self.position, from, status, None)
@@ -845,13 +898,14 @@ impl LargeGame {
                 .find(|t| t.to == to)
                 .unwrap()
                 .next;
+            target = next_promotion(&self.position, from, to, target);
             hop(&mut self.position, from, to, &mut delta);
             from = to;
         }
         let early = status.is_some() && capture_outcome(&self.position) != Outcome::ONGOING;
         if m.promotion {
             let mut c = self.position.cells[from].unwrap();
-            c.piece = Pos::def(c).promotion.unwrap();
+            c.piece = target.unwrap();
             delta.set(&mut self.position, from, Some(c));
         }
         if !early {
@@ -1020,3 +1074,7 @@ pub mod compiled {
 mod dai_dai_tests;
 #[cfg(all(test, feature = "tenjiku-dai"))]
 mod tests;
+
+#[cfg(all(test, feature = "maka-dai-dai"))]
+#[path = "large/maka_dai_dai_tests.rs"]
+mod maka_dai_dai_tests;
