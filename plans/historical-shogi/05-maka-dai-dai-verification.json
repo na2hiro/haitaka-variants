@@ -1,0 +1,336 @@
+{
+  "date": "2026-11-08",
+  "ruleId": 61,
+  "ruleset": "maka-dai-dai",
+  "status": "complete",
+  "stageFiveStatus": "in-progress: rules 59,60,61 complete; rules 63,64 not started",
+  "engineCommit": "d787c40bd4de30693a04e28ff31e39cc379314ac",
+  "shogitterCommit": "35491d152ae11ca30519e7b230c37d7882928669",
+  "referenceCommit": "35491d152ae11ca30519e7b230c37d7882928669",
+  "referenceStartCommit": "ee96c693fdb4fd5ec69ef0104d8d8bfb7679141e",
+  "protocol": "haitaka-json-v4",
+  "schemaVersion": 4,
+  "geometry": {
+    "width": 19,
+    "height": 19,
+    "words": 6,
+    "squareIndex": "u16",
+    "lastIndex": 360
+  },
+  "inventory": {
+    "pieceIds": 76,
+    "internalPieceIds": 98,
+    "baseKinds": 50,
+    "normalPromotionSources": 47,
+    "ambiguousGoldOrigins": 22,
+    "initialPieces": 192,
+    "perSide": 96,
+    "conversionValidation": "per-side total bound, not per-base inventory"
+  },
+  "reference": {
+    "seed": "0x61c02026",
+    "positions": 524,
+    "transitions": 33383,
+    "randomPositions": 128,
+    "fixedPositions": 396,
+    "sources": [
+      {
+        "seed": "0x61c02026",
+        "positions": 520,
+        "transitions": 32649,
+        "randomPositions": 128,
+        "fixedPositions": 392
+      },
+      {
+        "seed": "0x61c02026",
+        "positions": 2,
+        "transitions": 10,
+        "randomPositions": 0,
+        "fixedPositions": 2
+      },
+      {
+        "positions": 2,
+        "transitions": 724,
+        "randomPositions": 0,
+        "fixedPositions": 2,
+        "classRevalidationPositions": 21,
+        "classRevalidationTransitions": 2696
+      }
+    ]
+  },
+  "coverage": {
+    "complete": true,
+    "pieceColorPairs": 152,
+    "normalPromotionSourceColorPairs": 94,
+    "originColorPairs": 44,
+    "ids": [
+      "aa",
+      "ab",
+      "ac",
+      "ad",
+      "ae",
+      "af",
+      "ag",
+      "ah",
+      "am",
+      "an",
+      "bl",
+      "cf",
+      "ci",
+      "cl",
+      "cm",
+      "cn",
+      "co",
+      "cp",
+      "cq",
+      "cr",
+      "cs",
+      "ct",
+      "dp",
+      "dq",
+      "dr",
+      "ds",
+      "dt",
+      "du",
+      "dv",
+      "gd",
+      "gh",
+      "gm",
+      "go",
+      "hy",
+      "hz",
+      "ih",
+      "ii",
+      "ij",
+      "ik",
+      "il",
+      "im",
+      "in",
+      "io",
+      "ip",
+      "iq",
+      "ir",
+      "is",
+      "it",
+      "iu",
+      "iw",
+      "do",
+      "ka",
+      "jz",
+      "ix",
+      "ie",
+      "iy",
+      "kb",
+      "ju",
+      "jt",
+      "hb",
+      "hl",
+      "kh",
+      "kc",
+      "jx",
+      "cx",
+      "kg",
+      "js",
+      "iz",
+      "jb",
+      "kd",
+      "kf",
+      "jw",
+      "jv",
+      "jo",
+      "id",
+      "jy"
+    ],
+    "origins": {
+      "do": [
+        "aa",
+        "ab",
+        "ac",
+        "af",
+        "ag",
+        "cm",
+        "cr",
+        "cs",
+        "dq",
+        "du",
+        "dv",
+        "gd",
+        "gh",
+        "go",
+        "hy",
+        "hz",
+        "iq",
+        "ir",
+        "is",
+        "it",
+        "iu",
+        "iw"
+      ]
+    },
+    "transitions": 33383
+  },
+  "perft": [
+    80,
+    6400
+  ],
+  "wasm": {
+    "schemaVersion": 4,
+    "initializationMs": 20.462988999999993,
+    "linearMemoryBytes": 1245184,
+    "lowBudgetElapsedMs": 1.001892,
+    "positions": 524,
+    "transitions": 33383,
+    "perftDepth2": 6400,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          10,
+          16
+        ],
+        "path": [
+          [
+            7,
+            13
+          ]
+        ],
+        "promotion": false
+      },
+      "completedDepth": 1,
+      "states": 1000,
+      "score": 6
+    },
+    "wasmBytes": 345527
+  },
+  "browser": {
+    "newCasesPassed": 8,
+    "legacyCasesPassed": 56,
+    "totalUniquePassed": 64,
+    "scenarios": [
+      "initial",
+      "special",
+      "promotedSpecial",
+      "ordinary with gold origin",
+      "prince",
+      "emperorPromotion then actual emperor move",
+      "emperor and undo",
+      "pending special target"
+    ],
+    "browser": "installed Google Chrome",
+    "baseUrl": "http://localhost:3002",
+    "serverStartedByAgent": false,
+    "finalTimingRetry": {
+      "cases": [
+        "initial",
+        "special"
+      ],
+      "reason": "Cold dev-server compilation and concurrent verification pushed whole-page readiness over 20 seconds; both passed individually without changing the threshold",
+      "passed": 2
+    }
+  },
+  "tests": {
+    "rustWorkspaceRelease": "passed",
+    "extendedPassed": 36,
+    "makaDaiDaiPassed": 10,
+    "daiDaiLargePassed": 9,
+    "tenjikuLargePassed": 16,
+    "corePassed": 2577,
+    "coreSkipped": 345,
+    "coreTodo": 1,
+    "sourcePassAndClassRegressionsPassed": 7,
+    "aiCiPassed": 434,
+    "aiCiSkipped": 231,
+    "appOrdinaryPassed": 709,
+    "appOrdinarySkipped": 2,
+    "protocolV4Passed": 26,
+    "typecheck": "passed",
+    "eslintMaxWarnings0": "passed"
+  },
+  "referenceFixes": [
+    "A completion pass does not capture the moving piece itself; retain the saved special promotion target",
+    "A normal promotion on pass preserves the origin chosen by the promotion rule; special conversion clears it itself",
+    "Update the piece class in place when promoting into or converting out of Jizaitenno, so movement changes without a serialize/reload cycle",
+    "Include Maka completed-turn lion state and ambiguous origins in repetition; include pending eligibility and target in source move caching"
+  ],
+  "adoptedRules": [
+    "Captures trigger mandatory normal promotion, deferred to completed turn or pass",
+    "Capturing ih/iz selects iz; capturing ii/jb selects jb; later special captures override earlier targets",
+    "Royal ah/iy remain themselves on special captures; cf promotes normally to iy",
+    "Ordinary ah capture promotes to non-royal ix; losing every ah/iy loses, both missing draws",
+    "ix moves to any empty square and captures enemies unprotected by non-ix enemy pieces",
+    "Ambiguous do origins are serialized and hashed; special conversion clears the origin",
+    "Lion restrictions apply to bl/dh and exclude aa/cq from tsukegui",
+    "JSON v4 replays history and derives promotion targets from captures; corrupt pending targets/eligibility are rejected"
+  ],
+  "package": {
+    "ruleId": 61,
+    "ruleset": "maka-dai-dai",
+    "protocol": "haitaka-json-v4",
+    "bytes": 128774,
+    "rejectsOtherRule60": true,
+    "rejectsNNUE": true,
+    "rejectsUSI": true
+  },
+  "regression": {
+    "daiDaiNative": {
+      "positions": 483,
+      "transitions": 20014,
+      "exactMatch": true
+    },
+    "tenjikuNative": {
+      "positions": 352,
+      "transitions": 77025,
+      "exactMatch": true
+    },
+    "standardBinaryExactMatch": true,
+    "standardBinarySha256": "47d29e707543a43005a13fe4c686daf73af7a403fa078f9497ac5a495ae87c2a"
+  },
+  "generatedDefinitionsSha256": {
+    "tenjiku-dai": "ba9261676bbe762c8f1da5103f1ca80cd8b5f999003fd1b7675b268810e45400",
+    "dai-dai": "042aa80f136ed1af7414bdfaf63d259a688f79fd3566b57f9a4e139ebb67cd32",
+    "maka-dai-dai": "80b46aef7b4212885639efb79f316204542cfc0b5dca92bb9053cad483e63f86"
+  },
+  "budgets": {
+    "initializationMs": 5000,
+    "linearMemoryBytes": 67108864,
+    "moveTimeMs": 5000,
+    "fallbackTestMs": 1
+  },
+  "artifacts": {
+    "referenceInput": "target/maka-dai-dai-reference-input.jsonl",
+    "referenceOutput": "target/maka-dai-dai-reference-output.jsonl",
+    "referenceOutputBytes": 156687212,
+    "differences": [],
+    "browserWasmBytes": 345549,
+    "package": "target/haitaka-maka-dai-dai.tgz"
+  },
+  "commands": {
+    "fullReference": "MAKA_ORACLE=1 MAKA_POSITIONS=128 pnpm exec vitest run app/bot/makaDaiDaiReference.test.ts",
+    "knightSupplement": "MAKA_ORACLE=1 MAKA_CAPTURE_ONLY=1 MAKA_POSITIONS=0 MAKA_DATASET=maka-dai-dai-capture pnpm exec vitest run app/bot/makaDaiDaiReference.test.ts",
+    "classRevalidation": "MAKA_ORACLE=1 MAKA_CLASS_ONLY=1 MAKA_POSITIONS=0 MAKA_DATASET=maka-dai-dai-class pnpm exec vitest run app/bot/makaDaiDaiReference.test.ts",
+    "wasm": "node scripts/verify-maka-dai-dai.mjs target",
+    "rust": "cargo test --release --workspace",
+    "core": "pnpm test:core run",
+    "ai": "CI=1 pnpm test:ai run",
+    "app": "pnpm exec vitest run app --exclude 'app/bot/*Reference.test.ts' --maxWorkers=4",
+    "browser": "SKIP_WEB_SERVER=1 BASE_URL=http://localhost:3002 pnpm exec playwright test tests/haitaka-maka-dai-dai.spec.ts --config .tmp/dai-dai.playwright.config.ts --project=chromium --workers=2 --reporter=line"
+  },
+  "validationNotes": [
+    "The corpus combines 520 full-oracle positions, two knight-capture fixtures, and two emperor-conversion fixtures",
+    "The final class fix revalidated all 19 affected existing fixed positions plus the two new emperor fixtures; all 21 positions and 2696 transitions matched",
+    "The default full oracle now includes all 396 fixed positions plus 128 random positions",
+    "App ordinary tests initially had one 5-second ponder timeout under heavy parallel load; the final full run with maxWorkers=4 passed all 709 cases",
+    "WASM verification was rerun after the corpus writer finished and after both supplements were added; final 524 positions and 33383 transitions passed"
+  ],
+  "next": {
+    "ruleId": 63,
+    "ruleset": "taishogi",
+    "status": "not-started"
+  },
+  "environment": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "node": "v26.8.1",
+    "chrome": "Google Chrome 155.0.8059.39",
+    "referenceWorktree": "/home/na2hiro/proj/shogitter-3"
+  }
+}
