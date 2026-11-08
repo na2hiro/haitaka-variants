@@ -1,0 +1,669 @@
+{
+  "source": "Existing full corpus independently verified against Shogitter in previous historical-rule stages; reused unchanged here.",
+  "provenance": {
+    "beforeCommit": "ce0ddb3446505956aedffce95ff3db98ffef3134",
+    "rules": [
+      {
+        "rule": "tenjiku-dai",
+        "inputSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+        "priorReferenceSummary": {
+          "seed": "0x59c02026",
+          "positions": 352,
+          "transitions": 77025,
+          "randomPositions": 128,
+          "fixedPositions": 224
+        },
+        "beforeNativeSha256": "6c401f9e56e963d2aa2e8784303675493a2a25228eb9801b604a4e3ccb5334a5"
+      },
+      {
+        "rule": "dai-dai",
+        "inputSha256": "c67963d0f344431a2efe44ec06ca80b0c340da63e364de6af4a516c9e87a5813",
+        "priorReferenceSummary": {
+          "seed": "0x60c02026",
+          "positions": 483,
+          "transitions": 20014,
+          "randomPositions": 128,
+          "fixedPositions": 355
+        },
+        "beforeNativeSha256": "44a8fcc4287e02249f29d67f04730087502a1ff8d4fd66c8b82fca2447b9a2f9"
+      },
+      {
+        "rule": "maka-dai-dai",
+        "inputSha256": "f1aafc506dc27a6f2812135d10293a3ee2e724a695d64b6a7fae4846d4ede3be",
+        "priorReferenceSummary": {
+          "seed": "0x61c02026",
+          "positions": 524,
+          "transitions": 33383,
+          "randomPositions": 128,
+          "fixedPositions": 396,
+          "sources": [
+            {
+              "seed": "0x61c02026",
+              "positions": 520,
+              "transitions": 32649,
+              "randomPositions": 128,
+              "fixedPositions": 392
+            },
+            {
+              "seed": "0x61c02026",
+              "positions": 2,
+              "transitions": 10,
+              "randomPositions": 0,
+              "fixedPositions": 2
+            },
+            {
+              "positions": 2,
+              "transitions": 724,
+              "randomPositions": 0,
+              "fixedPositions": 2,
+              "classRevalidationPositions": 21,
+              "classRevalidationTransitions": 2696
+            }
+          ]
+        },
+        "beforeNativeSha256": "645ecb1570cca8e08186b1ca4d8925bda48a9d1a3fb2cff4a058bddc94563e03"
+      },
+      {
+        "rule": "taishogi",
+        "inputSha256": "7124df234f90231c3eaaecb85db0d87d08ea4f70c400f97f5ffb3f3bac62265c",
+        "priorReferenceSummary": {
+          "seed": "0x63c02026",
+          "positions": 924,
+          "transitions": 74259,
+          "randomPositions": 128,
+          "fixedPositions": 796
+        },
+        "beforeNativeSha256": "2f8038004abc0a3a50c3fa36c9e6836db7e68aa591cf0ce8f2d4e98049c5c960"
+      },
+      {
+        "rule": "taikyoku",
+        "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+        "priorReferenceSummary": {
+          "seed": "0x64c02026",
+          "positions": 2199,
+          "transitions": 253099,
+          "randomPositions": 128,
+          "fixedPositions": 2071,
+          "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+          "nativeSha256": "e820b3fab4d092f2b7aa3b038ceeaef7512444b4ea61839ef10e8d855a0f6d95",
+          "shards": [
+            {
+              "seed": "0x64c02026",
+              "positions": 2199,
+              "verifiedPositions": 550,
+              "shards": 4,
+              "shard": 0,
+              "transitions": 63272,
+              "randomPositions": 128,
+              "fixedPositions": 2071
+            },
+            {
+              "seed": "0x64c02026",
+              "positions": 2199,
+              "verifiedPositions": 550,
+              "shards": 4,
+              "shard": 1,
+              "transitions": 58536,
+              "randomPositions": 128,
+              "fixedPositions": 2071
+            },
+            {
+              "seed": "0x64c02026",
+              "positions": 2199,
+              "verifiedPositions": 550,
+              "shards": 4,
+              "shard": 2,
+              "transitions": 71340,
+              "randomPositions": 128,
+              "fixedPositions": 2071
+            },
+            {
+              "seed": "0x64c02026",
+              "positions": 2199,
+              "verifiedPositions": 549,
+              "shards": 4,
+              "shard": 3,
+              "transitions": 59951,
+              "randomPositions": 128,
+              "fixedPositions": 2071
+            }
+          ]
+        },
+        "beforeNativeSha256": "e820b3fab4d092f2b7aa3b038ceeaef7512444b4ea61839ef10e8d855a0f6d95"
+      }
+    ]
+  },
+  "positions": 4482,
+  "transitions": 457780,
+  "differences": 0,
+  "legacyContextOracle": "Every parent compared with pre-change actual WASM. All children compared with its original FNV history fold and independently verified child FNV; Tenjiku additionally inspected every child in old actual WASM.",
+  "rules": {
+    "tenjiku-dai": {
+      "rule": "tenjiku-dai",
+      "positions": 352,
+      "transitions": 77025,
+      "native": {
+        "positions": 352,
+        "transitions": 77025,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 176,
+          "transitions": 48761,
+          "initializationMs": 1.0615670000006503,
+          "linearMemoryBytes": 1507328
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 176,
+          "transitions": 28264,
+          "initializationMs": 1.101580999998987,
+          "linearMemoryBytes": 1310720
+        }
+      ],
+      "perft": [
+        132,
+        17226
+      ],
+      "inputSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+      "beforeWasmSha256": "3e366f34de19ddb98c55a1e8880e1842d62ac3af238a4f26ed2ac706f2fd1ee7",
+      "afterWasmSha256": "ad913d65424f7af3a89c05fb09ca58b1086b4cf1b877570b1ae47cf1fe34d1bc",
+      "linearMemoryBytes": 1507328,
+      "wasmBytes": 340870,
+      "lowBudgetElapsedMs": 1.002258,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002466
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.002705
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      }
+    },
+    "dai-dai": {
+      "rule": "dai-dai",
+      "positions": 483,
+      "transitions": 20014,
+      "native": {
+        "positions": 483,
+        "transitions": 20014,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 242,
+          "transitions": 12129,
+          "initializationMs": 1.0561259999994945,
+          "linearMemoryBytes": 1245184
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 241,
+          "transitions": 7885,
+          "initializationMs": 1.0742309999995996,
+          "linearMemoryBytes": 1245184
+        }
+      ],
+      "perft": [
+        63,
+        3951
+      ],
+      "inputSha256": "c67963d0f344431a2efe44ec06ca80b0c340da63e364de6af4a516c9e87a5813",
+      "beforeWasmSha256": "208a023566fce870153463426140fbf9dd81d6db13a6a95ea74825221236299f",
+      "afterWasmSha256": "3b6f8a96e13939c5e24d9061a6351f104e39451cf3e42f63c0a1883e62d01ae5",
+      "linearMemoryBytes": 1245184,
+      "wasmBytes": 329184,
+      "lowBudgetElapsedMs": 1.0038799999999999,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0023440000000001
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.002537
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 2
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 2
+      }
+    },
+    "maka-dai-dai": {
+      "rule": "maka-dai-dai",
+      "positions": 524,
+      "transitions": 33383,
+      "native": {
+        "positions": 524,
+        "transitions": 33383,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 262,
+          "transitions": 17488,
+          "initializationMs": 2.624289999999746,
+          "linearMemoryBytes": 1245184
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 262,
+          "transitions": 15895,
+          "initializationMs": 4.8539419999979145,
+          "linearMemoryBytes": 1245184
+        }
+      ],
+      "perft": [
+        80,
+        6400
+      ],
+      "inputSha256": "f1aafc506dc27a6f2812135d10293a3ee2e724a695d64b6a7fae4846d4ede3be",
+      "beforeWasmSha256": "d7e268a28dc2b1d18d46e869346736f6e230a30283d96dfb21c1708f76802c75",
+      "afterWasmSha256": "b891fcdf340216db58040ada61cdaac173da985b79506e26fffaddf9b10d1258",
+      "linearMemoryBytes": 1245184,
+      "wasmBytes": 336678,
+      "lowBudgetElapsedMs": 1.001856,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0021959999999999
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0019829999999998
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.003672
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0068489999999999
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002027
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.003286
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001941
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002127
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            10,
+            16
+          ],
+          "path": [
+            [
+              7,
+              13
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            10,
+            16
+          ],
+          "path": [
+            [
+              7,
+              13
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      }
+    },
+    "taishogi": {
+      "rule": "taishogi",
+      "positions": 924,
+      "transitions": 74259,
+      "native": {
+        "positions": 924,
+        "transitions": 74259,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 4,
+          "positions": 231,
+          "transitions": 19955,
+          "initializationMs": 1.201694999999745,
+          "linearMemoryBytes": 1376256
+        },
+        {
+          "index": 1,
+          "count": 4,
+          "positions": 231,
+          "transitions": 16949,
+          "initializationMs": 0.7507609999993292,
+          "linearMemoryBytes": 1376256
+        },
+        {
+          "index": 2,
+          "count": 4,
+          "positions": 231,
+          "transitions": 21151,
+          "initializationMs": 0.7507619999996678,
+          "linearMemoryBytes": 1376256
+        },
+        {
+          "index": 3,
+          "count": 4,
+          "positions": 231,
+          "transitions": 16204,
+          "initializationMs": 0.5781870000027993,
+          "linearMemoryBytes": 1376256
+        }
+      ],
+      "perft": [
+        304,
+        92676
+      ],
+      "inputSha256": "7124df234f90231c3eaaecb85db0d87d08ea4f70c400f97f5ffb3f3bac62265c",
+      "beforeWasmSha256": "a695d9b0baa16793920f241dc8006efb616cfd87f32c5b6034b45fd84ba4e303",
+      "afterWasmSha256": "b3a3378ea56e81d63feda3d5b0015d3c93bf199957d5e3bb1d46ded5c4bfea6d",
+      "linearMemoryBytes": 1376256,
+      "wasmBytes": 348341,
+      "lowBudgetElapsedMs": 1.0016090000000002,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.051873
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0029119999999998
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.009114
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.038164
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0025249999999999
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0024680000000001
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.004509
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001513
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            13,
+            20
+          ],
+          "path": [
+            [
+              11,
+              18
+            ],
+            [
+              10,
+              17
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            13,
+            20
+          ],
+          "path": [
+            [
+              11,
+              18
+            ],
+            [
+              10,
+              17
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      }
+    },
+    "taikyoku": {
+      "rule": "taikyoku",
+      "positions": 2199,
+      "transitions": 253099,
+      "native": {
+        "positions": 2199,
+        "transitions": 253099,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 4,
+          "positions": 550,
+          "transitions": 63272,
+          "initializationMs": 1.2106600000115577,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 1,
+          "count": 4,
+          "positions": 550,
+          "transitions": 58536,
+          "initializationMs": 0.6161260000080802,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 2,
+          "count": 4,
+          "positions": 550,
+          "transitions": 71340,
+          "initializationMs": 0.5672790000098757,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 3,
+          "count": 4,
+          "positions": 549,
+          "transitions": 59951,
+          "initializationMs": 0.6219029999920167,
+          "linearMemoryBytes": 1703936
+        }
+      ],
+      "perft": [
+        282,
+        79035
+      ],
+      "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+      "beforeWasmSha256": "5efdff865cdbe5fbb9899e15590a1455ee9e57c17b544a5a574f984f11439337",
+      "afterWasmSha256": "9346e167d88d61228e768c5b61bd81bd96f354a262b27fc83d233c9660897826",
+      "linearMemoryBytes": 1703936,
+      "wasmBytes": 407393,
+      "lowBudgetElapsedMs": 1.002062,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.007795
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.016979
+        },
+        {
+          "pendingHops": 3,
+          "elapsedMs": 1.00251
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 5,
+          "from": [
+            1,
+            26
+          ],
+          "path": [
+            [
+              1,
+              25
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 5,
+          "from": [
+            1,
+            26
+          ],
+          "path": [
+            [
+              1,
+              25
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      }
+    }
+  }
+}
