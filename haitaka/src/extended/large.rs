@@ -6,10 +6,22 @@ use super::*;
 use std::collections::BTreeSet;
 
 pub const PROTOCOL: &str = "haitaka-json-v4";
+#[cfg(feature = "tenjiku-dai")]
 pub const NAME: &str = "tenjiku-dai";
+#[cfg(feature = "tenjiku-dai")]
 pub const RULE_ID: u32 = 59;
+#[cfg(feature = "dai-dai")]
+pub const NAME: &str = "dai-dai";
+#[cfg(feature = "dai-dai")]
+pub const RULE_ID: u32 = 60;
+const CAPTURE_PROMOTION: bool = cfg!(feature = "dai-dai");
+const BOARD_SIZE: usize = if CAPTURE_PROMOTION { 17 } else { 16 };
+const MAX_HOPS: usize = 3;
+#[cfg(feature = "tenjiku-dai")]
 type Geometry = Rect<16, 16>;
-type Pos = Position<TenjikuDai>;
+#[cfg(feature = "dai-dai")]
+type Geometry = Rect<17, 17>;
+type Pos = Position<LargeRule>;
 pub type TurnPath = BoundedPath<3>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -38,7 +50,16 @@ impl PositionState for TenjikuState {
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TenjikuDai;
+pub struct LargeRule;
+#[cfg(feature = "tenjiku-dai")]
+pub type TenjikuDai = LargeRule;
+#[cfg(feature = "dai-dai")]
+pub type DaiDai = LargeRule;
+#[derive(Clone, Copy)]
+struct Requirement {
+    delta: (isize, isize),
+    kind: u8,
+}
 #[derive(Clone, Copy)]
 struct Primitive {
     delta: (isize, isize),
@@ -46,7 +67,7 @@ struct Primitive {
     limit: u8,
     skip: u8,
     next: i8,
-    enemy: bool,
+    occupied: &'static [Requirement],
 }
 struct Movement {
     root: &'static [Primitive],
@@ -56,17 +77,20 @@ struct Movement {
     no_stop: bool,
     file_limit: usize,
 }
+#[cfg(feature = "tenjiku-dai")]
 include!("large/tenjiku_defs.rs");
-impl CaptureRoyalRule for TenjikuDai {
+#[cfg(feature = "dai-dai")]
+include!("large/dai_dai_defs.rs");
+impl CaptureRoyalRule for LargeRule {
     type Geometry = Geometry;
     type State = TenjikuState;
     type Hands = NoHands;
     type Placement = ClassicalPiece;
-    const ID: u32 = 59;
-    const ALLOW_NO_ROYALS: bool = true;
+    const ID: u32 = RULE_ID;
+    const ALLOW_NO_ROYALS: bool = !CAPTURE_PROMOTION;
     const PIECES: &'static [PieceDef] = PIECES;
     const INVENTORY: &'static [usize] = INVENTORY;
-    const PROMOTION_RANKS: usize = 5;
+    const PROMOTION_RANKS: usize = if CAPTURE_PROMOTION { 0 } else { 5 };
     fn initial() -> Vec<ClassicalPiece> {
         INITIAL
             .iter()
@@ -274,7 +298,26 @@ fn targets(p: &Pos, from: usize, status: Option<u8>, ignore: Option<usize>) -> V
         if now == usize::MAX {
             continue;
         }
-        let ray = matches!(prim.kind, 2 | 6) || prim.limit > 0;
+        let mut blocked = false;
+        for r in prim.occupied {
+            if let Some(i) = Geometry::offset(
+                from,
+                dx + (if dx > 0 { 1 } else { -1 }) * r.delta.0,
+                dy + (if dy > 0 { 1 } else { -1 }) * r.delta.1,
+            ) {
+                if !at_cell(p, i, ignore)
+                    .is_some_and(|v| r.kind == 3 || (r.kind == 1) == (v.color == c.color))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+        }
+        if blocked {
+            prohibited.insert(now);
+            continue;
+        }
+        let ray = matches!(prim.kind, 2 | 6 | 102) || prim.limit > 0;
         let max = if prim.limit > 0 {
             usize::from(prim.limit)
         } else if ray {
@@ -287,16 +330,26 @@ fn targets(p: &Pos, from: usize, status: Option<u8>, ignore: Option<usize>) -> V
             if v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id)) {
                 break;
             }
-            if prim.enemy && !v.is_some_and(|v| v.color != c.color) {
-                prohibited.insert(now);
-                break;
-            }
             if let Some(t) = raw.iter_mut().find(|t| t.0 == now) {
                 if t.1 == -2 && prim.next != -2 {
                     t.1 = prim.next;
                 }
             } else {
                 raw.push((now, prim.next));
+            }
+            if prim.kind == 102 && v.is_none() {
+                for (tx, ty) in [(-dy, dx), (dy, -dx)] {
+                    let mut turn = now;
+                    while let Some(j) = Geometry::offset(turn, tx, ty) {
+                        if !raw.iter().any(|r| r.0 == j) {
+                            raw.push((j, prim.next));
+                        }
+                        if at_cell(p, j, ignore).is_some() {
+                            break;
+                        }
+                        turn = j;
+                    }
+                }
             }
             if !ray || (prim.kind != 6 && v.is_some()) {
                 break;
@@ -434,7 +487,7 @@ fn file_allowed(p: &Pos, to: usize) -> bool {
         return true;
     }
     let (x, _) = Geometry::coordinates(to).unwrap();
-    p.cells[x * 16..(x + 1) * 16]
+    p.cells[x * BOARD_SIZE..(x + 1) * BOARD_SIZE]
         .iter()
         .flatten()
         .filter(|v| v.color == c.color && v.piece == c.piece)
@@ -471,7 +524,9 @@ impl Enumeration<'_> {
     ) -> Option<bool> {
         let to = Pos::index(*path.last().unwrap()).unwrap();
         let c = p.cells[to].unwrap();
-        let must = can && p.relative_rank(to, c.color) < Pos::def(c).dead_ranks;
+        let must = can
+            && !early
+            && (CAPTURE_PROMOTION || p.relative_rank(to, c.color) < Pos::def(c).dead_ranks);
         for promotion in [false, true] {
             if promotion && (!can || early) || !promotion && must {
                 continue;
@@ -540,7 +595,11 @@ impl Enumeration<'_> {
             let captured = p.cells[t.to];
             let eligible = can
                 || (Pos::def(c).promotion.is_some()
-                    && (p.relative_rank(from, c.color) < 5 || p.relative_rank(t.to, c.color) < 5));
+                    && if CAPTURE_PROMOTION {
+                        captured.is_some()
+                    } else {
+                        p.relative_rank(from, c.color) < 5 || p.relative_rank(t.to, c.color) < 5
+                    });
             let mut undo = Delta::new(p);
             hop(p, from, t.to, &mut undo);
             path.push(Pos::at(t.to));
@@ -550,7 +609,7 @@ impl Enumeration<'_> {
             if can_stop {
                 result = self.emit(p, root, path, eligible, early);
             }
-            if result == Some(false) && !early && t.next.is_some() && path.len() < 3 {
+            if result == Some(false) && !early && t.next.is_some() && path.len() < MAX_HOPS {
                 result = self.visit(
                     p,
                     root,
@@ -631,7 +690,7 @@ impl LargeGame {
     }
     pub fn parse(json: &str) -> Result<Self, String> {
         let q: Request = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        if q.schema_version != 4 || q.rule_id != 59 {
+        if q.schema_version != 4 || q.rule_id != RULE_ID {
             return Err("unsupported schemaVersion or ruleId".into());
         }
         let current = Pos::from_wire(&q.position)?;
@@ -691,7 +750,7 @@ impl LargeGame {
     pub fn to_json(&self) -> String {
         serde_json::to_string(&Request {
             schema_version: 4,
-            rule_id: 59,
+            rule_id: RULE_ID,
             position: self.position.to_wire(),
             history: Some(History {
                 initial: self.initial.clone(),
@@ -913,7 +972,7 @@ pub mod compiled {
         LargeGame::root(
             Pos::from_wire(&WirePosition {
                 side_to_move: 0,
-                pieces: TenjikuDai::initial(),
+                pieces: LargeRule::initial(),
                 hands: Default::default(),
                 state: Default::default(),
             })
@@ -956,5 +1015,8 @@ pub mod compiled {
         search::search_json(&mut LargeGame::parse(json)?, depth, timeout_ms, nodes)
     }
 }
-#[cfg(test)]
+#[cfg(all(test, feature = "dai-dai"))]
+#[path = "large/dai_dai_tests.rs"]
+mod dai_dai_tests;
+#[cfg(all(test, feature = "tenjiku-dai"))]
 mod tests;

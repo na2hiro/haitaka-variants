@@ -84,3 +84,5 @@ heian-dai = ["classical-rules"]
 daishogi = ["classical-rules"]
 
 tenjiku-dai = ["classical-rules"]
+
+dai-dai = ["classical-rules"]

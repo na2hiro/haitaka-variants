@@ -669,7 +669,7 @@ const MOVEMENT: &[Movement] = &[
             limit: 0,
             skip: 0,
             next: -2,
-            enemy: false,
+            occupied: &[],
         }],
         states: &[],
         exceptions: &[],
@@ -684,7 +684,7 @@ const MOVEMENT: &[Movement] = &[
             limit: 0,
             skip: 0,
             next: -2,
-            enemy: false,
+            occupied: &[],
         }],
         states: &[],
         exceptions: &[],
@@ -700,7 +700,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -2),
@@ -708,7 +708,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -725,7 +725,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -733,7 +733,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -741,7 +741,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -749,7 +749,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -757,7 +757,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -774,7 +774,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -782,7 +782,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -790,7 +790,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -798,7 +798,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -806,7 +806,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -814,7 +814,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -831,7 +831,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -839,7 +839,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -847,7 +847,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -855,7 +855,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -872,7 +872,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -880,7 +880,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -888,7 +888,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -896,153 +896,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
-            },
-        ],
-        states: &[],
-        exceptions: &[],
-        stop_capture: false,
-        no_stop: false,
-        file_limit: 0,
-    },
-    Movement {
-        root: &[
-            Primitive {
-                delta: (1, -1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, -1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, -1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, 1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-        ],
-        states: &[],
-        exceptions: &[],
-        stop_capture: false,
-        no_stop: false,
-        file_limit: 0,
-    },
-    Movement {
-        root: &[
-            Primitive {
-                delta: (1, -1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, -1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, -1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, 1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1059,15 +913,15 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
-                kind: 2,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1075,23 +929,23 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
-                kind: 2,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
-                kind: 2,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1099,15 +953,15 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
-                kind: 2,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1115,7 +969,153 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
+            },
+        ],
+        states: &[],
+        exceptions: &[],
+        stop_capture: false,
+        no_stop: false,
+        file_limit: 0,
+    },
+    Movement {
+        root: &[
+            Primitive {
+                delta: (1, -1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, -1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, 1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+        ],
+        states: &[],
+        exceptions: &[],
+        stop_capture: false,
+        no_stop: false,
+        file_limit: 0,
+    },
+    Movement {
+        root: &[
+            Primitive {
+                delta: (1, -1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, -1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 0),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 0),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, 1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1132,7 +1132,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -2),
@@ -1140,7 +1140,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -1148,7 +1148,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -2),
@@ -1156,7 +1156,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -1164,7 +1164,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -1),
@@ -1172,7 +1172,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -1180,7 +1180,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1188,7 +1188,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1196,7 +1196,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -1),
@@ -1204,7 +1204,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -1212,7 +1212,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1220,7 +1220,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1228,7 +1228,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -1236,7 +1236,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 1),
@@ -1244,7 +1244,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1252,7 +1252,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1260,7 +1260,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1268,7 +1268,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 1),
@@ -1276,7 +1276,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -1284,7 +1284,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 2),
@@ -1292,7 +1292,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -1300,7 +1300,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 2),
@@ -1308,7 +1308,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -1316,7 +1316,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -1326,7 +1326,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1334,7 +1334,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1342,7 +1342,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1350,7 +1350,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1358,7 +1358,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1366,7 +1366,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1374,7 +1374,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1382,7 +1382,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -1398,7 +1398,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1406,7 +1406,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1414,7 +1414,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1422,7 +1422,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1430,7 +1430,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1438,7 +1438,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1446,7 +1446,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1463,7 +1463,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1471,7 +1471,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1479,7 +1479,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1487,7 +1487,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1504,7 +1504,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1512,7 +1512,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1520,7 +1520,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1528,7 +1528,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1536,7 +1536,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1544,7 +1544,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1561,7 +1561,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1569,7 +1569,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1586,7 +1586,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1594,7 +1594,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1602,7 +1602,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1610,7 +1610,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1618,7 +1618,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1626,7 +1626,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1634,7 +1634,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1651,7 +1651,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -1659,7 +1659,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1667,7 +1667,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -1675,7 +1675,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -1683,7 +1683,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1691,7 +1691,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1699,7 +1699,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -1707,7 +1707,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1724,7 +1724,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -1732,7 +1732,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1740,7 +1740,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1748,7 +1748,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1756,7 +1756,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1764,7 +1764,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -1772,7 +1772,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -1780,7 +1780,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1797,7 +1797,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1805,7 +1805,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1813,7 +1813,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1821,7 +1821,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1838,7 +1838,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1846,7 +1846,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1854,7 +1854,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1862,7 +1862,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1879,7 +1879,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1887,7 +1887,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1895,7 +1895,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1903,7 +1903,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1911,7 +1911,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -1919,7 +1919,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -1927,7 +1927,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -1935,7 +1935,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -1952,7 +1952,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -1960,7 +1960,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -1968,7 +1968,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -1976,7 +1976,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -1984,7 +1984,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -1992,7 +1992,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2000,7 +2000,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2008,7 +2008,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2016,7 +2016,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -2026,7 +2026,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2034,7 +2034,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -2050,7 +2050,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -2058,7 +2058,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -2066,7 +2066,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2074,7 +2074,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2082,7 +2082,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2090,7 +2090,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2098,7 +2098,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2106,7 +2106,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2114,7 +2114,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2122,7 +2122,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -2133,7 +2133,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -2141,7 +2141,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -2151,7 +2151,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -2159,7 +2159,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -2176,7 +2176,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2184,7 +2184,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2192,7 +2192,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -2209,7 +2209,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2217,7 +2217,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2225,7 +2225,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2233,7 +2233,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2241,7 +2241,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2249,7 +2249,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2257,7 +2257,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2265,7 +2265,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -2282,7 +2282,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -2),
@@ -2290,7 +2290,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -2298,7 +2298,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -2),
@@ -2306,7 +2306,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -2314,7 +2314,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -1),
@@ -2322,7 +2322,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -2330,7 +2330,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -2338,7 +2338,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2346,7 +2346,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2354,7 +2354,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2362,7 +2362,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -1),
@@ -2370,7 +2370,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -2378,7 +2378,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2386,7 +2386,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2394,7 +2394,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -2402,7 +2402,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 1),
@@ -2410,7 +2410,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2418,7 +2418,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2426,7 +2426,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2434,7 +2434,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2442,7 +2442,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2450,7 +2450,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 1),
@@ -2458,7 +2458,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -2466,7 +2466,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 2),
@@ -2474,7 +2474,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -2482,7 +2482,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 2),
@@ -2490,7 +2490,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -2498,7 +2498,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -2508,7 +2508,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2516,7 +2516,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2524,7 +2524,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2532,7 +2532,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2540,7 +2540,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2548,7 +2548,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2556,7 +2556,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2564,7 +2564,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -2580,7 +2580,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -2588,7 +2588,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2596,7 +2596,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2604,7 +2604,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2612,7 +2612,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2620,7 +2620,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2628,7 +2628,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2636,7 +2636,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2644,7 +2644,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2652,7 +2652,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2660,7 +2660,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2668,7 +2668,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -2),
@@ -2676,7 +2676,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -2684,7 +2684,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -2692,7 +2692,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -2700,7 +2700,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -2708,7 +2708,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -2716,7 +2716,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -2724,7 +2724,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -2732,7 +2732,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -2742,7 +2742,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2750,7 +2750,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2758,7 +2758,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2766,7 +2766,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -2782,7 +2782,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -2790,7 +2790,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -2798,7 +2798,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2806,7 +2806,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -2814,7 +2814,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2822,7 +2822,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -2830,7 +2830,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2838,7 +2838,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -2846,7 +2846,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2854,7 +2854,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -2862,7 +2862,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -2870,7 +2870,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2878,7 +2878,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -2886,7 +2886,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -2897,7 +2897,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -2905,7 +2905,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -2913,7 +2913,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -2921,7 +2921,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -2929,7 +2929,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -2937,7 +2937,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -2945,7 +2945,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -2953,7 +2953,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -2963,7 +2963,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -2971,7 +2971,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -2979,7 +2979,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -2987,7 +2987,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -2995,7 +2995,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -3003,7 +3003,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -3011,7 +3011,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -3019,7 +3019,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -3036,7 +3036,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3044,7 +3044,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3052,7 +3052,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3060,7 +3060,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3068,7 +3068,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3076,7 +3076,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3084,7 +3084,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3092,7 +3092,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3109,7 +3109,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3117,7 +3117,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3125,7 +3125,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3133,7 +3133,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3150,7 +3150,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3158,7 +3158,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3166,7 +3166,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3174,7 +3174,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3191,7 +3191,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3199,7 +3199,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3207,7 +3207,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3215,7 +3215,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3223,7 +3223,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3231,7 +3231,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3239,7 +3239,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3247,7 +3247,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3264,7 +3264,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -3272,7 +3272,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3280,7 +3280,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3288,7 +3288,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3296,7 +3296,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3304,7 +3304,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3312,7 +3312,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3320,7 +3320,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3328,7 +3328,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3336,7 +3336,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3344,7 +3344,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3352,7 +3352,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -3363,7 +3363,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -3371,7 +3371,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -3379,7 +3379,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -3387,7 +3387,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -3395,7 +3395,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -3403,7 +3403,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -3411,7 +3411,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -3419,7 +3419,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -3429,7 +3429,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -3437,7 +3437,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -3445,7 +3445,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -3453,7 +3453,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -3461,7 +3461,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -3469,7 +3469,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -3477,7 +3477,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -3485,7 +3485,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -3502,7 +3502,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3510,7 +3510,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3518,7 +3518,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3526,7 +3526,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3543,7 +3543,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3551,7 +3551,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3559,7 +3559,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3567,7 +3567,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3584,7 +3584,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3592,7 +3592,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3600,7 +3600,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3617,7 +3617,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3625,7 +3625,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3633,7 +3633,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3641,7 +3641,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3649,7 +3649,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3657,7 +3657,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3674,7 +3674,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3682,7 +3682,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3690,7 +3690,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3698,7 +3698,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3715,7 +3715,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3723,7 +3723,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3731,7 +3731,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3739,7 +3739,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3756,7 +3756,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3764,7 +3764,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3772,7 +3772,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3780,7 +3780,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3797,7 +3797,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3805,7 +3805,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3813,7 +3813,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3821,80 +3821,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
-            },
-        ],
-        states: &[],
-        exceptions: &[],
-        stop_capture: false,
-        no_stop: false,
-        file_limit: 0,
-    },
-    Movement {
-        root: &[
-            Primitive {
-                delta: (1, -1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, -1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, -1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 0),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (1, 1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (0, 1),
-                kind: 1,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
-            },
-            Primitive {
-                delta: (-1, 1),
-                kind: 2,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3907,11 +3834,84 @@ const MOVEMENT: &[Movement] = &[
         root: &[
             Primitive {
                 delta: (1, -1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -1),
                 kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, -1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, 1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, 1),
+                kind: 2,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+        ],
+        states: &[],
+        exceptions: &[],
+        stop_capture: false,
+        no_stop: false,
+        file_limit: 0,
+    },
+    Movement {
+        root: &[
+            Primitive {
+                delta: (1, -1),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -3919,7 +3919,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -3927,7 +3927,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -3935,7 +3935,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -3943,7 +3943,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3951,7 +3951,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -3959,7 +3959,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -3967,7 +3967,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -3984,7 +3984,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -3992,7 +3992,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4000,7 +4000,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4008,7 +4008,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4016,7 +4016,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4024,7 +4024,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4032,7 +4032,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4040,7 +4040,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4048,7 +4048,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -4058,7 +4058,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4066,7 +4066,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -4082,7 +4082,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -4090,7 +4090,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -4098,7 +4098,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4106,7 +4106,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4114,7 +4114,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4122,7 +4122,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4130,7 +4130,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4138,7 +4138,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4146,7 +4146,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4154,7 +4154,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -4165,7 +4165,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -4173,7 +4173,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -4183,7 +4183,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -4191,7 +4191,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -4208,7 +4208,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -2),
@@ -4216,7 +4216,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -4224,7 +4224,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -2),
@@ -4232,7 +4232,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -4240,7 +4240,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -1),
@@ -4248,7 +4248,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -4256,7 +4256,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -4264,7 +4264,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4272,7 +4272,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4280,7 +4280,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4288,7 +4288,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -1),
@@ -4296,7 +4296,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -4304,7 +4304,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4312,7 +4312,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4320,7 +4320,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -4328,7 +4328,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 1),
@@ -4336,7 +4336,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4344,7 +4344,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4352,7 +4352,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4360,7 +4360,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4368,7 +4368,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4376,7 +4376,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 1),
@@ -4384,7 +4384,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -4392,7 +4392,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 2),
@@ -4400,7 +4400,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -4408,7 +4408,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 2),
@@ -4416,7 +4416,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -4424,7 +4424,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -4434,7 +4434,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4442,7 +4442,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4450,7 +4450,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4458,7 +4458,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4466,7 +4466,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4474,7 +4474,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4482,7 +4482,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4490,7 +4490,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -4506,7 +4506,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4514,7 +4514,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4522,7 +4522,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4530,7 +4530,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4538,7 +4538,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4546,7 +4546,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4554,7 +4554,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4562,7 +4562,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -4579,7 +4579,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4587,7 +4587,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4595,7 +4595,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4603,7 +4603,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -4620,7 +4620,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4628,7 +4628,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4636,7 +4636,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4644,7 +4644,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -4661,7 +4661,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4669,7 +4669,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4677,7 +4677,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4685,7 +4685,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -4702,7 +4702,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4710,7 +4710,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4718,7 +4718,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4726,7 +4726,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4734,7 +4734,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4742,7 +4742,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4750,7 +4750,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4758,7 +4758,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -4775,7 +4775,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -2),
@@ -4783,7 +4783,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -4791,7 +4791,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -2),
@@ -4799,7 +4799,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -4807,7 +4807,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -1),
@@ -4815,7 +4815,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -4823,7 +4823,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4831,7 +4831,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4839,7 +4839,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -1),
@@ -4847,7 +4847,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -4855,7 +4855,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4863,7 +4863,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -4871,7 +4871,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -4879,7 +4879,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 1),
@@ -4887,7 +4887,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -4895,7 +4895,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -4903,7 +4903,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -4911,7 +4911,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 1),
@@ -4919,7 +4919,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -4927,7 +4927,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 2),
@@ -4935,7 +4935,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -4943,7 +4943,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 2),
@@ -4951,7 +4951,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -4959,7 +4959,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -4969,7 +4969,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -4977,7 +4977,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -4985,7 +4985,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -4993,7 +4993,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5001,7 +5001,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5009,7 +5009,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5017,7 +5017,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5025,7 +5025,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -5041,7 +5041,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -5049,7 +5049,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5057,7 +5057,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5065,7 +5065,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5073,7 +5073,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5081,7 +5081,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5089,7 +5089,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5097,7 +5097,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5114,7 +5114,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5122,7 +5122,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5130,7 +5130,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5138,7 +5138,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5146,7 +5146,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5154,7 +5154,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5171,7 +5171,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -5179,7 +5179,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5187,7 +5187,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5195,7 +5195,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5203,7 +5203,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5211,7 +5211,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5228,7 +5228,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -5236,7 +5236,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -5244,7 +5244,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5252,7 +5252,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5260,7 +5260,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5268,7 +5268,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5276,7 +5276,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5284,7 +5284,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5292,7 +5292,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5300,7 +5300,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5308,7 +5308,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5316,7 +5316,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, -2),
@@ -5324,7 +5324,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -2),
@@ -5332,7 +5332,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, -2),
@@ -5340,7 +5340,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 0),
@@ -5348,7 +5348,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 0),
@@ -5356,7 +5356,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (2, 2),
@@ -5364,7 +5364,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 2),
@@ -5372,7 +5372,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-2, 2),
@@ -5380,7 +5380,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[&[
@@ -5390,7 +5390,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5398,7 +5398,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5406,7 +5406,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5414,7 +5414,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             },
         ]],
         exceptions: &[],
@@ -5430,7 +5430,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5438,7 +5438,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5446,7 +5446,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5454,7 +5454,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5471,7 +5471,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5479,7 +5479,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5487,7 +5487,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5495,7 +5495,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5512,7 +5512,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5520,7 +5520,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5528,7 +5528,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5536,7 +5536,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -5553,7 +5553,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -5561,7 +5561,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (0, -1),
@@ -5569,7 +5572,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -5577,7 +5580,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 1,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5585,7 +5591,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5593,7 +5599,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 2,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (1, 0),
@@ -5601,7 +5610,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 3,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5609,7 +5621,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 4,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (1, 1),
@@ -5617,7 +5632,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5625,7 +5640,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 5,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (0, 1),
@@ -5633,7 +5651,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5641,7 +5659,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 6,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5649,7 +5670,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 1,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5657,7 +5678,10 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 7,
-                enemy: true,
+                occupied: &[Requirement {
+                    delta: (0, 0),
+                    kind: 2,
+                }],
             },
         ],
         states: &[
@@ -5667,7 +5691,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (0, 1),
@@ -5675,7 +5699,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (1, 1),
@@ -5683,7 +5707,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (-1, 0),
@@ -5691,7 +5715,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (1, 0),
@@ -5699,7 +5723,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (-1, -1),
@@ -5707,7 +5731,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (0, -1),
@@ -5715,7 +5739,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
             &[Primitive {
                 delta: (1, -1),
@@ -5723,7 +5747,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -1,
-                enemy: false,
+                occupied: &[],
             }],
         ],
         exceptions: &[],
@@ -5739,7 +5763,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -5747,7 +5771,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -5755,7 +5779,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5763,7 +5787,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -5771,7 +5795,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5779,7 +5803,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -5787,7 +5811,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5795,7 +5819,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -5803,7 +5827,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5811,7 +5835,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -5819,7 +5843,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -5827,7 +5851,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5835,7 +5859,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -5843,7 +5867,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -5854,7 +5878,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -5862,7 +5886,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -5870,7 +5894,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -5878,7 +5902,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -5886,7 +5910,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -5894,7 +5918,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -5902,7 +5926,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -5910,7 +5934,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -5920,7 +5944,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -5928,7 +5952,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -5936,7 +5960,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -5944,7 +5968,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -5952,7 +5976,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -5960,7 +5984,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -5968,7 +5992,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -5976,7 +6000,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -5993,7 +6017,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -6001,7 +6025,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -6009,7 +6033,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -6017,7 +6041,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -6025,7 +6049,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6033,7 +6057,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -6041,7 +6065,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6049,7 +6073,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -6066,7 +6090,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -6074,7 +6098,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -6082,7 +6106,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -6090,7 +6114,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -6098,7 +6122,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6106,7 +6130,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -6114,7 +6138,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 2,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6122,7 +6146,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -6139,7 +6163,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -6147,7 +6171,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -6155,7 +6179,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -6163,7 +6187,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -6171,7 +6195,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6179,7 +6203,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -6187,7 +6211,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6195,7 +6219,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
@@ -6212,7 +6236,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, -1),
@@ -6220,7 +6244,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, -1),
@@ -6228,7 +6252,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -6236,7 +6260,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, -1),
@@ -6244,7 +6268,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 0),
@@ -6252,7 +6276,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 0),
@@ -6260,7 +6284,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6268,7 +6292,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6276,7 +6300,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (0, 1),
@@ -6284,7 +6308,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6292,7 +6316,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6300,7 +6324,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 0,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[
@@ -6311,7 +6335,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -6319,7 +6343,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -6327,7 +6351,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -6335,7 +6359,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -6343,7 +6367,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -6351,7 +6375,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -6359,7 +6383,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -6367,7 +6391,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: 1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
             &[
@@ -6377,7 +6401,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, -1),
@@ -6385,7 +6409,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, -1),
@@ -6393,7 +6417,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 0),
@@ -6401,7 +6425,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 0),
@@ -6409,7 +6433,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (1, 1),
@@ -6417,7 +6441,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (0, 1),
@@ -6425,7 +6449,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
                 Primitive {
                     delta: (-1, 1),
@@ -6433,7 +6457,7 @@ const MOVEMENT: &[Movement] = &[
                     limit: 0,
                     skip: 0,
                     next: -1,
-                    enemy: false,
+                    occupied: &[],
                 },
             ],
         ],
@@ -6450,7 +6474,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6458,7 +6482,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
             Primitive {
                 delta: (-1, 1),
@@ -6466,7 +6490,7 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: -2,
-                enemy: false,
+                occupied: &[],
             },
         ],
         states: &[],
