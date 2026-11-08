@@ -1,0 +1,196 @@
+{
+  "revision": "working-tree",
+  "sourceSha256": "2276ad469c1e3dc18e3d045f98af7670bf7a1e8148f061da2557e516508a578f",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "names": [
+    "enumeration_targets",
+    "push_targets",
+    "protected_inclusive",
+    "finish_inclusive",
+    "active_inclusive",
+    "order_inclusive",
+    "enumerate_inclusive",
+    "classical_candidate_inclusive",
+    "classical_apply_inclusive"
+  ],
+  "instrumentedEnumerationTargets": true,
+  "instrumentedPushTargets": true,
+  "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+  "rules": [
+    {
+      "allocationsPerPerft": 739292,
+      "depth": 3,
+      "nodesPerPerft": 126574,
+      "requestedAllocationBytesPerPerft": 116121946,
+      "rule": "washogi",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4264458,
+            4264458
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2141100978,
+            276642402
+          ],
+          "repetitions": 33,
+          "seconds": 3.083591654
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4264458,
+            4264458
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2134964986,
+            275152156
+          ],
+          "repetitions": 33,
+          "seconds": 3.072904458
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4264458,
+            4264458
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2139193219,
+            276570672
+          ],
+          "repetitions": 33,
+          "seconds": 3.081551995
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 4649162,
+      "depth": 4,
+      "nodesPerPerft": 748121,
+      "requestedAllocationBytesPerPerft": 933217600,
+      "rule": "heian-dai",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2210774053,
+            336010001
+          ],
+          "repetitions": 6,
+          "seconds": 3.358471999
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2216814754,
+            331240232
+          ],
+          "repetitions": 6,
+          "seconds": 3.360167536
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2208253888,
+            329363153
+          ],
+          "repetitions": 6,
+          "seconds": 3.345700054
+        }
+      ]
+    }
+  ]
+}
