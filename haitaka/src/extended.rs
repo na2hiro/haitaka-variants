@@ -178,6 +178,7 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     fn ray_limit(_piece: PieceId, _dx: isize, _dy: isize) -> Option<usize> {
         None
     }
+    const ALLOW_NO_ROYALS: bool = false;
     const ID: u32;
     const PIECES: &'static [PieceDef];
     const INVENTORY: &'static [usize];
@@ -396,7 +397,7 @@ impl<R: CaptureRoyalRule> Position<R> {
                 return Err(format!("piece inventory exceeded for base {base}"));
             }
         }
-        if pos.royals(0) == 0 && pos.royals(1) == 0 {
+        if !R::ALLOW_NO_ROYALS && pos.royals(0) == 0 && pos.royals(1) == 0 {
             return Err("both sides lack every royal".into());
         }
         Ok(pos)
@@ -875,3 +876,8 @@ pub mod classical;
     feature = "daishogi"
 ))]
 pub use classical::compiled;
+
+#[cfg(feature = "tenjiku-dai")]
+pub mod large;
+#[cfg(feature = "tenjiku-dai")]
+pub use large::compiled;
