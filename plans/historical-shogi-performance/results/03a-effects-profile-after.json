@@ -1,0 +1,109 @@
+{
+  "revision": "working-tree",
+  "sourceSha256": "f703643569660eb42447acaa0dee3c85ac6cbb0f8571cd8dee318c4c3ee17e81",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "names": [
+    "enumeration_targets",
+    "push_targets",
+    "protected_inclusive",
+    "finish_inclusive",
+    "active_inclusive",
+    "order_inclusive",
+    "enumerate_inclusive",
+    "classical_candidate_inclusive",
+    "classical_apply_inclusive"
+  ],
+  "instrumentedEnumerationTargets": true,
+  "instrumentedPushTargets": true,
+  "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+  "rules": [
+    {
+      "allocationsPerPerft": 276566,
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "requestedAllocationBytesPerPerft": 25486280,
+      "rule": "tenjiku-dai",
+      "samples": [
+        {
+          "calls": [
+            487155,
+            816672,
+            0,
+            1631652,
+            1637903,
+            1637903,
+            6251,
+            0,
+            0
+          ],
+          "nanos": [
+            143781683,
+            1294004869,
+            0,
+            239551513,
+            1085895364,
+            1010882953,
+            455142165,
+            0,
+            0
+          ],
+          "repetitions": 47,
+          "seconds": 3.008927529
+        },
+        {
+          "calls": [
+            497520,
+            834048,
+            0,
+            1666368,
+            1672752,
+            1672752,
+            6384,
+            0,
+            0
+          ],
+          "nanos": [
+            142977499,
+            1288370460,
+            0,
+            242248514,
+            1101529401,
+            1025680096,
+            457327021,
+            0,
+            0
+          ],
+          "repetitions": 48,
+          "seconds": 3.019908675
+        },
+        {
+          "calls": [
+            497520,
+            834048,
+            0,
+            1666368,
+            1672752,
+            1672752,
+            6384,
+            0,
+            0
+          ],
+          "nanos": [
+            142769044,
+            1298983228,
+            0,
+            243574319,
+            1106730036,
+            1030358327,
+            459047365,
+            0,
+            0
+          ],
+          "repetitions": 48,
+          "seconds": 3.040498816
+        }
+      ]
+    }
+  ]
+}
