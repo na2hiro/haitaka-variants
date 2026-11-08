@@ -4,17 +4,17 @@ from pathlib import Path
 import argparse
 parser=argparse.ArgumentParser(description='Generate large-rule movement tables from resolved Shogitter definitions')
 parser.add_argument('input',type=Path)
-parser.add_argument('--ruleset',default='tenjiku-dai',choices=['tenjiku-dai','dai-dai','maka-dai-dai','taishogi'])
+parser.add_argument('--ruleset',default='tenjiku-dai',choices=['tenjiku-dai','dai-dai','maka-dai-dai','taishogi','taikyoku'])
 args=parser.parse_args()
 q=json.loads(args.input.read_text());r=q['rule'];size=r['size'][0];bases=list(r['nari']);pieces={p['species']:p for p in q['pieces']};incoming={v:k for k,v in r['nari'].items()if v}
-expected={'tenjiku-dai':(59,16),'dai-dai':(60,17),'maka-dai-dai':(61,19),'taishogi':(63,25)}[args.ruleset]
+expected={'tenjiku-dai':(59,16),'dai-dai':(60,17),'maka-dai-dai':(61,19),'taishogi':(63,25),'taikyoku':(64,36)}[args.ruleset]
 if (q['ruleId'],size)!=expected or r['size']!=[size,size]:
  raise SystemExit('resolved rule ID/geometry does not match --ruleset')
 ids=list(pieces);variants=[(id,None)for id in ids]
 reverse=collections.defaultdict(list)
 for base,to in r['nari'].items():
  if to:reverse[to].append(base)
-if args.ruleset in ['maka-dai-dai','taishogi']:
+if args.ruleset in ['maka-dai-dai','taishogi','taikyoku']:
  for to,fronts in reverse.items():
   if len(fronts)>1:variants.extend((to,base)for base in fronts)
 idx={pair:i for i,pair in enumerate(variants)}
@@ -24,15 +24,17 @@ def requirements(p,t):
  rs=p.get('mustNotBeEmpty',{}).get(str(t),[])
  if isinstance(rs,dict):rs=[rs]
  return fmt(['Requirement{delta:('+str(r['move'][0])+','+str(r['move'][1])+'),kind:'+str(r['type'])+'}'for r in rs])
+def empty_requirements(p,t):
+ return fmt(['('+str(x)+','+str(y)+')' for x,y in p.get('mustBeEmpty',{}).get(str(t),{}).get('moves',[])])
 def prim(p):
- return fmt(['Primitive{delta:('+str(m['move'][0])+','+str(m['move'][1])+'),kind:'+str(t)+',limit:'+str(p.get('limit',{}).get(str(t),0))+',skip:'+str(p.get('skip',{}).get(str(t),0))+',next:'+str(p.get('change',{}).get(str(t),-2))+',occupied:'+requirements(p,t)+'}'for m in p['move']for t in(m['type']if isinstance(m['type'],list)else[m['type']])])
+ return fmt(['Primitive{delta:('+str(m['move'][0])+','+str(m['move'][1])+'),kind:'+str(t)+',limit:'+str(p.get('limit',{}).get(str(t),0))+',skip:'+str(p.get('skip',{}).get(str(t),0))+',next:'+str(p.get('change',{}).get(str(t),-2))+',occupied:'+requirements(p,t)+((',empty:'+empty_requirements(p,t)+',jump_limit:'+str(p.get('jumpLimit',{}).get(str(t),255))) if args.ruleset=='taikyoku' else '')+'}'for m in p['move']for t in(m['type']if isinstance(m['type'],list)else[m['type']])])
 
 for id,origin in variants:
  p=pieces[id];base=origin or (id if id in bases else incoming[id]);promo=r['nari'].get(id);dead=0
  for y in range(size):
   if any(0<=size//2+m['move'][0]<size and 0<=y+m['move'][1]<size for m in p['move']):break
   dead+=1
- if args.ruleset!='tenjiku-dai':dead=0 # Capture strategy permits dead-rank survivors.
+ if args.ruleset not in ['tenjiku-dai','taikyoku']:dead=0 # Capture strategy permits dead-rank survivors.
  value=2500 if id in r['winkoma']else {'aa':100,'fe':2600,'zg':2600,'fp':2800,'fk':2200,'fl':2200,'fm':1800,'fn':1500,'bl':1800,'dh':1800,'fc':2200,'kr':2200,'fd':2000,'zi':2000,'af':750,'ag':900,'fh':1600}.get(id,450)
  if args.ruleset!='tenjiku-dai' and id not in r['winkoma']:
   value={'aa':100,'ab':300,'ad':450,'ae':550,'af':750,'ag':900,'am':1000,'an':1150,'bl':1600,'dh':1600,'ie':2100,'gf':2200,'gh':2500,'hc':2200,'0c':2500,'go':1400,'lf':1400,'ig':1700,'ix':2600,'iz':2600,'jb':2800,'do':550}.get(id,max(250,min(2000,sum(100 if (m['type']==2) else 30*p.get('limit',{}).get(str(m['type']),1) for m in p['move']))))

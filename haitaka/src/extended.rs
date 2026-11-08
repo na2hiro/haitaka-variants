@@ -892,13 +892,15 @@ pub use classical::compiled;
     feature = "tenjiku-dai",
     feature = "dai-dai",
     feature = "maka-dai-dai",
-    feature = "taishogi"
+    feature = "taishogi",
+    feature = "taikyoku"
 ))]
 pub mod large;
 #[cfg(any(
     feature = "tenjiku-dai",
     feature = "dai-dai",
     feature = "maka-dai-dai",
-    feature = "taishogi"
+    feature = "taishogi",
+    feature = "taikyoku"
 ))]
 pub use large::compiled;
