@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Usage: node scripts/verify-large-hashes.mjs target RULE BEFORE_WASM_DIR
+// Supports JSON v3-v5 (four classical and five large rules).
 // Reuse a corpus already independently checked against Shogitter. Before editing
 // the engine, preserve its WASM .js/.wasm in BEFORE_WASM_DIR and native CLI as
 // BEFORE_WASM_DIR/../before-RULE. Supports gzip oracle data without unpacking.
@@ -15,7 +16,7 @@ import {spawn, execFileSync} from 'node:child_process';
 import {Worker, isMainThread, workerData, parentPort} from 'node:worker_threads';
 const root=resolve(process.argv[2]??'target');
 const rule=process.argv[3];
-assert(['tenjiku-dai','dai-dai','maka-dai-dai','taishogi','taikyoku'].includes(rule));
+assert(['torishogi','washogi','heian-dai','daishogi','tenjiku-dai','dai-dai','maka-dai-dai','taishogi','taikyoku'].includes(rule));
 const before=resolve(process.argv[4]);
 const inputs=readFileSync(join(root,rule+'-reference-input.jsonl'),'utf8').trim().split('\n');
 const plain=join(root,rule+'-reference-output.jsonl');
@@ -25,9 +26,10 @@ function oracle() {
   return createInterface({input:oraclePath.endsWith('.gz')?stream.pipe(createGunzip()):stream,crlfDelay:Infinity});
 }
 async function load(dir) {
-  const engine=await import(pathToFileURL(join(dir,'haitaka_wasm.js')));
+  const basename=existsSync(join(dir,'haitaka_wasm.js'))?'haitaka_wasm':'haitaka_engine';
+  const engine=await import(pathToFileURL(join(dir,basename+'.js')));
   const started=performance.now();
-  const instance=engine.initSync({module:readFileSync(join(dir,'haitaka_wasm_bg.wasm'))});
+  const instance=engine.initSync({module:readFileSync(join(dir,basename+'_bg.wasm'))});
   return {engine,instance,initializationMs:performance.now()-started};
 }
 async function nativeOracle() {
@@ -116,12 +118,15 @@ if(!isMainThread) {
   const nativeCall=(action,args=[],input=start,cli=join(root,'haitaka-'+rule))=>
     JSON.parse(execFileSync(cli,['json',action,...args],{input,encoding:'utf8'}));
   const perft=[1,2].map(depth=>JSON.parse(engine.perft_json(start,depth)).nodes);
-  assert.deepEqual(perft,JSON.parse(readFileSync(join(root,rule+'-reference-perft.json'),'utf8')));
+  const perftFile=join(root,rule+'-reference-perft.json');
+  const referencePerft=existsSync(perftFile)?JSON.parse(readFileSync(perftFile,'utf8')):JSON.parse(readFileSync(join(root,rule+'-reference-summary.json'),'utf8')).perft;
+  assert.deepEqual(perft,referencePerft);
   for(const depth of [1,2]) assert.equal(perft[depth-1],nativeCall('perft',['--depth',String(depth)]).nodes);
   const budget=['--depth','8','--timeout-ms','30000','--nodes','1000'];
   const nativeSearch=nativeCall('search',budget);
   const wasmSearch=JSON.parse(engine.search_json(start,8,30000,1000));
-  const oldSearch=nativeCall('search',budget,start,join(dirname(before),'before-'+rule));
+  const oldCli=join(dirname(before),'before-'+rule);
+  const oldSearch=existsSync(oldCli)?nativeCall('search',budget,start,oldCli):JSON.parse(old.search_json(start,8,30000,1000));
   for(const key of ['bestMove','completedDepth','nodeLimitReached','states','score','outcome'])
     assert.deepEqual(wasmSearch[key],nativeSearch[key],key);
   const timed=JSON.parse(engine.search_json(start,100,1,0));
@@ -132,8 +137,9 @@ if(!isMainThread) {
     const q=JSON.parse(input), result=JSON.parse(engine.search_json(input,100,1,0));
     assert(result.bestMove);
     assert(JSON.parse(engine.legal_moves_json(input)).some(m=>JSON.stringify(m)===JSON.stringify(result.bestMove)));
-    assert.deepEqual(result.bestMove.path.slice(0,q.pending.path.length),q.pending.path);
-    pendingFallbacks.push({pendingHops:q.pending.path.length,elapsedMs:result.elapsedMs});
+    const prefix=q.pending.path??[q.pending.via];
+    assert.deepEqual(result.bestMove.path.slice(0,prefix.length),prefix);
+    pendingFallbacks.push({pendingHops:prefix.length,elapsedMs:result.elapsedMs});
   }
   // Sample Native's public contextHash directly; every corpus position/child
   // also checks old actual WASM inspect and the original FNV history fold.
@@ -148,7 +154,7 @@ if(!isMainThread) {
   const report={rule,positions:native.positions,transitions:native.transitions,native,
     legacyPositionAndContextHashDifferences:0,partitions,perft,
     inputSha256:sha(join(root,rule+'-reference-input.jsonl')),
-    beforeWasmSha256:sha(join(before,'haitaka_wasm_bg.wasm')),
+    beforeWasmSha256:sha(join(before,existsSync(join(before,'haitaka_wasm_bg.wasm'))?'haitaka_wasm_bg.wasm':'haitaka_engine_bg.wasm')),
     afterWasmSha256:sha(join(root,'wasm-'+rule,'haitaka_wasm_bg.wasm')),
     linearMemoryBytes,wasmBytes:readFileSync(join(root,'wasm-'+rule,'haitaka_wasm_bg.wasm')).length,
     lowBudgetElapsedMs:timed.elapsedMs,pendingFallbacks,

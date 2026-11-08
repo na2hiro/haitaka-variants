@@ -425,6 +425,69 @@ impl<R: ClassicalRule> Position<R> {
         if stop() {
             return None;
         }
+        // For check-free rules, legal generation has already validated every
+        // hop/capture. Own file counts change only at the mover's start/end.
+        // Keep the copied validation path for check and pawn-drop-mate rules.
+        if !R::CHECK
+            && !matches!(mv, ClassicalMove::Drop { piece, .. } if Some(piece.id) == R::UCHIFU)
+        {
+            let (piece, color, to, previous) = match mv {
+                ClassicalMove::Move {
+                    from,
+                    path,
+                    promotion,
+                    ..
+                } => {
+                    let from = Self::index(from).unwrap();
+                    let c = self.cells[from].unwrap();
+                    let piece = if promotion {
+                        Self::def(c).promotion.unwrap()
+                    } else {
+                        c.piece
+                    };
+                    (
+                        piece,
+                        c.color,
+                        Self::index(*path.last().unwrap()).unwrap(),
+                        Some((from, c.piece)),
+                    )
+                }
+                ClassicalMove::Drop { piece, to, .. } => {
+                    (piece.id, self.side, Self::index(to).unwrap(), None)
+                }
+            };
+            let limit = R::file_limit(piece);
+            let legal = if limit == 0 {
+                true
+            } else {
+                let (file, _) = R::Geometry::coordinates(to).unwrap();
+                let start = file * R::Geometry::HEIGHT;
+                let mut count = self.cells[start..start + R::Geometry::HEIGHT]
+                    .iter()
+                    .flatten()
+                    .filter(|c| c.color == color && c.piece == piece)
+                    .count();
+                if previous.is_some_and(|(from, old)| {
+                    old == piece && R::Geometry::coordinates(from).unwrap().0 == file
+                }) {
+                    count -= 1;
+                }
+                count + 1 <= limit
+            };
+            #[cfg(test)]
+            assert_eq!(
+                self.classical_acceptable_copy(mv, &mut || false),
+                Some(legal)
+            );
+            return Some(legal);
+        }
+        self.classical_acceptable_copy(mv, stop)
+    }
+    fn classical_acceptable_copy(
+        &self,
+        mv: ClassicalMove<R>,
+        stop: &mut dyn FnMut() -> bool,
+    ) -> Option<bool> {
         let next = self.classical_apply(mv);
         let to = match mv {
             ClassicalMove::Move { path, .. } => Self::index(*path.last().unwrap()).unwrap(),
@@ -909,3 +972,7 @@ mod tests;
 #[cfg(test)]
 #[path = "classical/attack_tests.rs"]
 mod attack_tests;
+
+#[cfg(test)]
+#[path = "classical/memory_tests.rs"]
+mod memory_tests;
