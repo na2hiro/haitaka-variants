@@ -342,6 +342,81 @@ impl<R: ClassicalRule> Position<R> {
             .count()
             <= limit
     }
+    /// Match geometric_targets(from, c, false) for one destination, without
+    /// allocating all destinations. This is geometry, not move/check legality.
+    fn classical_attacks_square(&self, from: usize, c: Cell, to: usize) -> bool {
+        if from == to || self.cells[to].is_some_and(|v| v.color == c.color) {
+            return false;
+        }
+        let sign = if c.color == 0 { 1 } else { -1 };
+        let def = Self::def(c);
+        let (fx, fy) = R::Geometry::coordinates(from).unwrap();
+        let (tx, ty) = R::Geometry::coordinates(to).unwrap();
+        let (x, y) = (
+            (tx as isize - fx as isize) * sign,
+            (ty as isize - fy as isize) * sign,
+        );
+        if def.steps.contains(&(x, y)) {
+            return true;
+        }
+        for &(dx, dy) in def.rays {
+            let distance = if dx != 0 {
+                if x % dx != 0 {
+                    continue;
+                }
+                x / dx
+            } else {
+                if x != 0 || dy == 0 || y % dy != 0 {
+                    continue;
+                }
+                y / dy
+            };
+            if distance <= 0 || x != dx * distance || y != dy * distance {
+                continue;
+            }
+            if R::ray_limit(c.piece, dx, dy).is_some_and(|limit| distance as usize > limit) {
+                continue;
+            }
+            let mut at = from;
+            let mut blocked = false;
+            for _ in 1..distance {
+                at = R::Geometry::offset(at, dx * sign, dy * sign).unwrap();
+                if self.cells[at].is_some() {
+                    blocked = true;
+                    break;
+                }
+            }
+            if !blocked {
+                return true;
+            }
+        }
+        false
+    }
+    fn classical_attacked_direct(&self, color: u8) -> bool {
+        let mut royals = self.occupied[color as usize];
+        while let Some(to) = royals.first() {
+            royals = royals.without(to);
+            if !Self::def(self.cells[to].unwrap()).royal {
+                continue;
+            }
+            let mut enemies = self.occupied[(color ^ 1) as usize];
+            while let Some(from) = enemies.first() {
+                enemies = enemies.without(from);
+                if self.classical_attacks_square(from, self.cells[from].unwrap(), to) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    fn classical_checked_for_legality(&self, color: u8) -> bool {
+        // Keep other rules' attack/repetition/drop-mate paths unchanged.
+        if matches!(R::ID, 15 | 50) {
+            self.classical_attacked_direct(color)
+        } else {
+            self.attacked(color)
+        }
+    }
     fn classical_acceptable(
         &self,
         mv: ClassicalMove<R>,
@@ -355,7 +430,9 @@ impl<R: ClassicalRule> Position<R> {
             ClassicalMove::Move { path, .. } => Self::index(*path.last().unwrap()).unwrap(),
             ClassicalMove::Drop { to, .. } => Self::index(to).unwrap(),
         };
-        if !next.classical_file_allowed(to) || (R::CHECK && next.attacked(self.side)) {
+        if !next.classical_file_allowed(to)
+            || (R::CHECK && next.classical_checked_for_legality(self.side))
+        {
             return Some(false);
         }
         if let ClassicalMove::Drop { piece, .. } = mv {
@@ -828,3 +905,7 @@ pub mod compiled {
 }
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "classical/attack_tests.rs"]
+mod attack_tests;
