@@ -32,3 +32,5 @@ The compile-time `heian-8x8`, `heian-9x8` and `heian-9x9` modes support Shogitte
 The `shoshogi` (43) and `chushogi` (48) modes support multiple royal pieces and completed lion turns through explicit JSON APIs. See [Sho](shoshogi.md) and [Chu](chushogi.md).
 
 The `torishogi` (16), `washogi` (50), `heian-dai` (15) and `daishogi` (49) modes use JSON v3 with rule-local piece IDs. Tori includes reserves and drops; Heian Dai and Dai preserve ambiguous promotion origins. All use handcrafted evaluation. See [adopted rules, API and verification](classical-stage4.md).
+
+The `tenjiku-dai` mode supports Tenjiku Daishogi (59), with ordered freezing/burning effects, up to three hops per turn and JSON v4. It is separate from the 9x9 `tenjiku` mode (56). See [adopted rules and verification](tenjiku-dai.md).
