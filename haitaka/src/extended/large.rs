@@ -50,6 +50,8 @@ type Geometry = Rect<25, 25>;
 #[cfg(feature = "taikyoku")]
 type Geometry = Rect<36, 36>;
 type Pos = Position<LargeRule>;
+mod hash;
+use hash::TimelineEntry;
 pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -869,7 +871,7 @@ pub struct LargeGame {
     initial: WirePosition<TenjikuState, ClassicalPiece>,
     played: Vec<LargeMove>,
     undo: Vec<Delta>,
-    timeline: Vec<(u64, u8)>,
+    timeline: Vec<TimelineEntry>,
     pending: Option<Pending>,
     pending_ply: usize,
 }
@@ -878,7 +880,7 @@ impl LargeGame {
         validate_state(&p)?;
         Ok(Self {
             initial: p.to_wire(),
-            timeline: vec![(p.hash(), p.side)],
+            timeline: vec![TimelineEntry::root(&p)],
             position: p,
             played: vec![],
             undo: vec![],
@@ -963,12 +965,12 @@ impl LargeGame {
         if captured != Outcome::ONGOING {
             return captured;
         }
-        let h = self.position.hash();
+        let h = self.timeline.last().unwrap().key;
         let matches: Vec<_> = self
             .timeline
             .iter()
             .enumerate()
-            .filter(|(_, p)| p.0 == h && p.1 == self.position.side)
+            .filter(|(_, p)| p.key == h && p.side == self.position.side)
             .map(|(i, _)| i)
             .collect();
         if matches.len() < 4 {
@@ -1061,18 +1063,26 @@ impl LargeGame {
                 order(&self.position, &self.position.state.shitenno, None);
         }
         self.position.side ^= 1;
+        let previous = *self.timeline.last().unwrap();
+        let key = hash::updated(previous.key, &self.position, &delta);
         self.timeline
-            .push((self.position.hash(), self.position.side));
+            .push(TimelineEntry::next(previous, key, self.position.side));
         self.undo.push(delta);
         self.played.push(m);
+        #[cfg(test)]
+        hash_tests::assert_incremental(self);
     }
     fn pop(&mut self) {
         self.undo.pop().unwrap().restore(&mut self.position);
         self.played.pop();
         self.timeline.pop();
+        #[cfg(test)]
+        hash_tests::assert_incremental(self);
     }
     pub fn position_hash(&self) -> u64 {
-        let mut h = self.position.hash();
+        self.with_pending_hash(self.position.hash())
+    }
+    fn with_pending_hash(&self, mut h: u64) -> u64 {
         if let Some(p) = self.prefix() {
             for n in p.from.into_iter().chain(p.path.iter().flatten().copied()) {
                 h = h.rotate_left(7) ^ u64::from(n).wrapping_mul(0x9e3779b97f4a7c15);
@@ -1080,10 +1090,28 @@ impl LargeGame {
         }
         h
     }
+    /// Public FNV context stays byte-for-byte compatible. Reconstruct its
+    /// historical FNV values only at this API boundary, never in search.
+    fn context_hash(&self) -> u64 {
+        let current = self.position.hash();
+        let mut hashes = Vec::with_capacity(self.timeline.len());
+        hashes.push(current);
+        if !self.undo.is_empty() {
+            let mut p = self.position.clone();
+            for delta in self.undo.iter().rev() {
+                delta.clone().restore(&mut p);
+                hashes.push(p.hash());
+            }
+        }
+        hashes
+            .iter()
+            .rev()
+            .fold(hash::HISTORY_SEED, |h, &key| hash::history(h, key))
+            ^ self.with_pending_hash(current).rotate_left(13)
+    }
     fn context_key(&self) -> u64 {
-        self.timeline.iter().fold(0x6a09e667f3bcc909u64, |h, p| {
-            h.rotate_left(7) ^ p.0.wrapping_mul(0x9e3779b97f4a7c15)
-        }) ^ self.position_hash().rotate_left(13)
+        let current = self.timeline.last().unwrap();
+        current.context ^ self.with_pending_hash(current.key).rotate_left(13)
     }
     pub fn perft(&mut self, depth: u8) -> u64 {
         if depth == 0 {
@@ -1220,7 +1248,7 @@ pub mod compiled {
     }
     pub fn inspect_json(json: &str) -> Result<String, String> {
         let g = LargeGame::parse(json)?;
-        Ok(serde_json::json!({"schemaVersion":SCHEMA_VERSION,"positionHash":format!("{:016x}",g.position_hash()),"contextHash":format!("{:016x}",g.context_key()),"outcome":g.outcome()}).to_string())
+        Ok(serde_json::json!({"schemaVersion":SCHEMA_VERSION,"positionHash":format!("{:016x}",g.position_hash()),"contextHash":format!("{:016x}",g.context_hash()),"outcome":g.outcome()}).to_string())
     }
     pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
         if depth > 4 {
@@ -1258,3 +1286,7 @@ mod taishogi_tests;
 #[cfg(all(test, feature = "taikyoku"))]
 #[path = "large/taikyoku_tests.rs"]
 mod taikyoku_tests;
+
+#[cfg(test)]
+#[path = "large/hash_tests.rs"]
+mod hash_tests;
