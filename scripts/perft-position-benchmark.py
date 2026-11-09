@@ -12,6 +12,7 @@ parser.add_argument('--output',type=Path,required=True)
 parser.add_argument('--compare',type=Path)
 parser.add_argument('--calibrate',action='store_true',help='Freeze expected leaf counts with this engine before timing')
 parser.add_argument('--cpu',type=int,default=7)
+parser.add_argument('--timeout-seconds',type=int,default=900,help='Allow long perft(3) roots, including warmup plus three samples')
 args=parser.parse_args()
 assert args.cpu in os.sched_getaffinity(0)
 engine=args.engine_dir.resolve();manifest_path=args.positions.resolve()
@@ -51,7 +52,7 @@ for rule in dict.fromkeys(p['rule'] for p in cases):
  print('built',rule,flush=True)
 def run(p,samples):
  file=manifest_path.parent/p['file']
- result=subprocess.check_output(['taskset','-c',str(args.cpu),str(bench/'bins'/p['rule']),p['rule'],str(p['depth']),'3000',str(samples),str(file)],cwd=ROOT,text=True,timeout=300)
+ result=subprocess.check_output(['taskset','-c',str(args.cpu),str(bench/'bins'/p['rule']),p['rule'],str(p['depth']),'3000',str(samples),str(file)],cwd=ROOT,text=True,timeout=args.timeout_seconds)
  return json.loads(result)
 if args.calibrate:
  for p in cases:
