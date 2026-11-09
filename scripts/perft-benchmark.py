@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tomllib
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / 'plans/historical-shogi-performance/baseline/perft.json'
@@ -30,6 +31,7 @@ def main():
     parser.add_argument('--seconds', type=positive, default=3.0)
     parser.add_argument('--samples', type=int, default=3)
     parser.add_argument('--compare', type=Path, help='Previous result with the same rules/depths/CPU/settings')
+    parser.add_argument('--timing-ready', type=Path, help='After building all binaries, wait for this file before any timed run')
     args = parser.parse_args()
     engine = args.engine_dir.resolve()
     if args.seconds < 3 or args.samples < 3 or args.samples % 2 == 0:
@@ -106,6 +108,10 @@ extended = []
         for key in ['cpu', 'logicalCpuAffinity', 'compiler', 'minimumBatchSeconds', 'samplesPerRule', 'harnessSha256']:
             if previous.get(key) != report[key]:
                 raise ValueError(f'comparison setting differs: {key}')
+    if args.timing_ready:
+        print('all binaries built; waiting for timing gate', args.timing_ready, flush=True)
+        while not args.timing_ready.exists():
+            time.sleep(1)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     for name in args.rules:
         r = choices[name]
