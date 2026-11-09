@@ -1,0 +1,34 @@
+{
+  "bulkCounting": false,
+  "position": "fixed-input",
+  "result": {
+    "depth": 2,
+    "medianNps": 245204.4171034357,
+    "nodesPerPerft": 55653,
+    "samples": [
+      {
+        "nodesPerPerft": 55653,
+        "nps": 245204.4171034357,
+        "repetitions": 14,
+        "seconds": 3.177520247,
+        "totalLeafNodes": 779142
+      },
+      {
+        "nodesPerPerft": 55653,
+        "nps": 244601.10798479652,
+        "repetitions": 14,
+        "seconds": 3.185357607,
+        "totalLeafNodes": 779142
+      },
+      {
+        "nodesPerPerft": 55653,
+        "nps": 245872.8884937289,
+        "repetitions": 14,
+        "seconds": 3.168881306,
+        "totalLeafNodes": 779142
+      }
+    ]
+  },
+  "ruleset": "tenjiku-dai",
+  "transpositionCache": false
+}
