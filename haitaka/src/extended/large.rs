@@ -50,6 +50,8 @@ type Geometry = Rect<25, 25>;
 #[cfg(feature = "taikyoku")]
 type Geometry = Rect<36, 36>;
 type Pos = Position<LargeRule>;
+#[cfg(feature = "tenjiku-dai")]
+mod burn_cache;
 mod delta;
 mod effects;
 use delta::SquareChanges;
@@ -705,6 +707,12 @@ fn finish(p: &mut Pos, to: usize, effects: &EffectContext, d: &mut Delta) {
         }
     }
     settle_residents(p, to);
+    #[cfg(feature = "tenjiku-dai")]
+    if effects.burn_cache.apply(p, to, d) {
+        #[cfg(test)]
+        assert_eq!(*p, expected, "cached burn coverage and full effects");
+        return;
+    }
     let actives = active_order(p.state.shitenno.iter().cloned());
     let mut burnt = BTreeSet::new();
     // Only the moving piece can introduce a new fire at a new square.
