@@ -179,6 +179,7 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
         None
     }
     const ALLOW_NO_ROYALS: bool = false;
+    const CACHE_ROYALS: bool = false;
     /// Conversion rules conserve piece counts, but not each base species.
     const CONVERTS_INVENTORY: bool = false;
     const ID: u32;
@@ -282,6 +283,7 @@ pub struct Position<R: CaptureRoyalRule> {
     state: R::State,
     hands: R::Hands,
     occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
+    royal_counts: [u16; 2],
     rule: PhantomData<R>,
 }
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
@@ -343,6 +345,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             state: wire.state.clone(),
             hands: R::Hands::default(),
             occupied: [<R::Geometry as BoardGeometry>::Bits::EMPTY; 2],
+            royal_counts: [0; 2],
             rule: PhantomData,
         };
         let mut count = vec![vec![0; R::INVENTORY.len()]; 2];
@@ -445,11 +448,24 @@ impl<R: CaptureRoyalRule> Position<R> {
         }
     }
     fn royals(&self, color: u8) -> usize {
-        self.cells
-            .iter()
-            .flatten()
-            .filter(|c| c.color == color && Self::def(**c).royal)
-            .count()
+        if !R::CACHE_ROYALS {
+            return self
+                .cells
+                .iter()
+                .flatten()
+                .filter(|c| c.color == color && Self::def(**c).royal)
+                .count();
+        }
+        #[cfg(test)]
+        assert_eq!(
+            usize::from(self.royal_counts[color as usize]),
+            self.cells
+                .iter()
+                .flatten()
+                .filter(|c| c.color == color && Self::def(**c).royal)
+                .count()
+        );
+        usize::from(self.royal_counts[color as usize])
     }
     fn capture_outcome(&self) -> Outcome {
         if self.royals(0) == 0 {
@@ -617,11 +633,20 @@ impl<R: CaptureRoyalRule> Position<R> {
         out
     }
     fn set_cell(&mut self, square: usize, cell: Option<Cell>) {
+        if R::CACHE_ROYALS && self.cells[square] == cell {
+            return;
+        }
         if let Some(old) = self.cells[square] {
+            if R::CACHE_ROYALS && Self::def(old).royal {
+                self.royal_counts[old.color as usize] -= 1;
+            }
             self.occupied[old.color as usize].remove(square);
         }
         self.cells[square] = cell;
         if let Some(new) = cell {
+            if R::CACHE_ROYALS && Self::def(new).royal {
+                self.royal_counts[new.color as usize] += 1;
+            }
             self.occupied[new.color as usize].insert(square);
         }
     }
