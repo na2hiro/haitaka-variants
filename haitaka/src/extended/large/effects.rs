@@ -5,14 +5,33 @@ pub(super) struct EffectContext {
     pub actives: Vec<Resident>,
     pub resident_fires: Vec<Resident>,
     pub fire_squares: Vec<usize>,
+    #[cfg(feature = "tenjiku-dai")]
+    pub burn_cache: super::burn_cache::BurnCache,
 }
 impl EffectContext {
+    pub fn heap_bytes(&self) -> usize {
+        self.actives.capacity() * std::mem::size_of::<Resident>()
+            + self.resident_fires.capacity() * std::mem::size_of::<Resident>()
+            + self.fire_squares.capacity() * std::mem::size_of::<usize>()
+            + {
+                #[cfg(feature = "tenjiku-dai")]
+                {
+                    self.burn_cache.heap_bytes()
+                }
+                #[cfg(not(feature = "tenjiku-dai"))]
+                {
+                    0
+                }
+            }
+    }
     pub fn new(p: &Pos) -> Self {
         if !ORDERED_EFFECTS {
             return Self {
                 actives: vec![],
                 resident_fires: vec![],
                 fire_squares: vec![],
+                #[cfg(feature = "tenjiku-dai")]
+                burn_cache: super::burn_cache::BurnCache::empty(),
             };
         }
         let actives = active(p, None);
@@ -34,7 +53,11 @@ impl EffectContext {
             .collect();
         #[cfg(test)]
         assert_eq!(resident_fires, fires(p));
+        #[cfg(feature = "tenjiku-dai")]
+        let burn_cache = super::burn_cache::BurnCache::new(p, &actives, &fire_squares);
         Self {
+            #[cfg(feature = "tenjiku-dai")]
+            burn_cache,
             actives,
             resident_fires,
             fire_squares,

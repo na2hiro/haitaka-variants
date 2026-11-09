@@ -1,0 +1,17 @@
+{
+  "stage": "05-burns",
+  "status": "adopted",
+  "performance": "05-burns-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 1.1104561609613868,
+    "taikyoku": 0.9987597257751134
+  },
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "03db3bd027c0bb2074c4e3060d1a445fd998fe599c715ef6016c52b33089821e",
+    "haitaka/src/extended/large/tests.rs": "74c547f1d8c3316d6ec36b964d7f46e3d51961006c145101299b4e4d2c52a556",
+    "haitaka/src/extended/large/effects.rs": "da301d61ea2246db239de20a8d6132dc77b4ecee94446f0b1567b36ca6b12a2c",
+    "haitaka/src/extended/large/prepared.rs": "fdf0999f343368822931c02c9a0d2393f53e9ab7f6f0fc98181aa924dc264983",
+    "haitaka/src/extended/large/burn_cache.rs": "6353d322f687ad9ad899f5deff347bfcd0b6b986624b95e4bb691558354552b0"
+  },
+  "flags": []
+}

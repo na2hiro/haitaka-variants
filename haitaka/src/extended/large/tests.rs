@@ -250,3 +250,24 @@ fn lazy_repetition_attack_checks_use_restored_ordered_states() {
     }
     assert_eq!(g.outcome(), Outcome::win(1));
 }
+
+#[test]
+fn unchanged_actors_still_burn_unsettled_turn_start_victims() {
+    let mut g = game(&[([8, 8], "fe", 0), ([9, 8], "aa", 1)], false);
+    let before = g.to_json();
+    g.play(mv([16, 16], &[[15, 16]], false)).unwrap();
+    assert_eq!(g.position.cells[Pos::index([9, 8]).unwrap()], None);
+    g.pop();
+    assert_eq!(g.to_json(), before);
+}
+#[test]
+fn cached_burn_coverage_rechecks_the_arriving_piece_color() {
+    let mut g = game(
+        &[([8, 8], "fe", 0), ([9, 8], "aa", 1), ([9, 10], "ag", 0)],
+        false,
+    );
+    let m = mv([9, 10], &[[9, 8]], false);
+    assert!(g.moves().contains(&m));
+    g.play(m).unwrap();
+    assert!(g.position.cells[Pos::index([9, 8]).unwrap()].is_some_and(|c| c.color == 0));
+}
