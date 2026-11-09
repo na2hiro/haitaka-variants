@@ -1,0 +1,231 @@
+{
+  "enginePath": "/home/na2hiro/proj/haitaka-variants/target/perft-original",
+  "nonTargetCount": 30,
+  "nonTargetRegressionsOverFivePercent": [],
+  "rules": [
+    {
+      "rule": "standard",
+      "beforeSha256": "310c7326c8d8c3a5af511c1470f7032691d063d58bdbec48ebf78666cdd154e1",
+      "afterSha256": "310c7326c8d8c3a5af511c1470f7032691d063d58bdbec48ebf78666cdd154e1",
+      "byteIdentical": true,
+      "npsRatio": 0.9957171346203396
+    },
+    {
+      "rule": "minishogi",
+      "beforeSha256": "4437e4d14d019e6f3413ac94b9d56b93d38fb9f86718dae499ccbf74a8c6c4fc",
+      "afterSha256": "4437e4d14d019e6f3413ac94b9d56b93d38fb9f86718dae499ccbf74a8c6c4fc",
+      "byteIdentical": true,
+      "npsRatio": 0.9922164582547814
+    },
+    {
+      "rule": "judkins",
+      "beforeSha256": "7083da989fc51a1e18203d40e141ec6f9e1e1c5ffc336dddc2e043028a323bbd",
+      "afterSha256": "7083da989fc51a1e18203d40e141ec6f9e1e1c5ffc336dddc2e043028a323bbd",
+      "byteIdentical": true,
+      "npsRatio": 0.9883888639221569
+    },
+    {
+      "rule": "gorogoro",
+      "beforeSha256": "fc89a546699eb480cea9cbe2e987325eb1ce11dc7196cd751b6926aac313c79e",
+      "afterSha256": "fc89a546699eb480cea9cbe2e987325eb1ce11dc7196cd751b6926aac313c79e",
+      "byteIdentical": true,
+      "npsRatio": 0.9986629568857389
+    },
+    {
+      "rule": "gorogoro-plus",
+      "beforeSha256": "ec13a58e835f7fff147e8afea8c239ac1c041c8a97f77f911492769c7d51f67d",
+      "afterSha256": "ec13a58e835f7fff147e8afea8c239ac1c041c8a97f77f911492769c7d51f67d",
+      "byteIdentical": true,
+      "npsRatio": 0.986277686156277
+    },
+    {
+      "rule": "minishogi-kingin",
+      "beforeSha256": "872cd7c032ae6f866fb59a7f6e568425c3fe53573b11697f0939dd2ba800e50d",
+      "afterSha256": "872cd7c032ae6f866fb59a7f6e568425c3fe53573b11697f0939dd2ba800e50d",
+      "byteIdentical": true,
+      "npsRatio": 0.9912575242112155
+    },
+    {
+      "rule": "annan",
+      "beforeSha256": "c3706e6c783e84cbf49c12935e4f699de665cc628dbff532665c16135c0cbeac",
+      "afterSha256": "c3706e6c783e84cbf49c12935e4f699de665cc628dbff532665c16135c0cbeac",
+      "byteIdentical": true,
+      "npsRatio": 0.9955265640818675
+    },
+    {
+      "rule": "anhoku",
+      "beforeSha256": "5bb68ac71a1e6c1133623d3d5e04e5a633405109b78045f72b5af54e47d95d08",
+      "afterSha256": "5bb68ac71a1e6c1133623d3d5e04e5a633405109b78045f72b5af54e47d95d08",
+      "byteIdentical": true,
+      "npsRatio": 0.9921385358709476
+    },
+    {
+      "rule": "antouzai",
+      "beforeSha256": "27bbe9d8cfff6542a65f1f3de6254e0d62764c977f2399e85cd9cd51be5ec455",
+      "afterSha256": "27bbe9d8cfff6542a65f1f3de6254e0d62764c977f2399e85cd9cd51be5ec455",
+      "byteIdentical": true,
+      "npsRatio": 0.9864124112870404
+    },
+    {
+      "rule": "taimen",
+      "beforeSha256": "8deb03ef19cfcaabfee42a49f04abae002755cec0ae4003943c203ac1c67339f",
+      "afterSha256": "8deb03ef19cfcaabfee42a49f04abae002755cec0ae4003943c203ac1c67339f",
+      "byteIdentical": true,
+      "npsRatio": 0.999700334167002
+    },
+    {
+      "rule": "haimen",
+      "beforeSha256": "3cb2fc0599abf9521d4bc6e96da7a3557068ce7bf1a98ec873b854ce4b92874a",
+      "afterSha256": "3cb2fc0599abf9521d4bc6e96da7a3557068ce7bf1a98ec873b854ce4b92874a",
+      "byteIdentical": true,
+      "npsRatio": 0.9866504095984931
+    },
+    {
+      "rule": "neko",
+      "beforeSha256": "41787770e9416759dd0018b561017ea43737e372f7f2ad152cfef0565b615a79",
+      "afterSha256": "41787770e9416759dd0018b561017ea43737e372f7f2ad152cfef0565b615a79",
+      "byteIdentical": true,
+      "npsRatio": 0.9956927097511226
+    },
+    {
+      "rule": "nekoneko",
+      "beforeSha256": "4ac7f2a5e943a301fca24ab3ddaa126a9044e9f0b25a2cb0510fbd0de9d46435",
+      "afterSha256": "4ac7f2a5e943a301fca24ab3ddaa126a9044e9f0b25a2cb0510fbd0de9d46435",
+      "byteIdentical": true,
+      "npsRatio": 0.9988026605112705
+    },
+    {
+      "rule": "yokoneko",
+      "beforeSha256": "5b90bbe471ed2ec12c69c31800c5ea46da36aaf1cd5dd8ab2c5699634fe90bf9",
+      "afterSha256": "5b90bbe471ed2ec12c69c31800c5ea46da36aaf1cd5dd8ab2c5699634fe90bf9",
+      "byteIdentical": true,
+      "npsRatio": 0.9944812084186455
+    },
+    {
+      "rule": "yokonekoneko",
+      "beforeSha256": "bd69966dc4827bec518ef81aacc51180012e078b8c49a8535b84e4b1e9704726",
+      "afterSha256": "bd69966dc4827bec518ef81aacc51180012e078b8c49a8535b84e4b1e9704726",
+      "byteIdentical": true,
+      "npsRatio": 0.9999222282805574
+    },
+    {
+      "rule": "tenkyo",
+      "beforeSha256": "31160f27be01495948c2811c1a9b23b4e51645c94ac1e9330b59e44570262d02",
+      "afterSha256": "31160f27be01495948c2811c1a9b23b4e51645c94ac1e9330b59e44570262d02",
+      "byteIdentical": true,
+      "npsRatio": 0.9865960065063356
+    },
+    {
+      "rule": "tenjiku",
+      "beforeSha256": "ab34f153fd6fb6a4a6b3f3fc985dcbc6b14bc91ef47d21270cd6ff3a0815e3a6",
+      "afterSha256": "ab34f153fd6fb6a4a6b3f3fc985dcbc6b14bc91ef47d21270cd6ff3a0815e3a6",
+      "byteIdentical": true,
+      "npsRatio": 0.9963649012448897
+    },
+    {
+      "rule": "anki",
+      "beforeSha256": "5dbe4cef9356970da0bdb466fb741e56771edc69fe1bfd64667130f31211964b",
+      "afterSha256": "5dbe4cef9356970da0bdb466fb741e56771edc69fe1bfd64667130f31211964b",
+      "byteIdentical": true,
+      "npsRatio": 1.003883967028649
+    },
+    {
+      "rule": "heian-8x8",
+      "beforeSha256": "bfa7910a4c0bbc2c5c630fd3165f8b8b64536bb925090d97b4dc1428631ab7ff",
+      "afterSha256": "bfa7910a4c0bbc2c5c630fd3165f8b8b64536bb925090d97b4dc1428631ab7ff",
+      "byteIdentical": true,
+      "npsRatio": 0.9950205932946895
+    },
+    {
+      "rule": "heian-9x8",
+      "beforeSha256": "fb4dc26ee5e78877c7d443727a00b24fef7a33cdd070ae1a22d5df2b43780221",
+      "afterSha256": "fb4dc26ee5e78877c7d443727a00b24fef7a33cdd070ae1a22d5df2b43780221",
+      "byteIdentical": true,
+      "npsRatio": 1.0003218676323629
+    },
+    {
+      "rule": "heian-9x9",
+      "beforeSha256": "fa3edd4165f7fdbb52ac60e8e89a9e02229715b6ab901d4fe3e6b72f7b13d14d",
+      "afterSha256": "fa3edd4165f7fdbb52ac60e8e89a9e02229715b6ab901d4fe3e6b72f7b13d14d",
+      "byteIdentical": true,
+      "npsRatio": 0.9855538832100612
+    },
+    {
+      "rule": "shoshogi",
+      "beforeSha256": "7498605b4b2f1c747a8a78685c326bd9512c46cf2c25eb566fdfd0a241d3fb8f",
+      "afterSha256": "bb5f3237c13214c091804c0fa9950d84ec38df3d738ce85ce39af045c9587d8b",
+      "byteIdentical": false,
+      "npsRatio": 0.9909752948669923
+    },
+    {
+      "rule": "chushogi",
+      "beforeSha256": "c5b31d06354975fc6ded74b17dc69b088518b90637eb196b01665bca502c3458",
+      "afterSha256": "20bf7d61cf319d3436d5d07860966167c03b4f41ef9aad4b0ed4b7f5c0ceb2c9",
+      "byteIdentical": false,
+      "npsRatio": 1.0016126378280508
+    },
+    {
+      "rule": "torishogi",
+      "beforeSha256": "ae991fd4df766c284f86673aa23d5c13f8dc172cad4a3c0041c0e2c397970e07",
+      "afterSha256": "683e663afe42a884b9c24698fa01ba30b08e9cacaf79affcb21ad507df9c1bae",
+      "byteIdentical": false,
+      "npsRatio": 1.1013123638158202
+    },
+    {
+      "rule": "washogi",
+      "beforeSha256": "aff10ea04265572210bd9fa2e0626d0ed208f6e47de676989b3767539ca47a17",
+      "afterSha256": "b43f2caae6c2aa2b238ac94db5d2c309e6a039cb37a3c58e2ef1b82cde606860",
+      "byteIdentical": false,
+      "npsRatio": 0.9747214234757339
+    },
+    {
+      "rule": "heian-dai",
+      "beforeSha256": "6d93e2d0896c1e3b562f4c57a5edf9e083cb5fe5741d9b4da925217a3a2485da",
+      "afterSha256": "fe5d5b002cb77e5d677125ee97748b2f3eaa07b3abed6bc1238f891cdef84dda",
+      "byteIdentical": false,
+      "npsRatio": 0.9917207022430746
+    },
+    {
+      "rule": "daishogi",
+      "beforeSha256": "e0b31b5287f2b076fe524d09d7a765a89e2b2d0ed0b8941a6c7c065c3788e745",
+      "afterSha256": "3a049399a8278665a1eda7561cbfa156004d7279b19b86e31219fdf6a97ef54f",
+      "byteIdentical": false,
+      "npsRatio": 0.984443768052372
+    },
+    {
+      "rule": "tenjiku-dai",
+      "beforeSha256": "e468c83dc608e2dd4d5a6147fbe71cd0c2cb95eec0ea52f4ecc03cd0a1943202",
+      "afterSha256": "4a1f9152df375805ebc785b10b597dfc16c8accb46be541b2a3481eacac82927",
+      "byteIdentical": false,
+      "npsRatio": 3.588190097407573
+    },
+    {
+      "rule": "dai-dai",
+      "beforeSha256": "2559a70e9d68ac164301a25351815179a5aef1e5af5288e366e2f75b3f12184c",
+      "afterSha256": "bfc39f71ccf8de7afb9cb6cdc8bd7691b5a0dd895fa2c28204f41e4bc9a83bc5",
+      "byteIdentical": false,
+      "npsRatio": 1.0013340624419962
+    },
+    {
+      "rule": "maka-dai-dai",
+      "beforeSha256": "eca10e21cfe90f4cd3f2ff0926cf727057c01c6dfd4cba74e34d7e5cf6274f01",
+      "afterSha256": "c4f76e19544482299fb1a39c383121a3177491e2252110f687db01502ff45aaf",
+      "byteIdentical": false,
+      "npsRatio": 1.0364354278322807
+    },
+    {
+      "rule": "taishogi",
+      "beforeSha256": "ee3e73afcebf4d3f60f9b6a050df918381bcb151a5daa4798409dbd79d49cc81",
+      "afterSha256": "d14a7db43d8870208bcb6be23c899c836d3a8e567ea869d3adee95ed896adba4",
+      "byteIdentical": false,
+      "npsRatio": 1.0101260224501034
+    },
+    {
+      "rule": "taikyoku",
+      "beforeSha256": "4e2f9c0c72e4f9fc2599d32570a18f49b06adb35495b2b255fa45d62102b9d40",
+      "afterSha256": "8d9bc9f4c10c14d195ec14228c9e88c44ddc01365cd0dced93176a7e3db7b8bd",
+      "byteIdentical": false,
+      "npsRatio": 2.055612029428913
+    }
+  ]
+}

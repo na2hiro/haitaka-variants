@@ -1,0 +1,196 @@
+{
+  "revision": "working-tree",
+  "sourceSha256": "15e38a252fe0b3ed36d5452cfde63dd7742549a4f35e3b59dd163b71720b6bfa",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "names": [
+    "enumeration_targets",
+    "push_targets",
+    "protected_inclusive",
+    "finish_inclusive",
+    "active_inclusive",
+    "order_inclusive",
+    "enumerate_inclusive",
+    "classical_candidate_inclusive",
+    "classical_apply_inclusive"
+  ],
+  "instrumentedEnumerationTargets": true,
+  "instrumentedPushTargets": true,
+  "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+  "rules": [
+    {
+      "allocationsPerPerft": 148696,
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "requestedAllocationBytesPerPerft": 7878840,
+      "rule": "tenjiku-dai",
+      "samples": [
+        {
+          "calls": [
+            2342490,
+            0,
+            0,
+            7845816,
+            30058,
+            30058,
+            30058,
+            0,
+            0
+          ],
+          "nanos": [
+            732065271,
+            0,
+            0,
+            535847632,
+            22870718,
+            21470868,
+            1915534571,
+            0,
+            0
+          ],
+          "repetitions": 226,
+          "seconds": 3.006091869
+        },
+        {
+          "calls": [
+            2280300,
+            0,
+            0,
+            7637520,
+            29260,
+            29260,
+            29260,
+            0,
+            0
+          ],
+          "nanos": [
+            726188724,
+            0,
+            0,
+            540733037,
+            22556871,
+            21168918,
+            1918169980,
+            0,
+            0
+          ],
+          "repetitions": 220,
+          "seconds": 3.008264308
+        },
+        {
+          "calls": [
+            2352855,
+            0,
+            0,
+            7880532,
+            30191,
+            30191,
+            30191,
+            0,
+            0
+          ],
+          "nanos": [
+            707385511,
+            0,
+            0,
+            541802791,
+            23198142,
+            21798417,
+            1904475766,
+            0,
+            0
+          ],
+          "repetitions": 227,
+          "seconds": 3.005213072
+        }
+      ]
+    },
+    {
+      "allocationsPerPerft": 1162336,
+      "depth": 2,
+      "nodesPerPerft": 79035,
+      "requestedAllocationBytesPerPerft": 139801132,
+      "rule": "taikyoku",
+      "samples": [
+        {
+          "calls": [
+            2494316,
+            0,
+            0,
+            3318810,
+            0,
+            0,
+            6226,
+            0,
+            0
+          ],
+          "nanos": [
+            678707885,
+            0,
+            0,
+            57177931,
+            0,
+            0,
+            1809341766,
+            0,
+            0
+          ],
+          "repetitions": 22,
+          "seconds": 3.025702641
+        },
+        {
+          "calls": [
+            2380938,
+            0,
+            0,
+            3167955,
+            0,
+            0,
+            5943,
+            0,
+            0
+          ],
+          "nanos": [
+            676055913,
+            0,
+            0,
+            56582217,
+            0,
+            0,
+            1804897874,
+            0,
+            0
+          ],
+          "repetitions": 21,
+          "seconds": 3.016329117
+        },
+        {
+          "calls": [
+            2494316,
+            0,
+            0,
+            3318810,
+            0,
+            0,
+            6226,
+            0,
+            0
+          ],
+          "nanos": [
+            678190803,
+            0,
+            0,
+            57145300,
+            0,
+            0,
+            1810974922,
+            0,
+            0
+          ],
+          "repetitions": 22,
+          "seconds": 3.032735538
+        }
+      ]
+    }
+  ]
+}

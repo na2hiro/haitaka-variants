@@ -1,0 +1,97 @@
+{
+  "rule": "washogi",
+  "positions": 218,
+  "transitions": 8008,
+  "native": {
+    "positions": 218,
+    "transitions": 8008,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "legacySearchParity": true,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 55,
+      "transitions": 2103,
+      "initializationMs": 0.7767019999998865,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 55,
+      "transitions": 1902,
+      "initializationMs": 1.2287129999999706,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 54,
+      "transitions": 2078,
+      "initializationMs": 1.195257999999967,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 54,
+      "transitions": 1925,
+      "initializationMs": 0.7502960000001622,
+      "linearMemoryBytes": 1310720
+    }
+  ],
+  "perft": [
+    51,
+    2601
+  ],
+  "inputSha256": "ade06076c68ef789c745a891b5ec597d522c5d204be33d2a33ffcfd10ba2fb06",
+  "beforeWasmSha256": "72ec5e756b336a390d783870cdf4f584fcc2fb66031208631246ef7833cdbf8d",
+  "afterWasmSha256": "184b89c638c7698ef8ae68d1794f6f84cf279deacd3889d22681e0fcb09fa85c",
+  "linearMemoryBytes": 1310720,
+  "wasmBytes": 322986,
+  "lowBudgetElapsedMs": 1.002364,
+  "pendingFallbacks": [],
+  "search": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        8,
+        9
+      ],
+      "path": [
+        [
+          6,
+          7
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        8,
+        9
+      ],
+      "path": [
+        [
+          6,
+          7
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  }
+}
