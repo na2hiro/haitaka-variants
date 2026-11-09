@@ -254,6 +254,11 @@ fn selected_targets_match_full_generator_for_every_piece_state_and_ignored_block
             {
                 for ignore in [None, Some(blockers[0])] {
                     let full = reference(&p, from, status, ignore, None, None);
+                    assert_eq!(
+                        targets_with_active(&p, from, status, ignore, None, None),
+                        full,
+                        "full destinations: piece {id}, status {status:?}, color {color}"
+                    );
                     let mut wanted: Vec<_> = full
                         .iter()
                         .take(16)

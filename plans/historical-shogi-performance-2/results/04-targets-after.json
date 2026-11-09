@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 1,
+  "gitCommit": "ba5aae15a77a36fbc8c393ce6f220d9ef8e154f4",
+  "engineDirectory": "/home/na2hiro/proj/haitaka-variants",
+  "engineStatus": " M haitaka/src/extended/large.rs\n M haitaka/src/extended/large/known_target_tests.rs\n?? haitaka/src/extended/large/target_builder.rs\n",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+  "logicalCpuAffinity": 7,
+  "threads": 1,
+  "dependencyLockSha256": "21e149581bcd526d06d4f0ad905d5de4aee1f1e1fb0c94730e8d0700421a0262",
+  "effectiveDependencyLockSha256": "ed171a6d32d80fb35917f4f250ef9fcafec0b8b5dd4bebb066bf659d9e55e763",
+  "harnessSha256": "b5ff456ebe3d49749a8f12b6b5ae3c6b578dcd2525b225c71a40bd26f0f346d9",
+  "sharedTimingLoopSha256": "4cd8f07412f1b052a209c1ea93716648c3a1778dff1e43ecdf1646ec91cf273a",
+  "manifestSha256": "17ada8b8c67d08357ee97d0c5ab3acd0e488dab05164f8ebc63632375b4b839d",
+  "minimumBatchSeconds": 3,
+  "samplesPerPosition": 3,
+  "timingScope": "Leaf-applied internal perft, no TT/bulk/evaluation/pruning; JSON parse/history replay excluded, warmup excluded. Same measure() as initial benchmark.",
+  "positions": [
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 3,
+        "medianNps": 1201365.048931822,
+        "nodesPerPerft": 3119657,
+        "samples": [
+          {
+            "nodesPerPerft": 3119657,
+            "nps": 1180761.8530706065,
+            "repetitions": 2,
+            "seconds": 5.284142593,
+            "totalLeafNodes": 6239314
+          },
+          {
+            "nodesPerPerft": 3119657,
+            "nps": 1201365.048931822,
+            "repetitions": 2,
+            "seconds": 5.193520492,
+            "totalLeafNodes": 6239314
+          },
+          {
+            "nodesPerPerft": 3119657,
+            "nps": 1203657.6014533998,
+            "repetitions": 2,
+            "seconds": 5.183628627,
+            "totalLeafNodes": 6239314
+          }
+        ]
+      },
+      "ruleset": "tenjiku-dai",
+      "transpositionCache": false,
+      "id": "tenjiku-dai-initial",
+      "inputSha256": "3bf14a4620f0a3c6d5a887a0fdfdc29b0bc27647f4ec1f66be69b5da9f61e5ba",
+      "sampleRangePercent": 1.939065724663469,
+      "needsRemeasurement": false,
+      "beforeNps": 1222285.8299962955,
+      "speedup": 0.9828838880799781
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 2,
+        "medianNps": 1127470.9697208065,
+        "nodesPerPerft": 201294,
+        "samples": [
+          {
+            "nodesPerPerft": 201294,
+            "nps": 1127470.9697208065,
+            "repetitions": 17,
+            "seconds": 3.035109632,
+            "totalLeafNodes": 3421998
+          },
+          {
+            "nodesPerPerft": 201294,
+            "nps": 1124831.3087330912,
+            "repetitions": 17,
+            "seconds": 3.042232176,
+            "totalLeafNodes": 3421998
+          },
+          {
+            "nodesPerPerft": 201294,
+            "nps": 1128939.7126129204,
+            "repetitions": 17,
+            "seconds": 3.031160975,
+            "totalLeafNodes": 3421998
+          }
+        ]
+      },
+      "ruleset": "tenjiku-dai",
+      "transpositionCache": false,
+      "id": "tenjiku-dai-midgame",
+      "inputSha256": "f57b2fafa76ad868bb8eab5230c3b509007c4db078244fa3797f899d0afc3b2d",
+      "sampleRangePercent": 0.36524622384992433,
+      "needsRemeasurement": false,
+      "beforeNps": 1133555.834882677,
+      "speedup": 0.9946320551889706
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 2,
+        "medianNps": 1537954.892262981,
+        "nodesPerPerft": 5565,
+        "samples": [
+          {
+            "nodesPerPerft": 5565,
+            "nps": 1552128.3227129574,
+            "repetitions": 837,
+            "seconds": 3.000979321,
+            "totalLeafNodes": 4657905
+          },
+          {
+            "nodesPerPerft": 5565,
+            "nps": 1537717.4072922005,
+            "repetitions": 829,
+            "seconds": 3.000151379,
+            "totalLeafNodes": 4613385
+          },
+          {
+            "nodesPerPerft": 5565,
+            "nps": 1537954.892262981,
+            "repetitions": 830,
+            "seconds": 3.003306549,
+            "totalLeafNodes": 4618950
+          }
+        ]
+      },
+      "ruleset": "tenjiku-dai",
+      "transpositionCache": false,
+      "id": "tenjiku-dai-pending-two",
+      "inputSha256": "0ffc860eb687580d0508236aaa5dc1f2c712701fda48a5dff2001b08bea1355d",
+      "sampleRangePercent": 0.9371627941790361,
+      "needsRemeasurement": false,
+      "beforeNps": 1538023.9431550612,
+      "speedup": 0.9999551041501094
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 2,
+        "medianNps": 1516345.5350442147,
+        "nodesPerPerft": 55653,
+        "samples": [
+          {
+            "nodesPerPerft": 55653,
+            "nps": 1489520.1409425342,
+            "repetitions": 81,
+            "seconds": 3.026406207,
+            "totalLeafNodes": 4507893
+          },
+          {
+            "nodesPerPerft": 55653,
+            "nps": 1516345.5350442147,
+            "repetitions": 82,
+            "seconds": 3.00956866,
+            "totalLeafNodes": 4563546
+          },
+          {
+            "nodesPerPerft": 55653,
+            "nps": 1517326.9769157646,
+            "repetitions": 82,
+            "seconds": 3.007622002,
+            "totalLeafNodes": 4563546
+          }
+        ]
+      },
+      "ruleset": "tenjiku-dai",
+      "transpositionCache": false,
+      "id": "tenjiku-dai-ordered-fire",
+      "inputSha256": "4ee554c23048f275041b6c2ff78f62c6d6b33414c81fe561832cf125fcf329b3",
+      "sampleRangePercent": 1.8668318211283008,
+      "needsRemeasurement": false,
+      "beforeNps": 1322241.4169896315,
+      "speedup": 1.1467993027298322
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 3,
+        "medianNps": 725402.4437257302,
+        "nodesPerPerft": 28492037,
+        "samples": [
+          {
+            "nodesPerPerft": 28492037,
+            "nps": 725402.4437257302,
+            "repetitions": 1,
+            "seconds": 39.277558611,
+            "totalLeafNodes": 28492037
+          },
+          {
+            "nodesPerPerft": 28492037,
+            "nps": 723994.7804751141,
+            "repetitions": 1,
+            "seconds": 39.353925979,
+            "totalLeafNodes": 28492037
+          },
+          {
+            "nodesPerPerft": 28492037,
+            "nps": 726406.8957111094,
+            "repetitions": 1,
+            "seconds": 39.223246872,
+            "totalLeafNodes": 28492037
+          }
+        ]
+      },
+      "ruleset": "taikyoku",
+      "transpositionCache": false,
+      "id": "taikyoku-initial",
+      "inputSha256": "aebf5544532c22cf5f2a14e767b52c73b3d7dbfd9206cd1aac6c7201c1c37196",
+      "sampleRangePercent": 0.33316748974521193,
+      "needsRemeasurement": false,
+      "beforeNps": 717796.5346922139,
+      "speedup": 1.0105961907948993
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 2,
+        "medianNps": 1090451.8485487772,
+        "nodesPerPerft": 616706,
+        "samples": [
+          {
+            "nodesPerPerft": 616706,
+            "nps": 1082875.3529514642,
+            "repetitions": 6,
+            "seconds": 3.417047022,
+            "totalLeafNodes": 3700236
+          },
+          {
+            "nodesPerPerft": 616706,
+            "nps": 1094357.6990611425,
+            "repetitions": 6,
+            "seconds": 3.381194287,
+            "totalLeafNodes": 3700236
+          },
+          {
+            "nodesPerPerft": 616706,
+            "nps": 1090451.8485487772,
+            "repetitions": 6,
+            "seconds": 3.393305266,
+            "totalLeafNodes": 3700236
+          }
+        ]
+      },
+      "ruleset": "taikyoku",
+      "transpositionCache": false,
+      "id": "taikyoku-midgame",
+      "inputSha256": "ec317a5ce18fff48430da522504fd3728c80d32113f2dc11d35f9c82e0531a6d",
+      "sampleRangePercent": 1.0603571388324795,
+      "needsRemeasurement": false,
+      "beforeNps": 1031307.6550263045,
+      "speedup": 1.0573487389861023
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 3,
+        "medianNps": 2754872.194966505,
+        "nodesPerPerft": 2025,
+        "samples": [
+          {
+            "nodesPerPerft": 2025,
+            "nps": 2754872.194966505,
+            "repetitions": 4082,
+            "seconds": 3.00052032,
+            "totalLeafNodes": 8266050
+          },
+          {
+            "nodesPerPerft": 2025,
+            "nps": 2759620.6270981072,
+            "repetitions": 4090,
+            "seconds": 3.001227748,
+            "totalLeafNodes": 8282250
+          },
+          {
+            "nodesPerPerft": 2025,
+            "nps": 2748566.9530633343,
+            "repetitions": 4072,
+            "seconds": 3.00003607,
+            "totalLeafNodes": 8245800
+          }
+        ]
+      },
+      "ruleset": "taikyoku",
+      "transpositionCache": false,
+      "id": "taikyoku-pending-three",
+      "inputSha256": "81a5cfcf9bdda8377b9c9723b898e399c99f8a6c191dc8b60958ff2671fe67e7",
+      "sampleRangePercent": 0.4021613525714951,
+      "needsRemeasurement": false,
+      "beforeNps": 2344513.2242198675,
+      "speedup": 1.1750294971712874
+    },
+    {
+      "bulkCounting": false,
+      "position": "fixed-input",
+      "result": {
+        "depth": 2,
+        "medianNps": 2921862.369122873,
+        "nodesPerPerft": 1092,
+        "samples": [
+          {
+            "nodesPerPerft": 1092,
+            "nps": 2866743.070265905,
+            "repetitions": 7876,
+            "seconds": 3.000126551,
+            "totalLeafNodes": 8600592
+          },
+          {
+            "nodesPerPerft": 1092,
+            "nps": 2921862.369122873,
+            "repetitions": 8028,
+            "seconds": 3.000338446,
+            "totalLeafNodes": 8766576
+          },
+          {
+            "nodesPerPerft": 1092,
+            "nps": 2945946.6216589333,
+            "repetitions": 8094,
+            "seconds": 3.000274321,
+            "totalLeafNodes": 8838648
+          }
+        ]
+      },
+      "ruleset": "taikyoku",
+      "transpositionCache": false,
+      "id": "taikyoku-transit-ray",
+      "inputSha256": "fb89d447b9cab71b535255957ea5b6c735ad5c32264f64e46c920e3dd679dde5",
+      "sampleRangePercent": 2.76284094708501,
+      "needsRemeasurement": false,
+      "beforeNps": 2468253.4240993336,
+      "speedup": 1.1837772979851375
+    }
+  ],
+  "measuredAt": "2026-11-09T06:34:03.069599+00:00"
+}
