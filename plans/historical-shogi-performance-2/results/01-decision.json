@@ -1,0 +1,21 @@
+{
+  "stage": "01-single-destination",
+  "status": "adopted",
+  "tests": {
+    "tenjiku-dai": 56,
+    "taikyoku": 53,
+    "dai-dai": 49,
+    "maka-dai-dai": 50,
+    "taishogi": 52
+  },
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "02eedb86d22c535e924837bb481afb683fac4a5959b01ec142d16841d8e4743b",
+    "haitaka/src/extended/large/selected.rs": "faebd27d1990f11391909b15f86ccd666690ecd83f34d138f541d20d84c0532e"
+  },
+  "performance": "01-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 1.1396626814839288,
+    "taikyoku": 1.3582864042799392
+  },
+  "oracle": "All known destination queries compare to saved original generator under cfg(test), including randomized games and every piece/state/blocker test. Full fresh Native/WASM rollout comparison follows stage 6."
+}

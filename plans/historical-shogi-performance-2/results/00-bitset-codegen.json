@@ -1,0 +1,8 @@
+{
+  "binary": "target/performance2-before-bins/taikyoku",
+  "sha256": "35c89b83fc1a8d9495213c86e77f7806a3eaab47e098e95c854f01a4e1c2f4f1",
+  "symbol": "Position<LargeRule>::set_cell",
+  "address": "0x4b3b0",
+  "finding": "Three memcpy calls of 0xa8 (168) bytes when removing an old occupant, and three when inserting a new occupant. Wide bitboard value copies have not been eliminated.",
+  "assembly": "00-bitset-before.asm"
+}

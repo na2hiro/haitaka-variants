@@ -54,8 +54,10 @@ mod delta;
 mod effects;
 use delta::SquareChanges;
 mod hash;
+mod selected;
 use effects::{EffectContext, settle_residents};
 use hash::TimelineEntry;
+use selected::target_one;
 pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -360,7 +362,12 @@ fn targets_with_active(
     wanted: Option<usize>,
     cached_active: Option<&[Resident]>,
 ) -> Vec<Target> {
-    let result = targets_selected(p, from, status, ignore, wanted, cached_active);
+    let result = match wanted {
+        Some(to) => target_one(p, from, status, ignore, to, cached_active)
+            .into_iter()
+            .collect(),
+        None => targets_selected(p, from, status, ignore, None, cached_active),
+    };
     #[cfg(test)]
     if let Some(to) = wanted {
         let expected: Vec<_> =
@@ -1152,16 +1159,14 @@ impl LargeGame {
         let mut target = None;
         for &at in m.path.iter() {
             let to = Pos::index(at).unwrap();
-            let t = targets_with_active(
+            let t = target_one(
                 &self.position,
                 from,
                 status,
                 None,
-                Some(to),
+                to,
                 Some(&effects.actives),
             )
-            .into_iter()
-            .find(|t| t.to == to)
             .unwrap();
             status = t.next;
             target = next_promotion(&self.position, from, to, target);
