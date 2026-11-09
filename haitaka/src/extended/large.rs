@@ -968,8 +968,7 @@ fn enumerate(
         out: vec![],
     };
     let mut occupied = p.occupied[p.side as usize];
-    while let Some(from) = occupied.first() {
-        occupied = occupied.without(from);
+    while let Some(from) = occupied.pop_first() {
         if wanted.is_some_and(|m| m.from != Pos::at(from))
             || pending.is_some_and(|m| m.from != Pos::at(from))
         {
