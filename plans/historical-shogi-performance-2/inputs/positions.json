@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "790422b",
+  "positions": [
+    {
+      "id": "tenjiku-dai-initial",
+      "rule": "tenjiku-dai",
+      "file": "tenjiku-dai-initial.json",
+      "inputSha256": "3bf14a4620f0a3c6d5a887a0fdfdc29b0bc27647f4ec1f66be69b5da9f61e5ba",
+      "depth": 3,
+      "expectedNodes": 3119657,
+      "source": "fresh current Native startpos; perft(3) frozen before implementation"
+    },
+    {
+      "id": "tenjiku-dai-midgame",
+      "rule": "tenjiku-dai",
+      "category": "fixed-seed-midgame",
+      "description": "参照コーパスの固定seed対局32手目。JSONの履歴を保持。",
+      "file": "tenjiku-dai-midgame.json",
+      "inputSha256": "f57b2fafa76ad868bb8eab5230c3b509007c4db078244fa3797f899d0afc3b2d",
+      "depth": 2,
+      "expectedNodes": 201294,
+      "sourceCorpus": "target/tenjiku-dai-reference-input.jsonl",
+      "sourceLine": 257,
+      "sourceCorpusSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+      "historyPlies": 32
+    },
+    {
+      "id": "tenjiku-dai-pending-two",
+      "rule": "tenjiku-dai",
+      "category": "continuation",
+      "description": "火鬼などの3回移動の2段目から再開。",
+      "file": "tenjiku-dai-pending-two.json",
+      "inputSha256": "0ffc860eb687580d0508236aaa5dc1f2c712701fda48a5dff2001b08bea1355d",
+      "depth": 2,
+      "expectedNodes": 5565,
+      "sourceCorpus": "target/tenjiku-dai-reference-input.jsonl",
+      "sourceLine": 222,
+      "sourceCorpusSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+      "historyPlies": 0
+    },
+    {
+      "id": "tenjiku-dai-ordered-fire",
+      "rule": "tenjiku-dai",
+      "category": "special-effects",
+      "description": "四天王と火鬼が同居する疎な特殊効果局面。",
+      "file": "tenjiku-dai-ordered-fire.json",
+      "inputSha256": "4ee554c23048f275041b6c2ff78f62c6d6b33414c81fe561832cf125fcf329b3",
+      "depth": 2,
+      "expectedNodes": 55653,
+      "sourceCorpus": "target/tenjiku-dai-reference-input.jsonl",
+      "sourceLine": 204,
+      "sourceCorpusSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+      "historyPlies": 0
+    },
+    {
+      "id": "taikyoku-initial",
+      "rule": "taikyoku",
+      "file": "taikyoku-initial.json",
+      "inputSha256": "aebf5544532c22cf5f2a14e767b52c73b3d7dbfd9206cd1aac6c7201c1c37196",
+      "depth": 3,
+      "expectedNodes": 28492037,
+      "source": "fresh current Native startpos; perft(3) frozen before implementation"
+    },
+    {
+      "id": "taikyoku-midgame",
+      "rule": "taikyoku",
+      "category": "fixed-seed-midgame",
+      "description": "参照コーパスの固定seed対局32手目。JSONの履歴を保持。",
+      "file": "taikyoku-midgame.json",
+      "inputSha256": "ec317a5ce18fff48430da522504fd3728c80d32113f2dc11d35f9c82e0531a6d",
+      "depth": 2,
+      "expectedNodes": 616706,
+      "sourceCorpus": "target/taikyoku-reference-input.jsonl",
+      "sourceLine": 2104,
+      "sourceCorpusSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+      "historyPlies": 32
+    },
+    {
+      "id": "taikyoku-pending-three",
+      "rule": "taikyoku",
+      "category": "continuation",
+      "description": "奔鷲の4回移動の3段目から再開。",
+      "file": "taikyoku-pending-three.json",
+      "inputSha256": "81a5cfcf9bdda8377b9c9723b898e399c99f8a6c191dc8b60958ff2671fe67e7",
+      "depth": 3,
+      "expectedNodes": 2025,
+      "sourceCorpus": "target/taikyoku-reference-input.jsonl",
+      "sourceLine": 2071,
+      "sourceCorpusSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+      "historyPlies": 0
+    },
+    {
+      "id": "taikyoku-transit-ray",
+      "rule": "taikyoku",
+      "category": "open-mobility",
+      "description": "疎な盤面でtype100の通過捕獲を扱う。",
+      "file": "taikyoku-transit-ray.json",
+      "inputSha256": "fb89d447b9cab71b535255957ea5b6c735ad5c32264f64e46c920e3dd679dde5",
+      "depth": 2,
+      "expectedNodes": 1092,
+      "sourceCorpus": "target/taikyoku-reference-input.jsonl",
+      "sourceLine": 2047,
+      "sourceCorpusSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+      "historyPlies": 0
+    }
+  ]
+}
