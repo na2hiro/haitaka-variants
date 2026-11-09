@@ -53,10 +53,14 @@ type Pos = Position<LargeRule>;
 mod delta;
 mod effects;
 use delta::SquareChanges;
+#[cfg(test)]
+mod enumeration_reference;
 mod hash;
+mod prepared;
 mod selected;
 use effects::{EffectContext, settle_residents};
 use hash::TimelineEntry;
+use prepared::{Entry as GeneratedEntry, Hint as GeneratedHint};
 use selected::target_one;
 pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -832,7 +836,7 @@ struct Enumeration<'a> {
     wanted: Option<LargeMove>,
     stop: &'a mut dyn FnMut() -> bool,
     limit: usize,
-    out: Vec<LargeMove>,
+    out: Vec<GeneratedEntry>,
 }
 impl Enumeration<'_> {
     fn emit(
@@ -842,6 +846,7 @@ impl Enumeration<'_> {
         path: &[[u16; 2]],
         target: Option<PieceId>,
         early: bool,
+        through_mask: u8,
     ) -> Option<bool> {
         let to = Pos::index(*path.last().unwrap()).unwrap();
         let c = p.cells[to].unwrap();
@@ -877,7 +882,10 @@ impl Enumeration<'_> {
             let legal = file_allowed(p, to);
             undo.restore(p);
             if legal {
-                self.out.push(mv);
+                self.out.push(GeneratedEntry {
+                    mv,
+                    hint: GeneratedHint::new(through_mask, early, target),
+                });
                 if self.out.len() >= self.limit {
                     return Some(true);
                 }
@@ -894,6 +902,7 @@ impl Enumeration<'_> {
         path: &mut Vec<[u16; 2]>,
         target: Option<PieceId>,
         first: Option<(usize, Option<Cell>)>,
+        through_mask: u8,
     ) -> Option<bool> {
         let wanted = self
             .wanted
@@ -921,12 +930,13 @@ impl Enumeration<'_> {
             let eligible = next_promotion(p, from, t.to, target);
             let mut undo = Delta::new(p);
             hop(p, from, t.to, t.through, &mut undo);
+            let through_mask = through_mask | (u8::from(t.through) << path.len());
             path.push(Pos::at(t.to));
             let early = t.next.is_some() && capture_outcome(p) != Outcome::ONGOING;
             let can_stop = early || t.next.is_none() || !MOVEMENT[c.piece.0 as usize].no_stop;
             let mut result = Some(false);
             if can_stop {
-                result = self.emit(p, root, path, eligible, early);
+                result = self.emit(p, root, path, eligible, early, through_mask);
             }
             if result == Some(false) && !early && t.next.is_some() && path.len() < MAX_HOPS {
                 result = self.visit(
@@ -937,6 +947,7 @@ impl Enumeration<'_> {
                     path,
                     eligible,
                     first.or(Some((root, captured))),
+                    through_mask,
                 );
             }
             path.pop();
@@ -948,15 +959,15 @@ impl Enumeration<'_> {
         Some(false)
     }
 }
-fn enumerate(
+fn enumerate_entries(
     p: &Pos,
     pending: Option<Pending>,
     wanted: Option<LargeMove>,
     limit: usize,
     stop: &mut dyn FnMut() -> bool,
-) -> Option<Vec<LargeMove>> {
+) -> Option<(Vec<GeneratedEntry>, EffectContext)> {
     if capture_outcome(p) != Outcome::ONGOING || limit == 0 {
-        return Some(vec![]);
+        return Some((vec![], EffectContext::new(p)));
     }
     let mut scratch = p.clone();
     let mut e = Enumeration {
@@ -975,15 +986,33 @@ fn enumerate(
         {
             continue;
         }
-        if e.visit(&mut scratch, from, from, None, &mut vec![], None, None)? {
+        if e.visit(&mut scratch, from, from, None, &mut vec![], None, None, 0)? {
             break;
         }
     }
-    e.out.sort();
-    e.out.dedup();
-    Some(e.out)
+    e.out.sort_by_key(|e| e.mv);
+    e.out.dedup_by(|a, b| {
+        if a.mv == b.mv {
+            if a.hint != b.hint {
+                b.hint.invalidate();
+            }
+            true
+        } else {
+            false
+        }
+    });
+    Some((e.out, e.effects))
 }
-#[derive(Clone)]
+fn enumerate(
+    p: &Pos,
+    pending: Option<Pending>,
+    wanted: Option<LargeMove>,
+    limit: usize,
+    stop: &mut dyn FnMut() -> bool,
+) -> Option<Vec<LargeMove>> {
+    enumerate_entries(p, pending, wanted, limit, stop)
+        .map(|(rows, _)| rows.into_iter().map(|r| r.mv).collect())
+}
 pub struct LargeGame {
     position: Pos,
     initial: WirePosition<TenjikuState, ClassicalPiece>,
@@ -992,6 +1021,12 @@ pub struct LargeGame {
     timeline: Vec<TimelineEntry>,
     pending: Option<Pending>,
     pending_ply: usize,
+    owner: std::sync::Arc<()>,
+    epoch: u64,
+    next_epoch: u64,
+    prepared: std::sync::OnceLock<Box<prepared::Batch>>,
+    cache_frames: Vec<prepared::Frame>,
+    ancestor_bytes: usize,
 }
 impl LargeGame {
     pub fn root(p: Pos) -> Result<Self, String> {
@@ -1004,6 +1039,12 @@ impl LargeGame {
             undo: vec![],
             pending: None,
             pending_ply: 0,
+            owner: std::sync::Arc::new(()),
+            epoch: 0,
+            next_epoch: 1,
+            prepared: std::sync::OnceLock::new(),
+            cache_frames: vec![],
+            ancestor_bytes: 0,
         })
     }
     pub fn parse(json: &str) -> Result<Self, String> {
@@ -1133,10 +1174,7 @@ impl LargeGame {
         if self.basic_outcome() != Outcome::ONGOING {
             vec![]
         } else {
-            enumerate(&self.position, self.prefix(), None, usize::MAX, &mut || {
-                false
-            })
-            .unwrap()
+            self.generated_moves(usize::MAX, &mut || false).unwrap()
         }
     }
     pub fn play(&mut self, m: LargeMove) -> Result<(), String> {
@@ -1149,9 +1187,13 @@ impl LargeGame {
             return Err("illegal completed move".into());
         }
         self.push(m);
+        self.discard_played_cache();
         Ok(())
     }
     fn push(&mut self, m: LargeMove) {
+        self.push_cached(m);
+    }
+    fn push_original(&mut self, m: LargeMove) {
         let effects = EffectContext::new(&self.position);
         let mut delta = Delta::new(&self.position);
         let mut from = Pos::index(m.from).unwrap();
@@ -1184,6 +1226,9 @@ impl LargeGame {
         } else {
             settle_residents(&mut self.position, from);
         }
+        self.record_move(m, delta);
+    }
+    fn record_move(&mut self, m: LargeMove, delta: Delta) {
         self.position.side ^= 1;
         let previous = *self.timeline.last().unwrap();
         let key = hash::updated(previous.key, &self.position, &delta);
@@ -1195,6 +1240,7 @@ impl LargeGame {
         hash_tests::assert_incremental(self);
     }
     fn pop(&mut self) {
+        self.restore_cache();
         self.undo.pop().unwrap().restore(&mut self.position);
         self.played.pop();
         self.timeline.pop();
@@ -1236,13 +1282,18 @@ impl LargeGame {
         current.context ^ self.with_pending_hash(current.key).rotate_left(13)
     }
     pub fn perft(&mut self, depth: u8) -> u64 {
+        let nodes = self.perft_inner(depth);
+        self.prepared.take();
+        nodes
+    }
+    fn perft_inner(&mut self, depth: u8) -> u64 {
         if depth == 0 {
             return 1;
         }
         let mut nodes = 0;
         for m in self.moves() {
             self.push(m);
-            nodes += self.perft(depth - 1);
+            nodes += self.perft_inner(depth - 1);
             self.pop();
         }
         nodes
@@ -1252,7 +1303,7 @@ impl SearchGame for LargeGame {
     type Move = LargeMove;
     const SCHEMA: u8 = SCHEMA_VERSION;
     fn moves(&self, limit: usize, stop: &mut dyn FnMut() -> bool) -> Option<Vec<LargeMove>> {
-        enumerate(&self.position, self.prefix(), None, limit, stop)
+        self.generated_moves(limit, stop)
     }
     fn outcome(&self, stop: &mut dyn FnMut() -> bool) -> Option<Outcome> {
         self.outcome_cancel(stop)
