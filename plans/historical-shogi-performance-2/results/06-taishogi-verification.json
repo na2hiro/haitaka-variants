@@ -1,0 +1,136 @@
+{
+  "rule": "taishogi",
+  "positions": 924,
+  "transitions": 74259,
+  "native": {
+    "positions": 924,
+    "transitions": 74259,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "legacySearchParity": true,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 231,
+      "transitions": 19955,
+      "initializationMs": 0.770277999999962,
+      "linearMemoryBytes": 1376256
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 231,
+      "transitions": 16949,
+      "initializationMs": 1.201163000001543,
+      "linearMemoryBytes": 1376256
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 231,
+      "transitions": 21151,
+      "initializationMs": 1.1923449999994773,
+      "linearMemoryBytes": 1376256
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 231,
+      "transitions": 16204,
+      "initializationMs": 0.7800129999995988,
+      "linearMemoryBytes": 1376256
+    }
+  ],
+  "perft": [
+    304,
+    92676
+  ],
+  "inputSha256": "7124df234f90231c3eaaecb85db0d87d08ea4f70c400f97f5ffb3f3bac62265c",
+  "beforeWasmSha256": "4e96853954fbe115ff5b97d318920dc893c967886a8d4deb9f30648985d4a822",
+  "afterWasmSha256": "76640cd6041c0318a79602c123560566e9ebf06cda647a189108e200aa90c014",
+  "linearMemoryBytes": 1376256,
+  "wasmBytes": 359118,
+  "lowBudgetElapsedMs": 1.002052,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.004282
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.002591
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.001889
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.0020310000000001
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.004537
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.0017120000000002
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.001905
+    },
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.002203
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        13,
+        20
+      ],
+      "path": [
+        [
+          11,
+          18
+        ],
+        [
+          10,
+          17
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 1,
+    "states": 1000,
+    "score": 6
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        13,
+        20
+      ],
+      "path": [
+        [
+          11,
+          18
+        ],
+        [
+          10,
+          17
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 1,
+    "states": 1000,
+    "score": 6
+  }
+}

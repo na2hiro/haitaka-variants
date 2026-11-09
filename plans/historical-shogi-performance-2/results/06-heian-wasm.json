@@ -1,0 +1,44 @@
+[
+  {
+    "rule": "heian-8x8",
+    "perft": [
+      22,
+      484,
+      10296
+    ],
+    "best": "1f1e",
+    "reply": "1c1d",
+    "wasmBytes": 457949,
+    "initializationMs": 1.8919059999999988,
+    "linearMemoryBytes": 34930688,
+    "lowBudgetElapsedMs": 1.36515
+  },
+  {
+    "rule": "heian-9x8",
+    "perft": [
+      26,
+      676,
+      17108
+    ],
+    "best": "1f1e",
+    "reply": "1c1d",
+    "wasmBytes": 679499,
+    "initializationMs": 2.167843000000005,
+    "linearMemoryBytes": 35061760,
+    "lowBudgetElapsedMs": 0.270342
+  },
+  {
+    "rule": "heian-9x9",
+    "perft": [
+      26,
+      676,
+      17108
+    ],
+    "best": "1g1f",
+    "reply": "1c1d",
+    "wasmBytes": 18323041,
+    "initializationMs": 27.420423999999997,
+    "linearMemoryBytes": 52887552,
+    "lowBudgetElapsedMs": 0.41033600000000003
+  }
+]

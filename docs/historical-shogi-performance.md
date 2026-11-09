@@ -1,6 +1,7 @@
 # 古将棋の合法手生成・perft性能
 
-状態: 完了。全14ルールの互換性と、Native/WASMの最終性能を検証済み。
+状態: 第1期完了。この文書は第1期の測定記録。
+天竺大・大局の追加高速化を含む最新結果は[第2期の性能記録](large-shogi-performance-2.md)を参照。
 段階別の採否・試作・全サンプルは[計画と記録](../plans/historical-shogi-performance/README.md)を参照。
 
 ## 測定方法

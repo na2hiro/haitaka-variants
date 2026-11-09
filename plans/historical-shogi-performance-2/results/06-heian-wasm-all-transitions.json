@@ -1,0 +1,38 @@
+[
+  {
+    "rule": "heian-8x8",
+    "positions": 151,
+    "transitions": 2888,
+    "byteIdentical": true,
+    "nativeAndWasmOutputSha256": "4a82aca9b8264640689d572f4c4cf3cb8d1e41c8fcfcd0c1e98806a242c3a123",
+    "wasmSha256": "cebe6aa6112839c56920368b2294618b24de0f41f7a620697080cabb6b934651",
+    "wasmBytes": 158644,
+    "initializationMs": 1.2636419999999973,
+    "linearMemoryBytes": 2293760,
+    "scope": "Verification-only wrapper over the same core, compared to freshly generated Native TSV already independently checked with Shogitter. Production USI/perft/search exports tested separately."
+  },
+  {
+    "rule": "heian-9x8",
+    "positions": 151,
+    "transitions": 3662,
+    "byteIdentical": true,
+    "nativeAndWasmOutputSha256": "891184812aae2a8c9047e7ff27431ae28e47f73aee073eb803686f9a3a9903d0",
+    "wasmSha256": "cc893e921d4d06155332197da1d57ea3226241307dd53681e06673d8e19f0e2e",
+    "wasmBytes": 238086,
+    "initializationMs": 1.2363,
+    "linearMemoryBytes": 2293760,
+    "scope": "Verification-only wrapper over the same core, compared to freshly generated Native TSV already independently checked with Shogitter. Production USI/perft/search exports tested separately."
+  },
+  {
+    "rule": "heian-9x9",
+    "positions": 151,
+    "transitions": 3689,
+    "byteIdentical": true,
+    "nativeAndWasmOutputSha256": "75415a0870ba1753d983e6408d3fdf1db4862fe741dc7148f0afb59d611c9639",
+    "wasmSha256": "f245458cb97e1918e062be98a851b12c8a9a281af3dcfe0c4241dd75885bf50d",
+    "wasmBytes": 9081198,
+    "initializationMs": 11.893846999999994,
+    "linearMemoryBytes": 12255232,
+    "scope": "Verification-only wrapper over the same core, compared to freshly generated Native TSV already independently checked with Shogitter. Production USI/perft/search exports tested separately."
+  }
+]
