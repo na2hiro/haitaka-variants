@@ -41,7 +41,8 @@ def span_call(source,offset,prefix,index):
  return source[:begin]+'{let _probe=crate::hot_probe::span('+str(index)+');'+source[begin:end]+'}'+source[end:],True
 large=dest/'haitaka/src/extended/large.rs'
 s=large.read_text()
-for name,index in [('protected',2),('finish',3),('active',4),('order',5),('enumerate',6)]: s=span_function(s,name,index)
+generation = 'enumerate_entries' if 'fn enumerate_entries(' in s else 'enumerate'
+for name,index in [('protected',2),('finish',3),('active',4),('order',5),(generation,6)]: s=span_function(s,name,index)
 s,enum_instrumented=span_call(s,s.index("impl Enumeration"),'for t in ',0)
 s,push_instrumented=span_call(s,s.index('fn push(&mut self, m: LargeMove)'),'let t = ',1)
 large.write_text(s)

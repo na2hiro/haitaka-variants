@@ -78,6 +78,11 @@ async function partition(index,count) {
     assert.equal(info.positionHash,expected.hash);
     assert.deepEqual(info.outcome,expected.outcome);
     assert.deepEqual(JSON.parse(engine.legal_moves_json(input)),expected.moves);
+    if(rule==='tenjiku-dai'||rule==='taikyoku') {
+      // perft applies every leaf through the position-owned generated cache;
+      // public apply reparses the game and intentionally checks geometry again.
+      assert.equal(JSON.parse(engine.perft_json(input,1)).nodes,expected.moves.length,'cached WASM perft(1) '+at);
+    }
     for(const t of expected.transitions) {
       const next=engine.apply_move_json(input,JSON.stringify(t.move));
       assert.deepEqual(JSON.parse(next).position,t.position);
@@ -130,6 +135,10 @@ if(!isMainThread) {
   const oldSearch=existsSync(oldCli)?nativeCall('search',budget,start,oldCli):JSON.parse(old.search_json(start,8,30000,1000));
   for(const key of ['bestMove','completedDepth','nodeLimitReached','states','score','outcome'])
     assert.deepEqual(wasmSearch[key],nativeSearch[key],key);
+  if(process.env.LARGE_HASH_SEARCH_PARITY==='1') {
+    for(const key of ['bestMove','completedDepth','nodeLimitReached','states','score','outcome'])
+      assert.deepEqual(nativeSearch[key],oldSearch[key],'previous search '+key);
+  }
   const timed=JSON.parse(engine.search_json(start,100,1,0));
   assert(timed.bestMove);assert(timed.timedOut);
   assert(JSON.parse(engine.legal_moves_json(start)).some(m=>JSON.stringify(m)===JSON.stringify(timed.bestMove)));
@@ -153,7 +162,7 @@ if(!isMainThread) {
   const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
   const searchSummary=s=>({bestMove:s.bestMove,completedDepth:s.completedDepth,states:s.states,score:s.score});
   const report={rule,positions:native.positions,transitions:native.transitions,native,
-    legacyPositionAndContextHashDifferences:0,partitions,perft,
+    legacyPositionAndContextHashDifferences:0,legacySearchParity:process.env.LARGE_HASH_SEARCH_PARITY==='1',partitions,perft,
     inputSha256:sha(join(root,rule+'-reference-input.jsonl')),
     beforeWasmSha256:sha(join(before,existsSync(join(before,'haitaka_wasm_bg.wasm'))?'haitaka_wasm_bg.wasm':'haitaka_engine_bg.wasm')),
     afterWasmSha256:sha(join(root,'wasm-'+rule,'haitaka_wasm_bg.wasm')),
