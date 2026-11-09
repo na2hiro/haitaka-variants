@@ -58,10 +58,12 @@ mod enumeration_reference;
 mod hash;
 mod prepared;
 mod selected;
+mod target_builder;
 use effects::{EffectContext, settle_residents};
 use hash::TimelineEntry;
 use prepared::{Entry as GeneratedEntry, Hint as GeneratedHint};
 use selected::target_one;
+use target_builder::{Marks, RawTargets};
 pub type TurnPath = BoundedPath<MAX_HOPS>;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -460,8 +462,8 @@ fn targets_selected(
     } else {
         m.root
     };
-    let mut raw: Vec<(usize, i8, bool)> = vec![];
-    let mut prohibited = BTreeSet::new();
+    let mut raw = RawTargets::new();
+    let mut prohibited = Marks::new();
     let sign = if c.color == 0 { 1 } else { -1 };
     for prim in prims {
         let (dx, dy) = (prim.delta.0 * sign, prim.delta.1 * sign);
@@ -531,7 +533,7 @@ fn targets_selected(
                 break;
             }
             if wanted.is_none_or(|w| w == now) {
-                if let Some(t) = raw.iter_mut().find(|t| t.0 == now) {
+                if let Some(t) = raw.get_mut(now) {
                     t.2 |= prim.kind == 100;
                     if t.1 == -2 && prim.next != -2 {
                         t.1 = prim.next;
@@ -544,7 +546,7 @@ fn targets_selected(
                 for (tx, ty) in [(-dy, dx), (dy, -dx)] {
                     let mut turn = now;
                     while let Some(j) = Geometry::offset(turn, tx, ty) {
-                        if wanted.is_none_or(|w| w == j) && !raw.iter().any(|r| r.0 == j) {
+                        if wanted.is_none_or(|w| w == j) && !raw.contains(j) {
                             raw.push((j, prim.next, false));
                         }
                         if at_cell(p, j, ignore).is_some() {
@@ -568,10 +570,11 @@ fn targets_selected(
         }
     }
     if status.is_none() && Pos::def(c).id == "fp" {
-        let mut frontier = BTreeSet::from([from]);
+        let mut frontier = Marks::new();
+        frontier.insert(from);
         for step in 1..=3 {
-            let mut next = BTreeSet::new();
-            for via in frontier {
+            let mut next = Marks::new();
+            while let Some(via) = frontier.pop_first() {
                 for &(dx, dy) in KING {
                     let Some(to) = Geometry::offset(via, dx, dy) else {
                         continue;
@@ -585,7 +588,7 @@ fn targets_selected(
                     } else if !v.is_some_and(|v| v.color == c.color) {
                         if wanted.is_none_or(|w| w == to)
                             && !adjacent(from, to)
-                            && !raw.iter().any(|r| r.0 == to)
+                            && !raw.contains(to)
                         {
                             raw.push((to, -2, false));
                         }
@@ -599,7 +602,7 @@ fn targets_selected(
         }
     }
     raw.into_iter()
-        .filter(|(to, _, _)| !prohibited.contains(to))
+        .filter(|(to, _, _)| !prohibited.contains(*to))
         .map(|(to, n, through)| Target {
             to,
             through,
@@ -928,6 +931,39 @@ impl Enumeration<'_> {
             let c = p.cells[from].unwrap();
             let captured = p.cells[t.to];
             let eligible = next_promotion(p, from, t.to, target);
+            #[cfg(feature = "taikyoku")]
+            if status.is_none()
+                && path.is_empty()
+                && self.pending.is_none()
+                && t.next.is_none()
+                && !t.through
+                && MOVEMENT[c.piece.0 as usize].file_limit == 0
+                && eligible.is_none_or(|id| MOVEMENT[id.0 as usize].file_limit == 0)
+            {
+                let must = eligible.is_some()
+                    && (CAPTURE_PROMOTION
+                        || p.relative_rank(t.to, c.color) < Pos::def(c).dead_ranks);
+                for promotion in [false, true] {
+                    if promotion && eligible.is_none() || !promotion && must {
+                        continue;
+                    }
+                    let mv = LargeMove::new(root, &[Pos::at(t.to)], promotion);
+                    if self.wanted.is_some_and(|w| w != mv) {
+                        continue;
+                    }
+                    if (self.stop)() {
+                        return None;
+                    }
+                    self.out.push(GeneratedEntry {
+                        mv,
+                        hint: GeneratedHint::new(0, false, eligible),
+                    });
+                    if self.out.len() >= self.limit {
+                        return Some(true);
+                    }
+                }
+                continue;
+            }
             let mut undo = Delta::new(p);
             hop(p, from, t.to, t.through, &mut undo);
             let through_mask = through_mask | (u8::from(t.through) << path.len());
