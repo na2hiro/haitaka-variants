@@ -1,0 +1,15 @@
+{
+  "stage": "02a-wide-bitsets",
+  "status": "adopted",
+  "performance": "02a-wide-bitsets-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 1.0000058454443208,
+    "taikyoku": 1.1766531079462808
+  },
+  "sourceSha256": {
+    "haitaka_types/src/fixed_bitboard.rs": "6bad9db28d2851f21ccf4cabf9b16f3ed499564f405f95844fae0ba4c2e64c90",
+    "haitaka/src/extended.rs": "b1033c141509896c40c188a4e9761de59ad66120a305546884cb956727848d99",
+    "haitaka/src/extended/large.rs": "c9637dd63cec1a2cfc59c52fac55db72c90ee9f76889406f001babe7fb1e86b0"
+  },
+  "flags": []
+}

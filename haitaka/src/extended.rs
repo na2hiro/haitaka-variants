@@ -618,11 +618,11 @@ impl<R: CaptureRoyalRule> Position<R> {
     }
     fn set_cell(&mut self, square: usize, cell: Option<Cell>) {
         if let Some(old) = self.cells[square] {
-            self.occupied[old.color as usize] = self.occupied[old.color as usize].without(square);
+            self.occupied[old.color as usize].remove(square);
         }
         self.cells[square] = cell;
         if let Some(new) = cell {
-            self.occupied[new.color as usize] = self.occupied[new.color as usize].with(square);
+            self.occupied[new.color as usize].insert(square);
         }
     }
     fn play_unchecked(&self, mv: JsonMove) -> Self

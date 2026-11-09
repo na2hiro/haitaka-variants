@@ -13,6 +13,18 @@ pub trait SquareSet: Copy + Eq + core::fmt::Debug {
     fn contains(self, index: usize) -> bool;
     fn with(self, index: usize) -> Self;
     fn without(self, index: usize) -> Self;
+    /// Mutate one bit without copying a wide set through temporary values.
+    fn insert(&mut self, index: usize) {
+        *self = self.with(index);
+    }
+    fn remove(&mut self, index: usize) {
+        *self = self.without(index);
+    }
+    fn pop_first(&mut self) -> Option<usize> {
+        let i = self.first()?;
+        self.remove(i);
+        Some(i)
+    }
     fn count(self) -> u32;
     fn first(self) -> Option<usize>;
     fn last(self) -> Option<usize>;
@@ -207,6 +219,37 @@ impl<const W: usize, const B: usize> SquareSet for MultiBitBoard<W, B> {
     fn without(self, i: usize) -> Self {
         self.without(i)
     }
+    fn insert(&mut self, index: usize) {
+        if W <= 4 {
+            *self = self.with(index);
+            return;
+        }
+        assert!(index < B, "square index outside bitboard");
+        self.0[index / 64] |= 1u64 << (index % 64);
+    }
+    fn remove(&mut self, index: usize) {
+        if W <= 4 {
+            *self = self.without(index);
+            return;
+        }
+        assert!(index < B, "square index outside bitboard");
+        self.0[index / 64] &= !(1u64 << (index % 64));
+    }
+    fn pop_first(&mut self) -> Option<usize> {
+        if W <= 4 {
+            let i = self.first()?;
+            *self = self.without(i);
+            return Some(i);
+        }
+        for (word_index, word) in self.0.iter_mut().enumerate() {
+            if *word != 0 {
+                let bit = word.trailing_zeros() as usize;
+                *word &= *word - 1;
+                return Some(word_index * 64 + bit);
+            }
+        }
+        None
+    }
     fn count(self) -> u32 {
         self.count()
     }
@@ -342,3 +385,38 @@ macro_rules! scalar {
 }
 scalar!(u64);
 scalar!(u128);
+
+#[cfg(test)]
+mod mutation_tests {
+    use super::*;
+    fn check<S: SquareSet>() {
+        let mut mutable = S::EMPTY;
+        let mut value = S::EMPTY;
+        for i in 0..S::BITS {
+            mutable.insert(i);
+            value = value.with(i);
+            assert_eq!(mutable, value);
+        }
+        for i in (0..S::BITS).step_by(3) {
+            mutable.remove(i);
+            value = value.without(i);
+            assert_eq!(mutable, value);
+        }
+        while let Some(i) = value.first() {
+            assert_eq!(mutable.pop_first(), Some(i));
+            value = value.without(i);
+            assert_eq!(mutable, value);
+        }
+        assert_eq!(mutable.pop_first(), None);
+        assert_eq!(mutable, S::EMPTY);
+    }
+    #[test]
+    fn mutable_operations_match_values_and_preserve_padding() {
+        check::<ScalarBitBoard<u64, 12>>();
+        check::<ScalarBitBoard<u64, 64>>();
+        check::<ScalarBitBoard<u128, 72>>();
+        check::<MultiBitBoard<3, 169>>();
+        check::<MultiBitBoard<4, 256>>();
+        check::<MultiBitBoard<21, 1296>>();
+    }
+}
