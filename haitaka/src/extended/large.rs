@@ -133,6 +133,7 @@ impl CaptureRoyalRule for LargeRule {
     type Hands = NoHands;
     type Placement = ClassicalPiece;
     const ID: u32 = RULE_ID;
+    const CACHE_ROYALS: bool = cfg!(feature = "taikyoku");
     const ALLOW_NO_ROYALS: bool = RULE_ID != 60;
     const CONVERTS_INVENTORY: bool = MAKA_PROMOTION;
     fn origin(id: PieceId) -> Option<&'static str> {
@@ -1415,3 +1416,36 @@ mod hash_tests;
 #[cfg(test)]
 #[path = "large/known_target_tests.rs"]
 mod known_target_tests;
+#[cfg(test)]
+mod royal_cache_tests {
+    use super::*;
+    #[test]
+    fn royal_counts_follow_every_piece_replacement_and_restore() {
+        let mut p = LargeGame::parse(&compiled::start_position_json())
+            .unwrap()
+            .position;
+        for i in 0..Geometry::SQUARES {
+            p.set_cell(i, None);
+        }
+        assert_eq!((p.royals(0), p.royals(1)), (0, 0));
+        for color in 0..2 {
+            for id in 0..PIECES.len() {
+                let c = Cell {
+                    piece: PieceId(id as u16),
+                    color,
+                };
+                p.set_cell(0, Some(c));
+                p.set_cell(0, Some(c));
+                assert_eq!(p.royals(color), usize::from(PIECES[id].royal));
+                assert_eq!(p.royals(color ^ 1), 0);
+                let before = p.clone();
+                let mut d = Delta::new(&p);
+                d.set(&mut p, 0, None);
+                assert_eq!(p.royals(color), 0);
+                d.restore(&mut p);
+                assert_eq!(p, before);
+                p.set_cell(0, None);
+            }
+        }
+    }
+}

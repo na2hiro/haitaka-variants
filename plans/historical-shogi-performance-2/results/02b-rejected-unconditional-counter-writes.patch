@@ -1,0 +1,128 @@
+diff --git a/haitaka/src/extended.rs b/haitaka/src/extended.rs
+index 511637e..55fea94 100644
+--- a/haitaka/src/extended.rs
++++ b/haitaka/src/extended.rs
+@@ -179,6 +179,7 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
+         None
+     }
+     const ALLOW_NO_ROYALS: bool = false;
++    const CACHE_ROYALS: bool = false;
+     /// Conversion rules conserve piece counts, but not each base species.
+     const CONVERTS_INVENTORY: bool = false;
+     const ID: u32;
+@@ -282,6 +283,7 @@ pub struct Position<R: CaptureRoyalRule> {
+     state: R::State,
+     hands: R::Hands,
+     occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
++    royal_counts: [u16; 2],
+     rule: PhantomData<R>,
+ }
+ #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+@@ -343,6 +345,7 @@ impl<R: CaptureRoyalRule> Position<R> {
+             state: wire.state.clone(),
+             hands: R::Hands::default(),
+             occupied: [<R::Geometry as BoardGeometry>::Bits::EMPTY; 2],
++            royal_counts: [0; 2],
+             rule: PhantomData,
+         };
+         let mut count = vec![vec![0; R::INVENTORY.len()]; 2];
+@@ -445,11 +448,24 @@ impl<R: CaptureRoyalRule> Position<R> {
+         }
+     }
+     fn royals(&self, color: u8) -> usize {
+-        self.cells
+-            .iter()
+-            .flatten()
+-            .filter(|c| c.color == color && Self::def(**c).royal)
+-            .count()
++        if !R::CACHE_ROYALS {
++            return self
++                .cells
++                .iter()
++                .flatten()
++                .filter(|c| c.color == color && Self::def(**c).royal)
++                .count();
++        }
++        #[cfg(test)]
++        assert_eq!(
++            usize::from(self.royal_counts[color as usize]),
++            self.cells
++                .iter()
++                .flatten()
++                .filter(|c| c.color == color && Self::def(**c).royal)
++                .count()
++        );
++        usize::from(self.royal_counts[color as usize])
+     }
+     fn capture_outcome(&self) -> Outcome {
+         if self.royals(0) == 0 {
+@@ -617,11 +633,20 @@ impl<R: CaptureRoyalRule> Position<R> {
+         out
+     }
+     fn set_cell(&mut self, square: usize, cell: Option<Cell>) {
++        if self.cells[square] == cell {
++            return;
++        }
+         if let Some(old) = self.cells[square] {
++            if R::CACHE_ROYALS {
++                self.royal_counts[old.color as usize] -= u16::from(Self::def(old).royal);
++            }
+             self.occupied[old.color as usize].remove(square);
+         }
+         self.cells[square] = cell;
+         if let Some(new) = cell {
++            if R::CACHE_ROYALS {
++                self.royal_counts[new.color as usize] += u16::from(Self::def(new).royal);
++            }
+             self.occupied[new.color as usize].insert(square);
+         }
+     }
+diff --git a/haitaka/src/extended/large.rs b/haitaka/src/extended/large.rs
+index abf75cb..3feaa01 100644
+--- a/haitaka/src/extended/large.rs
++++ b/haitaka/src/extended/large.rs
+@@ -133,6 +133,7 @@ impl CaptureRoyalRule for LargeRule {
+     type Hands = NoHands;
+     type Placement = ClassicalPiece;
+     const ID: u32 = RULE_ID;
++    const CACHE_ROYALS: bool = true;
+     const ALLOW_NO_ROYALS: bool = RULE_ID != 60;
+     const CONVERTS_INVENTORY: bool = MAKA_PROMOTION;
+     fn origin(id: PieceId) -> Option<&'static str> {
+@@ -1415,3 +1416,36 @@ mod hash_tests;
+ #[cfg(test)]
+ #[path = "large/known_target_tests.rs"]
+ mod known_target_tests;
++#[cfg(test)]
++mod royal_cache_tests {
++    use super::*;
++    #[test]
++    fn royal_counts_follow_every_piece_replacement_and_restore() {
++        let mut p = LargeGame::parse(&compiled::start_position_json())
++            .unwrap()
++            .position;
++        for i in 0..Geometry::SQUARES {
++            p.set_cell(i, None);
++        }
++        assert_eq!((p.royals(0), p.royals(1)), (0, 0));
++        for color in 0..2 {
++            for id in 0..PIECES.len() {
++                let c = Cell {
++                    piece: PieceId(id as u16),
++                    color,
++                };
++                p.set_cell(0, Some(c));
++                p.set_cell(0, Some(c));
++                assert_eq!(p.royals(color), usize::from(PIECES[id].royal));
++                assert_eq!(p.royals(color ^ 1), 0);
++                let before = p.clone();
++                let mut d = Delta::new(&p);
++                d.set(&mut p, 0, None);
++                assert_eq!(p.royals(color), 0);
++                d.restore(&mut p);
++                assert_eq!(p, before);
++                p.set_cell(0, None);
++            }
++        }
++    }
++}

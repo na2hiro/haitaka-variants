@@ -1,0 +1,7 @@
+{
+  "binarySha256": "83e62776a6223dca2d8c693ffb89495fe4bad0ee1d95d8def4c51167ad2d71d7",
+  "sourceRevision": "c209956 plus conditional royal-cache prototype",
+  "setCellSymbol": "000000000004a1e0 000000000000020a t <haitaka::extended::Position<haitaka::extended::large::LargeRule>>::set_cell",
+  "setCellMemcpyMentions": 0,
+  "note": "Inspect actual set_cell symbol, not only hop; compare prior six 168-byte memcpy calls. Royal-cache prototype also present."
+}
