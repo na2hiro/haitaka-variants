@@ -1,0 +1,15 @@
+{
+  "stage": "03-generated",
+  "status": "adopted",
+  "performance": "03-generated-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 2.680536424396251,
+    "taikyoku": 1.1945457715542687
+  },
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "ca7737016e2a1477019df5954b61ee4886f44c7274e74ceca47e9c31d05ada81",
+    "haitaka/src/extended/large/enumeration_reference.rs": "a47286427881209bc7d7360bbafe2fc1c5db88d2bcbe58475e5009601f961195",
+    "haitaka/src/extended/large/prepared.rs": "6ae6feccfb33412e3d98ef9b8a573b1a4c990758670ac10c1cfe511c54cec9fc"
+  },
+  "flags": []
+}
