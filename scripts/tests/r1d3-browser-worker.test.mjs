@@ -11,6 +11,21 @@ vm.runInContext(source + "\nthis.api = { parseSearch, terminalFrom, playGame };"
 const { parseSearch, terminalFrom, playGame } = context.api;
 const trace = (reason) => parseSearch([`info string gameover ${reason} rules anhoku`, "bestmove resign"], 10, 0, 0, 1);
 
+test("explicit terminal winners override resign across seats and queried sides", () => {
+  for (const [black, white] of [["A", "B"], ["B", "A"]]) {
+    for (const color of ["black", "white"]) {
+      for (const side of ["A", "B"]) {
+        const result = terminalFrom(trace(`no-legal-move winner ${color}`), side, black, white);
+        assert.equal(result.reason, "no-legal-move");
+        assert.equal(result.winner, color === "black" ? black : white);
+      }
+    }
+  }
+  for (const suffix of ["winner", "winner red", "winner black winner white"]) {
+    assert.throws(() => terminalFrom(trace(`no-legal-move ${suffix}`), "A", "A", "B"), /winning color/);
+  }
+});
+
 test("perpetual-check loser maps through both engine color assignments", () => {
   for (const [black, white] of [["A", "B"], ["B", "A"]]) {
     for (const color of ["black", "white"]) {
@@ -26,7 +41,7 @@ test("perpetual-check loser maps through both engine color assignments", () => {
 });
 
 test("terminal notifications stay separate from genuine search traces", () => {
-  for (const reason of ["no-legal-move", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
+  for (const reason of ["no-legal-move", "no-legal-move winner black", "no-legal-move winner white", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
     for (const second of [false, true]) {
       let searches = 0;
       const engine = { send(command) {
@@ -47,6 +62,7 @@ test("terminal notifications stay separate from genuine search traces", () => {
       assert.equal(game.missingMoves, 0);
       assert.equal(game.emergencyFallbacks, 0);
       if (reason === "repetition-draw") assert.equal(game.winner, null);
+      else if (reason.includes("winner ")) assert.equal(game.winner, reason.includes("winner black") ? game.blackEngine : game.whiteEngine);
       else if (reason === "no-legal-move") assert.equal(game.winner, game.blackEngine);
       else assert.equal(game.winner, reason.endsWith(":black") ? game.whiteEngine : game.blackEngine);
     }
@@ -58,7 +74,7 @@ test("an unexplained resign remains a failure", () => {
 });
 
 test("the last allowed move is adjudicated before recording a capped draw", () => {
-  for (const reason of [null, "no-legal-move", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
+  for (const reason of [null, "no-legal-move", "no-legal-move winner black", "no-legal-move winner white", "repetition-draw", "perpetual-check-loss:black", "perpetual-check-loss:white"]) {
     for (const second of [false, true]) {
       let searches = 0;
       let adjudications = 0;
@@ -87,9 +103,10 @@ test("the last allowed move is adjudicated before recording a capped draw", () =
         assert.equal(game.winner, null);
         assert.equal(game.terminalNotification, null);
       } else {
-        assert.equal(game.terminationReason, reason.split(":")[0]);
+        assert.equal(game.terminationReason, reason.split(/[\s:]/)[0]);
         assert.equal(game.terminalNotification.rootResultSchema, null);
-        const winner = reason === "repetition-draw" ? null : reason.endsWith(":black") ? game.whiteEngine : game.blackEngine;
+        const winner = reason === "repetition-draw" ? null
+          : reason.includes("winner white") || reason.endsWith(":black") ? game.whiteEngine : game.blackEngine;
         assert.equal(game.winner, winner);
       }
     }

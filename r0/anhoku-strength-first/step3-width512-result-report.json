@@ -1,0 +1,389 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step3-width512-result-v1",
+  "experimentId": "strength-first-step3-width512-capacity-seed-20260906-v1",
+  "generatedAt": "2026-09-07T18:17:45+09:00",
+  "status": "complete-valid-development-evidence-with-training-state-archive-limitation",
+  "claimScope": {
+    "developmentEvidence": true,
+    "confirmatoryClaimAllowed": false,
+    "promotionAuthorized": false,
+    "deploymentAuthorized": false,
+    "reason": "The same frozen openings were reused for scheduled screening, checkpoint selection, the selected-only fixed-time screen, and the matched width comparison."
+  },
+  "configuration": {
+    "path": "r0/anhoku-strength-first/step3-width512-experiment-v1.json",
+    "sha256": "ac740b5d6a8a1b604a987283225bd0078ae301741b41d403489f8cdd6d4b6155",
+    "frozenPreExecutionStatusRetained": true
+  },
+  "training": {
+    "run": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/run.json",
+      "sha256": "5de6ba996b6ea1fb68aa7d295b202f26336404e82d96680566525d3fc45074f1"
+    },
+    "metricsJournal": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/metrics.jsonl",
+      "sha256": "1971f2e8831402260101cc5bb91a3ea6e4160832ca9176a570c2b8a6e62cb5d9"
+    },
+    "complete": true,
+    "stopReason": "maximum-updates",
+    "optimizerUpdates": 4096,
+    "examplesSeen": 66753664,
+    "equivalentPasses": 75.85643636363636,
+    "bestValidation": {
+      "update": 1920,
+      "teacherOnlyLoss": 0.012386211649576822,
+      "checkpoint": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/checkpoints/best-validation-u00001920.pt",
+        "bytes": 321909147,
+        "sha256": "63c203fc02da9aaf28463cce221f801ebc9157e8e3257c52e07195c5390db11e",
+        "locallyRetained": false
+      }
+    },
+    "finalValidation": {
+      "update": 4096,
+      "teacherOnlyLoss": 0.012424714914957682
+    },
+    "throughputProbe": {
+      "updatesPerGpuHour": 8861.538461538461,
+      "elapsedGpuHoursThroughUpdate128": 0.014444444444444444,
+      "forecastFirstRunGpuHours": 3.0,
+      "forecastFirstRunCostUsd": 2.25,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/throughput-probe-report.json",
+        "sha256": "0a93a2f8e30ae055de6312893e7ed9c299072f00e9d8dc82f157238718cf70dc"
+      }
+    }
+  },
+  "scheduledScreens": [
+    {
+      "update": 256,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 51,
+      "draws": 1,
+      "losses": 76,
+      "score": 0.40234375,
+      "lower95": 0.3255641024119635,
+      "upper95": 0.4791233975880365,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "cappedDraws": 1,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/receipts/screen-receipt-v2-c174a620d22b9d143f6f506efe2480ca0c46e6a95e2c4f4a835d69918ba36cd2.json",
+        "sha256": "f092bafd4a5ab232c66a0a82adb99f6ebcd6f41d0744e571a95f1b2ff20a7ab9"
+      }
+    },
+    {
+      "update": 1024,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 81,
+      "draws": 0,
+      "losses": 47,
+      "score": 0.6328125,
+      "lower95": 0.5518331835837185,
+      "upper95": 0.7137918164162815,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "cappedDraws": 0,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/receipts/screen-receipt-v2-3873653ffd6f8158a56ea9370990d8fcf9176649241d6b15793f498251552fb6.json",
+        "sha256": "d27641753948902172101a52e6a531db135a22d90c85fc216fd3ecd618ed326b"
+      }
+    },
+    {
+      "update": 2048,
+      "budget": {"mode": "nodes", "value": 10000},
+      "pairs": 64,
+      "games": 128,
+      "wins": 80,
+      "draws": 0,
+      "losses": 48,
+      "score": 0.625,
+      "lower95": 0.5332473322084069,
+      "upper95": 0.7167526677915931,
+      "decision": "continue",
+      "correctnessPassed": true,
+      "cappedDraws": 0,
+      "receipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/receipts/screen-receipt-v2-3d09a81c18745096c7ecc29353291ac6821d31b026e80ec170a94d15f48455b5.json",
+        "sha256": "96cb35253a501bfca748c2498e9eee84c94bbc1e4558d54b7f4f6cdce856da6c"
+      }
+    }
+  ],
+  "exploratoryUnscheduledScreen": {
+    "update": 4096,
+    "formalScheduledScreen": false,
+    "budget": {"mode": "nodes", "value": 10000},
+    "pairs": 64,
+    "games": 128,
+    "wins": 75,
+    "draws": 0,
+    "losses": 53,
+    "score": 0.5859375,
+    "lower95": 0.4926999632566758,
+    "upper95": 0.6791750367433241,
+    "groupedIntervalRecomputedForThisReport": true,
+    "correctnessPassed": true,
+    "nativeReport": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/screen-u00004096/native-raw/self-play-report.json",
+      "sha256": "ddd1e2afb51f657209120730dbc7533bfcfc82b598f08d31c0a6ae896049651e"
+    },
+    "nativeGames": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/screen-u00004096/native-raw/self-play-games.jsonl",
+      "sha256": "40490431c50df26a562b95b047a6d80f5eb79513e47a86084b4da5b407dec05c"
+    }
+  },
+  "finalCandidates": [
+    {
+      "update": 1920,
+      "role": "lowest-validation-loss",
+      "teacherOnlyLoss": 0.012386211649576822,
+      "equalNode": {
+        "pairs": 128,
+        "games": 256,
+        "wins": 156,
+        "draws": 0,
+        "losses": 100,
+        "score": 0.609375,
+        "lower95": 0.5373734817395711,
+        "upper95": 0.6813765182604289,
+        "correctnessPassed": true,
+        "rawMatchSha256": "0d063a73257d69e36f4f93bedf4629d484689b1da5f4eded15d30420140c88c8"
+      },
+      "comparisonReceipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/comparison-u00001920/comparison-receipt-u00001920.json",
+        "sha256": "ae694fed7716de8ddbabf210e4e1af08f48bd81715dde72594ecc865d9ee6f5e"
+      }
+    },
+    {
+      "update": 1024,
+      "role": "highest-scheduled-screen-score",
+      "teacherOnlyLoss": 0.012511383310953776,
+      "equalNode": {
+        "pairs": 128,
+        "games": 256,
+        "wins": 162,
+        "draws": 0,
+        "losses": 94,
+        "score": 0.6328125,
+        "lower95": 0.5518331835837185,
+        "upper95": 0.7137918164162815,
+        "correctnessPassed": true,
+        "rawMatchSha256": "cbd87af908c4b327c0fe57b8cc5afd7e30245afa2203f49802d72cd3e88e783c"
+      },
+      "comparisonReceipt": {
+        "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/comparison-u00001024/comparison-receipt-u00001024.json",
+        "sha256": "8d75ff569b14854b847667e46e53c1dfcd8e9546ff1827cdf44958052651aba0"
+      }
+    }
+  ],
+  "selection": {
+    "decision": "selected-by-frozen-ranking",
+    "selectedUpdate": 1024,
+    "rankingUsedFixedTime": false,
+    "reason": "Neither candidate had a fixed-time result before selection, so the frozen ranking used equal-node score first. u1024 scored 0.6328125 versus 0.609375 for u1920.",
+    "history": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/selection-history-v2.json",
+      "sha256": "25445f921f1b9f4dea60dc845fc78c777883680416ca902c2f79bacfb03a7c20"
+    }
+  },
+  "selectedExport": {
+    "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/exports/selected-u00001024.nnue",
+    "bytes": 161206528,
+    "sha256": "208ad04d9a1d56083aae79d8162d6f83e49a4c742192a0fd01b5c7bdc46603fd",
+    "byteIdenticalToValidatedCandidateExport": true,
+    "validatedCandidateExport": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/exports/candidates/candidate-u00001024.nnue"
+  },
+  "selectedParity": {
+    "positions": 1024,
+    "integerVsNativeMismatches": 0,
+    "integerVsWasmMismatches": 0,
+    "nativeVsWasmMismatches": 0,
+    "nativeFullRefreshEqualsIncremental": true,
+    "quantization": {
+      "meanAbsoluteScoreDelta": 101.498130611144,
+      "p95AbsoluteScoreDelta": 620.6090087890625,
+      "p99AbsoluteScoreDelta": 815.7174072265625,
+      "maximumAbsoluteScoreDelta": 1035.081298828125
+    },
+    "receipt": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/parity/final-u00001024/parity-receipt-u00001024.json",
+      "sha256": "5865a5ea154c04238236f7d32761ea6d0a82e2c06f97a911de2fe6e502a67446"
+    }
+  },
+  "selectedFixedTime": {
+    "budget": {"mode": "movetime", "value": 100},
+    "pairs": 128,
+    "games": 256,
+    "wins": 155,
+    "draws": 0,
+    "losses": 101,
+    "score": 0.60546875,
+    "lower95": 0.5216084654378724,
+    "upper95": 0.6893290345621276,
+    "correctnessPassed": true,
+    "rawMatch": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/final-fixed-time-u00001024/raw-match-final-fixed-time-u00001024.json",
+      "sha256": "0332fee92664e4ad91e90b471039dc41fcf4264e8c3a699a253e67676c7ace32"
+    },
+    "nativeSourceAudit": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/final-fixed-time-u00001024/native-final-fixed-time-source-audit-u00001024.json",
+      "sha256": "b84eeeb9ab4c766bdd2a94e1e2c9978f47b4fe1f5bdaf83101c6974d9e873af5"
+    }
+  },
+  "matchedWidthComparison": {
+    "comparator": {
+      "description": "selected width-256 update-1920 model from the completed matched Step 3 run",
+      "resultReport": {
+        "path": "r0/anhoku-strength-first/step3-result-report.json",
+        "sha256": "4ba816345960c3ea3bebbe812ed007bfc71ca434e6b5f4eedb38d524318f8ea8"
+      }
+    },
+    "matchedFactors": [
+      "training-and-validation-data-identities",
+      "seed-20260906",
+      "fresh-scratch-initialization",
+      "robust-clipped-huber-objective",
+      "optimizer-and-learning-rate-schedule",
+      "batch-size",
+      "maximum-optimizer-updates",
+      "examples-and-equivalent-passes",
+      "checkpoint-screen-schedule",
+      "opening-suite-and-pair-order",
+      "equal-node-and-fixed-time-game-budgets"
+    ],
+    "changedFactor": "l1-width-256-to-512",
+    "statisticalMethod": "paired two-sided 95-percent Student-t interval over the same ordered 64 opening-group scores",
+    "equalNode": {
+      "width256": {
+        "score": 0.6953125,
+        "wins": 178,
+        "draws": 0,
+        "losses": 78,
+        "rawMatch": {
+          "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00001920/raw-match-final-equal-node-u00001920.json",
+          "sha256": "fc251c6e829ddee8398e1edf312a3080e4b5de50979b53861ff01a8a4ef44a30"
+        }
+      },
+      "width512": {
+        "score": 0.6328125,
+        "wins": 162,
+        "draws": 0,
+        "losses": 94,
+        "rawMatch": {
+          "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/comparison-u00001024/raw-match-final-equal-node-u00001024.json",
+          "sha256": "cbd87af908c4b327c0fe57b8cc5afd7e30245afa2203f49802d72cd3e88e783c"
+        }
+      },
+      "width512MinusWidth256": {
+        "scoreDifference": -0.0625,
+        "lower95": -0.17705582488134536,
+        "upper95": 0.05205582488134537,
+        "sampleStandardDeviation": 0.4586038162918624,
+        "standardError": 0.0573254770364828,
+        "criticalValue": 1.998340542520742,
+        "openingGroups": 64
+      }
+    },
+    "fixedTime": {
+      "width256": {
+        "score": 0.671875,
+        "wins": 172,
+        "draws": 0,
+        "losses": 84,
+        "rawMatch": {
+          "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/final-fixed-time-u00001920/raw-match-final-fixed-time-u00001920.json",
+          "sha256": "52621b57116c7bf9e3da7bf9ca62bee921c9851844887ebad8a05092e4a24362"
+        }
+      },
+      "width512": {
+        "score": 0.60546875,
+        "wins": 155,
+        "draws": 0,
+        "losses": 101,
+        "rawMatch": {
+          "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1/final-fixed-time-u00001024/raw-match-final-fixed-time-u00001024.json",
+          "sha256": "0332fee92664e4ad91e90b471039dc41fcf4264e8c3a699a253e67676c7ace32"
+        }
+      },
+      "width512MinusWidth256": {
+        "scoreDifference": -0.06640625,
+        "lower95": -0.17151753558130234,
+        "upper95": 0.03870503558130235,
+        "sampleStandardDeviation": 0.42079428743896924,
+        "standardError": 0.052599285929871155,
+        "criticalValue": 1.998340542520742,
+        "openingGroups": 64
+      }
+    },
+    "offlineLoss": {
+      "width256Best": 0.01250062993367513,
+      "width512Best": 0.012386211649576822,
+      "width512MinusWidth256": -0.00011441828409830719,
+      "relativeReduction": 0.009153001465156463
+    },
+    "runtimeComparability": {
+      "fixedTimeIsEndToEndOnEachRunHost": true,
+      "capacityOnlyLatencyClaimAllowed": false,
+      "reason": "The two runs used different rental instances and the retained match evidence does not preverify equivalent CPU hosts."
+    },
+    "interpretation": "Width 512 reduced the best offline validation loss by 0.92%, but its selected model trailed width 256 by 6.25 percentage points at equal nodes and 6.64 points at fixed time. Both paired difference intervals include zero, so this development run supplies no evidence that width 512 improves playing strength and does not establish that it is worse."
+  },
+  "integrityAudit": {
+    "status": "passed-for-retained-inference-and-development-match-evidence-with-training-state-archive-limitation",
+    "selectionGraphValidatorPassedDuringRemoteSelectionAndExplicitExport": true,
+    "localSelectionGraphReplayStatus": "not-runnable-missing-full-precision-checkpoints",
+    "localSelectionGraphReplayReason": "The downloaded archive omits the full-precision .pt checkpoints required by the validator.",
+    "selectedExportHashVerified": true,
+    "selectedExportMatchesValidatedCandidate": true,
+    "allFiveCandidateExportsRetained": true,
+    "allFiveParityChecksPassed": true,
+    "formalRawMatchStatisticsRecomputed": true,
+    "allFormalMatchesCorrectnessPassed": true,
+    "allFormalMatchesMissingMoves": 0,
+    "allFormalMatchesIllegalMoves": 0,
+    "allFormalMatchesEmergencyFallbacks": 0,
+    "allFormalMatchesUnsearchedMoves": 0,
+    "retainedArchive": {
+      "path": "out/anhoku-strength-first/step3-width512-capacity-seed-20260906-v1",
+      "bytes": 1190408465,
+      "files": 382,
+      "selectedInferenceNetworkRetained": true,
+      "candidateInferenceNetworksRetained": 5,
+      "receiptsMetricsRawMatchesParityAndRuntimeRetained": true,
+      "fullPrecisionCheckpointsRetained": false,
+      "lastResumableOptimizerStateRetained": false,
+      "topLevelScheduledExportCopiesRetained": false,
+      "resumePossibleFromLocalArchive": false,
+      "omissionReason": "The 8.3 GB remote directory was transferred under the rental shutdown deadline with 5.4 GB of checkpoints, the 1.2 GB optimizer state, and redundant top-level scheduled exports excluded. The remote instance was then destroyed."
+    },
+    "activeTrainingOrMatchProcesses": 0
+  },
+  "rentalCloseout": {
+    "provider": "Vast.ai",
+    "instanceId": 50127135,
+    "finalLookup": {"instances": null},
+    "destroyed": true,
+    "combinedHourlyRateUsd": 0.3645555555555556,
+    "observedChargeUsd": 1.387,
+    "observedCharges": {
+      "gpu": 1.324,
+      "storage": 0.053,
+      "download": 0.006,
+      "upload": 0.004
+    },
+    "chargeObservationWindow": ["2026-09-07", "2026-09-08"],
+    "withinApprovedFiveDollarEnvelope": true
+  },
+  "decision": {
+    "productionRecommendation": "retain-handcrafted",
+    "developmentNominee": "u1920-width256-seed20260906",
+    "capacityFinding": "width512-development-gain-not-supported",
+    "nextExperiment": "step4-objective-score-search-diagnosis-before-more-capacity-or-data",
+    "nextExperimentAuthorized": false,
+    "rationale": "The larger network achieved a slightly lower best validation loss but weaker point estimates in both matched strength screens. This loss-strength disagreement routes to the predeclared Step 4 diagnosis; the paired intervals are too wide to claim width 512 is intrinsically weaker."
+  }
+}

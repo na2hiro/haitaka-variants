@@ -18,6 +18,13 @@ mod r4;
 mod r4f;
 mod r4replacement;
 mod selection;
+mod step10_opening_gate;
+mod step11_opening_gate;
+mod step12_corpus_freeze;
+mod step12_exclusion_inventory;
+mod step12_opening_validation;
+mod step12_openings;
+mod strength_first_model_b;
 mod trainer;
 mod verify;
 
@@ -389,6 +396,132 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value_t = 1)]
         jobs: usize,
+    },
+    /// Generate fresh, color-swap-unique Anhoku opening groups for frozen confirmation.
+    StrengthFirstGenerateOpeningSuite {
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+        #[arg(long)]
+        seed: u64,
+        #[arg(long)]
+        positions: usize,
+        #[arg(long, default_value_t = 16)]
+        random_plies: u16,
+        #[arg(long)]
+        id_prefix: String,
+        #[arg(long)]
+        exclude_suite: Vec<PathBuf>,
+    },
+    /// Exclude model-A board families and freeze exact model-B train/validation payloads.
+    StrengthFirstFreezeModelBCorpus {
+        #[arg(long, required = true)]
+        model_a: Vec<PathBuf>,
+        #[arg(long)]
+        source_train: PathBuf,
+        #[arg(long)]
+        source_validation: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 880000)]
+        train_records: usize,
+        #[arg(long, default_value_t = 60000)]
+        validation_records: usize,
+        #[arg(long)]
+        selection_seed: u64,
+    },
+    /// Freeze the Step 12 independent corpus from the completed source
+    /// aggregates and exact explicit family inventories.
+    StrengthFirstStep12FreezeCorpus {
+        #[arg(long, required = true)]
+        exclusion_inventory: Vec<PathBuf>,
+        #[arg(long)]
+        source_train: PathBuf,
+        #[arg(long)]
+        source_train_shards: PathBuf,
+        #[arg(long)]
+        source_validation: PathBuf,
+        #[arg(long)]
+        source_validation_shards: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 880000)]
+        train_records: usize,
+        #[arg(long, default_value_t = 60000)]
+        validation_records: usize,
+        #[arg(long)]
+        selection_seed: u64,
+    },
+    /// Independently validate the Step 12 frozen corpus and source provenance.
+    StrengthFirstStep12ValidateCorpus {
+        #[arg(long, required = true)]
+        exclusion_inventory: Vec<PathBuf>,
+        #[arg(long)]
+        source_train: PathBuf,
+        #[arg(long)]
+        source_train_shards: PathBuf,
+        #[arg(long)]
+        source_validation: PathBuf,
+        #[arg(long)]
+        source_validation_shards: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+        #[arg(long, default_value_t = 880000)]
+        train_records: usize,
+        #[arg(long, default_value_t = 60000)]
+        validation_records: usize,
+        #[arg(long)]
+        selection_seed: u64,
+    },
+    /// Generate the model-blind Step 12 development-opening suite.
+    StrengthFirstStep12GenerateOpenings {
+        #[arg(long)]
+        spec: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+    /// Independently replay and validate the Step 12 development-opening suite.
+    StrengthFirstStep12ValidateOpenings {
+        #[arg(long)]
+        spec: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long)]
+        report: PathBuf,
+    },
+    /// Independently validate a generated Step 10 opening suite against packed
+    /// corpus board families. This never generates openings or runs matches.
+    StrengthFirstStep10OpeningGate {
+        #[arg(long)]
+        spec: PathBuf,
+        #[arg(long)]
+        corpus_receipt: PathBuf,
+        #[arg(long)]
+        validation_receipt: PathBuf,
+    },
+    /// Independently validate the generated Step 11 opening suite against packed
+    /// corpus board families. This never generates openings or runs matches.
+    StrengthFirstStep11OpeningGate {
+        #[arg(long)]
+        spec: PathBuf,
+        #[arg(long)]
+        corpus_receipt: PathBuf,
+        #[arg(long)]
+        validation_receipt: PathBuf,
+    },
+    /// Build one deterministic, explicit-path Step 12 canonical family inventory.
+    /// This preparation command never discovers files recursively and never
+    /// starts source generation, training, or matches.
+    Step12ExclusionInventory {
+        #[arg(long, required = true)]
+        input: Vec<PathBuf>,
+        #[arg(long, required = true)]
+        output: PathBuf,
+        #[arg(long, required = true)]
+        inventory_id: String,
     },
     ValidateOpenings {
         #[arg(long)]
@@ -974,6 +1107,132 @@ fn main() -> Result<()> {
                 jobs,
             })?;
             println!("Replacement R4 gate report written to {}", path.display());
+        }
+        Command::StrengthFirstGenerateOpeningSuite {
+            output,
+            report,
+            seed,
+            positions,
+            random_plies,
+            id_prefix,
+            exclude_suite,
+        } => {
+            strength_first_model_b::generate_opening_suite(
+                &output,
+                &report,
+                seed,
+                positions,
+                random_plies,
+                &id_prefix,
+                &exclude_suite,
+            )?;
+            println!("opening suite written to {}", output.display());
+        }
+        Command::StrengthFirstFreezeModelBCorpus {
+            model_a,
+            source_train,
+            source_validation,
+            output_dir,
+            train_records,
+            validation_records,
+            selection_seed,
+        } => {
+            let path = strength_first_model_b::freeze_corpus(
+                &model_a,
+                &source_train,
+                &source_validation,
+                &output_dir,
+                train_records,
+                validation_records,
+                selection_seed,
+            )?;
+            println!("model-B corpus manifest written to {}", path.display());
+        }
+        Command::StrengthFirstStep12FreezeCorpus {
+            exclusion_inventory,
+            source_train,
+            source_train_shards,
+            source_validation,
+            source_validation_shards,
+            output_dir,
+            train_records,
+            validation_records,
+            selection_seed,
+        } => {
+            let path = step12_corpus_freeze::freeze_corpus(
+                &exclusion_inventory,
+                &source_train,
+                &source_train_shards,
+                &source_validation,
+                &source_validation_shards,
+                &output_dir,
+                train_records,
+                validation_records,
+                selection_seed,
+            )?;
+            println!("Step 12 corpus selection written to {}", path.display());
+        }
+        Command::StrengthFirstStep12ValidateCorpus {
+            exclusion_inventory,
+            source_train,
+            source_train_shards,
+            source_validation,
+            source_validation_shards,
+            output_dir,
+            report,
+            train_records,
+            validation_records,
+            selection_seed,
+        } => {
+            let path = step12_corpus_freeze::validate_corpus(
+                &exclusion_inventory,
+                &source_train,
+                &source_train_shards,
+                &source_validation,
+                &source_validation_shards,
+                &output_dir,
+                &report,
+                train_records,
+                validation_records,
+                selection_seed,
+            )?;
+            println!("Step 12 corpus validation written to {}", path.display());
+        }
+        Command::StrengthFirstStep12GenerateOpenings { spec, output_dir } => {
+            let path = step12_openings::generate_openings(&spec, &output_dir)?;
+            println!("Step 12 opening freeze stage written to {}", path.display());
+        }
+        Command::StrengthFirstStep12ValidateOpenings {
+            spec,
+            output_dir,
+            report,
+        } => {
+            let path = step12_opening_validation::validate_openings(&spec, &output_dir, &report)?;
+            println!("Step 12 opening validation written to {}", path.display());
+        }
+        Command::StrengthFirstStep10OpeningGate {
+            spec,
+            corpus_receipt,
+            validation_receipt,
+        } => {
+            step10_opening_gate::validate(&spec, &corpus_receipt, &validation_receipt)?;
+            println!("Step 10 opening/corpus-family validation passed");
+        }
+        Command::StrengthFirstStep11OpeningGate {
+            spec,
+            corpus_receipt,
+            validation_receipt,
+        } => {
+            step11_opening_gate::validate(&spec, &corpus_receipt, &validation_receipt)?;
+            println!("Step 11 opening/corpus-family validation passed");
+        }
+        Command::Step12ExclusionInventory {
+            input,
+            output,
+            inventory_id,
+        } => {
+            let report = step12_exclusion_inventory::inventory(&input, &output, &inventory_id)?;
+            println!("{}", serde_json::to_string(&report)?);
         }
         Command::MigrateDonorReceiverPairV2 { input, output } => {
             let source =

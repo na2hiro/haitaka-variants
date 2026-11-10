@@ -1,0 +1,154 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step4-diagnostic-v1",
+  "experimentId": "strength-first-step4-objective-search-diagnostic-20260907-v1",
+  "createdAt": "2026-09-07T19:10:47+09:00",
+  "amendedAt": "2026-09-08T08:46:00+09:00",
+  "amendment": "The user corrected the MBP LAN endpoint from 192.168.0.2 to 192.168.0.12 before heavy execution began. The controller source bundle was then completed with all workspace path dependencies after a pre-search build failed closed. A 3.84M-node handcrafted launch found seven valid but depth-incomplete root rows; those artifacts are retained, common-incomplete parents are excluded without refill, and the attempt is counted in the ceiling. The first completed analysis exposed an omitted legalBestMove field in reduced sensitivity observations; its downstream artifacts are retained and regenerated after the serialization-only fix.",
+  "status": "frozen-authorized-cpu-diagnostic-awaiting-mbp",
+  "claimScope": {
+    "developmentEvidenceOnly": true,
+    "confirmationAllowed": false,
+    "promotionAllowed": false,
+    "sourceDisclosure": "The parent source is the retained width-256 update-1920 versus handcrafted Step 3 development match. It reuses previously viewed development history and the same 64-opening suite; it is not sealed evidence.",
+    "sourceIndependence": "The retained match games were generated separately from the training and validation corpora. Exact raw-position non-overlap with those corpora is not asserted."
+  },
+  "authorization": {
+    "cpuDiagnosticAuthorized": true,
+    "gpuAllowed": false,
+    "basis": "User requested progress to Step 4, directed CPU-heavy compute to mbp, and subsequently corrected its endpoint to 192.168.0.12."
+  },
+  "implementation": {
+    "revisionAtFreeze": "a75eec1267a8acf9d52daa210f8788e9119d2d14",
+    "runner": {
+      "path": "haitaka_learn/src/bin/strength_first_step4_diagnostic.rs",
+      "bytes": 29972,
+      "sha256": "461e4bcf0f92e7c38af876fa7923ab9c68fb0fec20c8f84114ed4de96e9fa1b8"
+    },
+    "orchestrator": {
+      "path": "scripts/strength_first_step4.py",
+      "bytes": 40387,
+      "sha256": "4471cfbe05a5d997f6670df4c865c771a3360f68625b93072e4a10782adbdd4d"
+    },
+    "remoteExecutor": {
+      "path": "scripts/strength_first_step4_remote.sh",
+      "bytes": 5811,
+      "sha256": "58daab1af9b7157fd3f3cdb86804c73b441cad817fdd20dfb226c80a71af92c1"
+    },
+    "controller": {
+      "path": "scripts/strength_first_step4_controller.sh",
+      "bytes": 6600,
+      "sha256": "0e16e4a92faf3e7b1480432ce454a7f8b0ebf75645a68f61d6d8dbe91f75fda3"
+    },
+    "candidateBuildFeatures": ["anhoku", "nnue-l1-256"],
+    "c16BuildFeatures": ["anhoku"],
+    "handcraftedBuildFeatures": ["anhoku"],
+    "maximumDepth": 64
+  },
+  "sources": {
+    "games": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00001920/native-raw/self-play-games.jsonl",
+      "bytes": 545824,
+      "sha256": "faef0e0a995d62dc70cbe652ba6cc2959a31f5d39c4551cb5abf73c17d9b1d6c"
+    },
+    "gameReport": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/comparison-u00001920/native-raw/self-play-report.json",
+      "bytes": 3671,
+      "sha256": "22553435cdeee8ed02bad8d8900d45635616b18ebc432b3d8e59c1903f2295e9"
+    },
+    "width256Result": {
+      "path": "r0/anhoku-strength-first/step3-result-report.json",
+      "bytes": 9359,
+      "sha256": "4ba816345960c3ea3bebbe812ed007bfc71ca434e6b5f4eedb38d524318f8ea8"
+    },
+    "width512Result": {
+      "path": "r0/anhoku-strength-first/step3-width512-result-report.json",
+      "bytes": 16217,
+      "sha256": "bf4a35b8943187929b23a2828c068f720691da742372c8437dd55fde0a18b66a"
+    }
+  },
+  "models": {
+    "c16": {
+      "path": "out/anhoku-v0.6-phase7.1-preserved/lane-c-step-16.nnue",
+      "bytes": 161206531,
+      "sha256": "049f72f3a3adcfeb260710264af6669da6346af35bd34092f6f6fa0ef531cfe0"
+    },
+    "candidateExport": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+      "bytes": 83048702,
+      "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896"
+    },
+    "candidateCheckpoint": {
+      "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/checkpoints/best-validation-u00001920.pt",
+      "bytes": 163439003,
+      "sha256": "4f042c673b2875641e778fe3b15c0935452df32552bdd64ddbdc782166b14af7"
+    },
+    "candidateWidth": {"l1": 256, "l2": 16, "l3": 32}
+  },
+  "parents": {
+    "construction": "For each source game and phase, retain the legal pre-move position with minimum SHA-256 rank; within each phase take minimum-rank unique board states.",
+    "phaseDefinition": {"early": "ply < 16", "middle": "16 <= ply < 40", "late": "ply >= 40"},
+    "probePool": 384,
+    "probePhaseCounts": {"early": 128, "middle": 128, "late": 128},
+    "classification": "control iff handcrafted, C/16, and candidate 10k-node best moves all agree; disagreement otherwise",
+    "selectionRank": "sha256(haitaka-strength-first-step4-selection-v1 NUL || class || NUL || parent-id || NUL || sfen)",
+    "selectionQuotas": {
+      "disagreement": {"early": 16, "middle": 32, "late": 16},
+      "control": {"early": 16, "middle": 32, "late": 16}
+    },
+    "maximumSelected": 128,
+    "quotaRefill": false,
+    "rootIncompletePolicy": "Retain and report every structurally valid root row; exclude parents lacking common completed 10k-node probes without quota refill. Exclude a selected parent if any union-source root probe is incomplete."
+  },
+  "rootSearch": {
+    "developmentNodes": 10000,
+    "deepHandcraftedNodes": 250000,
+    "sensitivityCandidateNodes": [2500, 40000],
+    "nodeCounting": "alpha-beta-plus-qsearch",
+    "plannedRootSearchNodes": 48960000,
+    "failedClosedPrepolicyRootNodes": 3840000,
+    "maximumRootSearchNodes": 52800000
+  },
+  "labels": {
+    "unionMoveSources": ["handcrafted-10000", "c16-10000", "candidate-10000", "handcrafted-deep"],
+    "maximumMovesPerParent": 4,
+    "nodesPerChild": 250000,
+    "scoreOrientation": "Search each legal child with handcrafted evaluation, then negate the child-side-to-move score to the parent/root perspective.",
+    "terminalHandling": "Record terminal outcomes explicitly with root-oriented mate class and distance.",
+    "maximumChildLabels": 512,
+    "maximumChildSearchNodes": 128000000,
+    "incompletePolicy": "Retain and report incomplete labels; compare only complete common-support choices; do not refill."
+  },
+  "analysis": {
+    "primary": "restricted-candidate preference/regret over the fixed union, never exhaustive legal-move regret",
+    "secondary": [
+      "score-slope-and-offset",
+      "near-equal-choice-regret",
+      "tactical-and-mate-handling",
+      "candidate-pruning-sensitivity",
+      "candidate-full-precision-versus-export-static-choice"
+    ],
+    "scoreClip": 12000.0,
+    "calibratedSoftScoreScale": 6528.012539024722,
+    "r3CalibrationEvidence": {
+      "path": "out/anhoku-reboot-r3/r3-gate-report.json",
+      "bytes": 183398,
+      "sha256": "7e97b3a215f2c6e6f03b30a56ce29bb3ac8b23630ea506d9d5445c09f9d7b5cb"
+    },
+    "clusterBootstrap": {
+      "unit": "source-opening-group",
+      "replicates": 20000,
+      "seed": 20260907,
+      "interval": "two-sided-95-percent-percentile-development-only"
+    }
+  },
+  "execution": {
+    "cpuHostLabel": "mbp",
+    "cpuHost": "192.168.0.12",
+    "heavyComputeOnlyOnCpuHost": true,
+    "outputRoot": "out/anhoku-strength-first/step4-objective-search-diagnostic-20260907-v1",
+    "maximumWallHours": 48,
+    "maximumTotalSearchNodes": 180800000,
+    "officialControllerWallSeconds": 172500,
+    "stopPolicy": "Stop before scheduling work that would exceed either the node ceiling or 48 wall-hours; preserve completed immutable shards."
+  }
+}

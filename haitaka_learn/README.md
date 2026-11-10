@@ -110,6 +110,32 @@ The command refuses a non-empty `out/anhoku-reboot-r3` so the one-shot decision
 block cannot be silently reopened. It generates no production corpus and plays
 no strength games.
 
+Rules may add orthogonal win conditions and one King movement constraint while
+retaining the existing `ruleset` field for standard, handicap, or donor rules:
+
+```toml
+[rules]
+ruleset = "annan"
+win_conditions = ["oute", "sanmaime"]
+movement_constraint = "igyoku"
+rule_id = 123
+```
+
+`rule_id` is mandatory whenever a win condition or movement constraint is
+present. The configured axes must exactly match the Cargo features used to
+build `haitaka_learn`.
+
+Supported `win_conditions` values are `oute`, `sanmaime`, `inochinotokin`,
+`shihonkangen`, `ningenshogi`, and `tennouzan`. For 天王山の玉 (rule 172),
+use `ruleset = "standard"`, `win_conditions = ["tennouzan"]`, and `rule_id = 172`,
+and build with `--features tennouzan`. Reaching 55 (USI `5e`) with the physical
+King is an additional win; ordinary checkmate and King safety still apply.
+Human Shogi reverses checkmate until both players have moved every surviving
+original piece; completion by only one player does not permit checkmating.
+Rollout boards carry this two-player unmoved-piece history through search and self-play; when an `opening_sfen` is
+loaded, all pieces present in that opening are initially considered unmoved.
+These outcome rules do not change NNUE input geometry.
+
 `haitaka_learn` is the local CLI/orchestrator for:
 
 - generating Haitaka-native NNUE training data

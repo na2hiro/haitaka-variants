@@ -1,0 +1,166 @@
+{
+  "schema": "haitaka-strength-first-step6-browser-export-v1",
+  "status": "frozen-before-new-parent-audit-and-games",
+  "scope": "development-only-no-promotion",
+  "cpuOnly": true,
+  "gpuAllowed": false,
+  "candidate": {
+    "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/exports/selected-u00001920.nnue",
+    "bytes": 83048702,
+    "sha256": "97015a2437adb8889203ceea9198b65cac75c43520061c87aa19be2c81a2d896"
+  },
+  "checkpoint": {
+    "path": "out/anhoku-strength-first/step3-compact-scratch-seed-20260906-v1/checkpoints/best-validation-u00001920.pt",
+    "bytes": 163439003,
+    "sha256": "4f042c673b2875641e778fe3b15c0935452df32552bdd64ddbdc782166b14af7"
+  },
+  "fullPrecisionWeights": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/full-precision-weights.npz",
+    "bytes": 161359176,
+    "sha256": "547beae90c6b6ea1c207bde7381d14b015d88276863ca32e6b0803e7b7e5f2b3"
+  },
+  "parents": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/parents.jsonl",
+    "bytes": 88960,
+    "sha256": "1a6fabcd45b316b848dcc2bca87a4f112dcf06db039942ff952972f7fa1ea251"
+  },
+  "parentCounts": {
+    "control": 85,
+    "legacy-vs-handcrafted-disagreement": 43
+  },
+  "parentSourceDisclosure": "128 previously unselected parents from the existing development pool; excludes canonical boards of all128 previously labeled Step4 parents. Source games/openings reused; not unseen confirmation or asserted disjoint from training raw positions. Full/integer/static-child comparisons not previously run on these parents.",
+  "selection": "Within early32/middle64/late32 take up to half legacy-vs-handcrafted root disagreements by frozen rank, fill remaining with controls. Middle has only11 disagreements, retained without inventing cases.",
+  "correction": "Only remove six-bit right shift on feature-transformer activations, which serializer encodes at scale127. Keep hidden-layer shifts, model bytes, 1x output scale, search, and adjudication unchanged.",
+  "discovery": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/activation-shift-discovery.json",
+    "bytes": 56967,
+    "sha256": "8e1be3bbb09312828c2d60e5c251fae36d5175a9d19aee3d674f1947b1357e45"
+  },
+  "serializerAudit": {
+    "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/serializer-scale-audit.json",
+    "bytes": 546,
+    "sha256": "75ddee32bc785e6e9da63ea13d4d6ebe345e05eb33a5ad1048aacff6fbb76107"
+  },
+  "audit": {
+    "maxParents": 128,
+    "allLegalChildrenStaticOnly": true,
+    "maximumSearchNodes": 129280000,
+    "rootNodesPerParent": 10000,
+    "teacherNodesPerChild": 250000,
+    "maxUnionMoves": 4,
+    "wallHours": 4,
+    "parityRequired": "independent serializer-derived integer reference == native full == native incremental == native trace == current WASM; fail before strength measurement on any mismatch"
+  },
+  "browser": {
+    "host": "localhost Ubuntu Chrome",
+    "threads": 1,
+    "concurrentGames": 1,
+    "primaryPairs": 64,
+    "primaryMs": 1000,
+    "secondaryPairs": 16,
+    "secondaryMs": 100,
+    "maxPlies": 200,
+    "maxDepth": 64,
+    "primaryWallHours": 8,
+    "secondaryWallHours": 1,
+    "openings": {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/openings.tsv",
+      "bytes": 6148,
+      "sha256": "1cc44568c8ee5a374d2a9ad0af2730c8564b8111aaab33da496c5c2a5fb4c92f"
+    },
+    "secondaryOpenings": {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/secondary-openings.tsv",
+      "bytes": 1450,
+      "sha256": "44a79c923851e83820fcd7c783fa317a25e1841d7f1163a14b7a68eb9380a45b"
+    },
+    "timingPolicy": "Report measured p95/p99/max overshoot, memory, load time; no production acceptance threshold claimed. Missing/illegal/unsearched/fallback moves fail the run.",
+    "comparison": "corrected scale1 candidate vs handcrafted, exact same budget both sides"
+  },
+  "nativeTreatment": {
+    "host": "192.168.0.12",
+    "matchup": "corrected vs archived Step5 legacy candidate at scale1",
+    "pairs": 32,
+    "ms": 1000,
+    "threads": 8,
+    "maxPlies": 200,
+    "wallHours": 2,
+    "scope": "supplementary native development only, not pooled with browser"
+  },
+  "uncertainty": {
+    "method": "opening-group percentile bootstrap",
+    "resamples": 20000,
+    "seed": 20260908,
+    "primaryIndependentGroups": 64
+  },
+  "sources": [
+    {
+      "path": "haitaka_wasm/src/nnue.rs",
+      "bytes": 120977,
+      "sha256": "fda47bf5b80d76288e81bd9c6321eee6beb97710bc5ddb37c9cf92e29277b131"
+    },
+    {
+      "path": "haitaka_wasm/src/lib.rs",
+      "bytes": 192732,
+      "sha256": "955e63f26f39a3e081b2509fcb3003c5fbfd04e314fbd92aa5e7509150f80628"
+    },
+    {
+      "path": "haitaka_learn/src/bin/strength_first_export_audit.rs",
+      "bytes": 4430,
+      "sha256": "7726a1b42dede9943ed3a63c1aac35137b190873b64f9e8af57d2add5e906a0f"
+    },
+    {
+      "path": "scripts/strength_first_browser_harness.mjs",
+      "bytes": 24610,
+      "sha256": "46d8a256fe81fb60e51e180bee208feddc4afa6ea5b49f32973d856e654b9e03"
+    },
+    {
+      "path": "scripts/strength_first_browser_worker.js",
+      "bytes": 18987,
+      "sha256": "0bd0c2f95fd513a34f03d227170bf6647dcaec3f6f6c71ca29c262d2c440ba6a"
+    },
+    {
+      "path": "scripts/strength_first_export_reference.py",
+      "bytes": 1381,
+      "sha256": "22aa10b98a2744318fb3eb57fe54d38bc2dbf1e85c462ceeb8f0728ccd4a130f"
+    }
+  ],
+  "wasm": [
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/.gitignore",
+      "bytes": 1,
+      "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/README.md",
+      "bytes": 4380,
+      "sha256": "6885840f0e1718c20846bb0b1d4918ade648e473ab822931f2127f44c7485ae5"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm.d.ts",
+      "bytes": 13100,
+      "sha256": "aef36640640128187d69f34701648e721f5aee5bc57766f86cb1effd579a7f67"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm.js",
+      "bytes": 36924,
+      "sha256": "d8eaf8ad3bcf842588f4fc2d3a83d6cb7f2d29637a5097396db3b0877036a724"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm_bg.wasm",
+      "bytes": 18413169,
+      "sha256": "112f2e5f0af71938ef671128185e3212d63243b381ed802333601b76bce8e163"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/haitaka_wasm_bg.wasm.d.ts",
+      "bytes": 7501,
+      "sha256": "08f5ac3fd1966d07c1635fd574ca6930ec1efb49aba7ef14f3a5a74b6cfbc0e3"
+    },
+    {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/wasm-256/package.json",
+      "bytes": 267,
+      "sha256": "e0744eb669c40fc5e6423b0120298e1ad17f38f3b089c4b538c9903449722489"
+    }
+  ],
+  "productionChanged": false,
+  "amendment": "Long legacy browser baseline deferred before game launch after verified activation-scale defect; qualifying correction and establishing corrected baseline first under plan step3 parity-defect routing."
+}

@@ -1,0 +1,117 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step2-independent-review-v2",
+  "reviewedAt": "2026-09-07T06:31:42+09:00",
+  "scope": "follow-up consequential review of the final pre-GPU runner, resolved configuration, CPU fixture, and closure of the v1 review findings",
+  "reviewedArtifacts": [
+    {
+      "path": "scripts/strength_first_trainer.py",
+      "bytes": 190018,
+      "sha256": "3d2e8f7f28dff8af6f5b17b2d4b2e9789d2cc053a30a30e313c3dc2268b1484c"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step3-experiment-v1.json",
+      "bytes": 15986,
+      "sha256": "aa99bfc826cfb73d2d86955c46e4d228a15c4e36cda36a01f260d517a83b8591"
+    },
+    {
+      "path": "out/anhoku-strength-first/step2/real-cpu-fixture-v10/report.json",
+      "bytes": 5017,
+      "sha256": "3526c5f3bdf9eb1d629dfb444b69d7eff4dd13bc7340ab9eddc43ed8434acac6"
+    },
+    {
+      "path": "out/anhoku-strength-first/step3-live-vast-offer-12239064.json",
+      "bytes": 1244,
+      "sha256": "740ed156c80bea6ddcb079b36a64df3a71537866a347fca94d6fa26117c43b85"
+    },
+    {
+      "path": "r0/anhoku-strength-first/step2-independent-review.json",
+      "bytes": 7781,
+      "sha256": "5b9c3cca5a34bc21b1b2f0b5013e7fe75923f5a92067fd3f7074c8a6ec3480d8"
+    }
+  ],
+  "priorFindingResolution": [
+    {
+      "priorSeverity": "high",
+      "topic": "intermediate continuation-leg resume",
+      "status": "resolved",
+      "evidence": "The active receipt leg and its measured maximum horizon are persisted in every evaluation-boundary state. Resume revalidates the snapshotted receipt graph against its original from/to boundary, accepts only a target within that leg, and requires a new receipt after the leg destination. The self-test resumes 384->768 inside a persisted 256->1024 leg and rejects 384->1152."
+    },
+    {
+      "priorSeverity": "high",
+      "topic": "strength-screen evidence validation",
+      "status": "resolved",
+      "evidence": "Screen validation now binds the config, scheduled checkpoint, candidate export/runtime/parity graph, exact raw game order, 64 grouped opening scores, recomputed Student-t interval, correctness counters, prior-screen chain, and two-successive-low decision. Negative fixtures reject a missing color swap, a stale summary, and continuation after the stop rule fires."
+    },
+    {
+      "priorSeverity": "high",
+      "topic": "non-finite training state",
+      "status": "resolved",
+      "evidence": "The runner rejects non-finite raw outputs, predictions, targets, per-record loss, gradients, post-step model parameters, optimizer state, validation values, metrics, and export inputs before committing a successful boundary."
+    },
+    {
+      "priorSeverity": "medium",
+      "topic": "measured throughput horizon",
+      "status": "resolved",
+      "evidence": "Every continuation leg now requires the same hash-bound throughput report. The validator recomputes marginal time plus declared fixed overhead, prices it at the maximum accepted rate, checks first-run and tournament caps, persists maximumPlannedUpdate, and rejects any destination beyond it."
+    },
+    {
+      "priorSeverity": "medium",
+      "topic": "GPU approval scope",
+      "status": "resolved",
+      "evidence": "The approval receipt is bound to the exact config SHA-256, action, quote window, provider, offer, GPU, disk, quoted rate, maximum rate, four-hour uptime, and five-dollar total envelope. A changed commercial cap is rejected by self-test."
+    },
+    {
+      "priorSeverity": "medium",
+      "topic": "selected checkpoint export identity",
+      "status": "resolved",
+      "evidence": "Preselection export accepts one checkpoint recorded by the bound run. Final export additionally validates complete or explicitly terminal run history, all required screens and comparisons, the frozen rank order, and exact winning checkpoint identity."
+    },
+    {
+      "priorSeverity": "medium",
+      "topic": "atomic export commit",
+      "status": "resolved",
+      "evidence": "Serialization writes and fsyncs a temporary network, then atomically renames and syncs its directory. Retry accepts an existing export only when deterministic replay has the same hash."
+    },
+    {
+      "priorSeverity": "low",
+      "topic": "CPU fixture qualification scope",
+      "status": "resolved-as-explicit-limit",
+      "evidence": "The v10 report names its actual output directory and explicitly marks CUDA RNG/optimizer state, the production training loop and commit ordering, production continuation recovery, and native/WASM parity as unexercised pre-GPU gates."
+    }
+  ],
+  "verification": [
+    {
+      "command": "python3 scripts/strength_first_trainer.py --config r0/anhoku-strength-first/step3-experiment-v1.json validate",
+      "result": "passed",
+      "details": "Strict schema, hyperparameter, source, build-context, split, sidecar, opening-suite, byte-size, and SHA-256 validation passed."
+    },
+    {
+      "command": "python3 scripts/strength_first_trainer.py --config r0/anhoku-strength-first/step3-experiment-v1.json self-test",
+      "result": "passed",
+      "details": "Schedule, partial batches, deterministic seed/epoch order, synthetic resume, approval, throughput lower bound and horizon, screen stop rule, raw-game aggregation, receipt snapshot durability, intermediate-leg resume, comparison, ranking, early terminal selection, and budget-terminal selection fixtures passed."
+    },
+    {
+      "command": "../engine/variant-nnue-pytorch/.venv/bin/python scripts/strength_first_trainer.py --config r0/anhoku-strength-first/step3-experiment-v1.json real-fixture --output-dir out/anhoku-strength-first/step2/real-cpu-fixture-v10",
+      "result": "passed",
+      "details": "Actual pinned model, Ranger optimizer, and production sparse loader produced exact resumed/uninterrupted weights, optimizer state, predictions, cursor, trace, and integer export; final partial batches were observed and loss decreased."
+    },
+    {
+      "command": "python3 -m unittest scripts/test_strength_first_preflight.py",
+      "result": "passed",
+      "details": "8 tests passed."
+    },
+    {
+      "check": "static final production-path review",
+      "result": "passed-pre-gpu",
+      "details": "No unresolved high, medium, or low findings were found within the pre-GPU implementation scope."
+    }
+  ],
+  "limitations": [
+    "No candidate training, paid execution, GPU use, new-model parity run, or new-model match was performed.",
+    "The retained CPU fixture does not qualify CUDA RNG/optimizer state or the production CUDA continuation and metrics/state commit path; those checks remain mandatory on the approved instance before proceeding beyond the 128-update probe.",
+    "Native/WASM/integer parity and quantization-error measurement remain mandatory before any candidate games.",
+    "The live Vast.ai quote is nonbinding and availability plus combined rate must be rechecked before rental."
+  ],
+  "findings": [],
+  "verdict": "passed-pre-gpu"
+}

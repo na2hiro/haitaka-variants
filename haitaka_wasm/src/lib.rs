@@ -18,8 +18,8 @@ use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, HistoryAdjudication, Move,
-    Piece, PositionHistory, RuleSpec, SelectedRule,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
+    HistoryAdjudication, Move, Piece, PositionHistory, RuleSpec, SelectedRule,
 };
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
@@ -96,6 +96,32 @@ fn qsearch_limits() -> QsearchLimits {
     } else {
         DEFAULT_QSEARCH_LIMITS
     }
+}
+
+fn node_budget_qsearch_limits(max_nodes: u64, depth: u8) -> QsearchLimits {
+    let mut limits = qsearch_limits();
+    // The first completed iteration is the legal interrupted-search result.
+    // Do not let one pathological quiescence subtree consume the whole shared
+    // budget before its first root child completes.  Three reserved nodes are
+    // sufficient for the root, its first child, and the qnode that observes
+    // this local ceiling.  This leaves ordinary searches unchanged until the
+    // only point where they would otherwise return an emergency move.
+    if depth == 1 {
+        limits.node_limit = limits.node_limit.min(max_nodes.saturating_sub(3));
+    }
+    limits
+}
+
+fn deadline_qsearch_limits(depth: u8) -> QsearchLimits {
+    let mut limits = qsearch_limits();
+    // Timed searches must always finish at least one root child so an
+    // interrupted iteration can return a searched legal move.  A bounded
+    // first-depth qsearch preserves that progress on tactical positions;
+    // deeper iterations retain the normal variant-specific ceiling.
+    if depth == 1 {
+        limits.node_limit = limits.node_limit.min(1_024);
+    }
+    limits
 }
 
 #[doc(hidden)]
@@ -357,6 +383,7 @@ struct SearchContext<'a> {
     ordering_stats: SearchOrderingStats,
     qsearch_stats: SearchQsearchStats,
     qsearch_limits: QsearchLimits,
+    qsearch_soft_cap_reached: bool,
     node_budget: Option<Arc<SharedNodeBudget>>,
     training_trace: Option<TrainingTraceCollector>,
     forced_interruption: Option<ForcedInterruption>,
@@ -561,6 +588,7 @@ impl SearchContext<'_> {
         }
         if self.qsearch_stats.qnodes > self.qsearch_limits.node_limit {
             self.qsearch_stats.qsearch_cap_hits += 1;
+            self.qsearch_soft_cap_reached = true;
             return Ok(false);
         }
         Ok(true)
@@ -1525,6 +1553,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits,
+        qsearch_soft_cap_reached: false,
         node_budget,
         training_trace: collect_training_trace.then(TrainingTraceCollector::default),
         forced_interruption,
@@ -1644,6 +1673,45 @@ fn search_board_with_node_budget_in_tt_and_history(
     let mut completed_root_moves = 0;
     let mut partial_play_move = None;
 
+    // A root position with no legal move is a completed rules-defined terminal
+    // result.  Previously the iterative root loop returned no score and the
+    // caller could mistake it for a depth-zero/incomplete search.  Keep the
+    // same side-to-move mate orientation used by the recursive search below
+    // the root, while consuming no artificial search nodes.
+    if matches!(
+        board.status(),
+        GameStatus::Won | GameStatus::WonBySideToMove
+    ) {
+        let terminal = no_legal_moves_terminal_score(board, 0);
+        let node_root_result = root_result(
+            None,
+            false,
+            Some(terminal),
+            1,
+            0,
+            SearchInterruptionReason::None,
+            false,
+        );
+        return Ok((
+            NodeBudgetSearchSummary {
+                best_move: None,
+                best_score: Some(terminal),
+                root_result: node_root_result,
+                completed_depth: 1,
+                exhausted: false,
+                elapsed_ms: elapsed_ms_since(started_at).max(0.0),
+                node_limit: max_nodes,
+                alpha_beta_nodes: 0,
+                qsearch_nodes: 0,
+                total_nodes: 0,
+                cap_hits: 0,
+                incomplete_iterations: 0,
+                qsearch_stats,
+            },
+            None,
+        ));
+    }
+
     for depth in 1..=max_depth {
         if budget.counts().2 == max_nodes {
             interruption_reason = SearchInterruptionReason::NodeBudget;
@@ -1658,7 +1726,7 @@ fn search_board_with_node_budget_in_tt_and_history(
                 None,
                 tt,
                 ordering,
-                qsearch_limits(),
+                node_budget_qsearch_limits(max_nodes, depth),
                 Some(Arc::clone(&budget)),
                 collect_training_trace,
                 None,
@@ -1830,8 +1898,17 @@ impl UsiSession {
     }
 
     pub fn load_nnue(&mut self, bytes: &[u8]) -> Result<String, String> {
+        self.load_nnue_with_multiplier(bytes, 1)
+    }
+
+    pub fn load_nnue_with_multiplier(
+        &mut self,
+        bytes: &[u8],
+        multiplier: i32,
+    ) -> Result<String, String> {
         let model =
             NnueModel::from_bytes(bytes).map_err(|err| format!("failed to load NNUE: {err}"))?;
+        let model = model.with_evaluation_multiplier(multiplier)?;
         let description = model.description().to_string();
         self.evaluation = EvaluationStrategy::Nnue {
             model: Arc::new(model),
@@ -1942,6 +2019,8 @@ impl UsiSession {
     }
 
     /// Return a terminal notification without starting a search or changing history.
+    /// Side-to-move variant wins include `winner black` or `winner white` in
+    /// the gameover line; `bestmove resign` remains a terminal sentinel.
     pub fn terminal_notifications(&self) -> Vec<String> {
         if self.board.is_rule_draw() {
             return vec![
@@ -1963,10 +2042,21 @@ impl UsiSession {
                 "bestmove resign".to_string(),
             ];
         }
-        if self.board.status() != haitaka::GameStatus::Ongoing {
+        let status = self.board.status();
+        if status != haitaka::GameStatus::Ongoing {
+            // `resign` is the terminal bestmove sentinel. Reversed variant
+            // outcomes must name the winner instead of implying a loss for us.
+            let winner = if status == haitaka::GameStatus::WonBySideToMove {
+                match self.board.winner().expect("a terminal win has a winner") {
+                    Color::Black => " winner black",
+                    Color::White => " winner white",
+                }
+            } else {
+                ""
+            };
             return vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
@@ -2596,7 +2686,7 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
                 deadline,
                 tt,
                 &mut ordering,
-                qsearch_limits(),
+                deadline_qsearch_limits(depth),
                 None,
                 false,
                 forced_interruption,
@@ -3245,6 +3335,7 @@ pub fn r1d2_qsearch_handcrafted_with_history(
         ordering_stats: SearchOrderingStats::default(),
         qsearch_stats: SearchQsearchStats::default(),
         qsearch_limits: qsearch_limits(),
+        qsearch_soft_cap_reached: false,
         node_budget: None,
         training_trace: None,
         forced_interruption: None,
@@ -3471,6 +3562,21 @@ pub fn best_move(sfen: &str, depth: u8) -> Result<Option<String>, JsValue> {
 #[cfg_attr(not(feature = "extended-json"), wasm_bindgen(js_name = load_nnue))]
 pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     load_nnue_impl(bytes).map_err(|err| JsValue::from_str(&err))
+}
+
+/// Evaluate one position with the currently loaded integer NNUE.
+///
+/// This deliberately exposes the same full-refresh production evaluator used
+/// by search so release-candidate parity can be checked in the actual WASM
+/// artifact before any strength games are played.
+#[cfg_attr(not(feature = "extended-json"), wasm_bindgen(js_name = evaluate_nnue))]
+pub fn evaluate_nnue(sfen: &str) -> Result<i32, JsValue> {
+    let board = Board::from_sfen(sfen)
+        .map_err(|err| JsValue::from_str(&format!("failed to parse SFEN: {err}")))?;
+    let EvaluationStrategy::Nnue { model, .. } = current_evaluation_strategy() else {
+        return Err(JsValue::from_str("NNUE is not loaded"));
+    };
+    Ok(model.evaluate_full_refresh(&board))
 }
 
 #[cfg_attr(not(feature = "extended-json"), wasm_bindgen(js_name = load_sfnn))]
@@ -3785,7 +3891,7 @@ fn negamax(
     let ply_index = usize::try_from(ply).unwrap_or(usize::MAX);
     let mut move_picker = MovePicker::new(board, tt_move, &ctx.ordering, ply_index);
     if move_picker.is_empty() {
-        return Ok(-MATE_SCORE + ply);
+        return Ok(no_legal_moves_terminal_score(board, ply));
     }
 
     let mut best_score = -INF_SCORE;
@@ -3889,7 +3995,7 @@ fn quiescence(
     } else {
         QsearchMovePicker::new_tactical(board)
     };
-    let mut in_check_best_score = None;
+    let mut in_check_best_score: Option<i32> = None;
 
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
@@ -3929,6 +4035,24 @@ fn quiescence(
         ctx.history.pop();
         let score = score_result?;
 
+        if ctx.qsearch_soft_cap_reached {
+            // Keep the leaf aligned with the value selected while unwinding
+            // the capped subtree, including the first evasion without stand pat.
+            let child_selected = if in_check {
+                in_check_best_score.is_none_or(|best| score > best)
+            } else {
+                score > alpha
+            };
+            if child_selected {
+                ctx.promote_child_training_trace(ply);
+            }
+            return Ok(if in_check {
+                in_check_best_score.map_or(score, |best| best.max(score))
+            } else {
+                alpha.max(score)
+            });
+        }
+
         if score >= beta {
             ctx.promote_child_training_trace(ply);
             return Ok(score);
@@ -3947,7 +4071,7 @@ fn quiescence(
 
     if in_check {
         if !searched_move {
-            let score = -MATE_SCORE + ply;
+            let score = no_legal_moves_terminal_score(board, ply);
             ctx.set_training_leaf(board, ply, score, true);
             return Ok(score);
         }
@@ -3982,6 +4106,13 @@ fn quiescence(
             };
             ctx.history.pop();
             let score = score_result?;
+
+            if ctx.qsearch_soft_cap_reached {
+                if score > alpha {
+                    ctx.promote_child_training_trace(ply);
+                }
+                return Ok(alpha.max(score));
+            }
 
             if score >= beta {
                 ctx.promote_child_training_trace(ply);
@@ -4129,7 +4260,7 @@ fn evaluate_or_mate(
     }
     let our_mobility = count_legal_moves(board) as i32;
     if our_mobility == 0 {
-        return -MATE_SCORE + ply;
+        return no_legal_moves_terminal_score(board, ply);
     }
 
     match &ctx.evaluation {
@@ -4176,7 +4307,9 @@ fn terminal_score_for_side_to_move(board: &Board, ply: i32) -> Option<i32> {
         return Some(0);
     }
     let us = board.side_to_move();
-    if !board.has(us, Piece::King) {
+    if let Some(winner) = board.immediate_winner() {
+        Some(terminal_score_for_winner(us, winner, ply))
+    } else if !board.has(us, Piece::King) {
         Some(-MATE_SCORE + ply)
     } else if !board.has(!us, Piece::King) {
         Some(MATE_SCORE - ply)
@@ -4198,6 +4331,21 @@ fn search_terminal_score(board: &Board, ply: i32, ctx: &SearchContext<'_>) -> Op
             MATE_SCORE - ply
         }),
     }
+}
+
+fn terminal_score_for_winner(side_to_move: Color, winner: Color, ply: i32) -> i32 {
+    if winner == side_to_move {
+        MATE_SCORE - ply
+    } else {
+        -MATE_SCORE + ply
+    }
+}
+
+fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
+    let winner = board
+        .winner()
+        .expect("a position without legal moves must have a winner");
+    terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
 fn material_score(board: &Board, color: Color) -> i32 {
@@ -4404,6 +4552,7 @@ mod tests {
             ordering_stats: SearchOrderingStats::default(),
             qsearch_stats: SearchQsearchStats::default(),
             qsearch_limits,
+            qsearch_soft_cap_reached: false,
             node_budget: None,
             training_trace: None,
             forced_interruption: None,
@@ -4626,16 +4775,142 @@ mod tests {
         let terminal = session.terminal_notifications();
         assert_eq!(session.handle_line("go depth 1"), terminal);
         assert_eq!(session.terminal_notifications(), terminal);
+        let winner = if session.board.status() == GameStatus::WonBySideToMove {
+            " winner white"
+        } else {
+            ""
+        };
         assert_eq!(
             terminal,
             vec![
                 format!(
-                    "info string gameover no-legal-move rules {}",
+                    "info string gameover no-legal-move{winner} rules {}",
                     haitaka::HISTORY_RULES_VERSION
                 ),
                 "bestmove resign".to_string(),
             ]
         );
+    }
+
+    #[cfg(any(feature = "shihonkangen", feature = "ningenshogi"))]
+    fn assert_usi_terminal_side_to_move_winner(start: &str, moves: &[&str]) {
+        let original: Board = start.parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                original.color_swapped()
+            } else {
+                original.clone()
+            };
+            let moves = moves
+                .iter()
+                .map(|text| {
+                    let mv: Move = text.parse().unwrap();
+                    if swap {
+                        match mv {
+                            Move::BoardMove {
+                                from,
+                                to,
+                                promotion,
+                            } => Move::BoardMove {
+                                from: from.flip(),
+                                to: to.flip(),
+                                promotion,
+                            },
+                            Move::Drop { piece, to } => Move::Drop {
+                                piece,
+                                to: to.flip(),
+                            },
+                        }
+                        .to_string()
+                    } else {
+                        mv.to_string()
+                    }
+                })
+                .collect::<Vec<_>>();
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {}", moves.join(" ")))
+                    .is_empty()
+            );
+            assert_eq!(session.board.status(), GameStatus::WonBySideToMove);
+            let winner = session.board.winner().unwrap();
+            assert_eq!(winner, session.board.side_to_move());
+            let color = if winner == Color::Black {
+                "black"
+            } else {
+                "white"
+            };
+            let expected = vec![
+                format!(
+                    "info string gameover no-legal-move winner {color} rules {}",
+                    haitaka::ANHOKU_HISTORY_RULES_VERSION
+                ),
+                "bestmove resign".to_string(),
+            ];
+            let board = session.board.clone();
+            let history = session.history.positions().to_vec();
+            assert_eq!(session.terminal_notifications(), expected);
+            assert_eq!(session.handle_line("go depth 1"), expected);
+            assert_eq!(session.handle_line("go movetime 1"), expected);
+            assert_eq!(session.board, board);
+            assert_eq!(session.history.positions(), history);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn usi_terminal_notification_names_capital_return_winner() {
+        assert_usi_terminal_side_to_move_winner("4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1", &["9d8d"]);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_terminal_notification_names_human_shogi_winner() {
+        // Even a mating side that has moved every piece loses while the
+        // defender still has original pieces waiting to move.
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/9/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
+        );
+        assert_usi_terminal_side_to_move_winner(
+            "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1",
+            &["4d4c", "9c9d", "9b5b"],
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "tennouzan", not(feature = "king-constraint-category")))]
+    fn tennouzan_search_reaches_center_and_stops_play() {
+        let initial: Board = "4k4/9/9/9/9/4K4/8P/9/9 b - 1".parse().unwrap();
+        for swap in [false, true] {
+            let root = if swap {
+                initial.color_swapped()
+            } else {
+                initial.clone()
+            };
+            let mv = if swap { "5d5e" } else { "5f5e" };
+            let mut session = UsiSession::default();
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root}"))
+                    .is_empty()
+            );
+            assert_eq!(
+                session.handle_line("go depth 1").last().unwrap(),
+                &format!("bestmove {mv}")
+            );
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {mv}"))
+                    .is_empty()
+            );
+            assert_eq!(session.board.winner(), Some(root.side_to_move()));
+            let terminal = session.terminal_notifications();
+            assert!(terminal[0].starts_with("info string gameover no-legal-move "));
+            assert_eq!(terminal[1], "bestmove resign");
+            assert_eq!(session.handle_line("go depth 1"), terminal);
+        }
     }
 
     #[test]
@@ -4785,6 +5060,55 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "oute")]
+    fn immediate_win_is_scored_as_terminal_loss_for_side_to_move() {
+        let sfen = "4k4/9/9/9/9/9/4R4/9/4K4 w - 1";
+        let board: Board = sfen.parse().unwrap();
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(-MATE_SCORE + 3)
+        );
+        assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn capital_return_loss_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "4k4/9/9/Rp7/9/9/9/9/4K4 b RBGS 1".parse().unwrap();
+        board.play("9d8d".parse().unwrap());
+
+        assert_eq!(
+            terminal_score_for_side_to_move(&board, 3),
+            Some(MATE_SCORE - 3)
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+                &board,
+                1,
+                1,
+                &mut SearchWorkspace::default(),
+            )
+            .unwrap();
+            assert_eq!(summary.best_score, Some(MATE_SCORE));
+            assert_eq!(summary.best_move, None);
+            assert_eq!(summary.total_nodes, 0);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn human_shogi_illegal_mater_is_scored_as_a_win_for_side_to_move() {
+        let mut board: Board = "3pkp3/R8/p8/5K3/9/9/8P/9/9 b - 1".parse().unwrap();
+        board.play("4d4c".parse().unwrap());
+        board.play("9c9d".parse().unwrap());
+        board.play("9b5b".parse().unwrap());
+
+        assert_eq!(terminal_score_for_side_to_move(&board, 3), None);
+        assert_eq!(no_legal_moves_terminal_score(&board, 3), MATE_SCORE - 3);
+    }
+
+    #[test]
     #[cfg(not(any(
         feature = "annan",
         feature = "anhoku",
@@ -4863,6 +5187,33 @@ mod tests {
     }
 
     #[test]
+    fn fixed_node_search_scores_root_no_legal_move_as_completed_terminal() {
+        let board = Board::from_sfen(
+            "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26",
+        )
+        .unwrap();
+        assert_eq!(board.status(), GameStatus::Won);
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            250_000,
+            64,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert_eq!(summary.best_move, None);
+        assert_eq!(summary.best_score, Some(-MATE_SCORE));
+        assert_eq!(summary.completed_depth, 1);
+        assert_eq!(summary.incomplete_iterations, 0);
+        assert_eq!(summary.total_nodes, 0);
+        assert_eq!(
+            summary.root_result.last_completed_iteration_value,
+            Some(-MATE_SCORE)
+        );
+    }
+
+    #[test]
     fn fixed_node_search_reports_a_marked_emergency_move_before_any_child_finishes() {
         let board = Board::startpos();
         let mut workspace = SearchWorkspace::default();
@@ -4884,6 +5235,52 @@ mod tests {
         assert!(summary.root_result.emergency_fallback_used);
         assert!(!summary.root_result.missing_move);
         assert_eq!(summary.root_result.last_completed_iteration_value, None);
+    }
+
+    #[test]
+    #[cfg(feature = "anhoku")]
+    fn ten_thousand_node_search_completes_a_root_child_before_pathological_qsearch() {
+        // This replay relies on Anhoku donor moves and is illegal under other variants.
+        let mut board = Board::from_sfen(
+            "l1n1k1snl/1r2gg1b1/ppsp1pp1p/2p1p2p1/8P/P5P2/1PPPPP1P1/LBGS1K1R1/1N3GSNL b - 17",
+        )
+        .unwrap();
+        let moves = [
+            "7g7f", "3c3d", "4g4f", "2b8h+", "7h8h", "B*7g", "B*9e", "7g5e+", "6g6f", "5e4f",
+            "4h3h", "8c8d", "7f7e", "4f2h", "3i2h", "7d7e", "9f6c+", "7a6c", "B*7a", "R*6d",
+            "P*9f", "8b7b", "9f6c+", "7b6c", "9h9f", "8d8e", "N*7b", "6d6f", "7b6c+", "5b6c",
+            "9f8e", "6f3f", "3h4g", "3f9f", "9e7g", "N*5e", "4g3g", "7e7f", "7g8f", "9f9g+",
+            "8e8c+", "9g8h", "7a2f+", "2d2e", "R*8a", "G*6a", "8c7c", "P*6b", "S*5b", "5a5b",
+            "8f5c+", "5b4a", "7c6c", "S*4f", "3g3f", "2e2f", "8a6a+", "4a3b", "P*3c", "3b2b",
+            "G*7i", "B*4g", "3f2f", "8h8g", "P*8h", "P*2e", "2f1f", "6b6c", "8h8g", "P*8a",
+            "3c3b+", "2b3b",
+        ];
+        for usi in moves {
+            let mv = Move::from_str(usi).unwrap();
+            assert!(board.is_legal(mv), "illegal replay move {usi}");
+            board.play_unchecked(mv);
+        }
+
+        let mut workspace = SearchWorkspace::default();
+        let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(
+            &board,
+            10_000,
+            SEARCH_NODE_BUDGET_MAX_DEPTH,
+            &mut workspace,
+        )
+        .unwrap();
+
+        assert!(summary.root_result.play_move_was_searched);
+        assert!(!summary.root_result.emergency_fallback_used);
+        assert_eq!(summary.completed_depth, 0);
+        assert_eq!(
+            summary
+                .root_result
+                .completed_root_moves_in_interrupted_iteration,
+            1
+        );
+        assert!(summary.root_result.partial_root_state);
+        assert_eq!(summary.total_nodes, 10_000);
     }
 
     #[test]
@@ -5001,6 +5398,86 @@ mod tests {
             evasion_trace.static_eval,
             static_handcrafted_eval(&evasion_trace.leaf_board)
         );
+    }
+
+    #[test]
+    fn qsearch_soft_cap_training_trace_matches_selected_score() {
+        let fixtures = [
+            ("evasion", "9/9/9/9/9/9/9/8k/3rK4 b - 1", true),
+            ("capture", "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1", true),
+            ("quiet check", "9/9/4k4/9/4G4/9/9/9/4K4 b r 1", true),
+            (
+                "quiet check stand pat",
+                "4k4/9/9/9/9/9/9/9/4K4 b R 1",
+                false,
+            ),
+        ];
+        for (name, sfen, selects_child) in fixtures {
+            let board = Board::from_sfen(sfen).unwrap();
+            for node_limit in 1..=16 {
+                let mut tt = TranspositionTable::default();
+                let mut ordering = SearchOrdering::default();
+                let mut ctx = handcrafted_context(
+                    &board,
+                    &mut tt,
+                    &mut ordering,
+                    QsearchLimits {
+                        node_limit,
+                        check_budget: 1,
+                        ..qsearch_limits()
+                    },
+                );
+                ctx.training_trace = Some(TrainingTraceCollector::default());
+                let score =
+                    quiescence(&board, -INF_SCORE, INF_SCORE, 0, 0, 1, &mut ctx, None).unwrap();
+                if node_limit == 1 {
+                    assert!(ctx.qsearch_soft_cap_reached, "{name} at cap {node_limit}");
+                }
+                let trace = ctx
+                    .training_trace
+                    .as_ref()
+                    .unwrap()
+                    .root()
+                    .unwrap_or_else(|| panic!("missing {name} trace at cap {node_limit}"));
+                let root_score = if trace.root_ply_distance % 2 == 0 {
+                    trace.static_eval
+                } else {
+                    -trace.static_eval
+                };
+                assert_eq!(score, root_score, "stale {name} trace at cap {node_limit}");
+                if !trace.terminal {
+                    assert_eq!(
+                        trace.static_eval,
+                        static_handcrafted_eval(&trace.leaf_board)
+                    );
+                }
+                if name.starts_with("quiet check") {
+                    assert!(ctx.qsearch_stats.qsearch_check_move_tries > 0);
+                }
+                if node_limit == 1 {
+                    if selects_child {
+                        assert_eq!(trace.root_ply_distance, 1, "{name} capped child");
+                        let picked = if !board.checkers().is_empty() {
+                            QsearchMovePicker::new_evasions(&board).next().unwrap()
+                        } else if name == "capture" {
+                            QsearchMovePicker::new_tactical(&board).next().unwrap()
+                        } else {
+                            assert!(QsearchMovePicker::new_tactical(&board).next().is_none());
+                            QsearchMovePicker::new_quiet_checks(&board).next().unwrap()
+                        };
+                        let mut child = board.clone();
+                        child.play_unchecked(picked.mv);
+                        assert_eq!(
+                            trace.leaf_board, child,
+                            "{name} must trace the selected child"
+                        );
+                    } else {
+                        assert_eq!(trace.root_ply_distance, 0);
+                        assert_eq!(trace.leaf_board, board, "retain the better stand-pat leaf");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -5379,7 +5856,7 @@ mod tests {
 
         let moves = reference_ordered_moves(board);
         if moves.is_empty() {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
 
         let mut best_score = -INF_SCORE;
@@ -5471,7 +5948,7 @@ mod tests {
             return if searched_move {
                 alpha
             } else {
-                -MATE_SCORE + ply
+                no_legal_moves_terminal_score(board, ply)
             };
         }
 
@@ -5523,7 +6000,7 @@ mod tests {
         let us = board.side_to_move();
         let our_mobility = count_legal_moves(board) as i32;
         if our_mobility == 0 {
-            return -MATE_SCORE + ply;
+            return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
         material_score(board, us) - material_score(board, them)
@@ -5743,6 +6220,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "ningenshogi"))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -5755,6 +6233,55 @@ mod tests {
         assert_eq!(dfpn.status, "mate");
         assert!(dfpn.selected);
         assert_eq!(dfpn.best_move.as_deref(), Some("R*1b"));
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_human_shogi() {
+        let summary =
+            search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 1, 5_000, true).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("R*1b"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "unknown");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "shihonkangen")]
+    fn iterative_search_does_not_select_dfpn_mate_that_loses_capital_return() {
+        let board: Board = "3pkp3/4s4/4RK3/9/9/9/9/9/9 b RBGS 1".parse().unwrap();
+        let history = PositionHistory::new(board.clone());
+        let summary =
+            search_board_iterative_deepening_impl_with_history(&board, &history, 1, 5_000).unwrap();
+
+        assert!(summary.completed_depth > 0);
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b"));
+        assert_ne!(summary.best_move.as_deref(), Some("5c5b+"));
+        let dfpn = summary.dfpn.expect("expected rejected DFPN telemetry");
+        assert_eq!(dfpn.status, "no_mate");
+        assert!(!dfpn.selected);
+    }
+
+    #[test]
+    #[cfg(feature = "ningenshogi")]
+    fn usi_movetime_search_preserves_human_shogi_move_history() {
+        let initial = "4k4/R8/9/5K3/9/9/8G/9/9 b 2p 1";
+        let moves = [
+            "4d4c", "5a6a", "1g1f", "6a5a", "1f1g", "P*6a", "1g1f", "P*4a",
+        ];
+        let mut session = UsiSession::default();
+        let position = format!("position sfen {initial} moves {}", moves.join(" "));
+        assert!(session.handle_line(&position).is_empty());
+
+        let output = session.handle_line("go movetime 0 depth 1");
+
+        let mv = output.last().unwrap().strip_prefix("bestmove ").unwrap();
+        let mut child = session.board.clone();
+        child.play(mv.parse().unwrap());
+        assert!(child.unmoved_pieces().is_empty());
+        assert_eq!(child.winner(), Some(Color::Black));
     }
 
     #[test]
@@ -5792,6 +6319,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -5844,6 +6372,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",

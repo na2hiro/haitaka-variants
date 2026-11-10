@@ -1,0 +1,103 @@
+{
+  "schema": "haitaka-anhoku-strength-first-step9-result-report-v1",
+  "experimentId": "strength-first-independent-confirmation-100ms-20260913-v1",
+  "createdAt": "2026-09-14T06:38:06+09:00",
+  "complete": true,
+  "confirmationPassed": false,
+  "deploymentAuthorized": false,
+  "scope": "native MacBook Pro fixed-time confirmation at 100 ms per move",
+  "contract": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-100ms-contract-v1.json",
+    "bytes": 4382,
+    "sha256": "f17469e029abec33bfe5fe47651395841921e88edca242c8edc1fd82c62295d4"
+  },
+  "execution": {
+    "path": "r0/anhoku-strength-first/step9-confirmation-100ms-execution-v1.json",
+    "bytes": 2114,
+    "sha256": "138d17112969023e5930ebf99d929c56dd1afc74de8cb366db5b0cead59bdfa7"
+  },
+  "analyzer": {
+    "path": "scripts/strength_first_step9_confirmation_100ms.py",
+    "bytes": 14408,
+    "sha256": "f54b41941ca84e8a0c0bf69fbb9721a07a2d1a022a00436b40257e1c795578d2"
+  },
+  "validatedResult": {
+    "path": "out/anhoku-strength-first/step9-independent-confirmation-100ms-20260913-v1/confirmation-result-v1.json",
+    "bytes": 4715,
+    "sha256": "34f02d8d792f9265d329b3e15ac51a300da19d667cfb581746f7e72bbb4202a0"
+  },
+  "protocol": {
+    "host": "MacBook Pro",
+    "moveTimeMilliseconds": 100,
+    "threads": 1,
+    "concurrentGames": 1,
+    "gamesPerModel": 4096,
+    "openingSourcePairsPerModel": 2048,
+    "scheduleOrder": [
+      "model-a-suite-a",
+      "model-b-suite-b"
+    ],
+    "interimLooks": 0,
+    "sampleExtension": false,
+    "analysisUnit": "opening-source color-swapped pair",
+    "criterion": "one-sided 95% Student-t lower bound above 0.5 for each model"
+  },
+  "models": {
+    "A": {
+      "role": "development-nominated model A",
+      "checkpointUpdate": 2688,
+      "networkSha256": "6c4f31ad5441aabe5b0e3feeefa411cc7b5bcee194ff896b2662f26c5069a8fa",
+      "suiteSha256": "66fd0e8c365d85f965d02e214738a48bed23d7905f7bb3e2b45dfc3821c10e61",
+      "games": 4096,
+      "wins": 2324,
+      "losses": 1771,
+      "draws": 1,
+      "meanPairScore": 0.5675048828125,
+      "oneSidedLower95": 0.5559280965550185,
+      "passes": true,
+      "zeroFallbacks": true,
+      "completeSchedule": true,
+      "maximumPlyGames": 0,
+      "nativeReportSha256": "177d120033dbdc62ec3ba86a312c71076be16d04062829d8c39bb16faa9a8688",
+      "nativeGamesSha256": "913d7cc0268fa010529da0d66312094f56f9fa985cdbfba16ec1e953b31bed48"
+    },
+    "B": {
+      "role": "independent-data replication model B",
+      "checkpointUpdate": 2688,
+      "networkSha256": "0ecde2640520e5b2566527c4098decbb1050f729d8999188435c6d8b258fe221",
+      "suiteSha256": "53f1cd689da3615317144ef958ba731986191fbb6847e6b3e6df3f79231377cf",
+      "games": 4096,
+      "wins": 1992,
+      "losses": 2103,
+      "draws": 1,
+      "meanPairScore": 0.4864501953125,
+      "oneSidedLower95": 0.47493055964271624,
+      "passes": false,
+      "zeroFallbacks": true,
+      "completeSchedule": true,
+      "maximumPlyGames": 0,
+      "nativeReportSha256": "70d86242ad71ad97008f477b097113b674744873862204916a50bbddd4e2dfc4",
+      "nativeGamesSha256": "033d8f779840314863c9d252c8b642448757f74e0284f668393d49e6b797b883"
+    }
+  },
+  "validity": {
+    "allScheduledGamesPresent": true,
+    "allArtifactBindingsMatched": true,
+    "zeroFallbacks": true,
+    "resultsRemainedSealedUntilBothSchedulesCompleted": true,
+    "abandoned1000msPartialResultsInspected": false
+  },
+  "decision": {
+    "value": "confirmation-failed-handcrafted-remains-production",
+    "reason": "The conjunction criterion required both models to pass. Model A passed, but independent-data model B scored below 0.5 and its one-sided lower bound was 0.47493055964271624.",
+    "productionRecommendation": "handcrafted",
+    "productionPromotionAuthorized": false,
+    "candidateLaneClosed": true
+  },
+  "limitations": [
+    "This confirmation endpoint was 100 ms per move and does not establish the plan's original 1,000 ms production claim.",
+    "The run used the native MacBook Pro path and does not qualify the shipped WASM production interface or a second supported host.",
+    "The abandoned partial 1,000 ms schedule remains unopened and excluded from every decision."
+  ],
+  "nextAction": "End this candidate lane with handcrafted retained in production. Any future NNUE attempt must begin from a new development hypothesis and a new prospective contract; do not extend or rerun these confirmation suites."
+}

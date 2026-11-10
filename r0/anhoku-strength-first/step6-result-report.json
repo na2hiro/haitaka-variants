@@ -1,0 +1,884 @@
+{
+  "schema": "haitaka-strength-first-step6-result-v2",
+  "complete": true,
+  "contract": {
+    "path": "r0/anhoku-strength-first/step6-browser-export-v2.json",
+    "bytes": 9513,
+    "sha256": "1d5f0e01c2fb9e2241f9350b6b4964dbdb76d69d488684602befed78cce9dd4c"
+  },
+  "discovery": "Serializer uses feature-transformer activation scale127; runtime/oracles incorrectly applied another six-bit shift. Corrected FT clipping only; hidden-layer shifts preserved.",
+  "exportAudit": {
+    "schema": "haitaka-strength-first-step6-export-analysis-v1",
+    "nativeReferenceTraceParityPassed": true,
+    "parents": 128,
+    "positions": 8278,
+    "nonterminal": {
+      "positions": 8277,
+      "legacyScore": {
+        "mae": 550.3165395519281,
+        "rmse": 656.6540065743523,
+        "p95Absolute": 1078.2343357086181,
+        "maxAbsolute": 1097.1060638427734,
+        "meanSigned": -338.2429870729957,
+        "signMismatches": 918
+      },
+      "correctedScore": {
+        "mae": 44.79824050869201,
+        "rmse": 61.28413332497166,
+        "p95Absolute": 133.72704830169678,
+        "maxAbsolute": 277.5983934402466,
+        "meanSigned": 13.98571897992207,
+        "signMismatches": 63
+      },
+      "quantizedFtOnlyScore": {
+        "mae": 39.22353656335114,
+        "rmse": 56.23671090295849,
+        "p95Absolute": 119.40053851736448,
+        "maxAbsolute": 272.2170671982408,
+        "meanSigned": -6.543360518382554,
+        "signMismatches": 46
+      },
+      "quantizedWeightsFloatActivationScore": {
+        "mae": 44.68576257060988,
+        "rmse": 61.21195289009032,
+        "p95Absolute": 134.52209799289724,
+        "maxAbsolute": 277.54452991485607,
+        "meanSigned": 13.693333138892575,
+        "signMismatches": 62
+      }
+    },
+    "allPositions": {
+      "positions": 8278,
+      "legacyScore": {
+        "mae": 550.3756296674312,
+        "rmse": 656.7137277411055,
+        "p95Absolute": 1078.2327848434447,
+        "maxAbsolute": 1097.1060638427734,
+        "meanSigned": -338.3276961245314,
+        "signMismatches": 918
+      },
+      "correctedScore": {
+        "mae": 44.79301427576198,
+        "rmse": 61.28043391025144,
+        "p95Absolute": 133.72563462257384,
+        "maxAbsolute": 277.5983934402466,
+        "meanSigned": 13.98421496510376,
+        "signMismatches": 63
+      },
+      "quantizedFtOnlyScore": {
+        "mae": 39.21879850725389,
+        "rmse": 56.23331404325087,
+        "p95Absolute": 119.4005344337268,
+        "maxAbsolute": 272.2170671982408,
+        "meanSigned": -6.5425698360065345,
+        "signMismatches": 46
+      },
+      "quantizedWeightsFloatActivationScore": {
+        "mae": 44.68052542787453,
+        "rmse": 61.20825726405139,
+        "p95Absolute": 134.5201918542387,
+        "maxAbsolute": 277.54452991485607,
+        "meanSigned": 13.691839947526113,
+        "signMismatches": 62
+      }
+    },
+    "byPhase": {
+      "early": {
+        "positions": 1536,
+        "legacyScore": {
+          "mae": 462.06160526156117,
+          "rmse": 558.9149873089511,
+          "p95Absolute": 1040.295535683632,
+          "maxAbsolute": 1079.5822110176086,
+          "meanSigned": -246.40504102835743,
+          "signMismatches": 95
+        },
+        "correctedScore": {
+          "mae": 41.60721118779232,
+          "rmse": 59.59947185376741,
+          "p95Absolute": 128.58431488275528,
+          "maxAbsolute": 277.5983934402466,
+          "meanSigned": 15.269438138309246,
+          "signMismatches": 8
+        },
+        "quantizedFtOnlyScore": {
+          "mae": 33.89896843788737,
+          "rmse": 49.3089548596342,
+          "p95Absolute": 106.5727873229693,
+          "maxAbsolute": 230.84735732307217,
+          "meanSigned": 0.46117018124386533,
+          "signMismatches": 5
+        },
+        "quantizedWeightsFloatActivationScore": {
+          "mae": 41.430753130776196,
+          "rmse": 59.461026444459705,
+          "p95Absolute": 127.2614719197154,
+          "maxAbsolute": 277.54452991485607,
+          "meanSigned": 13.933102846844145,
+          "signMismatches": 7
+        }
+      },
+      "middle": {
+        "positions": 4320,
+        "legacyScore": {
+          "mae": 569.3653648049191,
+          "rmse": 669.2864228952826,
+          "p95Absolute": 1077.3923714399339,
+          "maxAbsolute": 1080.7873601913452,
+          "meanSigned": -349.20246855594496,
+          "signMismatches": 481
+        },
+        "correctedScore": {
+          "mae": 38.737545890843975,
+          "rmse": 53.59093660291925,
+          "p95Absolute": 114.29744889736176,
+          "maxAbsolute": 235.68940782546997,
+          "meanSigned": 11.06419811072173,
+          "signMismatches": 31
+        },
+        "quantizedFtOnlyScore": {
+          "mae": 36.225054762491496,
+          "rmse": 53.0581844724472,
+          "p95Absolute": 114.77754090113714,
+          "maxAbsolute": 272.2170671982408,
+          "meanSigned": -8.861718173371672,
+          "signMismatches": 28
+        },
+        "quantizedWeightsFloatActivationScore": {
+          "mae": 38.617456108055705,
+          "rmse": 53.47623150362544,
+          "p95Absolute": 112.99948851913227,
+          "maxAbsolute": 234.77520799636864,
+          "meanSigned": 10.773581919846716,
+          "signMismatches": 31
+        }
+      },
+      "late": {
+        "positions": 2421,
+        "legacyScore": {
+          "mae": 572.3192879935154,
+          "rmse": 690.4232080284166,
+          "p95Absolute": 1079.707269668579,
+          "maxAbsolute": 1097.1060638427734,
+          "meanSigned": -376.9534889805642,
+          "signMismatches": 342
+        },
+        "correctedScore": {
+          "mae": 57.63740688044145,
+          "rmse": 73.90475250056963,
+          "p95Absolute": 147.6928641796112,
+          "maxAbsolute": 234.81249499320984,
+          "meanSigned": 18.384387929803427,
+          "signMismatches": 24
+        },
+        "quantizedFtOnlyScore": {
+          "mae": 47.95215201995008,
+          "rmse": 65.16412423256934,
+          "p95Absolute": 126.42602873097664,
+          "maxAbsolute": 223.98479936843069,
+          "meanSigned": -6.850528665872516,
+          "signMismatches": 13
+        },
+        "quantizedWeightsFloatActivationScore": {
+          "mae": 57.57910351146843,
+          "rmse": 73.91925250363886,
+          "p95Absolute": 149.0952715873716,
+          "maxAbsolute": 230.36420702934265,
+          "meanSigned": 18.751176589889894,
+          "signMismatches": 24
+        }
+      }
+    },
+    "moveAgreement": {
+      "eligibleParents": 127,
+      "excludedTerminalParents": 1,
+      "legacy": 71,
+      "corrected": 119,
+      "legacyMeanFullStaticRegret": 122.36838066202449,
+      "correctedMeanFullStaticRegret": 2.1091341503023164
+    },
+    "affineWeightClipping": [
+      {
+        "bucket": 0,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 0,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 0,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 1,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 1,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 1,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 2,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 2,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 2,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 3,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 3,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 3,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 4,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 4,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 4,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 5,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 5,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 5,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 6,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 6,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 6,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 7,
+        "layer": 0,
+        "weights": 8192,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 7,
+        "layer": 1,
+        "weights": 512,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      },
+      {
+        "bucket": 7,
+        "layer": 2,
+        "weights": 32,
+        "clipped": 0,
+        "maximumExcess": 0.0
+      }
+    ],
+    "scope": "Static move agreement/regret uses full-precision NNUE, not a search teacher or game-theoretic value. All legal children were statically evaluated, not exhaustively searched.",
+    "additionalStrata": {
+      "scoreRange:1000-3000": {
+        "positions": 3873,
+        "legacyMae": 515.3732867586791,
+        "correctedMae": 48.910233261825006,
+        "meanFtZeroFraction": 0.3527601947779499,
+        "meanFtSaturatedFraction": 0.0
+      },
+      "check:True": {
+        "positions": 378,
+        "legacyMae": 548.876484910647,
+        "correctedMae": 36.46247901582213,
+        "meanFtZeroFraction": 0.34404451884920634,
+        "meanFtSaturatedFraction": 1.0333994708994708e-05
+      },
+      "check:False": {
+        "positions": 7899,
+        "legacyMae": 550.3854521553469,
+        "correctedMae": 45.197141362509555,
+        "meanFtZeroFraction": 0.35165225621914165,
+        "meanFtSaturatedFraction": 4.945246233700468e-07
+      },
+      "scoreRange:3000+": {
+        "positions": 1443,
+        "legacyMae": 679.2111793099306,
+        "correctedMae": 49.83583890974563,
+        "meanFtZeroFraction": 0.3484115124740125,
+        "meanFtSaturatedFraction": 5.414067914067914e-06
+      },
+      "scoreRange:0-250": {
+        "positions": 879,
+        "legacyMae": 490.88581075016685,
+        "correctedMae": 28.674595031010007,
+        "meanFtZeroFraction": 0.3488627879692833,
+        "meanFtSaturatedFraction": 0.0
+      },
+      "scoreRange:250-1000": {
+        "positions": 2082,
+        "legacyMae": 551.0753596836306,
+        "correctedMae": 40.46475441324436,
+        "meanFtZeroFraction": 0.3516337956292027,
+        "meanFtSaturatedFraction": 0.0
+      }
+    }
+  },
+  "wasmParity": {
+    "passed": true,
+    "positions": 8278
+  },
+  "restrictedTeacherDiagnostic": {
+    "parents": 128,
+    "labels": 271,
+    "incompleteLabels": 0,
+    "missingHandcraftedRoots": 3,
+    "regret": {
+      "corrected": {
+        "parents": 128,
+        "mean": 0.012169270833333334
+      },
+      "legacy": {
+        "parents": 128,
+        "mean": 0.035458333333333335
+      },
+      "handcrafted": {
+        "parents": 125,
+        "mean": 0.05130666666666667
+      },
+      "fullStatic": {
+        "parents": 127,
+        "mean": 0.14260761154855642
+      }
+    },
+    "correctedMinusLegacy": {
+      "mean": -0.0232890625,
+      "lower95": -0.05458888888888889,
+      "upper95": 0.0009932249322493222,
+      "openingGroups": 61
+    },
+    "compute": {
+      "complete": true,
+      "elapsedSeconds": 25.874504804611206,
+      "searchNodes": 68780000
+    }
+  },
+  "nativeTreatment": {
+    "games": 64,
+    "wins": 27,
+    "losses": 37,
+    "draws": 0,
+    "score": {
+      "groups": 32,
+      "mean": 0.421875,
+      "lower95": 0.3125,
+      "upper95": 0.53125,
+      "replicates": 20000,
+      "seed": 20260908
+    },
+    "capped": 0,
+    "scope": "native arm64 eight concurrent games; corrected vs archived legacy at same1000ms; development-only",
+    "report": {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/native-corrected-vs-legacy/self-play-report.json",
+      "bytes": 4084,
+      "sha256": "61c47b03c6ef0cd7958b42df5c932cc3da63c5ddfccd52bbf10e84de566f39a1"
+    },
+    "records": {
+      "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/native-corrected-vs-legacy/self-play-games.jsonl",
+      "bytes": 137608,
+      "sha256": "62b763461d5d0b8030c18efe5b9b86126a613e6cc3c6ff72f68079a0e26e4294"
+    }
+  },
+  "browser": {
+    "primary": {
+      "movetimeMs": 1000,
+      "games": 128,
+      "wins": 67,
+      "losses": 61,
+      "draws": 0,
+      "capped": 0,
+      "score": {
+        "groups": 64,
+        "mean": 0.5234375,
+        "lower95": 0.4375,
+        "upper95": 0.609375,
+        "replicates": 20000,
+        "seed": 20260908
+      },
+      "capAsLossScore": {
+        "groups": 64,
+        "mean": 0.5234375,
+        "lower95": 0.4375,
+        "upper95": 0.609375,
+        "replicates": 20000,
+        "seed": 20260908
+      },
+      "timing": {
+        "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+        "latenessSampleCount": 5987,
+        "deadlineSampleCount": 5987,
+        "p95LatenessMs": 0.10000000149011612,
+        "p99LatenessMs": 0.10000000894069672,
+        "maxLatenessMs": 3.1999999955296516,
+        "p95ElapsedMs": 1000.1000000014901,
+        "p99ElapsedMs": 1000.1000000089407,
+        "maxElapsedMs": 1003.1999999955297
+      },
+      "load": {
+        "workerStartedAt": 6.199999995529652,
+        "provenanceVerificationMs": 488.5,
+        "fetchTimingsMs": {
+          "browserWorker": 3.5,
+          "modelA": 393.1000000014901,
+          "openings": 3.2999999970197678,
+          "wasm": 83.60000000149012,
+          "wasmGlue": 2.7000000029802322,
+          "contract": 2.2999999970197678
+        },
+        "glueImportMs": 6.9000000059604645,
+        "wasmInitMs": 52,
+        "moduleLoadMs": 58.900000005960464,
+        "modelBytes": 83048702,
+        "modelDescription": "Haitaka Anhoku strength-first-step3-compact-scratch-seed-20260906-v1 256x16x32",
+        "modelFetchMs": 393.1000000014901,
+        "modelLoadMs": 213.10000000149012,
+        "coldLoadMs": 783,
+        "warmStartedAt": 789.1999999955297,
+        "finishedAt": 5253193.5,
+        "warmElapsedMs": 5252404.3000000045
+      },
+      "memory": {
+        "status": "observed",
+        "method": "linux-procfs-process-group-sum",
+        "processGroupId": 71776,
+        "sampleIntervalMs": 250,
+        "sampleCount": 20992,
+        "processCountPeak": 16,
+        "peakResidentSetBytes": 1939529728,
+        "peakHighWaterMarkBytes": 1945653248,
+        "firstSample": {
+          "sampledAtUnixMs": 1789016160018,
+          "processCount": 1,
+          "residentSetBytes": 3973120,
+          "highWaterMarkBytes": 3973120
+        },
+        "lastSample": {
+          "sampledAtUnixMs": 1789021414067,
+          "processCount": 11,
+          "residentSetBytes": 1612734464,
+          "highWaterMarkBytes": 1766391808
+        }
+      },
+      "nodes": {
+        "all": {
+          "searches": 5987,
+          "alphaBetaNodes": 211599785,
+          "qnodes": 402870801,
+          "totalNodes": 614470586,
+          "completedDepthSum": 21596,
+          "completedDepthMax": 8,
+          "elapsedMs": 5252003.899999864,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 3.6071488224486385,
+          "alphaBetaPlusQnodes": 614470586
+        },
+        "A": {
+          "searches": 2992,
+          "alphaBetaNodes": 132370187,
+          "qnodes": 227216047,
+          "totalNodes": 359586234,
+          "completedDepthSum": 11335,
+          "completedDepthMax": 8,
+          "elapsedMs": 2650763.7999999076,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 3.7884358288770055,
+          "alphaBetaPlusQnodes": 359586234
+        },
+        "B": {
+          "searches": 2995,
+          "alphaBetaNodes": 79229598,
+          "qnodes": 175654754,
+          "totalNodes": 254884352,
+          "completedDepthSum": 10261,
+          "completedDepthMax": 8,
+          "elapsedMs": 2601240.099999957,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 3.426043405676127,
+          "alphaBetaPlusQnodes": 254884352
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step6-browser-export-retry-20260910-v2/browser-primary-1000ms.json",
+        "bytes": 28551483,
+        "sha256": "c0ac9d73ce1be0f13efeb4ccab5e40fb1f1a5c3999f48a330dbc86dc20f7bce7"
+      },
+      "scope": "single-worker Ubuntu Chrome current WASM; reused development openings; not independent confirmation",
+      "openingScores": {
+        "anhoku-v3-001": 0.5,
+        "anhoku-v3-002": 0.5,
+        "anhoku-v3-003": 1,
+        "anhoku-v3-004": 1,
+        "anhoku-v3-005": 0,
+        "anhoku-v3-006": 1,
+        "anhoku-v3-007": 0.5,
+        "anhoku-v3-008": 1,
+        "anhoku-v3-009": 0.5,
+        "anhoku-v3-010": 1,
+        "anhoku-v3-011": 0.5,
+        "anhoku-v3-012": 0.5,
+        "anhoku-v3-013": 0.5,
+        "anhoku-v3-014": 0.5,
+        "anhoku-v3-015": 0.5,
+        "anhoku-v3-016": 0.5,
+        "anhoku-v3-017": 0,
+        "anhoku-v3-018": 0.5,
+        "anhoku-v3-019": 1,
+        "anhoku-v3-020": 0,
+        "anhoku-v3-021": 0.5,
+        "anhoku-v3-022": 0,
+        "anhoku-v3-023": 0.5,
+        "anhoku-v3-024": 0.5,
+        "anhoku-v3-025": 1,
+        "anhoku-v3-026": 0.5,
+        "anhoku-v3-027": 0,
+        "anhoku-v3-028": 0,
+        "anhoku-v3-029": 0.5,
+        "anhoku-v3-030": 0.5,
+        "anhoku-v3-031": 0.5,
+        "anhoku-v3-032": 0.5,
+        "anhoku-v3-033": 1,
+        "anhoku-v3-034": 1,
+        "anhoku-v3-035": 1,
+        "anhoku-v3-036": 0.5,
+        "anhoku-v3-037": 0,
+        "anhoku-v3-038": 0,
+        "anhoku-v3-039": 0,
+        "anhoku-v3-040": 0.5,
+        "anhoku-v3-041": 0.5,
+        "anhoku-v3-042": 0,
+        "anhoku-v3-043": 0,
+        "anhoku-v3-044": 0.5,
+        "anhoku-v3-045": 0,
+        "anhoku-v3-046": 0,
+        "anhoku-v3-047": 0.5,
+        "anhoku-v3-048": 1,
+        "anhoku-v3-049": 0.5,
+        "anhoku-v3-050": 1,
+        "anhoku-v3-051": 0.5,
+        "anhoku-v3-052": 0.5,
+        "anhoku-v3-053": 0.5,
+        "anhoku-v3-054": 1,
+        "anhoku-v3-055": 0,
+        "anhoku-v3-056": 0.5,
+        "anhoku-v3-057": 0.5,
+        "anhoku-v3-058": 1,
+        "anhoku-v3-059": 1,
+        "anhoku-v3-060": 0.5,
+        "anhoku-v3-061": 1,
+        "anhoku-v3-062": 0.5,
+        "anhoku-v3-063": 0.5,
+        "anhoku-v3-064": 1
+      }
+    },
+    "secondary": {
+      "movetimeMs": 100,
+      "games": 32,
+      "wins": 17,
+      "losses": 15,
+      "draws": 0,
+      "capped": 0,
+      "score": {
+        "groups": 16,
+        "mean": 0.53125,
+        "lower95": 0.34375,
+        "upper95": 0.71875,
+        "replicates": 20000,
+        "seed": 20260908
+      },
+      "capAsLossScore": {
+        "groups": 16,
+        "mean": 0.53125,
+        "lower95": 0.34375,
+        "upper95": 0.71875,
+        "replicates": 20000,
+        "seed": 20260908
+      },
+      "timing": {
+        "latenessDefinition": "max(0, measured wall elapsed around UsiEngine.send(go) minus requested movetime-ms)",
+        "latenessSampleCount": 1285,
+        "deadlineSampleCount": 1285,
+        "p95LatenessMs": 0.09999999403953552,
+        "p99LatenessMs": 0.10000000894069672,
+        "maxLatenessMs": 3.4000000059604645,
+        "p95ElapsedMs": 100.09999999403954,
+        "p99ElapsedMs": 100.1000000089407,
+        "maxElapsedMs": 103.40000000596046
+      },
+      "load": {
+        "workerStartedAt": 5,
+        "provenanceVerificationMs": 462,
+        "fetchTimingsMs": {
+          "browserWorker": 2.7000000029802322,
+          "modelA": 372,
+          "openings": 2.5999999940395355,
+          "wasm": 80.30000001192093,
+          "wasmGlue": 2.3999999910593033,
+          "contract": 2
+        },
+        "glueImportMs": 6.0999999940395355,
+        "wasmInitMs": 48.5,
+        "moduleLoadMs": 54.599999994039536,
+        "modelBytes": 83048702,
+        "modelDescription": "Haitaka Anhoku strength-first-step3-compact-scratch-seed-20260906-v1 256x16x32",
+        "modelFetchMs": 372,
+        "modelLoadMs": 202.59999999403954,
+        "coldLoadMs": 739.7000000029802,
+        "warmStartedAt": 744.7000000029802,
+        "finishedAt": 113711.90000000596,
+        "warmElapsedMs": 112967.20000000298
+      },
+      "memory": {
+        "status": "observed",
+        "method": "linux-procfs-process-group-sum",
+        "processGroupId": 100331,
+        "sampleIntervalMs": 250,
+        "sampleCount": 457,
+        "processCountPeak": 16,
+        "peakResidentSetBytes": 1928114176,
+        "peakHighWaterMarkBytes": 1938935808,
+        "firstSample": {
+          "sampledAtUnixMs": 1789021414880,
+          "processCount": 2,
+          "residentSetBytes": 7401472,
+          "highWaterMarkBytes": 7401472
+        },
+        "lastSample": {
+          "sampledAtUnixMs": 1789021529037,
+          "processCount": 12,
+          "residentSetBytes": 1576472576,
+          "highWaterMarkBytes": 1657024512
+        }
+      },
+      "nodes": {
+        "all": {
+          "searches": 1285,
+          "alphaBetaNodes": 4597897,
+          "qnodes": 8734659,
+          "totalNodes": 13332556,
+          "completedDepthSum": 3186,
+          "completedDepthMax": 5,
+          "elapsedMs": 112882.69999992847,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 2.479377431906615,
+          "alphaBetaPlusQnodes": 13332556
+        },
+        "A": {
+          "searches": 642,
+          "alphaBetaNodes": 2918129,
+          "qnodes": 4901205,
+          "totalNodes": 7819334,
+          "completedDepthSum": 1700,
+          "completedDepthMax": 5,
+          "elapsedMs": 56697.99999986589,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 2.64797507788162,
+          "alphaBetaPlusQnodes": 7819334
+        },
+        "B": {
+          "searches": 643,
+          "alphaBetaNodes": 1679768,
+          "qnodes": 3833454,
+          "totalNodes": 5513222,
+          "completedDepthSum": 1486,
+          "completedDepthMax": 5,
+          "elapsedMs": 56184.700000062585,
+          "missingMoves": 0,
+          "emergencyFallbacks": 0,
+          "unsearchedMoves": 0,
+          "completedDepthMean": 2.3110419906687403,
+          "alphaBetaPlusQnodes": 5513222
+        }
+      },
+      "report": {
+        "path": "out/anhoku-strength-first/step6-browser-export-retry-20260910-v2/browser-secondary-100ms.json",
+        "bytes": 6093622,
+        "sha256": "1c04b1863f9b8bceb7b7d02695a44de1ee2fca0c3e9aef7a967b0a3af35248d1"
+      },
+      "scope": "single-worker Ubuntu Chrome current WASM; reused development openings; not independent confirmation",
+      "openingScores": {
+        "anhoku-v3-001": 0,
+        "anhoku-v3-005": 1,
+        "anhoku-v3-009": 0.5,
+        "anhoku-v3-013": 1,
+        "anhoku-v3-017": 1,
+        "anhoku-v3-021": 1,
+        "anhoku-v3-025": 0,
+        "anhoku-v3-029": 1,
+        "anhoku-v3-033": 0.5,
+        "anhoku-v3-037": 0,
+        "anhoku-v3-041": 0.5,
+        "anhoku-v3-045": 0.5,
+        "anhoku-v3-049": 0.5,
+        "anhoku-v3-053": 0,
+        "anhoku-v3-057": 0.5,
+        "anhoku-v3-061": 0.5
+      }
+    }
+  },
+  "browserRetry": {
+    "reason": "The v1 primary worker completed 64/64 opening pairs, then Node v14.17.6 raised TypeError while summarizing optional Chrome memory telemetry. No qualified game payload was persisted, and the controller later timed out, so the match must be replayed.",
+    "priorContract": {
+      "path": "r0/anhoku-strength-first/step6-browser-export-v1.json",
+      "bytes": 7233,
+      "sha256": "c34eeac9dfbc25c2565ddba7a64f4a3f32e3ebbbd9fad61013b842fee21c4e65"
+    },
+    "priorAttempt": {
+      "started": {
+        "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/browser-started.json",
+        "bytes": 139,
+        "sha256": "94305585f82ca67911b550a6bc13ed6848dbcdd4f68c4a6305d53240f4de3d82"
+      },
+      "failedReport": {
+        "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/browser-primary-1000ms.json",
+        "bytes": 16125,
+        "sha256": "2c7b766323b555bc5cc1ca6082ab8c89ff7f9abbe5f63bf5d41d024046492633"
+      },
+      "matchLog": {
+        "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/browser-primary.log",
+        "bytes": 2884,
+        "sha256": "8dffaa13059975578608d905a84c88a7e395cc9fd4cd4d22b89dc051471b329b"
+      },
+      "controllerLog": {
+        "path": "out/anhoku-strength-first/step6-browser-export-20260908-v1/browser-controller.log",
+        "bytes": 1720,
+        "sha256": "0d6b9482127766a21c503e89bb25356f25fb0bac841e3717393ac4632ea4fcb4"
+      },
+      "completedPairsObserved": 64,
+      "rawGamesRecoverable": false
+    },
+    "changes": [
+      "Atomically persist the qualified game result before optional host telemetry.",
+      "Make telemetry and cleanup faults non-destructive after result commit.",
+      "Avoid Array.prototype.at for compatibility and pin Node v26.8.1 explicitly."
+    ],
+    "measurementPolicy": "Replay the complete frozen 64-pair primary and 16-pair secondary schedules. Do not combine the failed v1 attempt with v2 results."
+  },
+  "productionChanged": false,
+  "gpuUsed": false,
+  "scope": "development-only",
+  "limitations": [
+    "Prior runtime/oracle agreement shared the FT shift defect; historical reports remain measurements of the legacy implementation, not serializer fidelity.",
+    "Static rankings use full-precision NNUE, and teacher labels use a restricted union, neither is game-theoretic truth.",
+    "New parents are disjoint from the128 previously labeled parents by canonical board; source development games/openings were reused and exact training-position non-overlap is not asserted.",
+    "Native and browser measurements use different hosts and concurrency and are not pooled.",
+    "Browser timing is measured on one Ubuntu host; production acceptance thresholds and second-host checks remain outstanding.",
+    "The first browser attempt completed its schedule in memory but failed before persisting raw games; the full frozen schedule was replayed under the v2 recovery contract and the two attempts are not combined."
+  ],
+  "matchedBrowserBudgetDifference": {
+    "groups": 16,
+    "mean": -0.0625,
+    "lower95": -0.34375,
+    "upper95": 0.21875,
+    "replicates": 20000,
+    "seed": 20260908
+  }
+}

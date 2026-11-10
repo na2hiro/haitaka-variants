@@ -1069,6 +1069,7 @@ fn reference_move_ranking(board: &Board, contract: &Contract) -> Result<Vec<Rank
         child.play_unchecked(mv);
         let (score, child_node_limit) = match child.status() {
             GameStatus::Won => (Some(29_999), 0),
+            GameStatus::WonBySideToMove => (Some(-29_999), 0),
             GameStatus::Drawn => (Some(0), 0),
             GameStatus::Ongoing => {
                 let summary = search_board_impl_handcrafted_with_node_budget_in_workspace(

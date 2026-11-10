@@ -1,20 +1,6 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![cfg_attr(
-    not(any(
-        feature = "variant-board",
-        feature = "annan",
-        feature = "anhoku",
-        feature = "antouzai",
-        feature = "taimen",
-        feature = "haimen",
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    )),
+    not(any(feature = "variant-board", feature = "donor-category")),
     doc = include_str!("../README.md")
 )]
 #![cfg_attr(
@@ -147,6 +133,47 @@
 ))]
 compile_error!("variant rule features are mutually exclusive");
 
+#[cfg(all(
+    feature = "donor-category",
+    not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))
+))]
+compile_error!("donor-category is internal; enable one concrete donor feature instead");
+
+#[cfg(all(
+    feature = "win-condition-category",
+    not(any(
+        feature = "oute",
+        feature = "sanmaime",
+        feature = "inochinotokin",
+        feature = "shihonkangen",
+        feature = "ningenshogi",
+        feature = "tennouzan"
+    ))
+))]
+compile_error!("win-condition-category is internal; enable a concrete win condition instead");
+
+#[cfg(all(
+    feature = "king-constraint-category",
+    not(any(feature = "igyoku", feature = "hitomasuou"))
+))]
+compile_error!("king-constraint-category is internal; enable a concrete king constraint instead");
+
+#[cfg(all(feature = "igyoku", feature = "hitomasuou"))]
+compile_error!("igyoku and hitomasuou are mutually exclusive");
+
 use haitaka_types::*;
 
 pub use bitboard::*;
@@ -171,19 +198,22 @@ pub mod dfpn;
 pub mod history;
 #[cfg_attr(feature = "compact-board", path = "small_slider_moves.rs")]
 pub mod slider_moves;
-#[cfg(any(
-    feature = "annan",
-    feature = "anhoku",
-    feature = "antouzai",
-    feature = "taimen",
-    feature = "haimen",
-    feature = "neko",
-    feature = "nekoneko",
-    feature = "yokoneko",
-    feature = "yokonekoneko",
-    feature = "tenkyo",
-    feature = "tenjiku",
-    feature = "anki"
+#[cfg(all(
+    feature = "donor-category",
+    any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    )
 ))]
 pub mod variant_rules;
 

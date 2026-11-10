@@ -4,6 +4,9 @@
 an ordinary shogi `Board` from scratch or from an incremental state. P2 connects
 this evaluator to search and exports `load_sfnn` at module and UsiEngine scope.
 
+For testing the evaluator with additional rules, see the
+[rule comparison procedure and PR #33 results](tuyouraou11-rule-comparison.md).
+
 ## Fixed artifacts and reference
 
 - Model: [provenance](../plans/tuyouraou11/provenance.json).
