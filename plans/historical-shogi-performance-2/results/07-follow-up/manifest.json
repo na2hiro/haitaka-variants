@@ -1,0 +1,119 @@
+{
+  "purpose": "Exact measured JSON/CSV and as-run driver sources archived from ignored target/. Drivers preserve original absolute paths and require path adaptation outside the recorded workspace. No private Shogitter implementation or generated JS bundle is copied.",
+  "engineImplementation": "58d58020ee97300d1571e89eb7b8800c1589d043",
+  "frontendImplementation": "c0d003b0b701f65c8b0371f331ea47341acfbf16",
+  "files": {
+    "allrounder-comparison.csv": {
+      "bytes": 614,
+      "sha256": "9aa8dea91ba03f91c34aae190e797f20e92d6248cc25243bc3fecabf090e984a"
+    },
+    "allrounder-comparison.json": {
+      "bytes": 72178,
+      "sha256": "9074ad4f9d43db1029bb77138432615f912a1bf78e10abad1f8bf94ad98890ab"
+    },
+    "drivers/allrounder-perft-v1.ts": {
+      "bytes": 2362,
+      "sha256": "670cfb229c8ae85e0f35ca5fe76431602a677c1c9a37687665b1458fe221b3b7"
+    },
+    "drivers/allrounder-perft-v2.ts": {
+      "bytes": 2363,
+      "sha256": "f578f45d172382ec2932c0792026403be49acec721b831a294c6676f2fe5ab73"
+    },
+    "drivers/honshogi-build.sh": {
+      "bytes": 1914,
+      "sha256": "1e7e8ef74b8e1a6b6196ffffeefb45bb1a0f422868a82d37f0fad328b588272e"
+    },
+    "drivers/honshogi-native-Cargo.toml.txt": {
+      "bytes": 305,
+      "sha256": "1fbe2a889623044a56b0464c2a273978569c1951f5a6c45227ace80218c765e5"
+    },
+    "drivers/honshogi-native.py": {
+      "bytes": 1844,
+      "sha256": "2837ebad5b8a0f4129cd64f43fda6c6704a70b4dab23c0daa49a1849a399d8b4"
+    },
+    "drivers/honshogi-native.rs": {
+      "bytes": 1903,
+      "sha256": "3971ff6320df844f446b20d6691ccb7fb9c5068259299e98f7be54d9cd7dd4d2"
+    },
+    "drivers/honshogi-wasm-remeasure.mjs": {
+      "bytes": 3608,
+      "sha256": "81699d259d234c1bcbd26a1a4116c6ee8e08c86c1d4d238077f3f922cfd91186"
+    },
+    "drivers/honshogi-wasm.mjs": {
+      "bytes": 3559,
+      "sha256": "05665e8d815af30a2afa1309f1b8ebc495c0bdf14fc016ee701ba964254255f2"
+    },
+    "drivers/measure-allrounder-comparison.py": {
+      "bytes": 4746,
+      "sha256": "0b51150ced66a2d7dd95ad535bd70b37d4395a9e13acdf5c4440c002deedcdec"
+    },
+    "drivers/measure-historical-all.py": {
+      "bytes": 3630,
+      "sha256": "db3305cd10c1c9a046e339505f672c02ea17d55d038bce4c48d5a950868d493c"
+    },
+    "historical-all-perft.json": {
+      "bytes": 35187,
+      "sha256": "dd12f317431b26d67eed88d50608c52aa0706831e4198b96a777b00f36c9201f"
+    },
+    "honshogi-after-native-dependencies.txt": {
+      "bytes": 559,
+      "sha256": "21633e5fa13b79f97cac2d2f609bf5461cbb9aba98b12ca18a4a225302bca139"
+    },
+    "honshogi-after-native-effective-Cargo.lock": {
+      "bytes": 5447,
+      "sha256": "cda8b921fe97d606bd6206866d8bcba9c978b082a68b8c52ee1f8652ee31119b"
+    },
+    "honshogi-after-wasm-dependencies.txt": {
+      "bytes": 1117,
+      "sha256": "826d64c444bb40950f872c7259e2734d53bfbe393fd9d81602c992a6e64367ba"
+    },
+    "honshogi-after-workspace-effective-Cargo.lock": {
+      "bytes": 30968,
+      "sha256": "21e149581bcd526d06d4f0ad905d5de4aee1f1e1fb0c94730e8d0700421a0262"
+    },
+    "honshogi-before-native-dependencies.txt": {
+      "bytes": 559,
+      "sha256": "21633e5fa13b79f97cac2d2f609bf5461cbb9aba98b12ca18a4a225302bca139"
+    },
+    "honshogi-before-native-effective-Cargo.lock": {
+      "bytes": 5447,
+      "sha256": "cda8b921fe97d606bd6206866d8bcba9c978b082a68b8c52ee1f8652ee31119b"
+    },
+    "honshogi-before-wasm-dependencies.txt": {
+      "bytes": 1117,
+      "sha256": "826d64c444bb40950f872c7259e2734d53bfbe393fd9d81602c992a6e64367ba"
+    },
+    "honshogi-before-workspace-effective-Cargo.lock": {
+      "bytes": 30943,
+      "sha256": "1922e81766e44c92b740f26f1b31ddea0c29f107f6d76cbb9b10f80cfac10c21"
+    },
+    "honshogi-impact.json": {
+      "bytes": 22494,
+      "sha256": "d93afd2c791afa93a9b162c99ea8ee6e105d05a9486b70170fe6853601caf7e5"
+    },
+    "honshogi-native.json": {
+      "bytes": 5488,
+      "sha256": "cab12cbe64d802c396872691b8e0964cd3478833e20051dbd8b6aba6ced117e8"
+    },
+    "honshogi-sizes.json": {
+      "bytes": 1648,
+      "sha256": "804d5ec05db1943fa4e4e4099fb3bc39a0a0fb1ae77d6be6d8fa93c669c0c983"
+    },
+    "honshogi-wasm-original.json": {
+      "bytes": 11095,
+      "sha256": "d9202c0fb8c7cf0de41be46d1afa94b52c678ae90bff8b0447905eb71584f564"
+    },
+    "honshogi-wasm-remeasure.json": {
+      "bytes": 2968,
+      "sha256": "565ef533dacbca78429a0bcbb64de9da59ef472b53b5316731f501e1cc94a84b"
+    },
+    "honshogi-wasm.json": {
+      "bytes": 11274,
+      "sha256": "154c5bae0ce1389e97017b825ed6a8d8224c2c8b3eec862fb83b6355d2ab6f71"
+    },
+    "local-play-19.json": {
+      "bytes": 23171,
+      "sha256": "03528fe732b54299abe773083582bc21020ee1fcb4dac226bb0fd0d85eaf8e46"
+    }
+  }
+}

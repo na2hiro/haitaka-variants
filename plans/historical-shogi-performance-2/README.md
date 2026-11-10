@@ -34,3 +34,5 @@ core/AI/app/型/lintを最終確認する。効果のない試作も結果と理
 
 全段階完了。実装は5e5a85f、検証用ソースは521ebca。将棋ったーの配布更新はc0d003b0。
 [最終結果・再現手順・検証の集計](../../docs/large-shogi-performance-2.md)。
+
+追加測定（全古将棋・オールラウンダーAI比・本将棋への影響）は[表と定義](../../docs/historical-shogi-benchmarks.md)、[原本](results/07-follow-up/README.md)へ保存した。
