@@ -101,3 +101,7 @@ sho-kyo-left = ["extended-json", "haitaka/sho-kyo-left", "haitaka_wasm/sho-kyo-l
 sho-kyo-right = ["extended-json", "haitaka/sho-kyo-right", "haitaka_wasm/sho-kyo-right"]
 nakodo = ["extended-json", "haitaka/nakodo", "haitaka_wasm/nakodo"]
 queen-king = ["extended-json", "haitaka/queen-king", "haitaka_wasm/queen-king"]
+torazu-gin = ["extended-json", "haitaka/torazu-gin", "haitaka_wasm/torazu-gin"]
+ai-torazu-gin = ["extended-json", "haitaka/ai-torazu-gin", "haitaka_wasm/ai-torazu-gin"]
+zarikani = ["extended-json", "haitaka/zarikani", "haitaka_wasm/zarikani"]
+zarikani-tonbo = ["extended-json", "haitaka/zarikani-tonbo", "haitaka_wasm/zarikani-tonbo"]

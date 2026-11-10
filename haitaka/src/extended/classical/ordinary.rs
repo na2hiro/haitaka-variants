@@ -27,6 +27,16 @@ macro_rules! ordinary_rule {
                     Self::ID != 138 && matches!(Self::PIECES[id.0 as usize].id, "aa" | "cq"),
                 )
             }
+            fn capture_allowed(mover: PieceId, victim: PieceId, color: u8) -> bool {
+                let from = Self::PIECES[mover.0 as usize].id;
+                let to = Self::PIECES[victim.0 as usize].id;
+                match Self::ID {
+                    30 => !(color == 1 && to == "ad"),
+                    31 => to != "ad",
+                    153 | 165 => from != "1e",
+                    _ => true,
+                }
+            }
             fn initial() -> Vec<ClassicalPiece> {
                 $initial
                     .iter()
@@ -37,11 +47,16 @@ macro_rules! ordinary_rule {
         impl ClassicalRule for $rule {
             const NAME: &'static str = $name;
             const FORCED: bool = false;
-            const CHECK: bool = true;
+            const CHECK: bool = !matches!(Self::ID, 153 | 165);
             const STALEMATE: bool = false;
             const ONLY_KINGS: bool = false;
             const LION: bool = false;
-            const UCHIFU: Option<PieceId> = Some(PieceId(0));
+            const UCHIFU: Option<PieceId> = if matches!(Self::ID, 153 | 165) {
+                None
+            } else {
+                Some(PieceId(0))
+            };
+            const INITIAL_SIDE: u8 = if Self::ID == 30 { 1 } else { 0 };
             fn droppable(id: PieceId) -> bool {
                 !Self::PIECES[id.0 as usize].royal && Self::capture_return(id) == Some(id)
             }

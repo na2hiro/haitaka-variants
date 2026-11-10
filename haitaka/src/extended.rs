@@ -178,6 +178,10 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     fn ray_limit(_piece: PieceId, _dx: isize, _dy: isize) -> Option<usize> {
         None
     }
+    /// Physical-piece capture restrictions also determine whether a royal is attacked.
+    fn capture_allowed(_mover: PieceId, _victim: PieceId, _victim_color: u8) -> bool {
+        true
+    }
     const ALLOW_NO_ROYALS: bool = false;
     const CACHE_ROYALS: bool = false;
     /// Conversion rules conserve piece counts, but not each base species.
@@ -591,7 +595,11 @@ impl<R: CaptureRoyalRule> Position<R> {
             c.is_some_and(|c| {
                 c.color != color
                     && self.targets(i, c).iter().any(|&j| {
-                        self.cells[j].is_some_and(|v| v.color == color && Self::def(v).royal)
+                        self.cells[j].is_some_and(|v| {
+                            v.color == color
+                                && Self::def(v).royal
+                                && R::capture_allowed(c.piece, v.piece, v.color)
+                        })
                     })
             })
         })
@@ -923,7 +931,11 @@ pub mod classical;
     feature = "sho-kyo-left",
     feature = "sho-kyo-right",
     feature = "nakodo",
-    feature = "queen-king"
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo"
 ))]
 pub use classical::compiled;
 
