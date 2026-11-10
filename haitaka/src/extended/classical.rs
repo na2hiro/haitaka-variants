@@ -56,6 +56,7 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const ONLY_KINGS: bool;
     const LION: bool;
     const UCHIFU: Option<PieceId>;
+    const INITIAL_SIDE: u8 = 0;
     /// Canonical physical reserve consumed when either face is dropped.
     fn drop_hand(id: PieceId) -> PieceId {
         id
@@ -144,7 +145,11 @@ include!("classical/defs.rs");
     feature = "sho-kyo-left",
     feature = "sho-kyo-right",
     feature = "nakodo",
-    feature = "queen-king"
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -153,7 +158,11 @@ mod ordinary;
     feature = "sho-kyo-left",
     feature = "sho-kyo-right",
     feature = "nakodo",
-    feature = "queen-king"
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -290,7 +299,9 @@ impl<R: ClassicalRule> Position<R> {
             return true;
         };
         let mover = self.cells[from].unwrap();
-        if victim.color == mover.color {
+        if victim.color == mover.color
+            || !R::capture_allowed(mover.piece, victim.piece, victim.color)
+        {
             return false;
         }
         if !R::LION || !lion::<R>(victim) {
@@ -966,7 +977,11 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "sho-kyo-left",
     feature = "sho-kyo-right",
     feature = "nakodo",
-    feature = "queen-king"
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo"
 ))]
 pub mod compiled {
     use super::*;
@@ -1001,13 +1016,22 @@ pub mod compiled {
     #[cfg(feature = "queen-king")]
     pub type Selected = QueenKing;
 
+    #[cfg(feature = "torazu-gin")]
+    pub type Selected = TorazuGin;
+    #[cfg(feature = "ai-torazu-gin")]
+    pub type Selected = AiTorazuGin;
+    #[cfg(feature = "zarikani")]
+    pub type Selected = Zarikani;
+    #[cfg(feature = "zarikani-tonbo")]
+    pub type Selected = ZarikaniTonbo;
+
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;
     pub const NAME: &str = Selected::NAME;
     pub const RULE_ID: u32 = Selected::ID;
     pub fn start_position_json() -> String {
         let p = Position::<Selected>::from_wire(&WirePosition {
-            side_to_move: 0,
+            side_to_move: Selected::INITIAL_SIDE,
             pieces: Selected::initial(),
             hands: Default::default(),
             state: Default::default(),
