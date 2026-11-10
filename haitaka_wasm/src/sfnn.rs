@@ -99,6 +99,9 @@ impl SfnnModel {
             }
         };
         if cfg!(any(
+            feature = "share",
+            feature = "suika",
+            feature = "zoshoku",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -208,6 +211,9 @@ impl SfnnModel {
         state: &SfnnPositionState,
         mv: Move,
     ) -> SfnnPositionState {
+        if cfg!(feature = "hand-category") {
+            return self.build_position_state_full(child);
+        }
         let mut next = state.clone();
         let mover = parent.side_to_move();
         let king_moved = match mv {
@@ -226,7 +232,7 @@ impl SfnnModel {
                         piece,
                         mover,
                         p,
-                        usize::from(parent.num_in_hand(mover, piece)) - 1,
+                        (parent.num_in_hand(mover, piece) as usize) - 1,
                     ));
                     added.push(board_index(piece, mover, to, p));
                 }
@@ -256,7 +262,7 @@ impl SfnnModel {
                             hand_piece,
                             mover,
                             p,
-                            usize::from(parent.num_in_hand(mover, hand_piece)),
+                            parent.num_in_hand(mover, hand_piece) as usize,
                         ));
                     }
                 }
@@ -360,7 +366,7 @@ fn bona_pieces(board: &Board) -> [Vec<usize>; 2] {
         Piece::Rook,
     ] {
         for color in Color::ALL {
-            for ordinal in 0..usize::from(board.num_in_hand(color, piece)) {
+            for ordinal in 0..board.num_in_hand(color, piece) as usize {
                 for p in 0..2 {
                     lists[p].push(hand_index(piece, color, p, ordinal));
                 }

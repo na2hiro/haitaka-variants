@@ -46,9 +46,15 @@ impl Board {
 
         for &color in &Color::ALL {
             let pieces = self.colors(color);
-            soft_assert!(pieces.len() <= 39);
+            soft_assert!(pieces.len() <= if cfg!(feature = "zoshoku") { 81 } else { 39 });
             if !for_tsume || self.has(color, Piece::King) {
-                soft_assert!((pieces & self.pieces(Piece::King)).len() == 1);
+                soft_assert!(
+                    (pieces & self.pieces(Piece::King)).len() == 1
+                        || (crate::hand_rules::allows_ignored_check()
+                            && (self.captured_king_winner().is_some()
+                                || self.hand_rule_winner().is_some())
+                            && (pieces & self.pieces(Piece::King)).len() <= 1)
+                );
             }
 
             let pawns = pieces & self.pieces(Piece::Pawn);
@@ -65,7 +71,12 @@ impl Board {
 
         // make sure we have two Kings on board, unless this is a Tsume position
         if !for_tsume {
-            soft_assert!(self.pieces(Piece::King).len() == 2);
+            soft_assert!(
+                self.pieces(Piece::King).len() == 2
+                    || (crate::hand_rules::allows_ignored_check()
+                        && (self.captured_king_winner().is_some()
+                            || self.hand_rule_winner().is_some()))
+            );
         } else {
             soft_assert!(self.pieces(Piece::King).len() <= 2);
         }
@@ -87,7 +98,9 @@ impl Board {
             feature = "tenjiku",
             feature = "anki"
         )))]
-        if !for_tsume || self.has(Color::Black, Piece::King) {
+        if !crate::hand_rules::allows_ignored_check()
+            && (!for_tsume || self.has(Color::Black, Piece::King))
+        {
             let white_king_square = self.king(Color::White);
             let black_king_square = self.king(Color::Black);
             let white_king_moves = king_attacks(Color::White, white_king_square);
@@ -97,7 +110,7 @@ impl Board {
         // opponent should not be in check
         // their_checkers is set to the BitBoard of all opponent's pieces attacking our King
         let (their_checkers, _) = self.calculate_checkers_and_pins(!self.side_to_move());
-        soft_assert!(their_checkers.is_empty());
+        soft_assert!(crate::hand_rules::allows_ignored_check() || their_checkers.is_empty());
 
         true
     }
@@ -111,15 +124,60 @@ impl Board {
     /// only check that the piece count does not exceed the expected maximum.
     pub(super) fn piece_counts_are_valid(&self) -> bool {
         let &hands = self.hands();
+        if cfg!(feature = "share") && hands[0] != hands[1] {
+            return false;
+        }
+        if cfg!(feature = "fushiyo") && hands.iter().flatten().any(|&n| n != 0) {
+            return false;
+        }
+        if !crate::hand_rules::allows_ignored_check()
+            && self
+                .hands()
+                .iter()
+                .any(|hand| hand[Piece::King as usize] != 0)
+        {
+            return false;
+        }
+        if self.hands().iter().any(|hand| {
+            hand.iter()
+                .enumerate()
+                .any(|(i, &n)| i > Piece::King as usize && n != 0)
+        }) {
+            return false;
+        }
+        if cfg!(any(feature = "babanuki", feature = "suika"))
+            && self.hands().iter().flatten().any(|&n| n > 1)
+        {
+            return false;
+        }
+        if cfg!(feature = "suika") {
+            let total = u64::from(self.occupied().len())
+                + self
+                    .hands()
+                    .iter()
+                    .flatten()
+                    .map(|&n| u64::from(n))
+                    .sum::<u64>();
+            return total <= 40;
+        }
+        if cfg!(feature = "zoshoku") {
+            return true;
+        }
         for index in 0..Piece::HAND_NUM {
             let piece = Piece::index_const(index);
             debug_assert!(piece != Piece::King);
 
             let num_board_pieces = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
             let max_num = Piece::MAX_HAND[index];
-            let sum = hands[0][index] + hands[1][index] + num_board_pieces;
+            let sum = u64::from(hands[0][index])
+                + if cfg!(feature = "share") {
+                    0
+                } else {
+                    u64::from(hands[1][index])
+                }
+                + u64::from(num_board_pieces);
 
-            soft_assert!(sum <= max_num);
+            soft_assert!(sum <= u64::from(max_num));
         }
         true
     }
@@ -130,8 +188,8 @@ impl Board {
         for index in 0..7 {
             let piece = Piece::index_const(index);
             let num = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
-            let sum = hands[0][index] + hands[1][index] + num;
-            let missing = Piece::MAX_HAND[index] - sum;
+            let sum = hands[0][index] + hands[1][index] + u32::from(num);
+            let missing = u32::from(Piece::MAX_HAND[index]).saturating_sub(sum);
             self.unchecked_set_hand(Color::White, piece, missing);
         }
     }
@@ -152,7 +210,7 @@ impl Board {
             feature = "tenjiku",
             feature = "anki"
         )))]
-        soft_assert!(self.checkers.len() < 3);
+        soft_assert!(crate::hand_rules::allows_ignored_check() || self.checkers.len() < 3);
         true
     }
 
@@ -218,6 +276,9 @@ impl Board {
         checkers |= knight_attacks(color, our_king) & their_pieces & self.pieces(Piece::Knight);
         checkers |= silver_attacks(color, our_king) & their_pieces & self.pseudo_silvers();
         checkers |= gold_attacks(color, our_king) & their_pieces & self.pseudo_golds();
+        if crate::hand_rules::allows_ignored_check() {
+            checkers |= king_attacks(color, our_king) & their_pieces & self.pieces(Piece::King);
+        }
 
         (checkers, pinned)
     }
