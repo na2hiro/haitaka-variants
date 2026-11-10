@@ -175,3 +175,5 @@ JSON復元・履歴再生を含むAPI全体のNPSであり、上記Native内部p
 [Native32ルール変更前](../plans/historical-shogi-performance-2/results/06-native-32-before.json) / [変更後](../plans/historical-shogi-performance-2/results/06-native-32-after.json) / [バイナリSHAと回帰確認](../plans/historical-shogi-performance-2/results/06-native-binary-identity.json)。
 
 [全テスト・参照比較の集計](../plans/historical-shogi-performance-2/results/06-correctness.json)。
+
+追加の全古将棋再測定・オールラウンダー比較・本将棋へのサイズ/NPS影響は[追加測定](historical-shogi-benchmarks.md)を参照。
