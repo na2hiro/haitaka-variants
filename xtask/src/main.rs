@@ -379,6 +379,23 @@ fn package(args: PackageArgs) -> Result<()> {
         .features
         .clone()
         .or_else(|| inferred_package_features(&args.ruleset));
+    // Profile suffixes remain required when extra build features (for example
+    // nnue-l1-256) are supplied explicitly.
+    if let Some(inferred) = inferred_package_features(&args.ruleset) {
+        let mut selected: Vec<String> = features
+            .as_deref()
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
+        for feature in inferred.split(',') {
+            if !selected.iter().any(|f| f == feature) {
+                selected.push(feature.to_string());
+            }
+        }
+        features = Some(selected.join(","));
+    }
     let base_ruleset = args.ruleset.split('+').next().unwrap_or("standard");
     if let Some(donor) = inferred_package_feature(base_ruleset)
         && !features.as_deref().is_some_and(|selected| {
@@ -396,6 +413,7 @@ fn package(args: PackageArgs) -> Result<()> {
     let ruleset = canonical_package_profile(&args.ruleset, features.as_deref())?;
     let rule_id = match args.rule_id {
         Some(rule_id) => rule_id,
+        None if hand_rule_id(&ruleset).is_some() => hand_rule_id(&ruleset).unwrap(),
         None if !ruleset.contains('+') => default_rule_id(&ruleset),
         None => {
             return Err(format!(
@@ -465,6 +483,14 @@ fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<St
             donors.join(",")
         ));
     }
+    if ["fushiyo", "share", "zoshoku", "babanuki", "suika"]
+        .iter()
+        .filter(|f| feature_names.contains(f))
+        .count()
+        > 1
+    {
+        return Err("multiple mutually exclusive hand rules selected".into());
+    }
     let mut profile = ruleset.split('+').next().unwrap_or("standard").to_string();
     if profile == "standard"
         && let Some(donor) = donors.first()
@@ -479,8 +505,15 @@ fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<St
         "ningenshogi",
         "tennouzan",
         "tesushogi",
+        "tensuu",
+        "suika",
         "igyoku",
         "hitomasuou",
+        "nakamaware",
+        "fushiyo",
+        "share",
+        "zoshoku",
+        "babanuki",
     ] {
         if feature_names.contains(&auxiliary) {
             profile.push('+');
@@ -821,6 +854,8 @@ fn learn_features_from_toml(raw_toml: &str) -> Result<Option<String>> {
                     | "shihonkangen"
                     | "ningenshogi"
                     | "tennouzan"
+                    | "tensuu"
+                    | "suika"
             ) {
                 return Err(format!("unsupported win condition {condition:?}"));
             }
@@ -837,6 +872,38 @@ fn learn_features_from_toml(raw_toml: &str) -> Result<Option<String>> {
         features.push(constraint.to_string());
     }
 
+    if let Some(captures) = rules.get("capture_rules") {
+        for capture in captures
+            .as_array()
+            .ok_or("rules.capture_rules must be an array")?
+        {
+            if capture.as_str() != Some("nakamaware") {
+                return Err("unsupported capture rule".into());
+            }
+            if features.iter().any(|f| f == "nakamaware") {
+                return Err("duplicate capture rule".into());
+            }
+            features.push("nakamaware".into());
+        }
+    }
+    if let Some(hand) = rules.get("hand_rule") {
+        let hand = hand.as_str().ok_or("rules.hand_rule must be a string")?;
+        if !matches!(
+            hand,
+            "standard" | "fushiyo" | "share" | "zoshoku" | "babanuki"
+        ) {
+            return Err("unsupported hand rule".into());
+        }
+        if hand == "zoshoku" {
+            return Err("zoshoku NNUE training is not supported".into());
+        }
+        if hand != "standard" {
+            if features.iter().any(|f| f == "suika") {
+                return Err("suika is incompatible with other hand rules".into());
+            }
+            features.push(hand.into());
+        }
+    }
     if features.is_empty() {
         Ok(None)
     } else {
@@ -1297,6 +1364,7 @@ mod tests {
             ("handicap", None),
             ("standard+oute", Some("oute")),
             ("standard+tesushogi", Some("tesushogi")),
+            ("standard+tesushogi+share", Some("tesushogi,share")),
             ("handicap+oute", Some("oute")),
             ("annan+oute", Some("annan,oute")),
             ("standard+sanmaime+igyoku", Some("sanmaime,igyoku")),
@@ -1699,5 +1767,56 @@ bootstrap_nnue = "../seed.nnue"
     fn has_adjacent_args(args: &[String], first: &str, second: &str) -> bool {
         args.windows(2)
             .any(|window| window[0] == first && window[1] == second)
+    }
+}
+
+fn hand_rule_id(profile: &str) -> Option<u32> {
+    match profile {
+        "standard+nakamaware" => Some(24),
+        "standard+fushiyo" => Some(54),
+        "standard+share" => Some(57),
+        "standard+zoshoku" => Some(93),
+        "standard+babanuki" => Some(143),
+        "standard+tensuu" => Some(146),
+        "standard+suika" => Some(155),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod hand_rule_tests {
+    use super::*;
+    #[test]
+    fn hand_rules_forward_and_validate_profiles() {
+        let raw = "[rules]\nruleset='annan'\nwin_conditions=['tensuu']\ncapture_rules=['nakamaware']\nhand_rule='share'\nrule_id=65001";
+        let features = learn_features_from_toml(raw).unwrap();
+        assert_eq!(features.as_deref(), Some("annan,tensuu,nakamaware,share"));
+        assert_eq!(
+            canonical_package_profile("annan", features.as_deref()).unwrap(),
+            "annan+tensuu+nakamaware+share"
+        );
+        assert!(canonical_package_profile("standard", Some("share,suika")).is_err());
+        assert!(
+            learn_features_from_toml("[rules]\nruleset='standard'\nhand_rule='zoshoku'")
+                .unwrap_err()
+                .contains("zoshoku")
+        );
+        for (rule, id) in [
+            ("nakamaware", 24),
+            ("fushiyo", 54),
+            ("share", 57),
+            ("zoshoku", 93),
+            ("babanuki", 143),
+            ("tensuu", 146),
+            ("suika", 155),
+        ] {
+            let profile = format!("standard+{rule}");
+            assert_eq!(hand_rule_id(&profile), Some(id));
+            let features = inferred_package_features(&profile).unwrap();
+            assert_eq!(
+                canonical_package_profile(&profile, Some(&features)).unwrap(),
+                profile
+            );
+        }
     }
 }

@@ -93,3 +93,10 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 `tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
 `haitaka_learn` covers NNUE data generation, training orchestration, export, and verification for the rule modes above except `tesushogi`. Tesu Shogi currently uses handcrafted evaluation and does not enable a learning workflow. Use the matching Cargo feature for variant workflows.
+
+## Capture and hand rules
+
+Seven additional composable rules are supported: `nakamaware`, `fushiyo`,
+`share`, `zoshoku`, `babanuki`, `tensuu`, and `suika`. See
+[Composable hand rules](hand-rules.md) for precise behavior, configuration,
+composition constraints, NNUE compatibility, and verification commands.

@@ -106,7 +106,11 @@ impl Board {
         if board.side_to_move() != Color::Black {
             Err(SFENParseError::InvalidSideToMove)
         } else {
-            board.piece_counts_make_valid();
+            // Nonstandard inventories have no meaningful "all remaining pieces"
+            // complement; use their explicitly supplied defensive hand.
+            if !cfg!(feature = "hand-category") {
+                board.piece_counts_make_valid();
+            }
             board.validate_after_parse(true)?;
             Ok(board)
         }
@@ -207,16 +211,16 @@ impl Board {
                 if c == '-' {
                     empty = true;
                 } else if let Some(num) = c.to_digit(10) {
-                    count = 10 * count + num;
+                    count = count
+                        .checked_mul(10)
+                        .and_then(|n| n.checked_add(num))
+                        .ok_or(())?;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    if count > u8::MAX as u32 {
+                    if piece as usize > Piece::King as usize || board.num_in_hand(color, piece) != 0
+                    {
                         return Err(()); // way... too large
                     }
-                    board.unchecked_set_hand(
-                        color,
-                        piece,
-                        if count > 0 { count as u8 } else { 1u8 },
-                    );
+                    board.unchecked_set_hand(color, piece, if count > 0 { count } else { 1 });
                     count = 0;
                     found = true;
                 } else {
@@ -328,7 +332,8 @@ impl Display for Board {
             // http://hgm.nubati.net/usi.html
             // "The pieces are always listed in the order rook, bishop, gold, silver, knight, lance, pawn;
             // and with all black pieces before all white pieces."
-            let pieces: [Piece; 7] = [
+            let pieces: [Piece; 8] = [
+                Piece::King,
                 Piece::Rook,
                 Piece::Bishop,
                 Piece::Gold,

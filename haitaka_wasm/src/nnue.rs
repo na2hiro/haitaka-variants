@@ -69,7 +69,11 @@ const WEIGHT_SCALE_BITS: i32 = 6;
 const SQUARES: usize = 81;
 const POCKETS: usize = 18;
 const MAX_ACTIVE_FEATURES: usize = 512;
-const MAX_DELTA_FEATURES: usize = 4;
+const MAX_DELTA_FEATURES: usize = if cfg!(feature = "hand-category") {
+    32
+} else {
+    4
+};
 const MAX_PIECES: usize = 40;
 const PIECE_TYPE_COUNT: usize = 10;
 const NON_DROP_PIECE_INDICES: usize = (2 * PIECE_TYPE_COUNT - 1) * SQUARES;
@@ -580,6 +584,9 @@ fn read_feature_family(reader: &mut ByteReader<'_>) -> Result<FeatureFamily, Nnu
 
 impl NnueModel {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
+        if cfg!(feature = "zoshoku") {
+            return Err(NnueError::new("zoshoku NNUE inference is not supported"));
+        }
         let mut reader = ByteReader::new(bytes);
         let family = read_feature_family(&mut reader)?;
         if !family_supported_by_build(family) {
@@ -794,7 +801,13 @@ impl NnueModel {
             } else {
                 // The base HalfKAv2 block updates exactly as before; donor blocks
                 // (disjoint feature-index range) update via a separate local delta.
-                let delta = build_feature_delta(parent_board, perspective, parent_accumulator, mv);
+                let delta = build_feature_delta(
+                    parent_board,
+                    child_board,
+                    perspective,
+                    parent_accumulator,
+                    mv,
+                );
                 let perspective_accumulator = child_state.perspective_mut(perspective);
                 self.transformer
                     .apply_delta(perspective_accumulator, &delta);
@@ -1517,6 +1530,7 @@ fn bucket_for_board(board: &Board) -> usize {
 
 fn build_feature_delta(
     parent_board: &Board,
+    child_board: &Board,
     perspective: Color,
     accumulator: &PerspectiveAccumulator,
     mv: Move,
@@ -1532,15 +1546,6 @@ fn build_feature_delta(
 
     match mv {
         Move::Drop { piece, to } => {
-            let old_hand_count = usize::from(parent_board.num_in_hand(mover, piece));
-            debug_assert!(old_hand_count > 0);
-            delta.push_removed(hand_feature_index(
-                perspective,
-                king_offset,
-                mover,
-                piece,
-                old_hand_count - 1,
-            ));
             delta.push_added(board_feature_index(
                 perspective,
                 king_offset,
@@ -1575,21 +1580,10 @@ fn build_feature_delta(
                 delta.push_removed(board_feature_index(
                     perspective,
                     king_offset,
-                    !mover,
+                    parent_board.color_on(to).unwrap(),
                     captured_piece,
                     to,
                 ));
-                if captured_piece != Piece::King {
-                    let hand_piece = captured_piece.unpromote();
-                    let old_hand_count = usize::from(parent_board.num_in_hand(mover, hand_piece));
-                    delta.push_added(hand_feature_index(
-                        perspective,
-                        king_offset,
-                        mover,
-                        hand_piece,
-                        old_hand_count,
-                    ));
-                }
             }
 
             delta.push_added(board_feature_index(
@@ -1602,6 +1596,36 @@ fn build_feature_delta(
         }
     }
 
+    // Inventory may change for either color and for several species at once.
+    // Diff the actual parent/child counts (sharing, cancellation, and fusion).
+    for color in Color::ALL {
+        for piece in HAND_PIECES {
+            let before = parent_board.num_in_hand(color, piece) as usize;
+            let after = child_board.num_in_hand(color, piece) as usize;
+            assert!(
+                before <= POCKETS && after <= POCKETS,
+                "NNUE hand inventory exceeds feature capacity"
+            );
+            for ordinal in after..before {
+                delta.push_removed(hand_feature_index(
+                    perspective,
+                    king_offset,
+                    color,
+                    piece,
+                    ordinal,
+                ));
+            }
+            for ordinal in before..after {
+                delta.push_added(hand_feature_index(
+                    perspective,
+                    king_offset,
+                    color,
+                    piece,
+                    ordinal,
+                ));
+            }
+        }
+    }
     delta
 }
 
@@ -1639,7 +1663,11 @@ fn active_features(
 
     for &color in &[Color::Black, Color::White] {
         for &piece in &HAND_PIECES {
-            let count = usize::from(board.num_in_hand(color, piece));
+            let count = board.num_in_hand(color, piece) as usize;
+            assert!(
+                count <= POCKETS,
+                "NNUE hand inventory exceeds feature capacity"
+            );
             for copy_index in 0..count {
                 features.push(hand_feature_index(
                     perspective,
@@ -3292,6 +3320,82 @@ mod tests {
                 psqt_weights,
             },
             buckets: Vec::new(),
+        }
+    }
+
+    #[test]
+    #[cfg(not(feature = "zoshoku"))]
+    fn hand_rules_incremental_matches_full_inventory_updates() {
+        let model = if let Some(path) = std::env::var_os("HAITAKA_HAND_SMOKE_MODEL") {
+            NnueModel::from_bytes(&std::fs::read(path).unwrap()).unwrap()
+        } else {
+            synthetic_donor_model(FeatureFamily::HalfKAv2)
+        };
+        let hand = if cfg!(feature = "share") {
+            "Pp"
+        } else if cfg!(any(feature = "babanuki", feature = "suika")) {
+            "P"
+        } else {
+            "-"
+        };
+        let mut board = Board::from_sfen(&format!("8k/9/9/4p4/4R4/9/9/9/K8 b {hand} 1")).unwrap();
+        let mut state = model.build_position_state_full(&board);
+        let capture = "5e5d".parse().unwrap();
+        let mut child = board.clone();
+        child.play(capture);
+        let actual = model.apply_move(&board, &child, &state, capture);
+        assert_eq!(actual, model.build_position_state_full(&child));
+        board = child;
+        state = actual;
+        if cfg!(feature = "share") {
+            let drop = "P*4f".parse().unwrap();
+            let mut child = board.clone();
+            child.play(drop);
+            assert_eq!(
+                model.apply_move(&board, &child, &state, drop),
+                model.build_position_state_full(&child)
+            );
+        }
+        if cfg!(feature = "nakamaware") {
+            let board = Board::from_sfen("8k/9/9/4P4/4R4/9/9/9/K8 b - 1").unwrap();
+            let mut child = board.clone();
+            child.play(capture);
+            assert_eq!(
+                model.apply_move(
+                    &board,
+                    &child,
+                    &model.build_position_state_full(&board),
+                    capture
+                ),
+                model.build_position_state_full(&child)
+            );
+        }
+        if cfg!(feature = "suika") {
+            let board = Board::from_sfen("8k/9/9/4p4/4R4/9/9/9/K8 b GSNLP 1").unwrap();
+            let mut child = board.clone();
+            child.play(capture);
+            assert_eq!(child.num_in_hand(Color::Black, Piece::Bishop), 1);
+            assert_eq!(
+                model.apply_move(
+                    &board,
+                    &child,
+                    &model.build_position_state_full(&board),
+                    capture
+                ),
+                model.build_position_state_full(&child)
+            );
+        }
+    }
+
+    #[test]
+    fn hand_rules_nnue_rejects_growth_before_reading_model() {
+        if cfg!(feature = "zoshoku") {
+            assert!(
+                NnueModel::from_bytes(&[])
+                    .unwrap_err()
+                    .to_string()
+                    .contains("zoshoku")
+            );
         }
     }
 

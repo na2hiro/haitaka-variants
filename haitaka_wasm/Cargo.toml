@@ -56,3 +56,13 @@ tennouzan = ["win-condition-category", "haitaka/tennouzan"]
 igyoku = ["king-constraint-category", "haitaka/igyoku"]
 hitomasuou = ["king-constraint-category", "haitaka/hitomasuou"]
 tesushogi = ["win-condition-category", "haitaka/tesushogi"]
+
+# Orthogonal capture, hand, and outcome rules.
+hand-category = ["haitaka/hand-category"]
+nakamaware = ["hand-category", "haitaka/nakamaware"]
+fushiyo = ["hand-category", "haitaka/fushiyo"]
+share = ["hand-category", "haitaka/share"]
+zoshoku = ["hand-category", "haitaka/zoshoku"]
+babanuki = ["hand-category", "haitaka/babanuki"]
+tensuu = ["hand-category", "haitaka/tensuu", "win-condition-category"]
+suika = ["hand-category", "haitaka/suika", "win-condition-category"]
