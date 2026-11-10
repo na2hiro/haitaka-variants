@@ -123,3 +123,7 @@ kyoto-minishogi = ["classical-rules"]
 # Ordinary movement and constraint variants.
 narazu = ["classical-rules"]
 nifu-ari = ["classical-rules"]
+sho-kyo-left = ["classical-rules"]
+sho-kyo-right = ["classical-rules"]
+nakodo = ["classical-rules"]
+queen-king = ["classical-rules"]

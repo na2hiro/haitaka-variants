@@ -97,3 +97,7 @@ kyoto-minishogi = ["extended-json", "haitaka/kyoto-minishogi", "haitaka_wasm/kyo
 # Ordinary movement and constraint variants.
 narazu = ["extended-json", "haitaka/narazu", "haitaka_wasm/narazu"]
 nifu-ari = ["extended-json", "haitaka/nifu-ari", "haitaka_wasm/nifu-ari"]
+sho-kyo-left = ["extended-json", "haitaka/sho-kyo-left", "haitaka_wasm/sho-kyo-left"]
+sho-kyo-right = ["extended-json", "haitaka/sho-kyo-right", "haitaka_wasm/sho-kyo-right"]
+nakodo = ["extended-json", "haitaka/nakodo", "haitaka_wasm/nakodo"]
+queen-king = ["extended-json", "haitaka/queen-king", "haitaka_wasm/queen-king"]

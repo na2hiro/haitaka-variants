@@ -138,9 +138,23 @@ macro_rules! classical_rule {
     };
 }
 include!("classical/defs.rs");
-#[cfg(any(feature = "narazu", feature = "nifu-ari"))]
+#[cfg(any(
+    feature = "narazu",
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king"
+))]
 mod ordinary;
-#[cfg(any(feature = "narazu", feature = "nifu-ari"))]
+#[cfg(any(
+    feature = "narazu",
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king"
+))]
 use ordinary::*;
 #[cfg(any(
     feature = "kyoto",
@@ -948,7 +962,11 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "microshogi",
     feature = "kyoto-minishogi",
     feature = "narazu",
-    feature = "nifu-ari"
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king"
 ))]
 pub mod compiled {
     use super::*;
@@ -973,6 +991,15 @@ pub mod compiled {
     pub type Selected = Narazu;
     #[cfg(feature = "nifu-ari")]
     pub type Selected = NifuAri;
+
+    #[cfg(feature = "sho-kyo-left")]
+    pub type Selected = ShoKyoLeft;
+    #[cfg(feature = "sho-kyo-right")]
+    pub type Selected = ShoKyoRight;
+    #[cfg(feature = "nakodo")]
+    pub type Selected = Nakodo;
+    #[cfg(feature = "queen-king")]
+    pub type Selected = QueenKing;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;

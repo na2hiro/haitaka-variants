@@ -23,7 +23,9 @@ macro_rules! ordinary_rule {
                 ))
             }
             fn file_limit(id: PieceId) -> usize {
-                usize::from(Self::ID != 138 && Self::PIECES[id.0 as usize].id == "aa")
+                usize::from(
+                    Self::ID != 138 && matches!(Self::PIECES[id.0 as usize].id, "aa" | "cq"),
+                )
             }
             fn initial() -> Vec<ClassicalPiece> {
                 $initial

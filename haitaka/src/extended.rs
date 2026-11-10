@@ -919,7 +919,11 @@ pub mod classical;
     feature = "microshogi",
     feature = "kyoto-minishogi",
     feature = "narazu",
-    feature = "nifu-ari"
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king"
 ))]
 pub use classical::compiled;
 
