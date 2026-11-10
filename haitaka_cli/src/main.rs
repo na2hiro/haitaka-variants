@@ -3902,7 +3902,7 @@ fn package(args: PackageArgs) -> Result<()> {
     {
         bail!("{} does not support 9x9 NNUE models", default_ruleset());
     }
-    if cfg!(feature = "extended-json") && args.rule_id != default_rule_id() {
+    if cfg!(feature = "extended-json") && args.rule_id.unwrap_or_else(default_rule_id) != default_rule_id() {
         bail!(
             "{} package requires rule ID {}",
             default_ruleset(),
