@@ -917,7 +917,9 @@ pub mod classical;
     feature = "kyoto",
     feature = "kinkei-mai",
     feature = "microshogi",
-    feature = "kyoto-minishogi"
+    feature = "kyoto-minishogi",
+    feature = "narazu",
+    feature = "nifu-ari"
 ))]
 pub use classical::compiled;
 

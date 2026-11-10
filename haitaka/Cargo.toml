@@ -119,3 +119,7 @@ kyoto = ["classical-rules"]
 kinkei-mai = ["classical-rules"]
 microshogi = ["classical-rules"]
 kyoto-minishogi = ["classical-rules"]
+
+# Ordinary movement and constraint variants.
+narazu = ["classical-rules"]
+nifu-ari = ["classical-rules"]
