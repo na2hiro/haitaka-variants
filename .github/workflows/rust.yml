@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main", "strength-first" ]
+    branches: [ "main", "strength-first", "feat/composable-outcome-rules" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -106,3 +106,29 @@ jobs:
         node-version: "22"
     - name: Run browser worker regression tests
       run: node --test scripts/tests/*-browser-worker.test.mjs
+
+  hand-rules:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rule: [nakamaware, fushiyo, share, zoshoku, babanuki, tensuu, suika]
+    steps:
+    - uses: actions/checkout@v4
+    - run: cargo test -p haitaka --test hand_rules --features ${{ matrix.rule }}
+    - run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} hand_rules
+    - run: cargo test -p haitaka_cli --features ${{ matrix.rule }} hand_rules
+    - name: Compose capture-King and check-win conditions
+      if: matrix.rule == 'nakamaware' || matrix.rule == 'suika'
+      run: cargo test -p haitaka --test hand_rules --features "${{ matrix.rule }},oute" hand_rules_geometric_checks_survive_ignored_evasions
+    - run: cargo test -p haitaka_learn --bin haitaka_learn --features ${{ matrix.rule }} hand_rules
+    - name: Check all donor combinations
+      run: |
+        for donor in annan anhoku antouzai anki tenjiku taimen haimen neko nekoneko yokoneko yokonekoneko tenkyo; do
+          cargo check -p haitaka --features "$donor,${{ matrix.rule }}"
+        done
+    - name: Reject conflicting hand rules
+      run: |
+        if cargo check -p haitaka --features share,suika; then exit 1; fi
+        if cargo check -p haitaka --features fushiyo,babanuki; then exit 1; fi
+        if cargo check -p haitaka --features hand-category; then exit 1; fi

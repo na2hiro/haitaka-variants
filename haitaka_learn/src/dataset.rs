@@ -2048,10 +2048,8 @@ fn play_label_free_trajectory(
 fn determine_game_outcome(board: &Board, played_plies: u16, max_plies: u16) -> GameOutcome {
     if played_plies >= max_plies {
         GameOutcome::Draw
-    } else if !board.has(Color::Black, Piece::King) {
-        GameOutcome::Winner(Color::White)
-    } else if !board.has(Color::White, Piece::King) {
-        GameOutcome::Winner(Color::Black)
+    } else if let Some(winner) = board.winner() {
+        GameOutcome::Winner(winner)
     } else {
         match board.status() {
             haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
@@ -5275,10 +5273,8 @@ fn generate_game_entries(
 
     let outcome = if played_plies >= loaded.config.data.max_plies {
         GameOutcome::Draw
-    } else if !board.has(Color::Black, Piece::King) {
-        GameOutcome::Winner(Color::White)
-    } else if !board.has(Color::White, Piece::King) {
-        GameOutcome::Winner(Color::Black)
+    } else if let Some(winner) = board.winner() {
+        GameOutcome::Winner(winner)
     } else {
         match board.status() {
             haitaka::GameStatus::Won => GameOutcome::Winner(!board.side_to_move()),
@@ -6341,6 +6337,23 @@ fn write_training_entry(
 }
 
 pub(crate) fn pack_board_for_training(board: &Board) -> Result<[u8; PACKED_SFEN_BYTES]> {
+    ensure!(
+        !cfg!(feature = "zoshoku"),
+        "zoshoku NNUE training is not supported"
+    );
+    ensure!(
+        board.has(Color::Black, Piece::King) && board.has(Color::White, Piece::King),
+        "terminal king-capture positions are not NNUE inputs"
+    );
+    ensure!(
+        board.hands().iter().flatten().all(|&n| n <= 18),
+        "inventory exceeds R5 NNUE capacity"
+    );
+    ensure!(
+        board.num_in_hand(Color::Black, Piece::King) == 0
+            && board.num_in_hand(Color::White, Piece::King) == 0,
+        "terminal king-hand positions are not NNUE inputs"
+    );
     let mut writer = BitWriter::default();
     let trainer_side_to_move = invert_color(board.side_to_move());
     writer.write_one_bit(matches!(trainer_side_to_move, TrainerColor::Black));
@@ -6639,7 +6652,8 @@ fn trainer_hand_counts(board: &Board) -> [[u8; 10]; 2] {
             Piece::Gold,
         ] {
             counts[trainer_color as usize][trainer_piece_type(piece)] =
-                board.num_in_hand(color, piece);
+                u8::try_from(board.num_in_hand(color, piece))
+                    .expect("validated training hand count");
         }
     }
     counts
@@ -6740,6 +6754,86 @@ mod tests {
         InitialCheckpoint, LoadedGenerationConfig as LoadedConfig, TrainingConfig,
     };
     use tempfile::tempdir;
+
+    #[test]
+    #[cfg(not(feature = "zoshoku"))]
+    fn hand_rules_training_data_roundtrip() {
+        let hand = if cfg!(feature = "share") {
+            "Pp"
+        } else if cfg!(any(feature = "babanuki", feature = "suika")) {
+            "P"
+        } else {
+            "-"
+        };
+        let mut board = Board::from_sfen(&format!("8k/9/9/4p4/4R4/9/9/9/K8 b {hand} 1")).unwrap();
+        let mut boards = vec![board.clone()];
+        board.play("5e5d".parse().unwrap());
+        boards.push(board);
+        if cfg!(feature = "share") {
+            // Maximum physically reachable shared inventory: 78 active base rows.
+            boards.push(
+                Board::from_sfen("8k/9/9/9/9/9/9/9/K8 b 2R2B4G4S4N4L18P2r2b4g4s4n4l18p 1").unwrap(),
+            );
+        }
+        let mut entries = vec![];
+        for (index, board) in boards.iter().enumerate() {
+            let packed = pack_board_for_training(board).unwrap();
+            let restored = unpack_board_from_training(&packed).unwrap();
+            assert_eq!(pack_board_for_training(&restored).unwrap(), packed);
+            assert_eq!(restored.hands(), board.hands());
+            assert_eq!(restored.to_string(), board.to_string());
+            write_training_entry(
+                &mut entries,
+                &packed,
+                (index as i16 + 1) * 100,
+                0,
+                index as u16,
+                0,
+            )
+            .unwrap();
+        }
+        if let Some(dir) = std::env::var_os("HAITAKA_HAND_SMOKE_OUTPUT") {
+            let dir = std::path::PathBuf::from(dir);
+            fs::create_dir_all(&dir).unwrap();
+            let profile = crate::config::active_rules_for_tests()
+                .profile()
+                .canonical_name();
+            fs::write(dir.join(format!("{profile}.bin")), entries).unwrap();
+        }
+    }
+
+    #[test]
+    #[cfg(not(feature = "zoshoku"))]
+    fn hand_rules_small_selfplay_generation() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("learn.toml");
+        fs::write(
+            &path,
+            fixed_node_counter_test_config(active_test_ruleset(), "run")
+                .replace("label_search_nodes = 5000", "label_search_nodes = 2048")
+                .replace("max_plies = 6", "max_plies = 2")
+                .replace(
+                    "[paths]",
+                    "opening_sfen = \"8k/9/9/4p4/4R4/9/9/9/K8 b - 1\"\n[paths]",
+                ),
+        )
+        .unwrap();
+        let loaded = LoadedConfig::from_legacy_test_path(&path).unwrap();
+        let output = generate_data_with_options(
+            &loaded,
+            GenerateOptions {
+                jobs: Some(1),
+                resume: Some(false),
+                shard_index: None,
+                shard_index_end: None,
+                shard_count: None,
+                ignore_identity_mismatch: false,
+            },
+        )
+        .unwrap();
+        let _ = output;
+        assert!(loaded.artifact_paths().train_bin.is_file());
+    }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct FeatureSignature {
@@ -9182,6 +9276,8 @@ seed = 9
             (cfg!(feature = "shihonkangen"), "shihonkangen"),
             (cfg!(feature = "ningenshogi"), "ningenshogi"),
             (cfg!(feature = "tennouzan"), "tennouzan"),
+            (cfg!(feature = "tensuu"), "tensuu"),
+            (cfg!(feature = "suika"), "suika"),
         ]
         .into_iter()
         .filter_map(|(enabled, name)| enabled.then_some(name))
@@ -9200,6 +9296,18 @@ seed = 9
             config.push_str("movement_constraint = \"igyoku\"\n");
         } else if cfg!(feature = "hitomasuou") {
             config.push_str("movement_constraint = \"hitomasuou\"\n");
+        }
+        if cfg!(feature = "nakamaware") {
+            config.push_str("capture_rules = [\"nakamaware\"]\n");
+        }
+        for (enabled, hand) in [
+            (cfg!(feature = "fushiyo"), "fushiyo"),
+            (cfg!(feature = "share"), "share"),
+            (cfg!(feature = "babanuki"), "babanuki"),
+        ] {
+            if enabled {
+                config.push_str(&format!("hand_rule = \"{hand}\"\n"));
+            }
         }
         config
     }

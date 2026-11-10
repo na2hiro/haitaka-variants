@@ -1243,6 +1243,8 @@ mod tests {
             hash_hex: "hash".to_string(),
             config: LearnConfig {
                 rules: RulesConfig {
+                    capture_rules: Vec::new(),
+                    hand_rule: crate::config::HandRule::default(),
                     ruleset,
                     win_conditions: Vec::new(),
                     movement_constraint: None,

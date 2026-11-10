@@ -521,9 +521,15 @@ fn capture_value(board: &Board, side: Color, mv: Move) -> i32 {
     match mv {
         Move::BoardMove { to, .. } => board
             .color_on(to)
-            .filter(|color| *color != side)
+            .filter(|color| *color != side || cfg!(feature = "nakamaware"))
             .and_then(|_| board.piece_on(to))
-            .map(piece_value)
+            .map(|p| {
+                if p == Piece::King && haitaka::hand_rules::allows_ignored_check() {
+                    30_000
+                } else {
+                    piece_value(p)
+                }
+            })
             .unwrap_or(0),
         Move::Drop { .. } => 0,
     }

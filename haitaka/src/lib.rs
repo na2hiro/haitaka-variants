@@ -153,7 +153,9 @@ compile_error!("donor-category is internal; enable one concrete donor feature in
         feature = "inochinotokin",
         feature = "shihonkangen",
         feature = "ningenshogi",
-        feature = "tennouzan"
+        feature = "tennouzan",
+        feature = "tensuu",
+        feature = "suika"
     ))
 ))]
 compile_error!("win-condition-category is internal; enable a concrete win condition instead");
@@ -207,3 +209,49 @@ pub mod variant_rules;
 pub use attacks::*;
 pub use board::*;
 pub use slider_moves::*;
+
+pub mod hand_rules;
+
+#[cfg(all(feature = "fushiyo", feature = "share"))]
+compile_error!("fushiyo and share are mutually exclusive hand rules");
+
+#[cfg(all(feature = "fushiyo", feature = "zoshoku"))]
+compile_error!("fushiyo and zoshoku are mutually exclusive hand rules");
+
+#[cfg(all(feature = "fushiyo", feature = "babanuki"))]
+compile_error!("fushiyo and babanuki are mutually exclusive hand rules");
+
+#[cfg(all(feature = "fushiyo", feature = "suika"))]
+compile_error!("fushiyo and suika are mutually exclusive hand rules");
+
+#[cfg(all(feature = "share", feature = "zoshoku"))]
+compile_error!("share and zoshoku are mutually exclusive hand rules");
+
+#[cfg(all(feature = "share", feature = "babanuki"))]
+compile_error!("share and babanuki are mutually exclusive hand rules");
+
+#[cfg(all(feature = "share", feature = "suika"))]
+compile_error!("share and suika are mutually exclusive hand rules");
+
+#[cfg(all(feature = "zoshoku", feature = "babanuki"))]
+compile_error!("zoshoku and babanuki are mutually exclusive hand rules");
+
+#[cfg(all(feature = "zoshoku", feature = "suika"))]
+compile_error!("zoshoku and suika are mutually exclusive hand rules");
+
+#[cfg(all(feature = "babanuki", feature = "suika"))]
+compile_error!("babanuki and suika are mutually exclusive hand rules");
+
+#[cfg(all(
+    feature = "hand-category",
+    not(any(
+        feature = "nakamaware",
+        feature = "fushiyo",
+        feature = "share",
+        feature = "zoshoku",
+        feature = "babanuki",
+        feature = "tensuu",
+        feature = "suika"
+    ))
+))]
+compile_error!("hand-category is internal; select a concrete rule");
