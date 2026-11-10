@@ -72,7 +72,7 @@ pub const SFEN_2PIECE_HANDICAP: &str =
 /// The Hash trait is supported by a custom hash function that uses the Zobrist board hash.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Board {
-    inner: ZobristBoard,
+    pub(crate) inner: ZobristBoard,
     pinned: BitBoard,
     checkers: BitBoard,
     pawnless_files: [BitBoard; Color::NUM],
@@ -139,7 +139,7 @@ impl Board {
     }
 
     /// Return a reference to the hand for color.
-    pub fn hand(&self, color: Color) -> &[u8; Piece::NUM] {
+    pub fn hand(&self, color: Color) -> &[u32; Piece::NUM] {
         self.inner.hand(color)
     }
 
@@ -157,7 +157,7 @@ impl Board {
 
     /// Return the number of pieces of the given piece type that color has in hand.
     #[inline(always)]
-    pub fn num_in_hand(&self, color: Color, piece: Piece) -> u8 {
+    pub fn num_in_hand(&self, color: Color, piece: Piece) -> u32 {
         self.inner.num_in_hand(color, piece)
     }
 
@@ -166,7 +166,7 @@ impl Board {
     /// This function performs no checks in the validity of count!
     ///
     #[inline(always)]
-    pub fn unchecked_set_hand(&mut self, color: Color, piece: Piece, count: u8) {
+    pub fn unchecked_set_hand(&mut self, color: Color, piece: Piece, count: u32) {
         self.inner.unchecked_set_hand(color, piece, count);
     }
 
@@ -257,7 +257,7 @@ impl Board {
 
     /// Get a reference to the hands array.
     #[inline(always)]
-    pub fn hands(&self) -> &[[u8; Piece::NUM]; Color::NUM] {
+    pub fn hands(&self) -> &[[u32; Piece::NUM]; Color::NUM] {
         self.inner.hands()
     }
 
@@ -923,7 +923,10 @@ impl Board {
 
         let previous = !self.side_to_move();
         #[cfg(feature = "ningenshogi")]
-        if !self.checkers.is_empty() && !self.unmoved_pieces.is_empty() {
+        if !crate::hand_rules::allows_ignored_check()
+            && !self.checkers.is_empty()
+            && !self.unmoved_pieces.is_empty()
+        {
             return Some(self.side_to_move());
         }
 
@@ -935,6 +938,11 @@ impl Board {
     /// Return the winner of an enabled position-based immediate outcome rule.
     #[inline(always)]
     pub fn immediate_winner(&self) -> Option<Color> {
+        if let Some(winner) = self.captured_king_winner() {
+            if winner == self.side_to_move() {
+                return Some(winner);
+            }
+        }
         #[cfg(feature = "win-condition-category")]
         {
             #[cfg(any(
@@ -953,8 +961,8 @@ impl Board {
                 .hand(previous)
                 .iter()
                 .copied()
-                .map(u16::from)
-                .sum::<u16>()
+                .map(u64::from)
+                .sum::<u64>()
                 >= 5
             {
                 return Some(self.side_to_move());
@@ -970,8 +978,8 @@ impl Board {
                 .hand(previous)
                 .iter()
                 .copied()
-                .map(u16::from)
-                .sum::<u16>()
+                .map(u64::from)
+                .sum::<u64>()
                 >= 3
             {
                 return Some(previous);
@@ -988,7 +996,8 @@ impl Board {
             }
         }
 
-        None
+        self.hand_rule_winner()
+            .or_else(|| self.captured_king_winner())
     }
 
     /// Return the original pieces that have neither moved nor been captured.
@@ -1063,6 +1072,13 @@ impl Board {
     /// assert_eq!(board3.dominates(board2), Dominance::Incomparable);
     ///
     pub fn dominates(&self, other: &Self) -> Dominance {
+        if cfg!(feature = "hand-category") {
+            return if self.same_position(other) {
+                Dominance::Equal
+            } else {
+                Dominance::Incomparable
+            };
+        }
         #[cfg(feature = "ningenshogi")]
         if self.unmoved_pieces != other.unmoved_pieces {
             return Dominance::Incomparable;
@@ -1201,6 +1217,9 @@ impl Board {
         if let Move::Drop { piece, to } = mv {
             // take piece out of hand
             self.inner.take_from_hand(color, piece);
+            if cfg!(feature = "share") {
+                self.inner.take_from_hand(!color, piece);
+            }
 
             // drop the piece
             self.inner.xor_square(piece, color, to);
@@ -1241,13 +1260,14 @@ impl Board {
             // optional capture
             if let Some(capture) = self.piece_on(to) {
                 // remove capture
-                self.inner.xor_square(capture, !color, to);
+                let captured_color = self.color_on(to).unwrap();
+                self.inner.xor_square(capture, captured_color, to);
                 // take in hand
-                self.inner.take_in_hand(color, capture.unpromote());
+                self.receive_capture(color, capture.unpromote());
 
                 // update pawn_on_file
                 if capture == Piece::Pawn {
-                    self.refresh_pawnless_file(!color, to.file());
+                    self.refresh_pawnless_file(captured_color, to.file());
                 }
             }
 
@@ -1278,7 +1298,7 @@ impl Board {
         }
 
         // update move_number
-        self.move_number += 1;
+        self.move_number = self.move_number.saturating_add(1);
 
         // update stm
         self.inner.toggle_side_to_move();
@@ -1299,6 +1319,14 @@ impl Board {
         feature = "anki"
     )))]
     fn update_checkers_and_pins(&mut self, color: Color, piece: Piece, to: Square) {
+        if crate::hand_rules::allows_ignored_check() {
+            // A previous check need not have been evaded. Unmoved non-sliders
+            // and touching Kings must also be considered after every move.
+            let (checkers, pinned) = self.calculate_checkers_and_pins(!color);
+            self.checkers = checkers;
+            self.pinned = pinned;
+            return;
+        }
         // reset pins and checkers
         self.pinned = BitBoard::EMPTY;
         self.checkers = BitBoard::EMPTY;
@@ -1396,7 +1424,8 @@ impl Board {
     /// we either already have a very bad position, or we are in a Zugzwang position
     /// (which is extremely rare in Shogi).
     /// If the King is in check, this function returns None. In that case a null
-    /// move would make no sense (it would immediately lose).
+    /// move would make no sense (it would immediately lose). Capture-King
+    /// profiles permit this hypothetical pass while in geometric check.
     ///
     /// # Panics
     ///
@@ -1414,6 +1443,18 @@ impl Board {
     /// assert_eq!(sfen_out, sfen2);
     /// ```
     pub fn null_move(&self) -> Option<Board> {
+        if crate::hand_rules::allows_ignored_check() {
+            if self.immediate_winner().is_some() {
+                return None;
+            }
+            let mut board = self.clone();
+            board.move_number = board.move_number.saturating_add(1);
+            board.inner.toggle_side_to_move();
+            let (checkers, pinned) = board.calculate_checkers_and_pins(board.side_to_move());
+            board.checkers = checkers;
+            board.pinned = pinned;
+            return Some(board);
+        }
         if self.checkers.is_empty() {
             let mut board = self.clone();
             let color = board.side_to_move();
