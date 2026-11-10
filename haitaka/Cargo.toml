@@ -103,3 +103,9 @@ maka-dai-dai = ["classical-rules"]
 taishogi = ["classical-rules"]
 
 taikyoku = ["classical-rules"]
+
+# Reversible small-board rules (rule-local JSON pieces and physical reserves).
+kyoto = ["classical-rules"]
+kinkei-mai = ["classical-rules"]
+microshogi = ["classical-rules"]
+kyoto-minishogi = ["classical-rules"]

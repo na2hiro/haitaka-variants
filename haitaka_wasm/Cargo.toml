@@ -92,3 +92,9 @@ maka-dai-dai = ["extended-json", "haitaka/maka-dai-dai"]
 taishogi = ["extended-json", "haitaka/taishogi"]
 
 taikyoku = ["extended-json", "haitaka/taikyoku"]
+
+# Reversible small-board rules (rule-local JSON pieces and physical reserves).
+kyoto = ["extended-json", "haitaka/kyoto"]
+kinkei-mai = ["extended-json", "haitaka/kinkei-mai"]
+microshogi = ["extended-json", "haitaka/microshogi"]
+kyoto-minishogi = ["extended-json", "haitaka/kyoto-minishogi"]

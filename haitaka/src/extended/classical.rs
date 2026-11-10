@@ -56,6 +56,26 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const ONLY_KINGS: bool;
     const LION: bool;
     const UCHIFU: Option<PieceId>;
+    /// Canonical physical reserve consumed when either face is dropped.
+    fn drop_hand(id: PieceId) -> PieceId {
+        id
+    }
+    fn droppable(id: PieceId) -> bool {
+        Self::origin(id).is_none() && Self::capture_return(id) == Some(id)
+    }
+    /// A promotion flag describes the resulting face change, including a reverse flip.
+    fn promotion_options(
+        id: PieceId,
+        from_rank: usize,
+        to_rank: usize,
+        _captured: bool,
+    ) -> (bool, bool) {
+        let def = &Self::PIECES[id.0 as usize];
+        let can = def.promotion.is_some()
+            && (from_rank < Self::PROMOTION_RANKS || to_rank < Self::PROMOTION_RANKS);
+        (can, can && (Self::FORCED || to_rank < def.dead_ranks))
+    }
+
     fn continuation(id: PieceId, delta: (isize, isize)) -> Option<&'static [(isize, isize)]>;
 }
 macro_rules! classical_rule {
@@ -118,6 +138,20 @@ macro_rules! classical_rule {
     };
 }
 include!("classical/defs.rs");
+#[cfg(any(
+    feature = "kyoto",
+    feature = "kinkei-mai",
+    feature = "microshogi",
+    feature = "kyoto-minishogi"
+))]
+mod small_flip;
+#[cfg(any(
+    feature = "kyoto",
+    feature = "kinkei-mai",
+    feature = "microshogi",
+    feature = "kyoto-minishogi"
+))]
+use small_flip::*;
 /// Only unpromoted, rule-local reserve IDs can appear in a drop command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DropId<R: ClassicalRule> {
@@ -135,11 +169,7 @@ impl<'de, R: ClassicalRule> Deserialize<'de> for DropId<R> {
         let id = R::PIECES
             .iter()
             .enumerate()
-            .find(|(i, p)| {
-                p.id == s
-                    && R::origin(PieceId(*i as u16)).is_none()
-                    && R::capture_return(PieceId(*i as u16)) == Some(PieceId(*i as u16))
-            })
+            .find(|(i, p)| p.id == s && R::droppable(PieceId(*i as u16)))
             .map(|(i, _)| PieceId(i as u16))
             .ok_or_else(|| serde::de::Error::custom("unknown or non-droppable piece ID"))?;
         Ok(Self {
@@ -312,8 +342,8 @@ impl<R: ClassicalRule> Position<R> {
             ClassicalMove::Drop { piece, to, .. } => {
                 next.hands.set(
                     self.side,
-                    piece.id,
-                    next.hands.count(self.side, piece.id) - 1,
+                    R::drop_hand(piece.id),
+                    next.hands.count(self.side, R::drop_hand(piece.id)) - 1,
                 );
                 next.set_cell(
                     Self::index(to).unwrap(),
@@ -493,7 +523,10 @@ impl<R: ClassicalRule> Position<R> {
             ClassicalMove::Move { path, .. } => Self::index(*path.last().unwrap()).unwrap(),
             ClassicalMove::Drop { to, .. } => Self::index(to).unwrap(),
         };
-        if !next.classical_file_allowed(to)
+        let placed = next.cells[to].unwrap();
+        if (!R::ALLOW_DEAD_BOARD_PIECES
+            && next.relative_rank(to, placed.color) < Self::def(placed).dead_ranks)
+            || !next.classical_file_allowed(to)
             || (R::CHECK && next.classical_checked_for_legality(self.side))
         {
             return Some(false);
@@ -536,7 +569,6 @@ impl<R: ClassicalRule> Position<R> {
             }
             pieces = pieces.without(from);
             let c = self.cells[from].unwrap();
-            let def = Self::def(c);
             let sign = if c.color == 0 { 1 } else { -1 };
             let (a, b) = R::Geometry::coordinates(from).unwrap();
             for to in self.targets(from, c) {
@@ -554,10 +586,12 @@ impl<R: ClassicalRule> Position<R> {
                         (y as isize - b as isize) * sign,
                     ),
                 );
-                let zone = self.relative_rank(from, c.color) < R::PROMOTION_RANKS
-                    || self.relative_rank(to, c.color) < R::PROMOTION_RANKS;
-                let can = def.promotion.is_some() && zone;
-                let must = can && (R::FORCED || self.relative_rank(to, c.color) < def.dead_ranks);
+                let (can, must) = R::promotion_options(
+                    c.piece,
+                    self.relative_rank(from, c.color),
+                    self.relative_rank(to, c.color),
+                    self.cells[to].is_some(),
+                );
                 if !must
                     && self.classical_append(
                         &mut out,
@@ -615,7 +649,7 @@ impl<R: ClassicalRule> Position<R> {
         if R::Hands::ENABLED {
             for id in 0..R::PIECES.len() {
                 let id = PieceId(id as u16);
-                if self.hands.count(self.side, id) == 0 {
+                if !R::droppable(id) || self.hands.count(self.side, R::drop_hand(id)) == 0 {
                     continue;
                 }
                 let def = &R::PIECES[id.0 as usize];
@@ -904,7 +938,11 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "torishogi",
     feature = "washogi",
     feature = "heian-dai",
-    feature = "daishogi"
+    feature = "daishogi",
+    feature = "kyoto",
+    feature = "kinkei-mai",
+    feature = "microshogi",
+    feature = "kyoto-minishogi"
 ))]
 pub mod compiled {
     use super::*;
@@ -916,6 +954,15 @@ pub mod compiled {
     pub type Selected = HeianDai;
     #[cfg(feature = "daishogi")]
     pub type Selected = Daishogi;
+    #[cfg(feature = "kyoto")]
+    pub type Selected = Kyoto;
+    #[cfg(feature = "kinkei-mai")]
+    pub type Selected = KinkeiMai;
+    #[cfg(feature = "microshogi")]
+    pub type Selected = Microshogi;
+    #[cfg(feature = "kyoto-minishogi")]
+    pub type Selected = KyotoMinishogi;
+
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;
     pub const NAME: &str = Selected::NAME;
