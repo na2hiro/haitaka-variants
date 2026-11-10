@@ -1,0 +1,185 @@
+{
+  "date": "2026-11-08",
+  "status": "complete",
+  "ruleId": 59,
+  "ruleset": "tenjiku-dai",
+  "protocol": "haitaka-json-v4",
+  "engineBranch": "feat/tenjiku-dai-stage5",
+  "shogitterBranch": "feat/haitaka-tenjiku-dai-stage5",
+  "geometry": {
+    "width": 16,
+    "height": 16,
+    "storage": "MultiBitBoard<4,256>",
+    "lastSquare": 255
+  },
+  "inventory": {
+    "perColor": 78,
+    "total": 156,
+    "wirePieceIds": 66,
+    "promotionSources": 30
+  },
+  "reference": {
+    "seed": "0x59c02026",
+    "positions": 352,
+    "transitions": 77025,
+    "randomPositions": 128,
+    "fixedPositions": 224
+  },
+  "referenceGeneration": {
+    "walk": "seeded raw legal hops, completed before sampling",
+    "candidateFiltering": "skip non-legality stalemate adjudication; final transition uses full core judge",
+    "nativeData": "streamed JSON-lines",
+    "extraChecks": [
+      "candidate-set parity with ShogiGame",
+      "simultaneous royal burns draw",
+      "same layout with reversed shitenno order"
+    ],
+    "fullOracleOptIn": "TENJIKU_ORACLE=1",
+    "fullComparisonSeconds": 885.603,
+    "oracleOutputBytes": 337702380
+  },
+  "wasm": {
+    "schemaVersion": 4,
+    "initializationMs": 2.302318999999997,
+    "linearMemoryBytes": 1507328,
+    "lowBudgetElapsedMs": 1.001775,
+    "positions": 352,
+    "transitions": 77025,
+    "perftDepth2": 17226,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 4,
+        "from": [
+          1,
+          12
+        ],
+        "path": [
+          [
+            1,
+            11
+          ]
+        ],
+        "promotion": false
+      },
+      "completedDepth": 0,
+      "states": 1000,
+      "score": 0
+    },
+    "wasmBytes": 332650
+  },
+  "referencePerft": [
+    132,
+    17226
+  ],
+  "browser": {
+    "browser": "Chrome",
+    "url": "http://localhost:3002/rule/59",
+    "newPassed": 8,
+    "legacyPassed": 35,
+    "totalPassed": 43,
+    "scenarios": [
+      "initial game",
+      "AI three-hop winning burn",
+      "resume first hop",
+      "resume second hop",
+      "promotion and immediate burn",
+      "burnt mover",
+      "capture resident fire demon",
+      "mandatory igui with frozen fire and undo"
+    ]
+  },
+  "rust": {
+    "large": 16,
+    "extendedIncludingStage4": 42,
+    "chu": 21,
+    "wasmModelRejection": 1,
+    "standardWorkspace": "passed"
+  },
+  "shogitter": {
+    "corePassed": 2570,
+    "coreSkipped": 345,
+    "coreTodo": 1,
+    "aiPassed": 434,
+    "aiSkipped": 231,
+    "appPassed": 168,
+    "appSkipped": 2,
+    "typecheck": "passed",
+    "eslintMaxWarnings0": "passed"
+  },
+  "package": {
+    "ruleId": 59,
+    "ruleset": "tenjiku-dai",
+    "protocol": "haitaka-json-v4",
+    "bytes": 125546,
+    "rejectsOtherTenjikuRule56": true,
+    "rejectsNNUE": true,
+    "rejectsUSI": true
+  },
+  "regression": {
+    "chuNative": {
+      "positions": 242,
+      "transitions": 16121,
+      "exactMatch": true
+    },
+    "standardPerformanceInitialConcurrent": [
+      {
+        "name": "startpos",
+        "nodes": 10000,
+        "beforeMedianMs": 12.2909475,
+        "afterMedianMs": 12.328978,
+        "medianPairedChangePercent": 2.8344849412982653,
+        "searchResultsMatch": true
+      },
+      {
+        "name": "endgame",
+        "nodes": 10000,
+        "beforeMedianMs": 30.894829,
+        "afterMedianMs": 30.8445205,
+        "medianPairedChangePercent": -0.23925211018454018,
+        "searchResultsMatch": true
+      }
+    ],
+    "standardPerformanceQuiet": [
+      {
+        "name": "startpos",
+        "nodes": 10000,
+        "beforeMedianMs": 10.552430000000001,
+        "afterMedianMs": 10.4897295,
+        "medianPairedChangePercent": -0.4303906350505815,
+        "searchResultsMatch": true
+      },
+      {
+        "name": "endgame",
+        "nodes": 10000,
+        "beforeMedianMs": 28.8360245,
+        "afterMedianMs": 28.7985985,
+        "medianPairedChangePercent": -0.11303524601299353,
+        "searchResultsMatch": true
+      }
+    ]
+  },
+  "budgets": {
+    "initializationMs": 5000,
+    "linearMemoryBytes": 67108864,
+    "moveTimeMs": 5000,
+    "fallbackTestMs": 1
+  },
+  "next": {
+    "ruleId": 60,
+    "ruleset": "dai-dai",
+    "status": "not-started"
+  },
+  "environment": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "node": "v26.8.1",
+    "chrome": "Google Chrome 155.0.8059.39",
+    "referenceWorktree": "/home/na2hiro/proj/shogitter-3"
+  },
+  "engineCommit": "ad4fe1c9cba94c8947e8f1328b37126d8c10fcf4",
+  "shogitterCommit": "adc2a83fbbe61bc140eb09a6dfdf459e6a93836b",
+  "stageFiveStatus": "in-progress: rule 59 complete; rules 60,61,63,64 not started",
+  "referenceFixes": [
+    "A captured fire demon cannot burn its replacement: require resident owner identity in the reference implementation",
+    "Match the reference stalemate definition: no legal moves loses only when not checked"
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "revision": "ce0ddb3",
+  "label": "phase2-before",
+  "engineSnapshotSha256": "ac87079a881d6b767851822673f1d7654c9026fdfd0daad13d569673e116cc32",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "baselineSha256": "bd17cc472fe8a81743064fd69ba97824c9de4f41a89d882ebdc2d55517ff97d4",
+  "method": "Isolated source; RAII timer only in full FNV hash. Warmup excluded, >=3 seconds x3. Inclusive hash fraction includes timer perturbation; diagnostic, not production NPS.",
+  "rules": [
+    {
+      "apiChecks": [
+        {
+          "case": "root",
+          "fullHashCalls": 128,
+          "fullHashCallsPerInspect": 4.0,
+          "fullHashNanos": 78387,
+          "historyPlies": 0,
+          "inspectCalls": 32
+        },
+        {
+          "case": "history",
+          "fullHashCalls": 1152,
+          "fullHashCallsPerInspect": 36.0,
+          "fullHashNanos": 713982,
+          "historyPlies": 16,
+          "inspectCalls": 32
+        }
+      ],
+      "depth": 2,
+      "rule": "tenjiku-dai",
+      "samples": [
+        {
+          "fullHashCalls": 419784,
+          "fullHashCallsPerPerft": 17491.0,
+          "fullHashNanos": 263375590,
+          "fullHashTimePercent": 8.5199297666537,
+          "nodesPerPerft": 17226,
+          "repetitions": 24,
+          "seconds": 3.0912882760000002
+        },
+        {
+          "fullHashCalls": 419784,
+          "fullHashCallsPerPerft": 17491.0,
+          "fullHashNanos": 260790080,
+          "fullHashTimePercent": 8.595525473907069,
+          "nodesPerPerft": 17226,
+          "repetitions": 24,
+          "seconds": 3.034021373
+        },
+        {
+          "fullHashCalls": 419784,
+          "fullHashCallsPerPerft": 17491.0,
+          "fullHashNanos": 260077383,
+          "fullHashTimePercent": 8.618191605438104,
+          "nodesPerPerft": 17226,
+          "repetitions": 24,
+          "seconds": 3.017772114
+        }
+      ]
+    },
+    {
+      "apiChecks": [
+        {
+          "case": "root",
+          "fullHashCalls": 128,
+          "fullHashCallsPerInspect": 4.0,
+          "fullHashNanos": 93992,
+          "historyPlies": 0,
+          "inspectCalls": 32
+        },
+        {
+          "case": "history",
+          "fullHashCalls": 1152,
+          "fullHashCallsPerInspect": 36.0,
+          "fullHashNanos": 841063,
+          "historyPlies": 16,
+          "inspectCalls": 32
+        }
+      ],
+      "depth": 3,
+      "rule": "dai-dai",
+      "samples": [
+        {
+          "fullHashCalls": 2076064,
+          "fullHashCallsPerPerft": 259508.0,
+          "fullHashNanos": 1544577178,
+          "fullHashTimePercent": 47.31324118954188,
+          "nodesPerPerft": 251479,
+          "repetitions": 8,
+          "seconds": 3.2645769749999998
+        },
+        {
+          "fullHashCalls": 2076064,
+          "fullHashCallsPerPerft": 259508.0,
+          "fullHashNanos": 1554403703,
+          "fullHashTimePercent": 46.85670043754824,
+          "nodesPerPerft": 251479,
+          "repetitions": 8,
+          "seconds": 3.317356298
+        },
+        {
+          "fullHashCalls": 2076064,
+          "fullHashCallsPerPerft": 259508.0,
+          "fullHashNanos": 1544482209,
+          "fullHashTimePercent": 47.470998891221136,
+          "nodesPerPerft": 251479,
+          "repetitions": 8,
+          "seconds": 3.253527933
+        }
+      ]
+    },
+    {
+      "apiChecks": [
+        {
+          "case": "root",
+          "fullHashCalls": 128,
+          "fullHashCallsPerInspect": 4.0,
+          "fullHashNanos": 134309,
+          "historyPlies": 0,
+          "inspectCalls": 32
+        },
+        {
+          "case": "history",
+          "fullHashCalls": 1152,
+          "fullHashCallsPerInspect": 36.0,
+          "fullHashNanos": 1118234,
+          "historyPlies": 16,
+          "inspectCalls": 32
+        }
+      ],
+      "depth": 3,
+      "rule": "maka-dai-dai",
+      "samples": [
+        {
+          "fullHashCalls": 2200884,
+          "fullHashCallsPerPerft": 550221.0,
+          "fullHashNanos": 2257734013,
+          "fullHashTimePercent": 58.34979641864503,
+          "nodesPerPerft": 537260,
+          "repetitions": 4,
+          "seconds": 3.869309152
+        },
+        {
+          "fullHashCalls": 2200884,
+          "fullHashCallsPerPerft": 550221.0,
+          "fullHashNanos": 2263663762,
+          "fullHashTimePercent": 58.48569380366019,
+          "nodesPerPerft": 537260,
+          "repetitions": 4,
+          "seconds": 3.870457226
+        },
+        {
+          "fullHashCalls": 2200884,
+          "fullHashCallsPerPerft": 550221.0,
+          "fullHashNanos": 2263620723,
+          "fullHashTimePercent": 58.49660468267592,
+          "nodesPerPerft": 537260,
+          "repetitions": 4,
+          "seconds": 3.869661727
+        }
+      ]
+    },
+    {
+      "apiChecks": [
+        {
+          "case": "root",
+          "fullHashCalls": 128,
+          "fullHashCallsPerInspect": 4.0,
+          "fullHashNanos": 213581,
+          "historyPlies": 0,
+          "inspectCalls": 32
+        },
+        {
+          "case": "history",
+          "fullHashCalls": 1152,
+          "fullHashCallsPerInspect": 36.0,
+          "fullHashNanos": 1949119,
+          "historyPlies": 16,
+          "inspectCalls": 32
+        }
+      ],
+      "depth": 2,
+      "rule": "taishogi",
+      "samples": [
+        {
+          "fullHashCalls": 1305990,
+          "fullHashCallsPerPerft": 93285.0,
+          "fullHashNanos": 2214650142,
+          "fullHashTimePercent": 68.60498385100925,
+          "nodesPerPerft": 92676,
+          "repetitions": 14,
+          "seconds": 3.228118451
+        },
+        {
+          "fullHashCalls": 1305990,
+          "fullHashCallsPerPerft": 93285.0,
+          "fullHashNanos": 2183387577,
+          "fullHashTimePercent": 68.8811433634495,
+          "nodesPerPerft": 92676,
+          "repetitions": 14,
+          "seconds": 3.169789975
+        },
+        {
+          "fullHashCalls": 1305990,
+          "fullHashCallsPerPerft": 93285.0,
+          "fullHashNanos": 2183999514,
+          "fullHashTimePercent": 68.89051641228014,
+          "nodesPerPerft": 92676,
+          "repetitions": 14,
+          "seconds": 3.170246977
+        }
+      ]
+    },
+    {
+      "apiChecks": [
+        {
+          "case": "root",
+          "fullHashCalls": 128,
+          "fullHashCallsPerInspect": 4.0,
+          "fullHashNanos": 464974,
+          "historyPlies": 0,
+          "inspectCalls": 32
+        },
+        {
+          "case": "history",
+          "fullHashCalls": 1152,
+          "fullHashCallsPerInspect": 36.0,
+          "fullHashNanos": 4142263,
+          "historyPlies": 16,
+          "inspectCalls": 32
+        }
+      ],
+      "depth": 2,
+      "rule": "taikyoku",
+      "samples": [
+        {
+          "fullHashCalls": 398000,
+          "fullHashCallsPerPerft": 79600.0,
+          "fullHashNanos": 1432933529,
+          "fullHashTimePercent": 42.68151208288104,
+          "nodesPerPerft": 79035,
+          "repetitions": 5,
+          "seconds": 3.357269832
+        },
+        {
+          "fullHashCalls": 398000,
+          "fullHashCallsPerPerft": 79600.0,
+          "fullHashNanos": 1428635382,
+          "fullHashTimePercent": 43.04145505331591,
+          "nodesPerPerft": 79035,
+          "repetitions": 5,
+          "seconds": 3.319207913
+        },
+        {
+          "fullHashCalls": 398000,
+          "fullHashCallsPerPerft": 79600.0,
+          "fullHashNanos": 1431246766,
+          "fullHashTimePercent": 43.02660786894833,
+          "nodesPerPerft": 79035,
+          "repetitions": 5,
+          "seconds": 3.326422502
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,366 @@
+{
+  "browserVersion": "155.0.8059.39",
+  "metric": "Actual production WASM perft API wall NPS, including SFEN parse and result access/free; standard API uses leaf bulk counting in both versions, no evaluation/pruning/TT. Five alternating >=5s samples, 3s warmup, CPU7. Distinct from leaf-applied Native metric.",
+  "cases": [
+    {
+      "variant": "scalar",
+      "label": "初期局面",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "depth": 5,
+      "nodesPerPerft": 19861490,
+      "before": {
+        "samples": [
+          {
+            "seconds": 5.379300000190735,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 44306485.9724405
+          },
+          {
+            "seconds": 5.39,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 47903408.16326531
+          },
+          {
+            "seconds": 5.3646999998092655,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48129321.30579155
+          },
+          {
+            "seconds": 5.351700000762939,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48246233.900104836
+          },
+          {
+            "seconds": 5.363599999427795,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48139191.96575909
+          }
+        ],
+        "medianNps": 48129321.30579155,
+        "sampleRangePercent": 8.892034295193096
+      },
+      "after": {
+        "samples": [
+          {
+            "seconds": 5.307400000572205,
+            "repetitions": 11,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 218476390,
+            "nps": 41164485.430991724
+          },
+          {
+            "seconds": 5.308699999809265,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48637024.13194883
+          },
+          {
+            "seconds": 5.303800000190735,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48681958.21688499
+          },
+          {
+            "seconds": 5.30589999961853,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48662690.5932195
+          },
+          {
+            "seconds": 5.348400000572204,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48276002.163708076
+          }
+        ],
+        "medianNps": 48637024.13194883,
+        "sampleRangePercent": 18.262035118829758
+      },
+      "npsChangePercent": 1.0548721909697578
+    },
+    {
+      "variant": "scalar",
+      "label": "持駒の多い終盤",
+      "sfen": "ln1g5/1r4k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b b BG2SLPnp 61",
+      "depth": 3,
+      "nodesPerPerft": 3107043,
+      "before": {
+        "samples": [
+          {
+            "seconds": 5.0075999994277955,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 205994543.5174277
+          },
+          {
+            "seconds": 5.0073999996185306,
+            "repetitions": 327,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1016003061,
+            "nps": 202900319.7422615
+          },
+          {
+            "seconds": 5.004100000381469,
+            "repetitions": 328,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1019110104,
+            "nps": 203655023.66505703
+          },
+          {
+            "seconds": 5.01310000038147,
+            "repetitions": 331,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1028431233,
+            "nps": 205148756.84142387
+          },
+          {
+            "seconds": 5.007100000381469,
+            "repetitions": 333,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1034645319,
+            "nps": 206635641.17376822
+          }
+        ],
+        "medianNps": 205148756.84142387,
+        "sampleRangePercent": 1.840963797519679
+      },
+      "after": {
+        "samples": [
+          {
+            "seconds": 5.006699999809265,
+            "repetitions": 331,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1028431233,
+            "nps": 205410995.8733655
+          },
+          {
+            "seconds": 5.0065,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 206039803.45550784
+          },
+          {
+            "seconds": 5.003800000190735,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 206150980.44699627
+          },
+          {
+            "seconds": 5.008599999427795,
+            "repetitions": 330,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1025324190,
+            "nps": 204712732.12417394
+          },
+          {
+            "seconds": 5.01310000038147,
+            "repetitions": 328,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1019110104,
+            "nps": 203289402.54980975
+          }
+        ],
+        "medianNps": 205410995.8733655,
+        "sampleRangePercent": 1.4076375164147503
+      },
+      "npsChangePercent": 0.12782872096286368
+    },
+    {
+      "variant": "simd",
+      "label": "初期局面",
+      "sfen": "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+      "depth": 5,
+      "nodesPerPerft": 19861490,
+      "before": {
+        "samples": [
+          {
+            "seconds": 5.011300000190735,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 47560090.1943465
+          },
+          {
+            "seconds": 5.0475,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 47218995.54234769
+          },
+          {
+            "seconds": 5.0015,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 47653280.015995204
+          },
+          {
+            "seconds": 5.4191999998092655,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 47645292.66480064
+          },
+          {
+            "seconds": 5.015800000190735,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 47517420.9479917
+          }
+        ],
+        "medianNps": 47560090.1943465,
+        "sampleRangePercent": 0.9197240827751862
+      },
+      "after": {
+        "samples": [
+          {
+            "seconds": 5.363099999427796,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48143679.966353044
+          },
+          {
+            "seconds": 5.3674000005722045,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48105110.476669155
+          },
+          {
+            "seconds": 5.404599999427796,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 47774001.781322666
+          },
+          {
+            "seconds": 5.36360000038147,
+            "repetitions": 13,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 258199370,
+            "nps": 48139191.95719971
+          },
+          {
+            "seconds": 5.001300000190735,
+            "repetitions": 12,
+            "nodesPerPerft": 19861490,
+            "totalLeafNodes": 238337880,
+            "nps": 47655185.64991312
+          }
+        ],
+        "medianNps": 48105110.476669155,
+        "sampleRangePercent": 1.0250601477634014
+      },
+      "npsChangePercent": 1.1459614144874841
+    },
+    {
+      "variant": "simd",
+      "label": "持駒の多い終盤",
+      "sfen": "ln1g5/1r4k2/p2pppn2/2ps2p2/1p7/2P6/PPSPPPPLP/2G2K1pr/LN4G1b b BG2SLPnp 61",
+      "depth": 3,
+      "nodesPerPerft": 3107043,
+      "before": {
+        "samples": [
+          {
+            "seconds": 5.011,
+            "repetitions": 326,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1012896018,
+            "nps": 202134507.68309718
+          },
+          {
+            "seconds": 5.000199999809265,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 206299403.23174044
+          },
+          {
+            "seconds": 5.009599999427795,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 205912303.60065153
+          },
+          {
+            "seconds": 5.001300000190735,
+            "repetitions": 332,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1031538276,
+            "nps": 206254029.14455444
+          },
+          {
+            "seconds": 5.012900000572205,
+            "repetitions": 328,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1019110104,
+            "nps": 203297513.1926973
+          }
+        ],
+        "medianNps": 205912303.60065153,
+        "sampleRangePercent": 2.060457462895404
+      },
+      "after": {
+        "samples": [
+          {
+            "seconds": 5.0045,
+            "repetitions": 335,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1040859405,
+            "nps": 207984694.77470276
+          },
+          {
+            "seconds": 5.010800000190735,
+            "repetitions": 334,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1037752362,
+            "nps": 207103129.6320943
+          },
+          {
+            "seconds": 5.0088000001907345,
+            "repetitions": 334,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1037752362,
+            "nps": 207185825.339499
+          },
+          {
+            "seconds": 5.011199999809265,
+            "repetitions": 329,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1022217147,
+            "nps": 203986499.64856866
+          },
+          {
+            "seconds": 5.007099999427796,
+            "repetitions": 335,
+            "nodesPerPerft": 3107043,
+            "totalLeafNodes": 1040859405,
+            "nps": 207876696.11530584
+          }
+        ],
+        "medianNps": 207185825.339499,
+        "sampleRangePercent": 1.9600292828310995
+      },
+      "npsChangePercent": 0.6184777289060639
+    }
+  ]
+}

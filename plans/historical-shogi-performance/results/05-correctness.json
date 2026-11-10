@@ -1,0 +1,231 @@
+{
+  "status": "passed",
+  "rustWorkspace": {
+    "passed": 477,
+    "failed": 0,
+    "ignored": 5,
+    "groups": 19,
+    "logSha256": "4b5db1d53f4de39ab36039ed1801cdbf4f61a67379bd5201b52898c5d86c6a69"
+  },
+  "rustRules": {
+    "heian-8x8": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 26,
+      "groups": 5,
+      "logSha256": "a5b97b645d8e890ba58ebef1821c4bc7c26c91f5a2e4e65ea3808c802f79a5b6"
+    },
+    "heian-9x8": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 26,
+      "groups": 5,
+      "logSha256": "d5bed4756a289756748a5c2ec98ece64bb866d2ae444093715c5c19695cf2995"
+    },
+    "heian-9x9": {
+      "passed": 18,
+      "failed": 0,
+      "ignored": 28,
+      "groups": 5,
+      "logSha256": "b2907968e8764dd43f5ec7c91c58e0a3cd2bb32eaae6bc7965c0f1c29122b55f"
+    },
+    "shoshogi": {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "groups": 4,
+      "logSha256": "3baff4f319aa3e9b17ff2a7e96acb6ef95a5e17ca9b1e774a5c24edd8e0e68cd"
+    },
+    "chushogi": {
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "groups": 4,
+      "logSha256": "0548251d41bb7650dd1dbebbae8deff03f01d8849dc385076599b44ec5103814"
+    },
+    "torishogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "d1400920928fa62f960b87feab23c2c7e7fb04009533920bdd5677a5c856062f"
+    },
+    "washogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "46f053d8fa790174b97196305182f6e44a960797004c8357a780a6953ec4b464"
+    },
+    "heian-dai": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "4752e6b61c1ec6d40851c5eaabad56a044fbe54354c56d93089655740135ef0e"
+    },
+    "daishogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "b57ff46e2e4e701d98c577c2fd58a4d2de3ae3e7af0f17266db97209d11f4f57"
+    },
+    "tenjiku-dai": {
+      "passed": 56,
+      "failed": 0,
+      "ignored": 2,
+      "groups": 4,
+      "logSha256": "7af157ca0636f138be090868496f457cf1c08b221deccf66225a34378b830dfa"
+    },
+    "dai-dai": {
+      "passed": 49,
+      "failed": 0,
+      "ignored": 2,
+      "groups": 4,
+      "logSha256": "a6cc4d657b17f396b5c67912ab9b2320d4cbc606aa99ad7b2fe21b8eda053084"
+    },
+    "maka-dai-dai": {
+      "passed": 50,
+      "failed": 0,
+      "ignored": 2,
+      "groups": 4,
+      "logSha256": "77a42a22d40b56f6df97ff5b17232f51274ad4379d9ca4c927f67af33a924a2b"
+    },
+    "taishogi": {
+      "passed": 52,
+      "failed": 0,
+      "ignored": 2,
+      "groups": 4,
+      "logSha256": "662be2c0d5608dcbff47323c2364c71426606cd13c6fd73885fbf1f3ec404df5"
+    },
+    "taikyoku": {
+      "passed": 53,
+      "failed": 0,
+      "ignored": 2,
+      "groups": 4,
+      "logSha256": "348c0477b40d3fb9d2c2d6ecf8ab41089b50a1ea2405dbf835f20766d71e990a"
+    }
+  },
+  "rustFormat": "cargo fmt --all --check passed",
+  "frontend": {
+    "core": {
+      "passed": 2580,
+      "skipped": 345,
+      "todo": 1
+    },
+    "aiCi": {
+      "passed": 436,
+      "skipped": 231
+    },
+    "app": {
+      "passed": 726,
+      "skipped": 2
+    },
+    "typecheck": "passed",
+    "lint": "passed after formatting seven preexisting fixtures; identical semantic JSON hashes recorded",
+    "browser": {
+      "passed": 82,
+      "historical": 77,
+      "smallShogiControls": 5,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0,
+      "pageErrors": 0,
+      "seconds": 323.171512,
+      "workers": 2,
+      "browser": "system Google Chrome, Playwright 1.56.1",
+      "url": "http://localhost:3002",
+      "report": "05-browser.json"
+    }
+  },
+  "corpora": [
+    {
+      "rule": "heian-8x8",
+      "positions": 151,
+      "transitions": 2888,
+      "report": "05-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "heian-9x8",
+      "positions": 151,
+      "transitions": 3662,
+      "report": "05-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "heian-9x9",
+      "positions": 151,
+      "transitions": 3689,
+      "report": "05-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "shoshogi",
+      "positions": 167,
+      "transitions": 4896,
+      "report": "05-shoshogi-wasm.json"
+    },
+    {
+      "rule": "chushogi",
+      "positions": 242,
+      "transitions": 16121,
+      "report": "05-chushogi-wasm.json"
+    },
+    {
+      "rule": "torishogi",
+      "positions": 154,
+      "transitions": 4009,
+      "report": "05-torishogi-verification.json"
+    },
+    {
+      "rule": "washogi",
+      "positions": 218,
+      "transitions": 8008,
+      "report": "05-washogi-verification.json"
+    },
+    {
+      "rule": "heian-dai",
+      "positions": 198,
+      "transitions": 6578,
+      "report": "05-heian-dai-verification.json"
+    },
+    {
+      "rule": "daishogi",
+      "positions": 295,
+      "transitions": 18664,
+      "report": "05-daishogi-verification.json"
+    },
+    {
+      "rule": "tenjiku-dai",
+      "positions": 352,
+      "transitions": 77025,
+      "report": "05-tenjiku-dai-verification.json"
+    },
+    {
+      "rule": "dai-dai",
+      "positions": 483,
+      "transitions": 20014,
+      "report": "05-dai-dai-verification.json"
+    },
+    {
+      "rule": "maka-dai-dai",
+      "positions": 524,
+      "transitions": 33383,
+      "report": "05-maka-dai-dai-verification.json"
+    },
+    {
+      "rule": "taishogi",
+      "positions": 924,
+      "transitions": 74259,
+      "report": "05-taishogi-verification.json"
+    },
+    {
+      "rule": "taikyoku",
+      "positions": 2199,
+      "transitions": 253099,
+      "report": "05-taikyoku-verification.json"
+    }
+  ],
+  "nativeAndWasmPositions": 6209,
+  "nativeAndWasmTransitions": 526295,
+  "oracleReuse": "JSON corpora were previously independently checked with unchanged Shogitter core. This run executes fresh Native and WASM over every position and transition; it does not label old Native output as fresh. Heian Native TSV was regenerated and independently compared with Shogitter, then compared byte-for-byte with a verification-only WASM wrapper. Production Heian APIs tested separately."
+}

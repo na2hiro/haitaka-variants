@@ -1,0 +1,123 @@
+{
+  "stage": "03A-effects",
+  "status": "adopted",
+  "date": "2026-11-09",
+  "beforeCommit": "da60c8b",
+  "afterCommit": "1d1bc3a3a57725d13297ebc1e00b2fb47f95c042",
+  "changedFiles": [
+    "haitaka/src/extended/large.rs",
+    "haitaka/src/extended/large/effects.rs",
+    "scripts/profile-extended-hotspots.py",
+    "scripts/profile-extended-hotspots.rs"
+  ],
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "bffbba21e86ba9b2463098b3abc9ad36ced48799d764dcddd92a6fc8f929f5ff",
+    "haitaka/src/extended/large/effects.rs": "bd055f3e0316b1b765c99a2fab19b3c9dc544396db3179ff18953003561f2f85",
+    "scripts/profile-extended-hotspots.py": "a502cf3c42eee45e9418247bb606d0c211656886397baf266e129d75b149c3a4",
+    "scripts/profile-extended-hotspots.rs": "65f1f660b2342d31e47d5476cf16b7d40a4e0b6111aae24123543e6d1a357496"
+  },
+  "implementation": [
+    "Per-enumeration immutable root actives, resident-active fires and all fire-square candidates",
+    "Only moving/promoted piece can introduce new effect actor; filter captured/burned actors and preserve resident order",
+    "Recompute candidate-specific active priority and simultaneous burn set; no result cached between siblings",
+    "Original whole-board finish retained as test oracle; every test finish and resident normalization compares complete state/occupancy"
+  ],
+  "correctness": {
+    "unitCommandTemplate": "cargo test --release -p haitaka --features RULE extended",
+    "rules": [
+      "tenjiku-dai",
+      "dai-dai",
+      "maka-dai-dai",
+      "taishogi",
+      "taikyoku"
+    ],
+    "allPassed": true,
+    "verificationFile": "03a-effects-verification.json",
+    "positions": 352,
+    "transitions": 77025,
+    "differences": 0,
+    "verificationCommand": "LARGE_HASH_WORKERS=4 node scripts/verify-large-hashes.mjs target tenjiku-dai target/hash-stage2/before-wasm-tenjiku-dai",
+    "referenceCorpus": "Previously independently Shogitter-verified corpus reused unchanged; new Native compared byte-for-byte and new actual WASM compared on all transitions/public hashes."
+  },
+  "performance": {
+    "beforeFile": "03a-effects-before.json",
+    "afterFile": "03a-effects-after.json",
+    "commandTemplate": "python3 scripts/perft-benchmark.py --rules tenjiku-dai dai-dai maka-dai-dai taishogi taikyoku daishogi standard --output target/perft-PHASE-03a.json (after: --compare target/perft-before-03a.json)",
+    "sameDepthAndLeafCounts": true,
+    "sampleNoiseReviewed": true,
+    "ruleResults": [
+      {
+        "rule": "tenjiku-dai",
+        "beforeNps": 154271.1976809979,
+        "afterNps": 311162.05906081904,
+        "speedup": 2.0169808994692593,
+        "sampleRangePercent": 0.3937548434272964
+      },
+      {
+        "rule": "dai-dai",
+        "beforeNps": 1255233.475820713,
+        "afterNps": 1236217.4620871788,
+        "speedup": 0.9848506161603913,
+        "sampleRangePercent": 2.3254829539822275
+      },
+      {
+        "rule": "maka-dai-dai",
+        "beforeNps": 1430328.236010378,
+        "afterNps": 1401028.1675313385,
+        "speedup": 0.979515143628314,
+        "sampleRangePercent": 0.7345780185554984
+      },
+      {
+        "rule": "taishogi",
+        "beforeNps": 1410915.7071023723,
+        "afterNps": 1382777.2655546053,
+        "speedup": 0.9800566104650181,
+        "sampleRangePercent": 0.6312465586675753
+      },
+      {
+        "rule": "taikyoku",
+        "beforeNps": 227343.07813225233,
+        "afterNps": 219991.41133662363,
+        "speedup": 0.9676626759168273,
+        "sampleRangePercent": 1.8999727602371452
+      },
+      {
+        "rule": "daishogi",
+        "beforeNps": 3556987.5955905793,
+        "afterNps": 3553420.6409053225,
+        "speedup": 0.9989971978846149,
+        "sampleRangePercent": 1.4549311308234447
+      },
+      {
+        "rule": "standard",
+        "beforeNps": 18707004.220492158,
+        "afterNps": 18694712.56464064,
+        "speedup": 0.9993429383076713,
+        "sampleRangePercent": 0.7386619618672263
+      }
+    ],
+    "nonTargetNote": "Largest control drop 3.24%, below 5% threshold; not assumed to be noise. All sample ranges <5%."
+  },
+  "diagnostic": {
+    "beforeFile": "03a-effects-profile-before.json",
+    "afterFile": "03a-effects-profile-after.json",
+    "commands": [
+      "python3 scripts/profile-extended-hotspots.py --revision da60c8b --label 03a-before --rules tenjiku-dai --output target/effects-03a-profile-before.json",
+      "python3 scripts/profile-extended-hotspots.py --label 03a-after --rules tenjiku-dai --output target/effects-03a-profile-after.json"
+    ],
+    "method": "Isolated source; inclusive overlapping timers perturb optimization, never summed or used as production NPS. Allocations separately counted in one warmed perft.",
+    "finding": "finish fraction approx 50.7% -> 8.0%; order calls/perft 149348 -> 34849; push targets approx 42.7% afterward. Actor list adds allocations 259075 -> 276566; memory tradeoff accepted for 2.02x NPS."
+  },
+  "memory": {
+    "wasmLinearMemoryBytes": 1507328,
+    "wasmBytes": 343249,
+    "extraContext": "Three small per-turn vectors, released with enumeration/apply; no cache across mutations."
+  },
+  "decision": "adopt",
+  "reason": "Tenjiku 2.02x, oracle/state/hash equality and Native/WASM memory/fallback passed; controls within threshold.",
+  "remaining": [
+    "Push resolver still computes actives again despite existing turn context; address with known-target resolution in 3B",
+    "Global/browser rollout remains stage 5"
+  ],
+  "nextStage": "03B-known-targets (not started)"
+}

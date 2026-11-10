@@ -62,33 +62,35 @@ impl Piece {
     pub const HAND_NUM: usize = 7;
 
     /// Max number of pieces for a piece type to have in hand
-    pub const MAX_HAND: [u8; Self::NUM] = [
-        18, // Pawn
-        4,  // Lance
-        4,  // Knight
-        4,  // Silver
-        2,  // Bishop
-        2,  // Rook
-        4,  // Gold
-        0, 0, 0, 0, 0, 0, 0,
-    ];
+    pub const MAX_HAND: [u8; Self::NUM] = {
+        let mut inventory = [0; Self::NUM];
+        let mut i = 0;
+        while i < Self::HAND_NUM {
+            inventory[i] = if SelectedRule::CAPTURE_TO_HAND {
+                SelectedRule::INVENTORY[i]
+            } else {
+                0
+            };
+            i += 1;
+        }
+        inventory
+    };
 
-    // piece -> promoted piece (promoted pieces map to themselves)
-    const PROMOTED: [Self; Self::NUM] = [
-        Piece::Tokin,
-        Piece::PLance,
-        Piece::PKnight,
-        Piece::PSilver,
-        Piece::PBishop,
-        Piece::PRook,
-        Piece::Gold,
-        Piece::King,
-        Piece::Tokin,
-        Piece::PLance,
-        Piece::PKnight,
-        Piece::PSilver,
-        Piece::PBishop,
-        Piece::PRook,
+    const STANDARD_PROMOTED: [Self; Self::NUM] = [
+        Self::Tokin,
+        Self::PLance,
+        Self::PKnight,
+        Self::PSilver,
+        Self::PBishop,
+        Self::PRook,
+        Self::Gold,
+        Self::King,
+        Self::Tokin,
+        Self::PLance,
+        Self::PKnight,
+        Self::PSilver,
+        Self::PBishop,
+        Self::PRook,
     ];
 
     // promoted piece -> piece (unpromoted pieces map to themselves)
@@ -124,14 +126,19 @@ impl Piece {
     /// Can this piece ever promote?
     #[inline(always)]
     pub const fn is_promotable(self) -> bool {
-        (self as usize) < Self::Gold as usize
+        if SelectedRule::USE_STANDARD_PROMOTIONS {
+            (self as usize) < Self::Gold as usize
+        } else {
+            SelectedRule::PROMOTIONS[self as usize].is_some()
+        }
     }
 
     /// Can this piece with given color promote on the given square?
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka_types::*;
     /// assert!(Piece::Pawn.can_promote(Color::Black, Square::C1));
     /// assert!(Piece::Pawn.can_promote(Color::White, Square::G1));
@@ -145,8 +152,8 @@ impl Piece {
         } else {
             let rank = square.rank() as usize;
             match color {
-                Color::White => rank > 5,
-                Color::Black => rank < 3,
+                Color::White => rank >= Rank::NUM - SelectedRule::PROMOTION_RANKS,
+                Color::Black => rank < SelectedRule::PROMOTION_RANKS,
             }
         }
     }
@@ -157,6 +164,7 @@ impl Piece {
     ///
     #[cfg_attr(
         not(any(
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -174,6 +182,7 @@ impl Piece {
     )]
     #[cfg_attr(
         any(
+            feature = "variant-board",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -233,7 +242,7 @@ impl Piece {
             let rank = square.rank() as usize;
             match color {
                 Color::White => {
-                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 8
+                    matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank + 1 == Rank::NUM
                 }
                 Color::Black => {
                     matches!(self, Self::Pawn | Self::Lance | Self::Knight) && rank == 0
@@ -256,13 +265,13 @@ impl Piece {
         )))]
         {
             let rank = square.rank() as usize;
-            if 1 < rank && rank < 7 {
+            if 1 < rank && rank + 2 < Rank::NUM {
                 return false;
             }
             match color {
                 Color::White => match self {
-                    Self::Pawn | Self::Lance => rank == 8,
-                    Self::Knight => rank >= 7,
+                    Self::Pawn | Self::Lance => rank + 1 == Rank::NUM,
+                    Self::Knight => rank + 2 >= Rank::NUM,
                     _ => false,
                 },
                 Color::Black => match self {
@@ -282,7 +291,7 @@ impl Piece {
     ///
     #[inline(always)]
     pub const fn can_drop(self, color: Color, square: Square) -> bool {
-        !self.must_promote(color, square)
+        SelectedRule::CAPTURE_TO_HAND && !self.must_promote(color, square)
     }
 
     /// Promote this piece.
@@ -290,7 +299,14 @@ impl Piece {
     /// Never panics. If the piece cannot be promoted, it the same piece is returned.
     #[inline(always)]
     pub const fn promote(self) -> Self {
-        Self::PROMOTED[self as usize]
+        if SelectedRule::USE_STANDARD_PROMOTIONS {
+            Self::STANDARD_PROMOTED[self as usize]
+        } else {
+            match SelectedRule::PROMOTIONS[self as usize] {
+                Some(piece) => piece,
+                None => self,
+            }
+        }
     }
 
     /// Unpromote this piece.

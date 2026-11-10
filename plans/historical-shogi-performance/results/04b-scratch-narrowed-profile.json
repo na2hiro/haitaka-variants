@@ -1,0 +1,109 @@
+{
+  "revision": "working-tree",
+  "sourceSha256": "5cba08e8805ba6fefe10ff87ff470369276486d88f85ec3c4c9dd6e40bd02b5e",
+  "cpuAffinity": 7,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "names": [
+    "enumeration_targets",
+    "push_targets",
+    "protected_inclusive",
+    "finish_inclusive",
+    "active_inclusive",
+    "order_inclusive",
+    "enumerate_inclusive",
+    "classical_candidate_inclusive",
+    "classical_apply_inclusive"
+  ],
+  "instrumentedEnumerationTargets": true,
+  "instrumentedPushTargets": true,
+  "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+  "rules": [
+    {
+      "allocationsPerPerft": 4649162,
+      "depth": 4,
+      "nodesPerPerft": 748121,
+      "requestedAllocationBytesPerPerft": 933217600,
+      "rule": "heian-dai",
+      "samples": [
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2213632607,
+            337345497
+          ],
+          "repetitions": 6,
+          "seconds": 3.363768998
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2197232807,
+            327065756
+          ],
+          "repetitions": 6,
+          "seconds": 3.32548996
+        },
+        {
+          "calls": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4645032,
+            4644456
+          ],
+          "nanos": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2208814497,
+            329276563
+          ],
+          "repetitions": 6,
+          "seconds": 3.3443250620000002
+        }
+      ]
+    }
+  ]
+}

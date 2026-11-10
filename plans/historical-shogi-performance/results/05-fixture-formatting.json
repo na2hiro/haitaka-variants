@@ -1,0 +1,47 @@
+{
+  "reason": "Full lint found seven preexisting unformatted historical browser fixtures. Only whitespace changed; semantic JSON SHA-256 is identical.",
+  "files": [
+    {
+      "path": "tests/fixtures/chushogi-positions.json",
+      "rawSha256": "e0060132c84729679e60271f52cd7fdfff0d40b159391c74641abbb8dd07be6b",
+      "semanticSha256": "6c46b432f097704939fe15788cb31df5203af2fff6849af8f2243e6d98c3b96e",
+      "formattedSha256": "06acd8f451caacfb4102f2b71a3d823c3f77d5891cd2abac73021fc3d60fc3fe"
+    },
+    {
+      "path": "tests/fixtures/dai-dai-positions.json",
+      "rawSha256": "c25aebd82d919b4a39057f57cde09138fb867b549f4806ed82e915c08fd511ef",
+      "semanticSha256": "959eeeb0eb867b1418970df435b0a0223a1230b1655868075668077d98b5a0e9",
+      "formattedSha256": "10c869530dde9d62d16ee636d8f3639d4a34aa29b38827ba69fbb6016bd3770a"
+    },
+    {
+      "path": "tests/fixtures/maka-dai-dai-positions.json",
+      "rawSha256": "8c3333b67f1a0d955f95c231bc60fa898d4bc61282e1363d002fb31ffa767c8e",
+      "semanticSha256": "99dd330124463a957753d501d603a30ffe3e962194e8839e98781fb932810341",
+      "formattedSha256": "c0976aaceaab237a1fe66e4370c501802df7db20e9b1707c0d28697ca87d5ca2"
+    },
+    {
+      "path": "tests/fixtures/shoshogi-positions.json",
+      "rawSha256": "92b1fad9a0d2c6acd36ab51c3d1ae7049de3dcccbd71f590c19054d2371b83d9",
+      "semanticSha256": "7aaa79724f40292b2440ef65cf66b25a8dd686ed99d6dc12b67abe233bc0a71d",
+      "formattedSha256": "329a77d9296ad8ef2ba04f5ccda192edd7b8648eb9cd3eaede98f0ed335a0b12"
+    },
+    {
+      "path": "tests/fixtures/taikyoku-positions.json",
+      "rawSha256": "d3d7d5c5ef3c568101a03ef672261571415c0ab01325dae8c2eba6a77c85fbbf",
+      "semanticSha256": "1c08a3edb1e72aefe54b48f4eb787cbd2c5a8b1f8dcfbb7f1206bf413655c1c4",
+      "formattedSha256": "7208f3743052dc6a90791e39ed68f8b3722d7d675abb6fb746f9d13dac9789b8"
+    },
+    {
+      "path": "tests/fixtures/taishogi-positions.json",
+      "rawSha256": "943f25cb324cc32820ecebefe258501bf8ba23b4172bf224db79696b47cae000",
+      "semanticSha256": "b13997ac9525b75d0a21d1332715ce665210701d82b0a10dfc37a8a1caf22aa3",
+      "formattedSha256": "48ae70c86d38230eef5166a867ee8510bd88a6b72f626c71a31113e415179154"
+    },
+    {
+      "path": "tests/fixtures/tenjiku-dai-positions.json",
+      "rawSha256": "1421e240c0fc1779b70865a1564bccce079da20bf6a4dfee4584d4d1610442f9",
+      "semanticSha256": "97933fb15eef8c0032945fc5cb845b831ec3cdf4048df2ccf8bf118ce6ea06f4",
+      "formattedSha256": "8624e8faccf7a9a4199e1bec64d64b7d734c30ea116042224f8dbb1cb400a125"
+    }
+  ]
+}

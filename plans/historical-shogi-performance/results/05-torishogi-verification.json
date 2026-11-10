@@ -1,0 +1,96 @@
+{
+  "rule": "torishogi",
+  "positions": 154,
+  "transitions": 4009,
+  "native": {
+    "positions": 154,
+    "transitions": 4009,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 39,
+      "transitions": 1038,
+      "initializationMs": 0.856858000000102,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 39,
+      "transitions": 994,
+      "initializationMs": 1.6624349999999595,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 38,
+      "transitions": 1034,
+      "initializationMs": 0.9863110000000006,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 38,
+      "transitions": 943,
+      "initializationMs": 0.8364309999999477,
+      "linearMemoryBytes": 1245184
+    }
+  ],
+  "perft": [
+    17,
+    288
+  ],
+  "inputSha256": "3b45ec4ca744ea7280dab15c670fb4ee2c81ed35d2b2d499ad43cba616c97fa3",
+  "beforeWasmSha256": "a870db7fc196059a1b608c5c24c45e4ea0ee0ba55a4dccc8f2faa49a3081b176",
+  "afterWasmSha256": "5b9d3f68d6ede7ec0c59bdf25c8bb4dcf15ffc1d335df1647afa7494fd70af8f",
+  "linearMemoryBytes": 1245184,
+  "wasmBytes": 336219,
+  "lowBudgetElapsedMs": 1.0036800000000001,
+  "pendingFallbacks": [],
+  "search": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        5,
+        5
+      ],
+      "path": [
+        [
+          5,
+          4
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        5,
+        5
+      ],
+      "path": [
+        [
+          5,
+          4
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  }
+}

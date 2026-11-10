@@ -1,0 +1,14 @@
+{
+  "stage": "02b-royal-counts",
+  "status": "adopted",
+  "performance": "02b-royal-counts-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 1.0094274105566088,
+    "taikyoku": 1.2804600771635215
+  },
+  "sourceSha256": {
+    "haitaka/src/extended.rs": "180cbe7b542322e093a754b31498ad67330e965789ac8bcc26fdf8a835219b3a",
+    "haitaka/src/extended/large.rs": "dc4e8eeb500c8de4ebd5458659944d551da4cb1679a1f7f8ae4e45707b276c4c"
+  },
+  "flags": []
+}

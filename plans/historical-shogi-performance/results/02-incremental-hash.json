@@ -1,0 +1,542 @@
+{
+  "stage": "02-incremental-hash",
+  "status": "adopted",
+  "date": "2026-11-09",
+  "beforeCommit": "ce0ddb3446505956aedffce95ff3db98ffef3134",
+  "afterCommit": "0f9779989f7d03dd34a4fdcd3eb33504150a293f",
+  "branch": "feat/classical-attack-query",
+  "changedFiles": [
+    "haitaka/src/extended/large.rs",
+    "haitaka/src/extended/large/hash.rs",
+    "haitaka/src/extended/large/hash_tests.rs",
+    "scripts/profile-large-hash.py",
+    "scripts/profile-large-hash.rs",
+    "scripts/verify-large-hashes.mjs"
+  ],
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "1e2efe807ef575b95d8444514552a4bd246827f762f964fae6165c3b64990bba",
+    "haitaka/src/extended/large/hash.rs": "b4265fcef8b52e34bc4ae3a8709878c09722bf687854ed10bad78c49a42dadcd",
+    "haitaka/src/extended/large/hash_tests.rs": "c762803cba98e121d3832f213368eed9d6d94a9bbcdb9f7d505f8c3c4cb4209e",
+    "scripts/profile-large-hash.py": "c903423bfb1489f60fe3c0387fab6e0b398f9ee63576737b9fe81396643a7d3b",
+    "scripts/profile-large-hash.rs": "9acd3f4d80d102b6fa60375e032cbfa78b76bfd4b2cdb8dd62ffe10d8a7af766",
+    "scripts/verify-large-hashes.mjs": "1e64012f04e2bb0cb909a28a4b07ebd15d07981a9b6133453bad682c778aa826"
+  },
+  "implementation": {
+    "internalKey": "Fixed deterministic generated Zobrist tokens, no square-by-piece lookup table. Rule/geometry domain, internal PieceId (including origin), color, square, side, senjishi and ordered shitenno.",
+    "delta": "Apply old/final changed squares and old/new state/side once per completed move. Original square values survive repeated touches in Delta. Previous position/history keys retained alongside undo in timeline.",
+    "history": "Ordered rolling key per timeline entry; TT key includes active pending prefix. Same board with different history/pending remains distinct.",
+    "effects": "Active/frozen kings and resident fires derive from board and ordered state; no independent turn-start effect state survives a completed move.",
+    "publicHashes": "Position FNV unchanged. Public context reconstructs original FNVs via undo only at inspect API boundary, then uses original fold and pending term.",
+    "excluded": [
+      "Effect caching",
+      "Path reuse",
+      "Board-copy reductions",
+      "Rule changes",
+      "Frontend rollout"
+    ]
+  },
+  "correctness": {
+    "unitCommands": [
+      "cargo test --release --workspace",
+      "cargo test --release -p haitaka --features tenjiku-dai extended",
+      "cargo test --release -p haitaka --features dai-dai extended",
+      "cargo test --release -p haitaka --features maka-dai-dai extended",
+      "cargo test --release -p haitaka --features taishogi extended",
+      "cargo test --release -p haitaka --features taikyoku extended"
+    ],
+    "unitResult": {
+      "tenjiku-dai": 51,
+      "dai-dai": 44,
+      "maka-dai-dai": 45,
+      "taishogi": 47,
+      "taikyoku": 48
+    },
+    "unitNote": "All passed; each extended run also has 2 explicitly ignored diagnostic benchmarks. Per-rule key benchmark was run explicitly and passed separately.",
+    "seededGamesPerRule": 128,
+    "maximumPliesPerSeededGame": 16,
+    "additionalLongGamesPerRule": 1,
+    "maximumLongGamePlies": 128,
+    "checks": [
+      "Every test push/pop compares cached position key to full recomputation and rolling history to full timeline fold",
+      "Independent saved public FNV sequence checks old context at every seeded transition/undo",
+      "All internal PieceIds, colors, wide square indices, repeated delta squares, state/side changes and resident order",
+      "Same-board/different-history keys and fourfold repetition; existing continuous-check tests",
+      "Pending resume/undo/reload; existing effects, captures, promotions, origins, multiple royals and pass fixtures"
+    ],
+    "corpus": "Existing Shogitter-verified full corpus reused unchanged; not a new source-run.",
+    "verificationFile": "02-incremental-hash-verification.json",
+    "positions": 4482,
+    "transitions": 457780,
+    "differences": 0,
+    "referenceCommit": "bdec1bbd3270b181cf05ac21e8b2ce652123c11f",
+    "commands": [
+      "LARGE_HASH_WORKERS=2 node scripts/verify-large-hashes.mjs target tenjiku-dai target/hash-stage2/before-wasm-tenjiku-dai",
+      "LARGE_HASH_WORKERS=2 node scripts/verify-large-hashes.mjs target dai-dai target/hash-stage2/before-wasm-dai-dai",
+      "LARGE_HASH_WORKERS=2 node scripts/verify-large-hashes.mjs target maka-dai-dai target/hash-stage2/before-wasm-maka-dai-dai",
+      "LARGE_HASH_WORKERS=4 node scripts/verify-large-hashes.mjs target taishogi target/hash-stage2/before-wasm-taishogi",
+      "LARGE_HASH_WORKERS=4 node scripts/verify-large-hashes.mjs target taikyoku target/hash-stage2/before-wasm-taikyoku"
+    ],
+    "hashCompatibility": "All Native oracle lines byte-identical. Old/new actual WASM public inspect matches on every parent. Child FNV and legacy context fold match on all transitions; Tenjiku also directly compared every old-WASM child inspect.",
+    "wasmAdditionalChecks": [
+      "Independent perft(1,2)",
+      "Full history replay through inspect; canonical parent reload",
+      "1000-node Native/WASM deterministic search and pre-change initial search summary match",
+      "1ms legal fallback including pending prefixes",
+      "Unsupported NNUE/SFNN/USI exports and <=64MiB linear memory"
+    ],
+    "deployment": "Only target Native/WASM artifacts updated; frontend vendor packages unchanged. Browser rollout and all-32-rule regression remain stage 5."
+  },
+  "performance": {
+    "beforeFile": "02-incremental-hash-before.json",
+    "afterFile": "02-incremental-hash-after.json",
+    "commands": [
+      "python3 scripts/perft-benchmark.py --rules tenjiku-dai dai-dai maka-dai-dai taishogi taikyoku daishogi standard --output target/perft-before-02.json",
+      "python3 scripts/perft-benchmark.py --rules tenjiku-dai dai-dai maka-dai-dai taishogi taikyoku daishogi standard --compare target/perft-before-02.json --output target/perft-after-02.json"
+    ],
+    "environment": {
+      "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+      "logicalCpuAffinity": 7,
+      "threads": 1,
+      "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+      "build": "Rust release, opt-level=3, codegen-units=1, lto=fat; workspace dependency versions",
+      "metric": "leaf nodes per second; actual perft with every move applied; no bulk counting; no transposition cache; no evaluation or pruning; root parsing excluded",
+      "minimumBatchSeconds": 3.0,
+      "samplesPerRule": 3,
+      "warmupPerftRuns": 1,
+      "baselineSha256": "bd17cc472fe8a81743064fd69ba97824c9de4f41a89d882ebdc2d55517ff97d4",
+      "harnessSha256": "b9e61ae2ab9cd92fcd234cdafe8526cfac721b6339e98eb644e51003d25956fe"
+    },
+    "sameDepthAndLeafCounts": true,
+    "ruleResults": [
+      {
+        "rule": "tenjiku-dai",
+        "depth": 2,
+        "nodesPerPerft": 17226,
+        "beforeNps": 136297.71612888764,
+        "afterNps": 152808.39267289583,
+        "speedup": 1.1211368540349946,
+        "sampleRangePercent": 0.30113477600470784
+      },
+      {
+        "rule": "dai-dai",
+        "depth": 3,
+        "nodesPerPerft": 251479,
+        "beforeNps": 637179.3810309022,
+        "afterNps": 1206038.7272526338,
+        "speedup": 1.8927773922962878,
+        "sampleRangePercent": 1.8627096745544192
+      },
+      {
+        "rule": "maka-dai-dai",
+        "depth": 3,
+        "nodesPerPerft": 537260,
+        "beforeNps": 602803.8364767213,
+        "afterNps": 1402884.870673387,
+        "speedup": 2.3272659956396327,
+        "sampleRangePercent": 1.239184560179818
+      },
+      {
+        "rule": "taishogi",
+        "depth": 2,
+        "nodesPerPerft": 92676,
+        "beforeNps": 416936.43443466915,
+        "afterNps": 1370720.6879464528,
+        "speedup": 3.2876011179138978,
+        "sampleRangePercent": 0.6793514657280175
+      },
+      {
+        "rule": "taikyoku",
+        "depth": 2,
+        "nodesPerPerft": 79035,
+        "beforeNps": 91724.86408225656,
+        "afterNps": 221069.6535096969,
+        "speedup": 2.410138796296794,
+        "sampleRangePercent": 2.593718131214673
+      },
+      {
+        "rule": "daishogi",
+        "depth": 4,
+        "nodesPerPerft": 25451513,
+        "beforeNps": 3544722.6260425597,
+        "afterNps": 3553602.1879396094,
+        "speedup": 1.002505008948179,
+        "sampleRangePercent": 0.5650183785437912
+      },
+      {
+        "rule": "standard",
+        "depth": 5,
+        "nodesPerPerft": 19861490,
+        "beforeNps": 18760248.286086366,
+        "afterNps": 18714987.80105193,
+        "speedup": 0.9975874261180219,
+        "sampleRangePercent": 2.5864113722194215
+      }
+    ],
+    "nonTargetRegressions": [],
+    "sampleNoiseReviewed": true,
+    "noiseNote": "All before/after ranges <5%; control medians within 0.3%. No competing builds, reference, browser or diagnostic runs during production NPS timing.",
+    "profiling": {
+      "beforeFile": "02-incremental-hash-profile-before.json",
+      "afterFile": "02-incremental-hash-profile-after.json",
+      "commands": [
+        "python3 scripts/profile-large-hash.py --revision ce0ddb3 --label phase2-before --output target/hash-stage2/profile-before.json",
+        "python3 scripts/profile-large-hash.py --label phase2-after --output target/hash-stage2/profile-after.json"
+      ],
+      "summary": [
+        {
+          "rule": "tenjiku-dai",
+          "fullHashCallsPerPerftBefore": 17491.0,
+          "fullHashCallsPerPerftAfter": 0,
+          "instrumentedFullHashTimePercentBeforeMedian": 8.595525473907069,
+          "apiBefore": [
+            {
+              "case": "root",
+              "fullHashCalls": 128,
+              "fullHashCallsPerInspect": 4.0,
+              "fullHashNanos": 78387,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 1152,
+              "fullHashCallsPerInspect": 36.0,
+              "fullHashNanos": 713982,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ],
+          "apiAfter": [
+            {
+              "case": "root",
+              "fullHashCalls": 64,
+              "fullHashCallsPerInspect": 2.0,
+              "fullHashNanos": 40359,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 576,
+              "fullHashCallsPerInspect": 18.0,
+              "fullHashNanos": 391998,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ]
+        },
+        {
+          "rule": "dai-dai",
+          "fullHashCallsPerPerftBefore": 259508.0,
+          "fullHashCallsPerPerftAfter": 0,
+          "instrumentedFullHashTimePercentBeforeMedian": 47.31324118954188,
+          "apiBefore": [
+            {
+              "case": "root",
+              "fullHashCalls": 128,
+              "fullHashCallsPerInspect": 4.0,
+              "fullHashNanos": 93992,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 1152,
+              "fullHashCallsPerInspect": 36.0,
+              "fullHashNanos": 841063,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ],
+          "apiAfter": [
+            {
+              "case": "root",
+              "fullHashCalls": 64,
+              "fullHashCallsPerInspect": 2.0,
+              "fullHashNanos": 47611,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 576,
+              "fullHashCallsPerInspect": 18.0,
+              "fullHashNanos": 431772,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ]
+        },
+        {
+          "rule": "maka-dai-dai",
+          "fullHashCallsPerPerftBefore": 550221.0,
+          "fullHashCallsPerPerftAfter": 0,
+          "instrumentedFullHashTimePercentBeforeMedian": 58.48569380366019,
+          "apiBefore": [
+            {
+              "case": "root",
+              "fullHashCalls": 128,
+              "fullHashCallsPerInspect": 4.0,
+              "fullHashNanos": 134309,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 1152,
+              "fullHashCallsPerInspect": 36.0,
+              "fullHashNanos": 1118234,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ],
+          "apiAfter": [
+            {
+              "case": "root",
+              "fullHashCalls": 64,
+              "fullHashCallsPerInspect": 2.0,
+              "fullHashNanos": 61346,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 576,
+              "fullHashCallsPerInspect": 18.0,
+              "fullHashNanos": 554153,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ]
+        },
+        {
+          "rule": "taishogi",
+          "fullHashCallsPerPerftBefore": 93285.0,
+          "fullHashCallsPerPerftAfter": 0,
+          "instrumentedFullHashTimePercentBeforeMedian": 68.8811433634495,
+          "apiBefore": [
+            {
+              "case": "root",
+              "fullHashCalls": 128,
+              "fullHashCallsPerInspect": 4.0,
+              "fullHashNanos": 213581,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 1152,
+              "fullHashCallsPerInspect": 36.0,
+              "fullHashNanos": 1949119,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ],
+          "apiAfter": [
+            {
+              "case": "root",
+              "fullHashCalls": 64,
+              "fullHashCallsPerInspect": 2.0,
+              "fullHashNanos": 144491,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 576,
+              "fullHashCallsPerInspect": 18.0,
+              "fullHashNanos": 1053414,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ]
+        },
+        {
+          "rule": "taikyoku",
+          "fullHashCallsPerPerftBefore": 79600.0,
+          "fullHashCallsPerPerftAfter": 0,
+          "instrumentedFullHashTimePercentBeforeMedian": 43.02660786894833,
+          "apiBefore": [
+            {
+              "case": "root",
+              "fullHashCalls": 128,
+              "fullHashCallsPerInspect": 4.0,
+              "fullHashNanos": 464974,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 1152,
+              "fullHashCallsPerInspect": 36.0,
+              "fullHashNanos": 4142263,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ],
+          "apiAfter": [
+            {
+              "case": "root",
+              "fullHashCalls": 64,
+              "fullHashCallsPerInspect": 2.0,
+              "fullHashNanos": 495492,
+              "historyPlies": 0,
+              "inspectCalls": 32
+            },
+            {
+              "case": "history",
+              "fullHashCalls": 576,
+              "fullHashCallsPerInspect": 18.0,
+              "fullHashNanos": 3788433,
+              "historyPlies": 16,
+              "inspectCalls": 32
+            }
+          ]
+        }
+      ],
+      "note": "Timers inserted only in an isolated source copy. Their presence also changes compiler optimization/layout; percentages are diagnostic and must not be used to exactly infer uninstrumented NPS. API checks are call-count diagnostics (32 inspect calls), not API-throughput benchmarks. Internal perft full-FNV calls fell to zero; public API keeps old FNV values."
+    },
+    "isolatedKeyUpdates": {
+      "commandTemplate": "taskset -c 7 cargo test --release -p haitaka --features RULE benchmark_full_fnv_and_delta_key -- --ignored --nocapture",
+      "method": "64 fixed-seed completed positions/rule, same old FNV/new delta inputs, black_box, 3 alternating >=1s batches on CPU 7. Typical few-square updates, not burn-heavy worst-case or search NPS.",
+      "results": [
+        {
+          "cases": 64,
+          "deltaMedianNs": 16.20435008032166,
+          "deltaSamplesNs": [
+            16.164423063245504,
+            16.20435008032166,
+            16.217428750376243
+          ],
+          "oldMedianNs": 580.322539461467,
+          "oldSamplesNs": [
+            580.2982265050509,
+            580.322539461467,
+            584.1043471505739
+          ],
+          "priorTimelineBytesPerPly": 16,
+          "rule": "tenjiku-dai",
+          "speedup": 35.812762411631844,
+          "timelineBytesPerPly": 24
+        },
+        {
+          "cases": 64,
+          "deltaMedianNs": 15.412213921757298,
+          "deltaSamplesNs": [
+            15.352674654307242,
+            15.412213921757298,
+            15.489495513130619
+          ],
+          "oldMedianNs": 732.2717013075264,
+          "oldSamplesNs": [
+            731.7700088980472,
+            732.2717013075264,
+            735.2013377523173
+          ],
+          "priorTimelineBytesPerPly": 16,
+          "rule": "dai-dai",
+          "speedup": 47.512427807259044,
+          "timelineBytesPerPly": 24
+        },
+        {
+          "cases": 64,
+          "deltaMedianNs": 15.929979639595414,
+          "deltaSamplesNs": [
+            15.925613023952097,
+            15.929979639595414,
+            16.00416365681869
+          ],
+          "oldMedianNs": 916.9919481734155,
+          "oldSamplesNs": [
+            909.7138549065556,
+            916.9919481734155,
+            921.9587700244867
+          ],
+          "priorTimelineBytesPerPly": 16,
+          "rule": "maka-dai-dai",
+          "speedup": 57.56391212793195,
+          "timelineBytesPerPly": 24
+        },
+        {
+          "cases": 64,
+          "deltaMedianNs": 16.46415074122896,
+          "deltaSamplesNs": [
+            16.405973871348955,
+            16.46415074122896,
+            16.58616916706208
+          ],
+          "oldMedianNs": 1638.0321017664323,
+          "oldSamplesNs": [
+            1637.4114959918263,
+            1638.0321017664323,
+            1671.1453972168754
+          ],
+          "priorTimelineBytesPerPly": 16,
+          "rule": "taishogi",
+          "speedup": 99.49083481509489,
+          "timelineBytesPerPly": 24
+        },
+        {
+          "cases": 64,
+          "deltaMedianNs": 22.486721667650084,
+          "deltaSamplesNs": [
+            22.337596757441812,
+            22.486721667650084,
+            22.755160024167782
+          ],
+          "oldMedianNs": 4909.195108781024,
+          "oldSamplesNs": [
+            4880.129128279201,
+            4909.195108781024,
+            4916.195993236867
+          ],
+          "priorTimelineBytesPerPly": 16,
+          "rule": "taikyoku",
+          "speedup": 218.31528763232328,
+          "timelineBytesPerPly": 24
+        }
+      ]
+    }
+  },
+  "memory": {
+    "timelineBytesPerPlyBefore": 16,
+    "timelineBytesPerPlyAfter": 24,
+    "extraBytesPerPly": 8,
+    "lookupTableBytes": 0,
+    "maximumObservedWasmLinearMemoryBytes": 1703936,
+    "wasm": {
+      "tenjiku-dai": {
+        "beforeBytes": 332650,
+        "afterBytes": 340870,
+        "linearMemoryBytes": 1507328
+      },
+      "dai-dai": {
+        "beforeBytes": 339703,
+        "afterBytes": 329184,
+        "linearMemoryBytes": 1245184
+      },
+      "maka-dai-dai": {
+        "beforeBytes": 345527,
+        "afterBytes": 336678,
+        "linearMemoryBytes": 1245184
+      },
+      "taishogi": {
+        "beforeBytes": 342832,
+        "afterBytes": 348341,
+        "linearMemoryBytes": 1376256
+      },
+      "taikyoku": {
+        "beforeBytes": 403549,
+        "afterBytes": 407393,
+        "linearMemoryBytes": 1703936
+      }
+    }
+  },
+  "decision": "adopt",
+  "reason": "Every target exceeded +10% production perft NPS; all leaf/oracle/public hashes match, no >5% control regression and memory within budget.",
+  "remaining": [
+    "All-32-rule regression, browser/frontend rollout in stage 5",
+    "Microbenchmark timings cover typical fixed-seed few-square updates; do not generalize 35.8-218.3x local speedups to arbitrary effect-heavy positions."
+  ],
+  "nextStage": "03A-effects (not started)"
+}

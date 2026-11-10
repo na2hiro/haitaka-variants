@@ -1,0 +1,29 @@
+{
+  "heian-8x8": {
+    "positions": 151,
+    "transitions": 2888
+  },
+  "heian-8x8-perft": [
+    22,
+    484,
+    10296
+  ],
+  "heian-9x8": {
+    "positions": 151,
+    "transitions": 3662
+  },
+  "heian-9x8-perft": [
+    26,
+    676,
+    17108
+  ],
+  "heian-9x9": {
+    "positions": 151,
+    "transitions": 3689
+  },
+  "heian-9x9-perft": [
+    26,
+    676,
+    17108
+  ]
+}

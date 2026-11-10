@@ -1,5 +1,12 @@
 //#![cfg_attr(not(any(feature = "std", test)), no_std)]
-#![cfg_attr(not(feature = "donor-category"), doc = include_str!("../README.md"))]
+#![cfg_attr(
+    not(any(feature = "variant-board", feature = "donor-category")),
+    doc = include_str!("../README.md")
+)]
+#![cfg_attr(
+    feature = "variant-board",
+    doc = "Small-board shogi, with rules selected at compile time.\n```\nuse haitaka::*;\nlet board = Board::startpos();\nassert_eq!(board.to_string(), SelectedRule::STARTPOS);\nassert_eq!(core::mem::size_of::<BitBoard>(), if Square::NUM <= 64 { 8 } else { 16 });\n```"
+)]
 
 //! # Examples
 //!
@@ -173,6 +180,10 @@ pub use bitboard::*;
 pub use color::*;
 pub use dfpn::*;
 pub use file::*;
+pub use haitaka_types::{
+    BOARD_HEIGHT, BOARD_WIDTH, BoardGeometry, RuleSpec, SelectedGeometry, SelectedRule,
+    fixed_bitboard, geometry, packed_coordinates,
+};
 pub use history::*;
 pub use piece::*;
 pub use rank::*;
@@ -180,10 +191,12 @@ pub use shogi_move::*;
 pub use sliders::*;
 pub use square::*;
 
+#[cfg_attr(feature = "compact-board", path = "small_attacks.rs")]
 pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod history;
+#[cfg_attr(feature = "compact-board", path = "small_slider_moves.rs")]
 pub mod slider_moves;
 #[cfg(all(
     feature = "donor-category",
@@ -207,3 +220,53 @@ pub mod variant_rules;
 pub use attacks::*;
 pub use board::*;
 pub use slider_moves::*;
+
+#[cfg(feature = "extended-rules")]
+pub mod extended;
+
+#[cfg(all(
+    any(
+        feature = "shoshogi",
+        feature = "chushogi",
+        feature = "classical-rules"
+    ),
+    any(
+        feature = "variant-board",
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    )
+))]
+compile_error!("extended rules cannot be combined with another ruleset");
+#[cfg(all(feature = "shoshogi", feature = "chushogi"))]
+compile_error!("select exactly one extended ruleset");
+
+#[cfg(feature = "extended-rules")]
+const _: () = assert!(
+    (cfg!(feature = "shoshogi") as u8
+        + cfg!(feature = "chushogi") as u8
+        + cfg!(feature = "torishogi") as u8
+        + cfg!(feature = "washogi") as u8
+        + cfg!(feature = "heian-dai") as u8
+        + cfg!(feature = "daishogi") as u8
+        + cfg!(feature = "tenjiku-dai") as u8
+        + cfg!(feature = "dai-dai") as u8
+        + cfg!(feature = "maka-dai-dai") as u8
+        + cfg!(feature = "taishogi") as u8
+        + cfg!(feature = "taikyoku") as u8
+        + cfg!(feature = "kyoto") as u8
+        + cfg!(feature = "kinkei-mai") as u8
+        + cfg!(feature = "microshogi") as u8
+        + cfg!(feature = "kyoto-minishogi") as u8)
+        <= 1,
+    "select exactly one extended ruleset"
+);

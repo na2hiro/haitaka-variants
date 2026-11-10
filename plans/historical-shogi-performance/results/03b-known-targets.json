@@ -1,0 +1,150 @@
+{
+  "stage": "03B-known-targets",
+  "status": "adopted",
+  "date": "2026-11-09",
+  "beforeCommit": "2e5ad72",
+  "afterCommit": "6fb8f19c26806c719c6c432356129afbb17f95a3",
+  "changedFiles": [
+    "haitaka/src/extended/large.rs",
+    "haitaka/src/extended/large/known_target_tests.rs"
+  ],
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "f4c4f88b50b4a5b2cd24103a052f2f3a4c9f9ddfe2e2b51fdd09d85238b0a130",
+    "haitaka/src/extended/large/known_target_tests.rs": "f893383103cbb251819f8f3f79a8d98001dec580e4a4529f913c21182a84764a"
+  },
+  "implementation": [
+    "Known-destination requests preserve all geometric/requirement/blocker checks, but store only matching raw/prohibited/turning-ray/four-king targets",
+    "Reuses existing turn-start active list for first push hop; later continuation states retain original freeze semantics",
+    "No trusted-move cache, new move metadata or JSON/schema changes; external moves remain validated against current board/history/pending"
+  ],
+  "correctness": {
+    "unitCommandTemplate": "cargo test --release -p haitaka --features RULE extended",
+    "passedCounts": {
+      "tenjiku-dai": 52,
+      "dai-dai": 45,
+      "maka-dai-dai": 46,
+      "taishogi": 48,
+      "taikyoku": 49
+    },
+    "checks": [
+      "Original full target generator retained under cfg(test)",
+      "Every known query compares selected target/through/next with original generator",
+      "Every piece, both colors, all movement states, friendly/enemy blockers, ignored blocker and invalid destinations",
+      "Existing repetition/hash/undo/effects/royals/promotion/pending tests passed"
+    ],
+    "verificationFile": "03b-known-targets-verification.json",
+    "positions": 4482,
+    "transitions": 457780,
+    "differences": 0,
+    "commandTemplate": "LARGE_HASH_WORKERS=N node scripts/verify-large-hashes.mjs target RULE target/hash-stage2/before-wasm-RULE",
+    "native": "All freshly rebuilt Native oracle lines byte-identical to previously independently Shogitter-verified corpus",
+    "wasm": "Fresh actual WASM matched every legal set/transition/outcome/legacy hashes; deterministic search, memory and 1ms/pending fallbacks passed"
+  },
+  "performance": {
+    "beforeFile": "03b-known-targets-before.json",
+    "afterFile": "03b-known-targets-after.json",
+    "baselineProvenance": "Reuses immediately preceding adopted stage-3A after measurement, identical production source/harness/depth/leaves/settings. Before raw file retains previous-stage comparison fields; use result.medianNps as the new baseline.",
+    "command": "python3 scripts/perft-benchmark.py --rules tenjiku-dai dai-dai maka-dai-dai taishogi taikyoku daishogi standard --compare target/perft-before-03b.json --output target/perft-after-03b.json",
+    "sameDepthAndLeafCounts": true,
+    "sampleNoiseReviewed": true,
+    "ruleResults": [
+      {
+        "rule": "tenjiku-dai",
+        "beforeNps": 311162.05906081904,
+        "afterNps": 491890.894859726,
+        "speedup": 1.5808189994127213,
+        "sampleRangePercent": 2.582501720564423
+      },
+      {
+        "rule": "dai-dai",
+        "beforeNps": 1236217.4620871788,
+        "afterNps": 1391583.5206697173,
+        "speedup": 1.1256785827310876,
+        "sampleRangePercent": 0.5654405356983583
+      },
+      {
+        "rule": "maka-dai-dai",
+        "beforeNps": 1401028.1675313385,
+        "afterNps": 1606378.1403426402,
+        "speedup": 1.1465709095436216,
+        "sampleRangePercent": 2.7419169580271463
+      },
+      {
+        "rule": "taishogi",
+        "beforeNps": 1382777.2655546053,
+        "afterNps": 1383694.9546107396,
+        "speedup": 1.0006636564535694,
+        "sampleRangePercent": 1.2507516338441604
+      },
+      {
+        "rule": "taikyoku",
+        "beforeNps": 219991.41133662363,
+        "afterNps": 285820.7521885346,
+        "speedup": 1.299235958585588,
+        "sampleRangePercent": 0.5136593336547701
+      },
+      {
+        "rule": "daishogi",
+        "beforeNps": 3553420.6409053225,
+        "afterNps": 3529820.329215001,
+        "speedup": 0.9933584244379497,
+        "sampleRangePercent": 0.9349553065567395
+      },
+      {
+        "rule": "standard",
+        "beforeNps": 18694712.56464064,
+        "afterNps": 18602893.32510202,
+        "speedup": 0.9950884915068291,
+        "sampleRangePercent": 1.1768179195225548
+      }
+    ],
+    "nonTargetRegressions": []
+  },
+  "diagnostic": {
+    "beforeFile": "03b-known-targets-profile-before.json",
+    "afterFile": "03b-known-targets-profile-after.json",
+    "commandTemplate": "python3 scripts/profile-extended-hotspots.py [--revision 2e5ad72] --label 03b-PHASE --rules tenjiku-dai dai-dai maka-dai-dai taishogi taikyoku --output target/paths-03b-profile-PHASE.json",
+    "method": "Isolated snapshot, inclusive timers perturb code/layout and overlap; do not sum. Warmup excluded, >=3s x3. Allocations counted separately in one warmed perft; includes alloc/realloc requested bytes, excludes dealloc. Not production NPS.",
+    "allocationResults": [
+      {
+        "rule": "tenjiku-dai",
+        "before": 276566,
+        "after": 235371
+      },
+      {
+        "rule": "dai-dai",
+        "before": 2616098,
+        "after": 2354906
+      },
+      {
+        "rule": "maka-dai-dai",
+        "before": 4973025,
+        "after": 4590879
+      },
+      {
+        "rule": "taishogi",
+        "before": 823845,
+        "after": 815915
+      },
+      {
+        "rule": "taikyoku",
+        "before": 1563624,
+        "after": 1293093
+      }
+    ]
+  },
+  "memory": {
+    "additionalBytesPerMove": 0,
+    "maximumObservedWasmLinearMemoryBytes": 1703936
+  },
+  "decision": "adopt",
+  "reason": "Substantial gains in four rules, Taishogi effectively neutral, all controls within 5% and exact reference/hash parity.",
+  "unmetTargets": [
+    "Taishogi initial position 1.001x: no meaningful gain despite provisional 1.05-1.20x range; report without assuming improvement."
+  ],
+  "remaining": [
+    "Memory and allocation work in stage 4",
+    "Full 32-rule/custom-input/actual frontend rollout in stage 5"
+  ],
+  "nextStage": "04-memory"
+}

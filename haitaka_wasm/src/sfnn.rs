@@ -2,6 +2,7 @@
 //! independently implemented for Haitaka (MIT), not a port of YaneuraOu source.
 //! See docs/tuyouraou11-sfnn.md for the pinned reference and verification procedure.
 use crate::{nnue_kernels::AffineKernel, sfnn_kernels};
+use haitaka::RuleSpec;
 use haitaka::{Board, Color, Move, Piece, Square};
 use std::fmt;
 
@@ -89,6 +90,12 @@ pub struct SfnnModel {
 impl SfnnModel {
     /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
     pub fn from_bytes(nn: &[u8], progress: &[u8], arch: &str) -> Result<Self, SfnnError> {
+        if cfg!(feature = "extended-json") || !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
+            return Err(invalid(format!(
+                "SFNN_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
+                haitaka::SelectedRule::NAME
+            )));
+        }
         let width = match arch {
             MICRO_ARCH => 2048,
             MINI_ARCH => 4096,
@@ -499,6 +506,7 @@ impl<'a> Reader<'a> {
 }
 
 #[cfg(test)]
+#[cfg(not(any(feature = "variant-board", feature = "extended-json")))]
 mod tests {
     use super::*;
     #[test]

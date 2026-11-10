@@ -1,0 +1,157 @@
+{
+  "stage": "04C-inline-delta",
+  "status": "adopted",
+  "implementationCommit": "c19c890",
+  "baseLargeRulesCommit": "7285f24",
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "5dcc9f40ab007fc0906554e1c7277ad1675e63d0ea10eb0589af6d9008361a82",
+    "haitaka/src/extended/large/delta.rs": "55cddcb784579637dfe64736aee9fef9369a9ee0e7f7a62a041d5ea2826c5e10",
+    "haitaka/src/extended/large/hash.rs": "2e27289949e0de1d390023e19e273e55d7cd9a9b756c71fb757ddf33df9f7b5c",
+    "haitaka/src/extended/large/hash_tests.rs": "0542ae5d56d7e0a5acf6f9975616f4bf51e00f6346e18ccf64a81d0b8e2184d7"
+  },
+  "implementation": "Two changes inline, or a single unbounded contiguous Vec after spilling. Iteration uses one slice, no chained iterators, shared scratch, unsafe code, sorting changes, or truncation. Each square retains its first old value.",
+  "firstTrial": {
+    "status": "rejected",
+    "reason": "Tenjiku Dai regressed about 12.5% despite fewer allocations.",
+    "files": [
+      "04c-inline-v1.patch",
+      "04c-inline-v1-delta.rs",
+      "04c-inline-v1-after.json",
+      "04c-inline-v1-profile.json"
+    ]
+  },
+  "performance": {
+    "beforeFile": "04-memory-before.json",
+    "afterFile": "04c-inline-after.json",
+    "rules": [
+      {
+        "rule": "tenjiku-dai",
+        "beforeNps": 492862.9442645378,
+        "afterNps": 493212.8425482421,
+        "speedup": 1.0007099301900784,
+        "sampleRangePercent": 2.151556869053395
+      },
+      {
+        "rule": "dai-dai",
+        "beforeNps": 1389372.925620845,
+        "afterNps": 1430572.0566814393,
+        "speedup": 1.0296530400879838,
+        "sampleRangePercent": 1.3847421672653626
+      },
+      {
+        "rule": "maka-dai-dai",
+        "beforeNps": 1595108.4370506464,
+        "afterNps": 1709489.117153672,
+        "speedup": 1.0717071500885014,
+        "sampleRangePercent": 0.691086541043795
+      },
+      {
+        "rule": "taishogi",
+        "beforeNps": 1393112.4831968455,
+        "afterNps": 1401097.7256523683,
+        "speedup": 1.0057319437962386,
+        "sampleRangePercent": 1.3343968392903305
+      },
+      {
+        "rule": "taikyoku",
+        "beforeNps": 301889.43356631877,
+        "afterNps": 296957.2816101234,
+        "speedup": 0.9836623895777662,
+        "sampleRangePercent": 1.1229798521722234
+      }
+    ],
+    "controlsAgainstCopyElision": [
+      {
+        "rule": "daishogi",
+        "beforeNps": 4826330.415514382,
+        "afterNps": 4750401.334562957,
+        "speedup": 0.984267740826996
+      },
+      {
+        "rule": "torishogi",
+        "beforeNps": 1100309.7388100757,
+        "afterNps": 1104720.0002289163,
+        "speedup": 1.0040081999306942
+      },
+      {
+        "rule": "washogi",
+        "beforeNps": 1634941.4579968236,
+        "afterNps": 1620772.7444718687,
+        "speedup": 0.991333809870896
+      },
+      {
+        "rule": "heian-dai",
+        "beforeNps": 1443510.5137770476,
+        "afterNps": 1444690.1802851413,
+        "speedup": 1.0008172205860884
+      },
+      {
+        "rule": "standard",
+        "beforeNps": 18691358.996023204,
+        "afterNps": 18729691.755797744,
+        "speedup": 1.0020508278602265
+      }
+    ]
+  },
+  "allocations": [
+    {
+      "rule": "tenjiku-dai",
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "beforeEvents": 235371,
+      "afterEvents": 200256,
+      "beforeRequestedBytes": 11482184,
+      "afterRequestedBytes": 9234824
+    },
+    {
+      "rule": "taikyoku",
+      "depth": 2,
+      "nodesPerPerft": 79035,
+      "beforeEvents": 1293093,
+      "afterEvents": 1250355,
+      "beforeRequestedBytes": 138717952,
+      "afterRequestedBytes": 135982720
+    }
+  ],
+  "correctness": {
+    "firstTrialTests": {
+      "tenjiku-dai": 56,
+      "dai-dai": 49,
+      "maka-dai-dai": 50,
+      "taishogi": 52,
+      "taikyoku": 53
+    },
+    "finalCandidateTests": {
+      "tenjiku-dai": 56,
+      "taikyoku": 53
+    },
+    "checks": [
+      "Clear every initially occupied square, including hundreds of squares beyond inline capacity",
+      "Repeated writes retain first old value",
+      "Clone/restore full position, side, state, ordered residents and incremental key",
+      "Existing independent copy/target/effect oracles and seeded push/pop tests"
+    ],
+    "finalNativeWasm": {
+      "positions": 4482,
+      "transitions": 457780,
+      "differences": 0,
+      "reports": [
+        "05-tenjiku-dai-verification.json",
+        "05-dai-dai-verification.json",
+        "05-maka-dai-dai-verification.json",
+        "05-taishogi-verification.json",
+        "05-taikyoku-verification.json"
+      ]
+    },
+    "finalRustTests": {
+      "tenjiku-dai": 56,
+      "dai-dai": 49,
+      "maka-dai-dai": 50,
+      "taishogi": 52,
+      "taikyoku": 53
+    }
+  },
+  "decision": "Adopt: final fresh Native/WASM full references agree; Tenjiku Dai alloc/realloc events -14.9%, cumulative requested bytes -19.6%, other large-rule NPS -1.6% to +7.2%, controls within 5%. Initial +10% NPS goal was not met; Taikyoku requested-byte savings are only about 2%, explicitly not the 18% of rejected trial 1.",
+  "unresolvedCriticalProblems": [],
+  "allocationMethod": "Separate warmed perft, alloc/realloc events and cumulative requested bytes; not peak live memory. Inclusive diagnostic timers are not production NPS."
+}

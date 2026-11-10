@@ -1,0 +1,170 @@
+{
+  "stage": "05-final-validation",
+  "status": "complete",
+  "completedAt": "2026-11-08T23:49:07.546412+00:00",
+  "beforeCommit": "e7ab6efc40e8838d62185e6a69d96a3ad28041e8",
+  "afterMeasurementCommit": "d95f3b3ec09cad5b86c86fcf5bc578a95250b232",
+  "implementationCommit": "c19c890",
+  "engineDirectoryIdentical": true,
+  "frontendBranch": "perf/historical-shogi-movegen",
+  "frontendCommit": "3cbfc427b20af9cacdd05afb175df43ac45b8a12",
+  "sourceBranch": "feat/classical-attack-query",
+  "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "logicalCpuAffinity": 7,
+  "nativeMetric": "leaf nodes per second; actual perft with every move applied; no bulk counting; no transposition cache; no evaluation or pruning; root parsing excluded",
+  "minimumBatchSeconds": 3,
+  "samples": 3,
+  "dependencyLockSha256": "21e149581bcd526d06d4f0ad905d5de4aee1f1e1fb0c94730e8d0700421a0262",
+  "effectiveNativeLockSha256": "b6e083da170005953584175b9e84bc9066129197176931ca8a66a6f3df511b3e",
+  "harnessSha256": "b9e61ae2ab9cd92fcd234cdafe8526cfac721b6339e98eb644e51003d25956fe",
+  "correctness": "05-correctness.json",
+  "nativePositions": 6209,
+  "nativeWasmTransitions": 526295,
+  "browserPassed": 82,
+  "performance": {
+    "initialRuleCount": 32,
+    "fixedPositionCount": 16,
+    "wasmCaseCount": 11,
+    "qualityIssues": [],
+    "nativeBefore": "05-native-before.json",
+    "nativeAfter": "05-native-after.json",
+    "positionsBefore": "05-positions-before.json",
+    "positionsAfter": "05-positions-after.json",
+    "wasm": "05-wasm-perft.json",
+    "targetRules": [
+      {
+        "rule": "washogi",
+        "beforeNps": 664066.9710548726,
+        "afterNps": 1621971.351161398,
+        "speedup": 2.4424815897482315
+      },
+      {
+        "rule": "heian-dai",
+        "beforeNps": 673935.2688501813,
+        "afterNps": 1443161.6314975477,
+        "speedup": 2.141395024420912
+      },
+      {
+        "rule": "daishogi",
+        "beforeNps": 3472551.338895074,
+        "afterNps": 4812515.38031972,
+        "speedup": 1.3858730687192682
+      },
+      {
+        "rule": "tenjiku-dai",
+        "beforeNps": 104610.91492497352,
+        "afterNps": 430211.9329707491,
+        "speedup": 4.112495653816766
+      },
+      {
+        "rule": "dai-dai",
+        "beforeNps": 646199.978060835,
+        "afterNps": 1426758.4443660476,
+        "speedup": 2.207920911182279
+      },
+      {
+        "rule": "maka-dai-dai",
+        "beforeNps": 602996.405030968,
+        "afterNps": 1716979.8822672653,
+        "speedup": 2.847413132055218
+      },
+      {
+        "rule": "taishogi",
+        "beforeNps": 420841.45977494575,
+        "afterNps": 1408141.4172288678,
+        "speedup": 3.3460140024747145
+      },
+      {
+        "rule": "taikyoku",
+        "beforeNps": 88481.15099214349,
+        "afterNps": 302295.5630275659,
+        "speedup": 3.41649672995786
+      }
+    ]
+  },
+  "normalBudget": "05-normal-budget.json",
+  "apiCompatibility": "Public JSON/SFEN/USI formats, original FNV/context hashes, pending/history/undo and model guards preserved. Verification-only Heian wrapper does not change production exports.",
+  "unresolvedCriticalProblems": [],
+  "localUrl": "http://localhost:3002",
+  "adoptedStages": [
+    "01",
+    "02",
+    "03A",
+    "03B",
+    "04A",
+    "04C"
+  ],
+  "rejectedTrials": [
+    "04B scratch: non-target regression",
+    "04C first chained-iterator inline trial: Tenjiku Dai regression"
+  ],
+  "memoryNote": "Allocation profiles record cumulative alloc/realloc requested bytes; actual WASM linear memory is separately guarded, including normal 5-second searches.",
+  "normalBudgetSummary": {
+    "rules": 14,
+    "budgetMs": 5000,
+    "minApiElapsedMs": 4989.886295,
+    "maxApiElapsedMs": 5000.005276000001,
+    "minWallElapsedMs": 5000.852089,
+    "maxWallElapsedMs": 5012.724805999998,
+    "maxLinearMemoryBytes": 52822016,
+    "maxInitializationMs": 22.58323500000006,
+    "allLegalCompleteMoves": true
+  },
+  "nativeBinaryIdentity": "05-native-binary-identity.json",
+  "fixedInputs": "../inputs/positions.json",
+  "frontendAssets": "05-frontend-assets.json",
+  "frontendBeforeCommit": "bdec1bbd3270b181cf05ac21e8b2ce652123c11f",
+  "wasmComparisonScope": "Actual previously distributed frontend bundles versus refreshed bundles; per-rule SHA-256 recorded. Native compares source revisions e7ab6ef and d95f3b3 at exactly the same engine path. Ratios are calculated separately within each pair.",
+  "verificationAndBenchmarkToolSha256": {
+    "perft-benchmark.py": "d138bfba62756f83ef84483b84039b150fcec05cfe723e39f8b06f46a00f2e02",
+    "perft-benchmark.rs": "b9e61ae2ab9cd92fcd234cdafe8526cfac721b6339e98eb644e51003d25956fe",
+    "perft-position-benchmark.py": "b23bf5fffb9dd051096541aad74dfd3f6eb08f48ffbf0188e440f44375c0c5e6",
+    "perft-position-benchmark.rs": "cbb4bf8f14d7580e90a334c31a9e3bbbca981b5005efcd8418ffbeb2ba408128",
+    "benchmark-wasm-perft.mjs": "05a85a6581e33514a91099b6f41746bd6fcee599a632f23c1363dce7ccae3002",
+    "verify-native-oracle.mjs": "1062622ba791f189ea5874919bfdcdcd7ad8421b919b833e2a3952849f066fdb",
+    "verify-large-hashes.mjs": "784fca685ad7af62d8674bea640db20d3abb18a66099dcc46d244329ccc2607b",
+    "verify-shoshogi.mjs": "560e0220de5d4955395f9430d0b0f959888833d1b772a16be0e450a53be4cdd4",
+    "verify-chushogi.mjs": "d2ac1ebd017e4077ad6592a36e6e67702993a97a37e0ee78c0566b56a5c3b009",
+    "verify-heian.mjs": "dc3e2ea1b49203c0123df5c069573e56ce76ccadf8895bc87e806a3d0ca75e5f",
+    "verify-heian-wasm-oracle.py": "22a2bf80c9b232e2a88c39365efc3613d9cd4e97729a127dab94f1c42aeacdac",
+    "verify-heian-wasm-oracle.mjs": "59848c41e087e18d038631317307ce3f34024bfaa942e6ab89b220af5260cb56",
+    "heian-wasm-oracle.rs": "68f714c5feb68d75345d04e0450e47a6c053c28a08f5a65245f888d1cbd97443",
+    "verify-normal-budget.mjs": "2fbdd60f43ab464a3d8dc8dc87328e3a52ccc45061697eb80f1f9f1ca9799fb1"
+  },
+  "versions": {
+    "chrome": "Google Chrome 155.0.8059.39",
+    "node": "v26.8.1",
+    "pnpm": "12.3.4",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "wasmBindgen": "wasm-bindgen 0.2.118"
+  },
+  "commands": {
+    "rustWorkspace": "cargo test --release --workspace",
+    "rustRule": "cargo test --release -p haitaka --features RULE extended (Heian 3 modes: no extended filter)",
+    "nativeBuild": "cargo build --release -p haitaka_cli --no-default-features --features RULE; copy target/release/haitaka_cli to target/haitaka-RULE",
+    "wasmBuild": "RUSTFLAGS='-C target-feature=-simd128' cargo build --release --target wasm32-unknown-unknown -p haitaka_wasm --no-default-features --features RULE",
+    "wasmBindgen": "wasm-bindgen --target web --out-dir target/wasm-RULE --out-name haitaka_wasm target/performance-final-raw/RULE.wasm",
+    "frontendBindgen": "wasm-bindgen --target web --out-dir SHOGITTER/app/bot/vendors/haitaka/RULE/generated --out-name haitaka_engine target/performance-final-raw/RULE.wasm",
+    "jsonNativeAndWasm": "LARGE_HASH_WORKERS=4 node scripts/verify-large-hashes.mjs target RULE target/performance-original-wasm/RULE",
+    "shoChuNative": "node scripts/verify-native-oracle.mjs target RULE OUTPUT.json",
+    "shoChuWasm": "node scripts/verify-RULE.mjs target",
+    "heianNativeOracle": "cargo run --release -p haitaka --features RULE --example rule_oracle -- 128 haitaka/tests/fixtures/heian/RULE.sfen > target/RULE-transitions.tsv",
+    "heianSource": "HAITAKA_ENGINE_DIR=ENGINE HEIAN_PERFT=1 HEIAN_REPORT=OUTPUT.json pnpm exec vitest run app/bot/heianReference.test.ts --maxWorkers=1",
+    "heianProductionWasm": "node scripts/verify-heian.mjs target",
+    "heianAllWasmTransitions": "python3 scripts/verify-heian-wasm-oracle.py --wasm-bindgen WASM_BINDGEN_PATH --output plans/historical-shogi-performance/results/05-heian-wasm-all-transitions.json",
+    "core": "pnpm exec vitest run --root packages/core --maxWorkers=2",
+    "aiCi": "CI=1 pnpm exec vitest run --root packages/ai",
+    "app": "pnpm exec vitest run --exclude 'app/bot/*Reference.test.ts' --maxWorkers=2",
+    "appTypecheck": "pnpm typecheck:app",
+    "lint": "pnpm lint",
+    "browser": "SKIP_WEB_SERVER=1 BASE_URL=http://localhost:3002 PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/performance-final-browser.json pnpm exec playwright test tests/haitaka-*.spec.ts --config .tmp/dai-dai.playwright.config.ts --project chromium --workers 2 --reporter=line,json",
+    "nativeBefore": "git -C target/perft-original switch --detach e7ab6efc40e8838d62185e6a69d96a3ad28041e8; python3 scripts/perft-benchmark.py --cpu 7 --engine-dir target/perft-original --output target/perft-original-final.json",
+    "nativeAfter": "git -C target/perft-original switch --detach d95f3b3; python3 scripts/perft-benchmark.py --cpu 7 --engine-dir target/perft-original --compare target/perft-original-final.json --output target/perft-final.json",
+    "positionsBefore": "git -C target/perft-original switch --detach e7ab6efc40e8838d62185e6a69d96a3ad28041e8; python3 scripts/perft-position-benchmark.py --engine-dir target/perft-original --positions plans/historical-shogi-performance/inputs/positions.json --output target/positions-original-final.json",
+    "positionsAfter": "git -C target/perft-original switch --detach d95f3b3; python3 scripts/perft-position-benchmark.py --engine-dir target/perft-original --positions plans/historical-shogi-performance/inputs/positions.json --compare target/positions-original-final.json --output target/positions-final.json",
+    "wasmPerft": "taskset -c 7 node scripts/benchmark-wasm-perft.mjs target/performance-original-wasm SHOGITTER/app/bot/vendors/haitaka target/wasm-performance-final.json",
+    "normalBudget": "taskset -c 7 node scripts/verify-normal-budget.mjs SHOGITTER/app/bot/vendors/haitaka plans/historical-shogi-performance/results/05-normal-budget.json"
+  },
+  "browserConfigSource": "import base from \"../playwright.config.js\";\nimport { defineConfig, devices } from \"@playwright/test\";\nexport default defineConfig({ ...base, testDir: \"../tests\", projects: [{ name: \"chromium\", use: { ...devices[\"Desktop Chrome\"], channel: \"chrome\" } }] });\n"
+}

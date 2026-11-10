@@ -55,3 +55,46 @@ ningenshogi = ["win-condition-category", "haitaka/ningenshogi"]
 tennouzan = ["win-condition-category", "haitaka/tennouzan"]
 igyoku = ["king-constraint-category", "haitaka/igyoku"]
 hitomasuou = ["king-constraint-category", "haitaka/hitomasuou"]
+
+small-board = ["variant-board", "compact-board", "scalar64", "haitaka/small-board"]
+minishogi = ["small-board", "haitaka/minishogi"]
+judkins = ["small-board", "haitaka/judkins"]
+gorogoro = ["small-board", "haitaka/gorogoro"]
+gorogoro-plus = ["small-board", "haitaka/gorogoro-plus"]
+minishogi-kingin = ["small-board", "haitaka/minishogi-kingin"]
+
+variant-board = ["haitaka/variant-board"]
+compact-board = ["haitaka/compact-board"]
+scalar64 = ["haitaka/scalar64"]
+heian = ["variant-board", "haitaka/heian"]
+heian-8x8 = ["compact-board", "scalar64", "heian", "haitaka/heian-8x8"]
+heian-9x8 = ["compact-board", "heian", "haitaka/heian-9x8"]
+heian-9x9 = ["heian", "haitaka/heian-9x9"]
+
+extended-json = ["haitaka/extended-rules"]
+shoshogi = ["extended-json", "haitaka/shoshogi"]
+chushogi = ["extended-json", "haitaka/chushogi"]
+
+torishogi = ["extended-json", "haitaka/torishogi"]
+
+washogi = ["extended-json", "haitaka/washogi"]
+
+heian-dai = ["extended-json", "haitaka/heian-dai"]
+
+daishogi = ["extended-json", "haitaka/daishogi"]
+
+tenjiku-dai = ["extended-json", "haitaka/tenjiku-dai"]
+
+dai-dai = ["extended-json", "haitaka/dai-dai"]
+
+maka-dai-dai = ["extended-json", "haitaka/maka-dai-dai"]
+
+taishogi = ["extended-json", "haitaka/taishogi"]
+
+taikyoku = ["extended-json", "haitaka/taikyoku"]
+
+# Reversible small-board rules (rule-local JSON pieces and physical reserves).
+kyoto = ["extended-json", "haitaka/kyoto"]
+kinkei-mai = ["extended-json", "haitaka/kinkei-mai"]
+microshogi = ["extended-json", "haitaka/microshogi"]
+kyoto-minishogi = ["extended-json", "haitaka/kyoto-minishogi"]

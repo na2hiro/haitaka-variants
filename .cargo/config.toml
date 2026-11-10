@@ -17,3 +17,6 @@ pack-neko = "run -p xtask -- package --ruleset neko --rule-id 130 --features nek
 pack-nekoneko = "run -p xtask -- package --ruleset nekoneko --rule-id 131 --features nekoneko --output target/haitaka-variants-nekoneko.tgz"
 pack-yokoneko = "run -p xtask -- package --ruleset yokoneko --rule-id 132 --features yokoneko --output target/haitaka-variants-yokoneko.tgz"
 pack-yokonekoneko = "run -p xtask -- package --ruleset yokonekoneko --rule-id 133 --features yokonekoneko --output target/haitaka-variants-yokonekoneko.tgz"
+pack-minishogi = "run -p xtask -- package --ruleset minishogi"
+pack-shoshogi = "run -p xtask -- package --ruleset shoshogi --output target/haitaka-variants-shoshogi.tgz"
+pack-chushogi = "run -p xtask -- package --ruleset chushogi --output target/haitaka-variants-chushogi.tgz"

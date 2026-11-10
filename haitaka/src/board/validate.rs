@@ -110,16 +110,32 @@ impl Board {
     /// In order to also support handicap games (without too much fuss), we
     /// only check that the piece count does not exceed the expected maximum.
     pub(super) fn piece_counts_are_valid(&self) -> bool {
+        if SelectedRule::GOLD_AGGREGATE_INVENTORY {
+            soft_assert!(self.hands().iter().flatten().all(|&n| n == 0));
+            soft_assert!(self.occupied().len() as usize <= SelectedRule::MAX_BOARD_PIECES);
+            for piece in Piece::ALL {
+                let count = self.pieces(piece).len() as usize;
+                soft_assert!(
+                    count == 0 || SelectedRule::ALLOWED_PIECES & (1 << piece as usize) != 0
+                );
+                if piece != Piece::Gold && (piece as usize) < Piece::HAND_NUM {
+                    soft_assert!(count <= SelectedRule::INVENTORY[piece as usize] as usize);
+                }
+            }
+            return true;
+        }
         let &hands = self.hands();
         for index in 0..Piece::HAND_NUM {
             let piece = Piece::index_const(index);
             debug_assert!(piece != Piece::King);
 
             let num_board_pieces = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
-            let max_num = Piece::MAX_HAND[index];
-            let sum = hands[0][index] + hands[1][index] + num_board_pieces;
+            let max_num = SelectedRule::INVENTORY[index];
+            let sum = u16::from(hands[0][index])
+                + u16::from(hands[1][index])
+                + u16::from(num_board_pieces);
 
-            soft_assert!(sum <= max_num);
+            soft_assert!(sum <= u16::from(max_num));
         }
         true
     }
@@ -131,7 +147,7 @@ impl Board {
             let piece = Piece::index_const(index);
             let num = (self.pieces(piece) | self.pieces(piece.promote())).len() as u8;
             let sum = hands[0][index] + hands[1][index] + num;
-            let missing = Piece::MAX_HAND[index] - sum;
+            let missing = SelectedRule::INVENTORY[index] - sum;
             self.unchecked_set_hand(Color::White, piece, missing);
         }
     }

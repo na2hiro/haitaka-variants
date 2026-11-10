@@ -358,6 +358,7 @@ impl ExactSizeIterator for PieceMovesIter {
 }
 
 #[cfg(test)]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
 

@@ -1,0 +1,63 @@
+{
+  "stage": "00-baseline",
+  "status": "complete",
+  "optimizationStatus": "not-started",
+  "baselineCommit": "e7ab6efc40e8838d62185e6a69d96a3ad28041e8",
+  "baselineFiles": {
+    "baseline/perft.json": "bd17cc472fe8a81743064fd69ba97824c9de4f41a89d882ebdc2d55517ff97d4",
+    "baseline/perft.md": "7f0a17a23a91dc66e9dffac9c62e7eee2f24f1658f589445494520db9c30fd9f",
+    "baseline/profile-instrumentation.patch": "f28e32340ec8a0e3e35caa07aec37838920cb7872d897009c19701802fe53a06",
+    "baseline/profile.json": "f1a136bbfd57e3d6de16e19dd949bf539a66d0859b6cd495aef663f45ab81585",
+    "baseline/profile.md": "e3c2b79cb436f60dac543d686cff51d2b0b6ddf75b47d0c51d5bddce6128c0fa"
+  },
+  "harnessChecks": [
+    {
+      "source": "target/perft-plan-smoke.json",
+      "rule": "standard",
+      "depth": 5,
+      "nodesPerPerft": 19861490,
+      "seconds": [
+        3.090255549,
+        3.056353436,
+        3.062218825
+      ],
+      "comparisonSpeedup": null,
+      "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+      "logicalCpuAffinity": 7,
+      "needsRemeasurement": false
+    },
+    {
+      "source": "target/perft-plan-washogi-smoke.json",
+      "rule": "washogi",
+      "depth": 3,
+      "nodesPerPerft": 126574,
+      "seconds": [
+        3.169698654,
+        3.179036918,
+        3.093193968
+      ],
+      "comparisonSpeedup": null,
+      "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+      "logicalCpuAffinity": 7,
+      "needsRemeasurement": false
+    },
+    {
+      "source": "target/perft-plan-compare-smoke.json",
+      "rule": "standard",
+      "depth": 5,
+      "nodesPerPerft": 19861490,
+      "seconds": [
+        3.094094047,
+        3.069019705,
+        3.087489904
+      ],
+      "comparisonSpeedup": 0.9918150083771091,
+      "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+      "logicalCpuAffinity": 7,
+      "needsRemeasurement": false
+    }
+  ],
+  "syntaxAndLinks": "passed",
+  "nextStage": "01-attack-query",
+  "note": "Smoke checks confirm both Board and extended paths, fixed leaf counts, >=3s x3 and comparison mode; remeasure the affected rules immediately before implementation."
+}

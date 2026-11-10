@@ -1,0 +1,48 @@
+[
+  {
+    "variant": "scalar",
+    "before": {
+      "wasmBytes": 18498087,
+      "gzip9Bytes": 686231,
+      "wasmSha256": "1f956c5bf44376501bc9221a7bbf08ff75927413c9585ab96838bfcd8278c89f",
+      "rawWasmBytes": 19054120,
+      "rawWasmSha256": "3ed316e884072a02a6afe3dfdf2d91c77c38756b61cd1e01bef6a4fe6a56169f",
+      "javascriptBytes": 38729
+    },
+    "after": {
+      "wasmBytes": 18499472,
+      "gzip9Bytes": 686768,
+      "wasmSha256": "5afdfc1701d596cc6415fbfea275b13348dad4957e1188b24b3a4b0e8f88b46f",
+      "rawWasmBytes": 19055645,
+      "rawWasmSha256": "8c95cf0430650242d000466e39705ab5206daac5fddcf67e03d2f80d23ea2b6e",
+      "javascriptBytes": 38729
+    },
+    "wasmDeltaBytes": 1385,
+    "wasmChangePercent": 0.007487260709715551,
+    "gzipDeltaBytes": 537,
+    "gzipChangePercent": 0.07825353270254477
+  },
+  {
+    "variant": "simd",
+    "before": {
+      "wasmBytes": 18498808,
+      "gzip9Bytes": 685620,
+      "wasmSha256": "e01bd406fc894b540024c51f31844fe44591896ce67095fe15a3b5df95b0c8cb",
+      "rawWasmBytes": 19054681,
+      "rawWasmSha256": "66e262c206473edb538496ce3720c2f4614ffbff79094bf519e8d5d1ad0418f9",
+      "javascriptBytes": 38729
+    },
+    "after": {
+      "wasmBytes": 18500193,
+      "gzip9Bytes": 686237,
+      "wasmSha256": "02215ccd8a4d8fbfad5435dbbd6ab2198ae624b8d1210b1d1c7ae4a7e57b16a0",
+      "rawWasmBytes": 19056206,
+      "rawWasmSha256": "ec212f445fd836bdaf4ef8531003e4f17b0ab36c1eb3bd945e35c8c1e8a4de9b",
+      "javascriptBytes": 38729
+    },
+    "wasmDeltaBytes": 1385,
+    "wasmChangePercent": 0.007486968890103622,
+    "gzipDeltaBytes": 617,
+    "gzipChangePercent": 0.0899915405034859
+  }
+]

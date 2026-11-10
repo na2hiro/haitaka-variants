@@ -13,6 +13,8 @@ keywords = ["shogi", "chess", "no_std"]
 categories = ["games", "no-std"]
 
 [dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 haitaka-types = { path = "../haitaka_types", version = "0.1.3" }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 
@@ -65,3 +67,45 @@ ningenshogi = ["win-condition-category"]
 tennouzan = ["win-condition-category"]
 igyoku = ["king-constraint-category"]
 hitomasuou = ["king-constraint-category"]
+
+small-board = ["variant-board", "compact-board", "scalar64", "haitaka-types/small-board"]
+minishogi = ["small-board", "haitaka-types/minishogi"]
+judkins = ["small-board", "haitaka-types/judkins"]
+gorogoro = ["small-board", "haitaka-types/gorogoro"]
+gorogoro-plus = ["small-board", "haitaka-types/gorogoro-plus"]
+minishogi-kingin = ["small-board", "haitaka-types/minishogi-kingin"]
+
+variant-board = ["haitaka-types/variant-board"]
+compact-board = ["haitaka-types/compact-board"]
+scalar64 = ["haitaka-types/scalar64"]
+heian = ["variant-board", "haitaka-types/heian"]
+heian-8x8 = ["compact-board", "scalar64", "heian", "haitaka-types/heian-8x8"]
+heian-9x8 = ["compact-board", "heian", "haitaka-types/heian-9x8"]
+heian-9x9 = ["heian", "haitaka-types/heian-9x9"]
+
+extended-rules = ["dep:serde", "dep:serde_json"]
+shoshogi = ["extended-rules"]
+
+chushogi = ["extended-rules"]
+
+classical-rules = ["extended-rules"]
+torishogi = ["classical-rules"]
+washogi = ["classical-rules"]
+heian-dai = ["classical-rules"]
+daishogi = ["classical-rules"]
+
+tenjiku-dai = ["classical-rules"]
+
+dai-dai = ["classical-rules"]
+
+maka-dai-dai = ["classical-rules"]
+
+taishogi = ["classical-rules"]
+
+taikyoku = ["classical-rules"]
+
+# Reversible small-board rules (rule-local JSON pieces and physical reserves).
+kyoto = ["classical-rules"]
+kinkei-mai = ["classical-rules"]
+microshogi = ["classical-rules"]
+kyoto-minishogi = ["classical-rules"]

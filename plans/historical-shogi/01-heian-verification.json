@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "stage": 1,
+  "status": "complete",
+  "date": "2026-11-07",
+  "engineCommit": "47a643475b480af0cb76a249e45412044a5bb757",
+  "frontendCommit": "c646a1f55e3d5672afc728fa77e5a7c4229b8c97",
+  "referenceCoreCommit": "67ea4f76a02721608f2ceb3fe19657b35f1d805d",
+  "baselineCommit": "9d90ef3312277b55f6f54f4542bd7d1828b9e030",
+  "legalTransitions": {
+    "heian-8x8": {
+      "positions": 151,
+      "transitions": 2888
+    },
+    "heian-9x8": {
+      "positions": 151,
+      "transitions": 3662
+    },
+    "heian-9x9": {
+      "positions": 151,
+      "transitions": 3689
+    }
+  },
+  "wasm": [
+    {
+      "rule": "heian-8x8",
+      "perft": [
+        22,
+        484,
+        10296
+      ],
+      "best": "1f1e",
+      "reply": "1c1d",
+      "wasmBytes": 457949,
+      "sha256": "c1c6e8b249a6ddfe9b5106ba80fff1ab9ca948d69547467c804e357f44afac0f",
+      "frontendSha256": "5d2c74b04585d4d110e85617a546a29fd8a5aed28290c8965caced9ca57ec494"
+    },
+    {
+      "rule": "heian-9x8",
+      "perft": [
+        26,
+        676,
+        17108
+      ],
+      "best": "1f1e",
+      "reply": "1c1d",
+      "wasmBytes": 679499,
+      "sha256": "07bd9cf4b9f1f540905032e52f8c85259d36f8e691edafbc0d5b18b310803914",
+      "frontendSha256": "bbe7b89de8e04e409965296f56207b8d98fe1b0057ef58a898d717f21a42c258"
+    },
+    {
+      "rule": "heian-9x9",
+      "perft": [
+        26,
+        676,
+        17108
+      ],
+      "best": "1g1f",
+      "reply": "1c1d",
+      "wasmBytes": 18323041,
+      "sha256": "f9d8726a3e59d35a70acd29b2275d9e85f325b003978f1b09527c3ff4100620a",
+      "frontendSha256": "8be7c1a5daa539c019f5393f27a745cc2ad8f834ba514d816f04ac2499eb7ea0"
+    }
+  ],
+  "nativePerformance": [
+    {
+      "name": "startpos",
+      "nodes": 10000,
+      "beforeMedianMs": 10.473271,
+      "afterMedianMs": 10.4677765,
+      "medianPairedChangePercent": 0.07663973717821904,
+      "searchResultsMatch": true,
+      "samples": [
+        {
+          "beforeMs": 10.495764,
+          "afterMs": 10.442451
+        },
+        {
+          "beforeMs": 10.429193,
+          "afterMs": 10.414797
+        },
+        {
+          "beforeMs": 10.427452,
+          "afterMs": 10.403229
+        },
+        {
+          "beforeMs": 10.476132,
+          "afterMs": 10.656116
+        },
+        {
+          "beforeMs": 10.564598,
+          "afterMs": 10.417993
+        },
+        {
+          "beforeMs": 10.390011,
+          "afterMs": 10.460562
+        },
+        {
+          "beforeMs": 10.538617,
+          "afterMs": 10.795797
+        },
+        {
+          "beforeMs": 10.5538,
+          "afterMs": 10.64104
+        },
+        {
+          "beforeMs": 10.537248,
+          "afterMs": 10.566747
+        },
+        {
+          "beforeMs": 10.456109,
+          "afterMs": 10.475846
+        },
+        {
+          "beforeMs": 10.473132,
+          "afterMs": 10.480546
+        },
+        {
+          "beforeMs": 10.524614,
+          "afterMs": 10.430537
+        },
+        {
+          "beforeMs": 10.433419,
+          "afterMs": 10.462471
+        },
+        {
+          "beforeMs": 10.49832,
+          "afterMs": 10.423082
+        },
+        {
+          "beforeMs": 10.47341,
+          "afterMs": 10.423727
+        },
+        {
+          "beforeMs": 10.472683,
+          "afterMs": 10.440464
+        },
+        {
+          "beforeMs": 10.431482,
+          "afterMs": 10.595494
+        },
+        {
+          "beforeMs": 10.46445,
+          "afterMs": 10.473082
+        },
+        {
+          "beforeMs": 10.467389,
+          "afterMs": 10.49514
+        },
+        {
+          "beforeMs": 10.659461,
+          "afterMs": 10.517803
+        }
+      ]
+    },
+    {
+      "name": "endgame",
+      "nodes": 10000,
+      "beforeMedianMs": 28.860379000000002,
+      "afterMedianMs": 28.466242,
+      "medianPairedChangePercent": -1.2971001624051681,
+      "searchResultsMatch": true,
+      "samples": [
+        {
+          "beforeMs": 28.901251,
+          "afterMs": 28.469443
+        },
+        {
+          "beforeMs": 28.761963,
+          "afterMs": 28.448732
+        },
+        {
+          "beforeMs": 28.641433,
+          "afterMs": 30.339796
+        },
+        {
+          "beforeMs": 31.941695,
+          "afterMs": 31.793732
+        },
+        {
+          "beforeMs": 28.911052,
+          "afterMs": 28.502211
+        },
+        {
+          "beforeMs": 29.044394,
+          "afterMs": 28.320437
+        },
+        {
+          "beforeMs": 28.863537,
+          "afterMs": 28.490517
+        },
+        {
+          "beforeMs": 28.882516,
+          "afterMs": 28.375038
+        },
+        {
+          "beforeMs": 28.788587,
+          "afterMs": 28.480727
+        },
+        {
+          "beforeMs": 28.757502,
+          "afterMs": 28.356637
+        },
+        {
+          "beforeMs": 28.797095,
+          "afterMs": 28.422202
+        },
+        {
+          "beforeMs": 28.956957,
+          "afterMs": 28.312399
+        },
+        {
+          "beforeMs": 29.169027,
+          "afterMs": 29.400444
+        },
+        {
+          "beforeMs": 28.945851,
+          "afterMs": 28.520963
+        },
+        {
+          "beforeMs": 28.790117,
+          "afterMs": 28.427123
+        },
+        {
+          "beforeMs": 28.767463,
+          "afterMs": 28.41927
+        },
+        {
+          "beforeMs": 28.857221,
+          "afterMs": 28.493903
+        },
+        {
+          "beforeMs": 28.97511,
+          "afterMs": 28.463041
+        },
+        {
+          "beforeMs": 28.744692,
+          "afterMs": 28.490442
+        },
+        {
+          "beforeMs": 28.798591,
+          "afterMs": 28.373142
+        }
+      ]
+    }
+  ],
+  "browserPerformance": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "reports": [
+      {
+        "name": "startpos",
+        "depth": 4,
+        "nodes": 719731,
+        "beforeMedianMs": 14.09999942779541,
+        "afterMedianMs": 13.5,
+        "medianPairedChangePercent": -3.57142857142857
+      },
+      {
+        "name": "endgame",
+        "depth": 3,
+        "nodes": 3107043,
+        "beforeMedianMs": 15.5,
+        "afterMedianMs": 15,
+        "medianPairedChangePercent": -3.2258064516129004
+      }
+    ]
+  },
+  "checks": {
+    "heianNativeAllCrates": true,
+    "existingSmallRulesAllCrates": [
+      "minishogi",
+      "judkins",
+      "gorogoro",
+      "gorogoro-plus",
+      "minishogi-kingin"
+    ],
+    "standardRelease": true,
+    "annanCore": true,
+    "xtask": true,
+    "workspaceIncludingLearn": true,
+    "frontendTypecheck": true,
+    "frontendUnitTests": true,
+    "browserCasesPassed": 9,
+    "referencePerftExecuted": true
+  }
+}

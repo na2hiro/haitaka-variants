@@ -1,0 +1,854 @@
+{
+  "node": "v26.8.1",
+  "logicalCpuAffinity": 7,
+  "metric": "Leaf nodes / total JSON API wall seconds; parser/history replay and result JSON included. API-internal perft timers separately recorded. No TT/bulk/evaluation. One warmup, three alternating >=3s batches per version.",
+  "cases": [
+    {
+      "id": "torishogi-initial",
+      "rule": "torishogi",
+      "depth": 4,
+      "nodesPerPerft": 103857,
+      "inputSha256": "3411bd99c58002946cef72f659f57df6282867aaa0e1105222291c1154126c66",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.05620607,
+            "nps": 849558.2236704347,
+            "apiInternalPerftSeconds": 3.052991444999999,
+            "apiInternalPerftNps": 850452.7597849199
+          },
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.040976805,
+            "nps": 853812.8261060511,
+            "apiInternalPerftSeconds": 3.0350185830000003,
+            "apiInternalPerftNps": 855488.995864247
+          },
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.062122865000001,
+            "nps": 847916.6625471115,
+            "apiInternalPerftSeconds": 3.0574637309999995,
+            "apiInternalPerftNps": 849208.7653156859
+          }
+        ],
+        "medianNps": 849558.2236704347,
+        "sampleRangePercent": 0.6953706442361485,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.0063439300000003,
+            "nps": 863648.6910531224,
+            "apiInternalPerftSeconds": 3.0001870950000007,
+            "apiInternalPerftNps": 865421.0280175875
+          },
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.0130512749999996,
+            "nps": 861726.1251221157,
+            "apiInternalPerftSeconds": 3.008792225,
+            "apiInternalPerftNps": 862945.9284115239
+          },
+          {
+            "repetitions": 25,
+            "totalLeafNodes": 2596425,
+            "seconds": 3.0203521259999997,
+            "nps": 859643.1448006603,
+            "apiInternalPerftSeconds": 3.013427463999999,
+            "apiInternalPerftNps": 861618.549315777
+          }
+        ],
+        "medianNps": 861726.1251221157,
+        "sampleRangePercent": 0.46595453900710737,
+        "needsRemeasurement": false
+      },
+      "speedup": 1.0143226221730994,
+      "beforeWasmSha256": "a870db7fc196059a1b608c5c24c45e4ea0ee0ba55a4dccc8f2faa49a3081b176",
+      "afterWasmSha256": "b3e2bea939bce9764fd91737790a6b5b2ecef90a6ae495f68e696c8279e38ab4",
+      "beforeWasmBytes": 336009,
+      "afterWasmBytes": 336241,
+      "initializationMs": 1.8196549999999974,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "washogi-initial",
+      "rule": "washogi",
+      "depth": 3,
+      "nodesPerPerft": 126574,
+      "inputSha256": "4ee8ff64fd0f81d019af6280854d505c0ad8fb47ad74946097edebe554f37a9f",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1645462,
+            "seconds": 3.179811006,
+            "nps": 517471.6349164055,
+            "apiInternalPerftSeconds": 3.1718628480000004,
+            "apiInternalPerftNps": 518768.3323185101
+          },
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1645462,
+            "seconds": 3.1039729530000004,
+            "nps": 530114.7996182297,
+            "apiInternalPerftSeconds": 3.1000226950000003,
+            "apiInternalPerftNps": 530790.307649667
+          },
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1645462,
+            "seconds": 3.104944714000001,
+            "nps": 529948.8884876806,
+            "apiInternalPerftSeconds": 3.098481517,
+            "apiInternalPerftNps": 531054.3215998148
+          }
+        ],
+        "medianNps": 529948.8884876806,
+        "sampleRangePercent": 2.443257533114185,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 31,
+            "totalLeafNodes": 3923794,
+            "seconds": 3.0154450340000003,
+            "nps": 1301232.141776125,
+            "apiInternalPerftSeconds": 3.0032619259999995,
+            "apiInternalPerftNps": 1306510.7528686463
+          },
+          {
+            "repetitions": 31,
+            "totalLeafNodes": 3923794,
+            "seconds": 3.034013004,
+            "nps": 1293268.682377737,
+            "apiInternalPerftSeconds": 3.0302729040000003,
+            "apiInternalPerftNps": 1294864.8931324105
+          },
+          {
+            "repetitions": 32,
+            "totalLeafNodes": 4050368,
+            "seconds": 3.0908993369999953,
+            "nps": 1310417.3117236674,
+            "apiInternalPerftSeconds": 3.0861630070000006,
+            "apiInternalPerftNps": 1312428.4073177602
+          }
+        ],
+        "medianNps": 1301232.141776125,
+        "sampleRangePercent": 1.3259912328814627,
+        "needsRemeasurement": false
+      },
+      "speedup": 2.4553917746472904,
+      "beforeWasmSha256": "7ac6a137632b538513e417d32f4095c136a993204415fb66762edb11b4e0538a",
+      "afterWasmSha256": "72ec5e756b336a390d783870cdf4f584fcc2fb66031208631246ef7833cdbf8d",
+      "beforeWasmBytes": 321096,
+      "afterWasmBytes": 322682,
+      "initializationMs": 2.0695730000006733,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "heian-dai-initial",
+      "rule": "heian-dai",
+      "depth": 4,
+      "nodesPerPerft": 748121,
+      "inputSha256": "1790b70c0bcb1ac904c6467b3e620b712c6148338312a00acbe0c44dd9c697f0",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 3,
+            "totalLeafNodes": 2244363,
+            "seconds": 4.4576771429999935,
+            "nps": 503482.6273868626,
+            "apiInternalPerftSeconds": 4.457109227,
+            "apiInternalPerftNps": 503546.7801426622
+          },
+          {
+            "repetitions": 3,
+            "totalLeafNodes": 2244363,
+            "seconds": 4.422276097000002,
+            "nps": 507513.0884574435,
+            "apiInternalPerftSeconds": 4.421727432,
+            "apiInternalPerftNps": 507576.0626395843
+          },
+          {
+            "repetitions": 3,
+            "totalLeafNodes": 2244363,
+            "seconds": 4.367891868999999,
+            "nps": 513832.08818166837,
+            "apiInternalPerftSeconds": 4.367307613,
+            "apiInternalPerftNps": 513900.82835458836
+          }
+        ],
+        "medianNps": 507513.0884574435,
+        "sampleRangePercent": 2.055574558455131,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 3740605,
+            "seconds": 3.233024139000001,
+            "nps": 1156998.7847838951,
+            "apiInternalPerftSeconds": 3.2321970419999997,
+            "apiInternalPerftNps": 1157294.8528179491
+          },
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 3740605,
+            "seconds": 3.2310395130000034,
+            "nps": 1157709.4569564294,
+            "apiInternalPerftSeconds": 3.22666879,
+            "apiInternalPerftNps": 1159277.6462191523
+          },
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 3740605,
+            "seconds": 3.2413536600000006,
+            "nps": 1154025.5684410566,
+            "apiInternalPerftSeconds": 3.23910393,
+            "apiInternalPerftNps": 1154827.100592601
+          }
+        ],
+        "medianNps": 1156998.7847838951,
+        "sampleRangePercent": 0.3192207015265014,
+        "needsRemeasurement": false
+      },
+      "speedup": 2.2797417664646353,
+      "beforeWasmSha256": "0acb049404cd2e7b53336953cd6f3db0888d71c30d1eb2f9d41f51b3c4af5977",
+      "afterWasmSha256": "27a8950f960644b1fc60b10708f28ce62eb60585c1c88a2e1fe7aed465c5c0ad",
+      "beforeWasmBytes": 323339,
+      "afterWasmBytes": 324688,
+      "initializationMs": 2.4034800000008545,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "daishogi-initial",
+      "rule": "daishogi",
+      "depth": 4,
+      "nodesPerPerft": 25451513,
+      "inputSha256": "73bbc92454ec4f9f0ff6834e01dad993fe3003cb6bfce11a8c9294ededbe8f22",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 10.061707161000013,
+            "nps": 2529542.2131397454,
+            "apiInternalPerftSeconds": 10.0613927,
+            "apiInternalPerftNps": 2529621.272013366
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 10.157953538000001,
+            "nps": 2505574.8586354675,
+            "apiInternalPerftSeconds": 10.157637714,
+            "apiInternalPerftNps": 2505652.762641934
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 10.031008944999995,
+            "nps": 2537283.451699685,
+            "apiInternalPerftSeconds": 10.030704928,
+            "apiInternalPerftNps": 2537360.353304174
+          }
+        ],
+        "medianNps": 2529542.2131397454,
+        "sampleRangePercent": 1.2655216807805125,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 7.428480570999993,
+            "nps": 3426207.116884714,
+            "apiInternalPerftSeconds": 7.428163611,
+            "apiInternalPerftNps": 3426353.313261721
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 7.487220472999994,
+            "nps": 3399327.306011872,
+            "apiInternalPerftSeconds": 7.48691438,
+            "apiInternalPerftNps": 3399466.2831979655
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 25451513,
+            "seconds": 7.4594249450000065,
+            "nps": 3411993.979114965,
+            "apiInternalPerftSeconds": 7.459117153,
+            "apiInternalPerftNps": 3412134.7711724294
+          }
+        ],
+        "medianNps": 3411993.979114965,
+        "sampleRangePercent": 0.7907391213933357,
+        "needsRemeasurement": false
+      },
+      "speedup": 1.3488582880298698,
+      "beforeWasmSha256": "806e4f971f1660145bf4e56fb78beecb455999c3760b812f05730bf456bfa0ca",
+      "afterWasmSha256": "1583cac39928371e9389073a374d4c0d3761bfc20a09edc5ef840ad5eabada8f",
+      "beforeWasmBytes": 333002,
+      "afterWasmBytes": 334186,
+      "initializationMs": 1.749721000000136,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "tenjiku-dai-initial",
+      "rule": "tenjiku-dai",
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "inputSha256": "3a32cb90339567d78a0398636ac1515c4caf03c720207ee4ed1384fcb73245a8",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 27,
+            "totalLeafNodes": 465102,
+            "seconds": 3.0718542489999963,
+            "nps": 151407.57415538453,
+            "apiInternalPerftSeconds": 3.0515517740000004,
+            "apiInternalPerftNps": 152414.91360650922
+          },
+          {
+            "repetitions": 27,
+            "totalLeafNodes": 465102,
+            "seconds": 3.0903233400000025,
+            "nps": 150502.69788273989,
+            "apiInternalPerftSeconds": 3.0839121570000003,
+            "apiInternalPerftNps": 150815.57979668485
+          },
+          {
+            "repetitions": 27,
+            "totalLeafNodes": 465102,
+            "seconds": 3.037932781999989,
+            "nps": 153098.18662077354,
+            "apiInternalPerftSeconds": 3.031294017,
+            "apiInternalPerftNps": 153433.48332152233
+          }
+        ],
+        "medianNps": 151407.57415538453,
+        "sampleRangePercent": 1.7245463201303268,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 86,
+            "totalLeafNodes": 1481436,
+            "seconds": 3.0292280289999907,
+            "nps": 489047.3697647159,
+            "apiInternalPerftSeconds": 2.997500308999998,
+            "apiInternalPerftNps": 494223.80226350157
+          },
+          {
+            "repetitions": 86,
+            "totalLeafNodes": 1481436,
+            "seconds": 3.0189103539999924,
+            "nps": 490718.77806412126,
+            "apiInternalPerftSeconds": 3.001159780000001,
+            "apiInternalPerftNps": 493621.1693467382
+          },
+          {
+            "repetitions": 87,
+            "totalLeafNodes": 1498662,
+            "seconds": 3.026828436000011,
+            "nps": 495126.1796590293,
+            "apiInternalPerftSeconds": 3.0110869639999995,
+            "apiInternalPerftNps": 497714.61864692933
+          }
+        ],
+        "medianNps": 490718.77806412126,
+        "sampleRangePercent": 1.242989998543087,
+        "needsRemeasurement": false
+      },
+      "speedup": 3.2410451115246914,
+      "beforeWasmSha256": "f759e3cf9ca4ec1936cccbda3a7d1d4c0f32aef96047cd9ba00b671d1bea72d3",
+      "afterWasmSha256": "65694c6ff57a1271efbece917d3071b1ccb29ba8c687310ff98ebed9c42e1651",
+      "beforeWasmBytes": 332672,
+      "afterWasmBytes": 344006,
+      "initializationMs": 1.8470880000095349,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "tenjiku-dai-pending-two",
+      "rule": "tenjiku-dai",
+      "depth": 2,
+      "nodesPerPerft": 5565,
+      "inputSha256": "0ffc860eb687580d0508236aaa5dc1f2c712701fda48a5dff2001b08bea1355d",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 102,
+            "totalLeafNodes": 567630,
+            "seconds": 3.024880092999985,
+            "nps": 187653.71933703384,
+            "apiInternalPerftSeconds": 3.014243584000001,
+            "apiInternalPerftNps": 188315.90220944793
+          },
+          {
+            "repetitions": 101,
+            "totalLeafNodes": 562065,
+            "seconds": 3.00666064799999,
+            "nps": 186939.95292547622,
+            "apiInternalPerftSeconds": 2.999641767,
+            "apiInternalPerftNps": 187377.37491971653
+          },
+          {
+            "repetitions": 100,
+            "totalLeafNodes": 556500,
+            "seconds": 3.0169492350000073,
+            "nps": 184457.86012703614,
+            "apiInternalPerftSeconds": 3.0119457690000013,
+            "apiInternalPerftNps": 184764.28285253092
+          }
+        ],
+        "medianNps": 186939.95292547622,
+        "sampleRangePercent": 1.73256873293266,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 266,
+            "totalLeafNodes": 1480290,
+            "seconds": 3.0011754990000044,
+            "nps": 493236.733570974,
+            "apiInternalPerftSeconds": 2.9888238780000003,
+            "apiInternalPerftNps": 495275.0849242245
+          },
+          {
+            "repetitions": 267,
+            "totalLeafNodes": 1485855,
+            "seconds": 3.0035743870000005,
+            "nps": 494695.5888394316,
+            "apiInternalPerftSeconds": 2.9922300500000003,
+            "apiInternalPerftNps": 496571.1109010485
+          },
+          {
+            "repetitions": 265,
+            "totalLeafNodes": 1474725,
+            "seconds": 3.008266862999997,
+            "nps": 490224.1280979072,
+            "apiInternalPerftSeconds": 2.9991540450000014,
+            "apiInternalPerftNps": 491713.65587525174
+          }
+        ],
+        "medianNps": 493236.733570974,
+        "sampleRangePercent": 0.9121257982290354,
+        "needsRemeasurement": false
+      },
+      "speedup": 2.638476825591174,
+      "beforeWasmSha256": "f759e3cf9ca4ec1936cccbda3a7d1d4c0f32aef96047cd9ba00b671d1bea72d3",
+      "afterWasmSha256": "65694c6ff57a1271efbece917d3071b1ccb29ba8c687310ff98ebed9c42e1651",
+      "beforeWasmBytes": 332672,
+      "afterWasmBytes": 344006,
+      "initializationMs": 1.8470880000095349,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "dai-dai-initial",
+      "rule": "dai-dai",
+      "depth": 3,
+      "nodesPerPerft": 251479,
+      "inputSha256": "feb008f76122330152085befb30b936de3e14c2c68461582bf8147701cfee840",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 2,
+            "totalLeafNodes": 502958,
+            "seconds": 3.697379545999982,
+            "nps": 136030.93589461927,
+            "apiInternalPerftSeconds": 3.696428027,
+            "apiInternalPerftNps": 136065.95240762684
+          },
+          {
+            "repetitions": 2,
+            "totalLeafNodes": 502958,
+            "seconds": 3.6756242550000024,
+            "nps": 136836.07602594834,
+            "apiInternalPerftSeconds": 3.660355265,
+            "apiInternalPerftNps": 137406.88091378473
+          },
+          {
+            "repetitions": 2,
+            "totalLeafNodes": 502958,
+            "seconds": 3.673812223999994,
+            "nps": 136903.56755696854,
+            "apiInternalPerftSeconds": 3.6692858349999997,
+            "apiInternalPerftNps": 137072.4502306319
+          }
+        ],
+        "medianNps": 136836.07602594834,
+        "sampleRangePercent": 0.6414950074483672,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 14,
+            "totalLeafNodes": 3520706,
+            "seconds": 3.2112245939999995,
+            "nps": 1096374.886570765,
+            "apiInternalPerftSeconds": 3.195673736,
+            "apiInternalPerftNps": 1101710.0902192977
+          },
+          {
+            "repetitions": 14,
+            "totalLeafNodes": 3520706,
+            "seconds": 3.2131743310000167,
+            "nps": 1095709.6121529988,
+            "apiInternalPerftSeconds": 3.2029772089999997,
+            "apiInternalPerftNps": 1099197.9556105547
+          },
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 3269227,
+            "seconds": 3.0473699710000073,
+            "nps": 1072802.7876861927,
+            "apiInternalPerftSeconds": 3.0444024209999996,
+            "apiInternalPerftNps": 1073848.5088072396
+          }
+        ],
+        "medianNps": 1095709.6121529988,
+        "sampleRangePercent": 2.197244372883511,
+        "needsRemeasurement": false
+      },
+      "speedup": 8.00746151143079,
+      "beforeWasmSha256": "ede1c12d906f4d6fd5c5c0c7865ffad0f15a7c9d547e6c64b3822878b9a7fffd",
+      "afterWasmSha256": "5b6177ade6baea71c3cfba2f0d7b5071ce731819089be9517d8b0e1e322ed92b",
+      "beforeWasmBytes": 339725,
+      "afterWasmBytes": 329721,
+      "initializationMs": 1.5701419999822974,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "maka-dai-dai-initial",
+      "rule": "maka-dai-dai",
+      "depth": 3,
+      "nodesPerPerft": 537260,
+      "inputSha256": "b28387720574395ed5db1d65c5d843ca577fd08317990f5417dbb8478fbe680a",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 537260,
+            "seconds": 4.248060319000011,
+            "nps": 126471.83882889649,
+            "apiInternalPerftSeconds": 4.247599969,
+            "apiInternalPerftNps": 126485.54570134943
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 537260,
+            "seconds": 4.240061721000005,
+            "nps": 126710.4196476859,
+            "apiInternalPerftSeconds": 4.239595557,
+            "apiInternalPerftNps": 126724.35207007646
+          },
+          {
+            "repetitions": 1,
+            "totalLeafNodes": 537260,
+            "seconds": 4.227667285000003,
+            "nps": 127081.90209438384,
+            "apiInternalPerftSeconds": 4.223226195,
+            "apiInternalPerftNps": 127215.5397776415
+          }
+        ],
+        "medianNps": 126710.4196476859,
+        "sampleRangePercent": 0.4823708353862921,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 7,
+            "totalLeafNodes": 3760820,
+            "seconds": 3.0243321780000114,
+            "nps": 1243520.8101006376,
+            "apiInternalPerftSeconds": 3.020131266,
+            "apiInternalPerftNps": 1245250.5102471928
+          },
+          {
+            "repetitions": 8,
+            "totalLeafNodes": 4298080,
+            "seconds": 3.3976953879999927,
+            "nps": 1264998.6267691897,
+            "apiInternalPerftSeconds": 3.392993755,
+            "apiInternalPerftNps": 1266751.521032493
+          },
+          {
+            "repetitions": 8,
+            "totalLeafNodes": 4298080,
+            "seconds": 3.3867235780000047,
+            "nps": 1269096.7836643425,
+            "apiInternalPerftSeconds": 3.382679308,
+            "apiInternalPerftNps": 1270614.0927504085
+          }
+        ],
+        "medianNps": 1264998.6267691897,
+        "sampleRangePercent": 2.056738685509818,
+        "needsRemeasurement": false
+      },
+      "speedup": 9.98338282113244,
+      "beforeWasmSha256": "c196aad1f3b9ba8efe416558c8ea7f833a4a843b3ae2108d28bfb50b9e133933",
+      "afterWasmSha256": "fa0f08ebd3cbbb535dbaa01fa977984880b8e6c0150ba938813bbfcf3ace8c37",
+      "beforeWasmBytes": 345549,
+      "afterWasmBytes": 336701,
+      "initializationMs": 1.8050169999769423,
+      "linearMemoryBytes": 1179648,
+      "beforeLinearMemoryBytes": 1179648
+    },
+    {
+      "id": "taishogi-initial",
+      "rule": "taishogi",
+      "depth": 2,
+      "nodesPerPerft": 92676,
+      "inputSha256": "5eb6c830051908a972a934440144ebc55db7d49c1a85c0def880bc41e671a1d9",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1204788,
+            "seconds": 3.1580466440000166,
+            "nps": 381497.84845292923,
+            "apiInternalPerftSeconds": 3.130888556999999,
+            "apiInternalPerftNps": 384807.05335434276
+          },
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1204788,
+            "seconds": 3.177970373000018,
+            "nps": 379106.11446722667,
+            "apiInternalPerftSeconds": 3.171618493,
+            "apiInternalPerftNps": 379865.35980259214
+          },
+          {
+            "repetitions": 13,
+            "totalLeafNodes": 1204788,
+            "seconds": 3.168647846000007,
+            "nps": 380221.4883300722,
+            "apiInternalPerftSeconds": 3.1638572989999996,
+            "apiInternalPerftNps": 380797.1997917849
+          }
+        ],
+        "medianNps": 380221.4883300722,
+        "sampleRangePercent": 0.6308877368184307,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 36,
+            "totalLeafNodes": 3336336,
+            "seconds": 3.0781137489999817,
+            "nps": 1083889.768883268,
+            "apiInternalPerftSeconds": 3.0466258379999993,
+            "apiInternalPerftNps": 1095092.1371395527
+          },
+          {
+            "repetitions": 36,
+            "totalLeafNodes": 3336336,
+            "seconds": 3.0576327940000048,
+            "nps": 1091149.9924212268,
+            "apiInternalPerftSeconds": 3.044806913000001,
+            "apiInternalPerftNps": 1095746.3298428864
+          },
+          {
+            "repetitions": 36,
+            "totalLeafNodes": 3336336,
+            "seconds": 3.057881393000018,
+            "nps": 1091061.284338042,
+            "apiInternalPerftSeconds": 3.041592895,
+            "apiInternalPerftNps": 1096904.1930248197
+          }
+        ],
+        "medianNps": 1091061.284338042,
+        "sampleRangePercent": 0.6698304335355898,
+        "needsRemeasurement": false
+      },
+      "speedup": 2.8695413537250847,
+      "beforeWasmSha256": "11b75af7b1e0fbab7165d179f6e38f0f6dc013ff6922a2c838e1a5626d476706",
+      "afterWasmSha256": "4e96853954fbe115ff5b97d318920dc893c967886a8d4deb9f30648985d4a822",
+      "beforeWasmBytes": 342854,
+      "afterWasmBytes": 348916,
+      "initializationMs": 1.7474119999969844,
+      "linearMemoryBytes": 1310720,
+      "beforeLinearMemoryBytes": 1310720
+    },
+    {
+      "id": "taikyoku-initial",
+      "rule": "taikyoku",
+      "depth": 2,
+      "nodesPerPerft": 79035,
+      "inputSha256": "8010788126bfe97eb4cc39f1e6051d988257e427a08f9e3797575b93920e1d19",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 395175,
+            "seconds": 3.2232192700000013,
+            "nps": 122602.58049400401,
+            "apiInternalPerftSeconds": 3.2091874020000004,
+            "apiInternalPerftNps": 123138.64866655112
+          },
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 395175,
+            "seconds": 3.2046181849999993,
+            "nps": 123314.22253350288,
+            "apiInternalPerftSeconds": 3.1962786939999996,
+            "apiInternalPerftNps": 123635.9647679709
+          },
+          {
+            "repetitions": 5,
+            "totalLeafNodes": 395175,
+            "seconds": 3.1959146009999966,
+            "nps": 123650.04993448523,
+            "apiInternalPerftSeconds": 3.190720786,
+            "apiInternalPerftNps": 123851.32592419825
+          }
+        ],
+        "medianNps": 123314.22253350288,
+        "sampleRangePercent": 0.8543616588334801,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 12,
+            "totalLeafNodes": 948420,
+            "seconds": 3.214018259000004,
+            "nps": 295088.55382019124,
+            "apiInternalPerftSeconds": 3.1876457589999996,
+            "apiInternalPerftNps": 297529.92387006327
+          },
+          {
+            "repetitions": 12,
+            "totalLeafNodes": 948420,
+            "seconds": 3.2349070340000035,
+            "nps": 293183.0776067981,
+            "apiInternalPerftSeconds": 3.2230515499999997,
+            "apiInternalPerftNps": 294261.50506342354
+          },
+          {
+            "repetitions": 12,
+            "totalLeafNodes": 948420,
+            "seconds": 3.198002601999993,
+            "nps": 296566.3628312464,
+            "apiInternalPerftSeconds": 3.1858599610000002,
+            "apiInternalPerftNps": 297696.7009253926
+          }
+        ],
+        "medianNps": 295088.55382019124,
+        "sampleRangePercent": 1.1539838015432125,
+        "needsRemeasurement": false
+      },
+      "speedup": 2.3929806940154004,
+      "beforeWasmSha256": "dfd1f52f942d217f6788aaf38487c972452ef49baa7f84550ce6f1c2db39bf81",
+      "afterWasmSha256": "c4c29d4481b49048fb92a006871094fc484c4db40c501505657239b192fb41e0",
+      "beforeWasmBytes": 403571,
+      "afterWasmBytes": 408835,
+      "initializationMs": 1.8465889999934006,
+      "linearMemoryBytes": 1441792,
+      "beforeLinearMemoryBytes": 1441792
+    },
+    {
+      "id": "taikyoku-pending-three",
+      "rule": "taikyoku",
+      "depth": 3,
+      "nodesPerPerft": 2025,
+      "inputSha256": "81a5cfcf9bdda8377b9c9723b898e399c99f8a6c191dc8b60958ff2671fe67e7",
+      "before": {
+        "samples": [
+          {
+            "repetitions": 156,
+            "totalLeafNodes": 315900,
+            "seconds": 3.012527845000004,
+            "nps": 104862.10128291762,
+            "apiInternalPerftSeconds": 2.9970668589999985,
+            "apiInternalPerftNps": 105403.05400641052
+          },
+          {
+            "repetitions": 153,
+            "totalLeafNodes": 309825,
+            "seconds": 3.011452174999984,
+            "nps": 102882.25812518562,
+            "apiInternalPerftSeconds": 2.994074725999999,
+            "apiInternalPerftNps": 103479.38122904421
+          },
+          {
+            "repetitions": 157,
+            "totalLeafNodes": 317925,
+            "seconds": 3.0142222339999862,
+            "nps": 105474.97009804136,
+            "apiInternalPerftSeconds": 3.001427793000001,
+            "apiInternalPerftNps": 105924.58720528678
+          }
+        ],
+        "medianNps": 104862.10128291762,
+        "sampleRangePercent": 2.5200768529992423,
+        "needsRemeasurement": false
+      },
+      "after": {
+        "samples": [
+          {
+            "repetitions": 568,
+            "totalLeafNodes": 1150200,
+            "seconds": 3.0022007099999466,
+            "nps": 383118.9554278736,
+            "apiInternalPerftSeconds": 2.957187791000001,
+            "apiInternalPerftNps": 388950.61162519176
+          },
+          {
+            "repetitions": 567,
+            "totalLeafNodes": 1148175,
+            "seconds": 3.004100297000026,
+            "nps": 382202.6185832071,
+            "apiInternalPerftSeconds": 2.9713901459999996,
+            "apiInternalPerftNps": 386410.04499043664
+          },
+          {
+            "repetitions": 572,
+            "totalLeafNodes": 1158300,
+            "seconds": 3.0046439680000185,
+            "nps": 385503.245088635,
+            "apiInternalPerftSeconds": 2.9738058509999985,
+            "apiInternalPerftNps": 389500.8813741151
+          }
+        ],
+        "medianNps": 383118.9554278736,
+        "sampleRangePercent": 0.863580296143196,
+        "needsRemeasurement": false
+      },
+      "speedup": 3.6535502411325886,
+      "beforeWasmSha256": "dfd1f52f942d217f6788aaf38487c972452ef49baa7f84550ce6f1c2db39bf81",
+      "afterWasmSha256": "c4c29d4481b49048fb92a006871094fc484c4db40c501505657239b192fb41e0",
+      "beforeWasmBytes": 403571,
+      "afterWasmBytes": 408835,
+      "initializationMs": 1.8465889999934006,
+      "linearMemoryBytes": 1441792,
+      "beforeLinearMemoryBytes": 1441792
+    }
+  ]
+}
