@@ -1,6 +1,7 @@
 # Supported Rules
 
 - (default:) 本将棋
+- `kyoto`, `kinkei-mai`, `microshogi`, `kyoto-minishogi`: the remaining reversible small-board games, Shogitter IDs 19, 123, 98 and 125. See [rules, JSON and validation](flip-small-shogi.md).
 - `minishogi`: 5五将棋 (Shogitter rule 51), with a compact 64-bit board, a one-rank promotion zone, and Shogitter-compatible repetition. See [the rule and storage documentation](minishogi.md).
 - `annan`: 安南将棋. When a piece B is placed behind a piece A and they're on the same side, A moves as if it's B.
 - `anhoku`: 安北将棋. When a piece B is placed in front of a piece A and they're on the same side, A moves as if it's B.

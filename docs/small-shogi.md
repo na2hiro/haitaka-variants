@@ -70,6 +70,7 @@ rules after generating `target/wasm-<ruleset>/haitaka_wasm.js` and its WASM with
 wasm-pack/wasm-bindgen. It checks perft, search, USI move acceptance and model
 rejection.
 
-Kyoto, micro, custom-piece and multi-step-move variants require additional
-mechanics and are outside this set. See [minishogi.md](minishogi.md) for the
-larger-board geometry foundation.
+Kyoto, Kinkei Mai, Micro and Kyoto vs Minishogi use the separate
+[reversible small-rule JSON backend](flip-small-shogi.md). Together these cover
+all nine rules in Shogitter's five-five category. See [minishogi.md](minishogi.md)
+for the larger-board geometry foundation.

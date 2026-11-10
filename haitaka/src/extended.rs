@@ -182,6 +182,10 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     const CACHE_ROYALS: bool = false;
     /// Conversion rules conserve piece counts, but not each base species.
     const CONVERTS_INVENTORY: bool = false;
+    /// Two symmetric starting armies by default; asymmetric games use global totals.
+    const INVENTORY_MULTIPLIER: usize = 2;
+    /// Some capture-promotion games allow immobile board pieces; drops may still forbid them.
+    const ALLOW_DEAD_BOARD_PIECES: bool = false;
     const ID: u32;
     const PIECES: &'static [PieceDef];
     const INVENTORY: &'static [usize];
@@ -364,7 +368,7 @@ impl<R: CaptureRoyalRule> Position<R> {
                 return Err("duplicate square".into());
             }
             let def = &R::PIECES[id];
-            if pos.relative_rank(i, color) < def.dead_ranks {
+            if !R::ALLOW_DEAD_BOARD_PIECES && pos.relative_rank(i, color) < def.dead_ranks {
                 return Err("unpromoted piece on a dead rank".into());
             }
             count[color as usize][def.base] += 1;
@@ -403,7 +407,7 @@ impl<R: CaptureRoyalRule> Position<R> {
                 break;
             }
             let exceeded = if R::Hands::ENABLED {
-                count[0][base] + count[1][base] > initial * 2
+                count[0][base] + count[1][base] > initial * R::INVENTORY_MULTIPLIER
             } else {
                 count.iter().any(|c| c[base] > initial)
             };
@@ -909,7 +913,11 @@ pub mod classical;
     feature = "torishogi",
     feature = "washogi",
     feature = "heian-dai",
-    feature = "daishogi"
+    feature = "daishogi",
+    feature = "kyoto",
+    feature = "kinkei-mai",
+    feature = "microshogi",
+    feature = "kyoto-minishogi"
 ))]
 pub use classical::compiled;
 
