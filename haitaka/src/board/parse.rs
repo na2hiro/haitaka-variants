@@ -121,6 +121,8 @@ impl Board {
             checkers: BitBoard::EMPTY,
             pawnless_files: [BitBoard::FULL; Color::NUM],
             move_number: 0,
+            #[cfg(feature = "tesushogi")]
+            move_limit: 49,
             #[cfg(feature = "ningenshogi")]
             unmoved_pieces: BitBoard::EMPTY,
         };

@@ -916,6 +916,7 @@ fn active_rule_profile() -> String {
         (cfg!(feature = "shihonkangen"), "shihonkangen"),
         (cfg!(feature = "ningenshogi"), "ningenshogi"),
         (cfg!(feature = "tennouzan"), "tennouzan"),
+        (cfg!(feature = "tesushogi"), "tesushogi"),
         (cfg!(feature = "igyoku"), "igyoku"),
         (cfg!(feature = "hitomasuou"), "hitomasuou"),
     ] {

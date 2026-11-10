@@ -478,6 +478,7 @@ fn canonical_package_profile(ruleset: &str, features: Option<&str>) -> Result<St
         "shihonkangen",
         "ningenshogi",
         "tennouzan",
+        "tesushogi",
         "igyoku",
         "hitomasuou",
     ] {
@@ -1295,6 +1296,7 @@ mod tests {
             ("standard", None),
             ("handicap", None),
             ("standard+oute", Some("oute")),
+            ("standard+tesushogi", Some("tesushogi")),
             ("handicap+oute", Some("oute")),
             ("annan+oute", Some("annan,oute")),
             ("standard+sanmaime+igyoku", Some("sanmaime,igyoku")),

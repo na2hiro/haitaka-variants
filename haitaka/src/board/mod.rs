@@ -77,6 +77,8 @@ pub struct Board {
     checkers: BitBoard,
     pawnless_files: [BitBoard; Color::NUM],
     move_number: u16,
+    #[cfg(feature = "tesushogi")]
+    move_limit: u16,
     #[cfg(feature = "ningenshogi")]
     unmoved_pieces: BitBoard,
 }
@@ -93,6 +95,8 @@ impl Default for Board {
             checkers: BitBoard::EMPTY,
             pawnless_files: [BitBoard::FULL; Color::NUM],
             move_number: 0,
+            #[cfg(feature = "tesushogi")]
+            move_limit: 49,
             #[cfg(feature = "ningenshogi")]
             unmoved_pieces: BitBoard::EMPTY,
         }
@@ -129,6 +133,10 @@ impl Board {
             board.inner.toggle_side_to_move();
         }
         board.move_number = self.move_number;
+        #[cfg(feature = "tesushogi")]
+        {
+            board.move_limit = self.move_limit;
+        }
         board.checkers = self.checkers.rotate();
         board.pinned = self.pinned.rotate();
         #[cfg(feature = "ningenshogi")]
@@ -551,13 +559,15 @@ impl Board {
     pub fn hash(&self) -> u64 {
         let hash = self.inner.hash();
         #[cfg(feature = "ningenshogi")]
-        {
+        let hash = {
             let unmoved = self.unmoved_pieces.0;
-            return hash
-                ^ (unmoved as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
-                ^ ((unmoved >> 64) as u64).rotate_left(29);
-        }
-        #[cfg(not(feature = "ningenshogi"))]
+            hash ^ (unmoved as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15)
+                ^ ((unmoved >> 64) as u64).rotate_left(29)
+        };
+        #[cfg(feature = "tesushogi")]
+        let hash = hash
+            ^ u64::from(self.move_number).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+            ^ u64::from(self.move_limit).wrapping_mul(0x94d0_49bb_1331_11eb);
         hash
     }
 
@@ -988,7 +998,38 @@ impl Board {
             }
         }
 
+        #[cfg(feature = "tesushogi")]
+        if self.move_limit > 0 && self.move_number.saturating_sub(1) >= self.move_limit {
+            // WinKoma runs before MoveLimit on Shogitter. A mate delivered on
+            // the final permitted move therefore takes priority over the timer.
+            // Zero is an internal sentinel, never accepted by set_move_limit.
+            if self.move_number.saturating_sub(1) == self.move_limit && !self.checkers.is_empty() {
+                let mut without_limit = self.clone();
+                without_limit.move_limit = 0;
+                if !without_limit.generate_moves(|_| true) {
+                    return without_limit.winner();
+                }
+            }
+            return Some(Color::White);
+        }
+
         None
+    }
+
+    /// The selected Tesu Shogi limit, counted in individual moves (plies).
+    #[cfg(feature = "tesushogi")]
+    pub const fn move_limit(&self) -> u16 {
+        self.move_limit
+    }
+
+    /// Select one of Shogitter's 49-, 99-, or 149-move variants.
+    #[cfg(feature = "tesushogi")]
+    pub fn set_move_limit(&mut self, limit: u16) -> Result<(), &'static str> {
+        if !matches!(limit, 49 | 99 | 149) {
+            return Err("MoveLimit must be 49, 99, or 149");
+        }
+        self.move_limit = limit;
+        Ok(())
     }
 
     /// Return the original pieces that have neither moved nor been captured.
@@ -1004,7 +1045,8 @@ impl Board {
 
     /// Check if two positions are equivalent.
     ///
-    /// This differs from the [`Eq`] implementation in that it does not check the move number.
+    /// Normally the move number is ignored. Tesu Shogi includes both the move
+    /// number and selected limit because they determine the remaining time.
     /// This method can be used as a strict check for four-fold repetition or positions
     /// (Sennichite).
     ///
@@ -1017,6 +1059,10 @@ impl Board {
     /// assert!(board1.same_position(&board2));
     /// ```
     pub fn same_position(&self, other: &Self) -> bool {
+        #[cfg(feature = "tesushogi")]
+        if self.move_number != other.move_number || self.move_limit != other.move_limit {
+            return false;
+        }
         self.hash() == other.hash() && self.inner.board_is_equal(&other.inner) && {
             #[cfg(feature = "ningenshogi")]
             {

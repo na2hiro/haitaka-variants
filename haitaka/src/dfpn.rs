@@ -65,6 +65,7 @@ pub struct DfpnResult {
 pub enum DfpnInterruptionReason {
     NodeBudget,
     Deadline,
+    UnsupportedRuleset,
 }
 
 impl DfpnInterruptionReason {
@@ -72,6 +73,7 @@ impl DfpnInterruptionReason {
         match self {
             Self::NodeBudget => "node-budget",
             Self::Deadline => "deadline",
+            Self::UnsupportedRuleset => "unsupported-ruleset",
         }
     }
 }
@@ -424,7 +426,8 @@ impl Board {
     /// non-checking preparation.
     pub fn dfpn(&self, options: &DfpnOptions) -> DfpnResult {
         let history = PositionHistory::new(self.clone());
-        DfpnSolver::new(self.side_to_move(), *options).solve(self, &history)
+        self.dfpn_with_history(options, &history)
+            .expect("matching root")
     }
 
     pub fn dfpn_with_history(
@@ -434,6 +437,23 @@ impl Board {
     ) -> Result<DfpnResult, &'static str> {
         if !history.matches_current(self) {
             return Err("DFPN history current position does not match root");
+        }
+        // Checking-only proof search cannot prove a move-limit victory.
+        if cfg!(feature = "tesushogi") {
+            return Ok(DfpnResult {
+                status: DfpnStatus::Unknown,
+                pv: Vec::new(),
+                stats: DfpnStats {
+                    nodes: 0,
+                    tt_hits: 0,
+                    tt_stores: 0,
+                    tt_collisions: 0,
+                    elapsed_ms: 0.0,
+                    repetition_hits: 0,
+                },
+                completed: false,
+                interruption_reason: Some(DfpnInterruptionReason::UnsupportedRuleset),
+            });
         }
         Ok(DfpnSolver::new(self.side_to_move(), *options).solve(self, history))
     }

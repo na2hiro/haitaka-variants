@@ -1943,6 +1943,8 @@ impl UsiSession {
                     tt::MIN_HASH_MB,
                     tt::MAX_HASH_MB
                 ),
+                #[cfg(feature = "tesushogi")]
+                "option name MoveLimit type combo default 49 var 49 var 99 var 149".to_string(),
                 "usiok".to_string(),
             ],
             "isready" => {
@@ -1980,7 +1982,11 @@ impl UsiSession {
     }
 
     fn apply_position(&mut self, command: &str) -> Result<(), String> {
-        let (board, history) = parse_usi_position_with_history(command)?;
+        #[cfg(feature = "tesushogi")]
+        let move_limit = self.board.move_limit();
+        #[cfg(not(feature = "tesushogi"))]
+        let move_limit = 49;
+        let (board, history) = parse_usi_position_with_limit(command, move_limit)?;
         self.board = board;
         self.history = history;
         Ok(())
@@ -2004,6 +2010,21 @@ impl UsiSession {
         }
 
         let name = tokens[1..value_index].join(" ");
+        #[cfg(feature = "tesushogi")]
+        if name == "MoveLimit" {
+            if tokens.len() != value_index + 2 {
+                return Err("expected a single MoveLimit value".to_string());
+            }
+            let limit = tokens[value_index + 1]
+                .parse::<u16>()
+                .map_err(|_| "invalid MoveLimit value".to_string())?;
+            self.board.set_move_limit(limit).map_err(str::to_string)?;
+            // Repetition is disabled in this ruleset. Search only needs the
+            // current board, whose move number retains the elapsed plies.
+            self.history = PositionHistory::new(self.board.clone());
+            self.tt.clear();
+            return Ok(());
+        }
         if name != "Hash" {
             return Err(format!("unsupported option {name}"));
         }
@@ -2216,7 +2237,10 @@ impl UsiSession {
     }
 }
 
-fn parse_usi_position_with_history(command: &str) -> Result<(Board, PositionHistory), String> {
+fn parse_usi_position_with_limit(
+    command: &str,
+    _move_limit: u16,
+) -> Result<(Board, PositionHistory), String> {
     let rest = command
         .strip_prefix("position ")
         .ok_or_else(|| "expected position command".to_string())?;
@@ -2246,6 +2270,8 @@ fn parse_usi_position_with_history(command: &str) -> Result<(Board, PositionHist
         other => return Err(format!("unsupported position source {other}")),
     };
 
+    #[cfg(feature = "tesushogi")]
+    board.set_move_limit(_move_limit).map_err(str::to_string)?;
     let mut history = PositionHistory::new(board.clone());
     if index < tokens.len() {
         if tokens[index] != "moves" {
@@ -2355,7 +2381,7 @@ fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
 }
 
 fn dfpn_budget_allows(timeout_ms: u32) -> bool {
-    timeout_ms == 0 || timeout_ms >= 4
+    !cfg!(feature = "tesushogi") && (timeout_ms == 0 || timeout_ms >= 4)
 }
 
 fn dfpn_reserved_alpha_beta_ms(timeout_ms: u32) -> u32 {
