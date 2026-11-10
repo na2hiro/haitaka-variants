@@ -121,3 +121,7 @@ zoshoku = ["hand-category"]
 babanuki = ["hand-category"]
 tensuu = ["hand-category", "win-condition-category"]
 suika = ["hand-category", "win-condition-category"]
+
+# Ordinary movement and constraint variants.
+narazu = ["classical-rules"]
+nifu-ari = ["classical-rules"]

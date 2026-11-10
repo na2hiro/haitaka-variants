@@ -138,6 +138,10 @@ macro_rules! classical_rule {
     };
 }
 include!("classical/defs.rs");
+#[cfg(any(feature = "narazu", feature = "nifu-ari"))]
+mod ordinary;
+#[cfg(any(feature = "narazu", feature = "nifu-ari"))]
+use ordinary::*;
 #[cfg(any(
     feature = "kyoto",
     feature = "kinkei-mai",
@@ -942,7 +946,9 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "kyoto",
     feature = "kinkei-mai",
     feature = "microshogi",
-    feature = "kyoto-minishogi"
+    feature = "kyoto-minishogi",
+    feature = "narazu",
+    feature = "nifu-ari"
 ))]
 pub mod compiled {
     use super::*;
@@ -962,6 +968,11 @@ pub mod compiled {
     pub type Selected = Microshogi;
     #[cfg(feature = "kyoto-minishogi")]
     pub type Selected = KyotoMinishogi;
+
+    #[cfg(feature = "narazu")]
+    pub type Selected = Narazu;
+    #[cfg(feature = "nifu-ari")]
+    pub type Selected = NifuAri;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;

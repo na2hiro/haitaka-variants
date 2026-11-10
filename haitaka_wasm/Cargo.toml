@@ -109,3 +109,7 @@ zoshoku = ["hand-category", "haitaka/zoshoku"]
 babanuki = ["hand-category", "haitaka/babanuki"]
 tensuu = ["hand-category", "haitaka/tensuu", "win-condition-category"]
 suika = ["hand-category", "haitaka/suika", "win-condition-category"]
+
+# Ordinary movement and constraint variants.
+narazu = ["extended-json", "haitaka/narazu"]
+nifu-ari = ["extended-json", "haitaka/nifu-ari"]
