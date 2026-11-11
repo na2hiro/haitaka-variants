@@ -108,3 +108,4 @@ zarikani-tonbo = ["extended-json", "haitaka/zarikani-tonbo", "haitaka_wasm/zarik
 semai = ["extended-json", "haitaka/semai", "haitaka_wasm/semai"]
 semmai = ["extended-json", "haitaka/semmai", "haitaka_wasm/semmai"]
 hiroi = ["extended-json", "haitaka/hiroi", "haitaka_wasm/hiroi"]
+dobutsu = ["extended-json", "haitaka/dobutsu", "haitaka_wasm/dobutsu"]

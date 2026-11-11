@@ -2200,3 +2200,80 @@ ordinary_rule!(
     14,
     3
 );
+#[cfg(feature = "dobutsu")]
+const DOBUTSU_PIECES: &[PieceDef] = &[
+    piece!("bg", &[(0, -1)], &[], Some(PieceId(4)), 0, false, 1, 100),
+    piece!(
+        "bh",
+        &[(0, -1), (1, 0), (-1, 0), (0, 1)],
+        &[],
+        None,
+        1,
+        false,
+        0,
+        500
+    ),
+    piece!(
+        "bi",
+        &[(1, -1), (-1, -1), (1, 1), (-1, 1)],
+        &[],
+        None,
+        2,
+        false,
+        0,
+        400
+    ),
+    piece!(
+        "bj",
+        &[
+            (1, -1),
+            (0, -1),
+            (-1, -1),
+            (1, 0),
+            (-1, 0),
+            (1, 1),
+            (0, 1),
+            (-1, 1)
+        ],
+        &[],
+        None,
+        3,
+        true,
+        0,
+        2500
+    ),
+    piece!(
+        "bk",
+        &[(1, -1), (0, -1), (-1, -1), (1, 0), (-1, 0), (0, 1)],
+        &[],
+        None,
+        0,
+        false,
+        0,
+        470
+    ),
+];
+#[cfg(feature = "dobutsu")]
+const DOBUTSU_INITIAL: &[([u16; 2], &str, u8)] = &[
+    ([1, 1], "bi", 1),
+    ([1, 4], "bh", 0),
+    ([2, 1], "bj", 1),
+    ([2, 2], "bg", 1),
+    ([2, 3], "bg", 0),
+    ([2, 4], "bj", 0),
+    ([3, 1], "bh", 1),
+    ([3, 4], "bi", 0),
+];
+#[cfg(feature = "dobutsu")]
+ordinary_rule!(
+    Dobutsu,
+    17,
+    "dobutsu",
+    3,
+    4,
+    DOBUTSU_PIECES,
+    DOBUTSU_INITIAL,
+    &[2, 2, 2, 2],
+    5,
+    1
+);

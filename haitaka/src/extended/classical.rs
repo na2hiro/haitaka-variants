@@ -57,6 +57,7 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const LION: bool;
     const UCHIFU: Option<PieceId>;
     const INITIAL_SIDE: u8 = 0;
+    const TRY: bool = false;
     /// Canonical physical reserve consumed when either face is dropped.
     fn drop_hand(id: PieceId) -> PieceId {
         id
@@ -152,7 +153,8 @@ include!("classical/defs.rs");
     feature = "zarikani-tonbo",
     feature = "semai",
     feature = "semmai",
-    feature = "hiroi"
+    feature = "hiroi",
+    feature = "dobutsu"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -168,7 +170,8 @@ mod ordinary;
     feature = "zarikani-tonbo",
     feature = "semai",
     feature = "semmai",
-    feature = "hiroi"
+    feature = "hiroi",
+    feature = "dobutsu"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -829,6 +832,20 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         if captured != Outcome::ONGOING {
             return captured;
         }
+        if R::TRY {
+            if let Some(ClassicalMove::Move { path, .. }) = self.played.last() {
+                let to = Position::<R>::index(*path.last().unwrap()).unwrap();
+                let previous = p.side ^ 1;
+                if p.cells[to].is_some_and(|c| {
+                    c.color == previous
+                        && Position::<R>::def(c).royal
+                        && p.relative_rank(to, previous) == 0
+                }) && !p.attacked(previous)
+                {
+                    return Outcome::win(previous);
+                }
+            }
+        }
         if R::ONLY_KINGS
             && p.cells
                 .iter()
@@ -990,7 +1007,8 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "zarikani-tonbo",
     feature = "semai",
     feature = "semmai",
-    feature = "hiroi"
+    feature = "hiroi",
+    feature = "dobutsu"
 ))]
 pub mod compiled {
     use super::*;
@@ -1040,6 +1058,9 @@ pub mod compiled {
     pub type Selected = Semmai;
     #[cfg(feature = "hiroi")]
     pub type Selected = Hiroi;
+
+    #[cfg(feature = "dobutsu")]
+    pub type Selected = Dobutsu;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;
