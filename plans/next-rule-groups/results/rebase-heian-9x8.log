@@ -12,4 +12,3 @@ test geometry_storage_and_initial_material ... ok
 test generated_and_individual_legality_and_hash_agree ... ok
 
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
-

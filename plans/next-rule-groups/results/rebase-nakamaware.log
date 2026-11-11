@@ -72,4 +72,3 @@ test hand_rules_sfnn_rejects_incompatible_rules ... ok
 test hand_rules_search_selects_king_capture ... ok
 
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-

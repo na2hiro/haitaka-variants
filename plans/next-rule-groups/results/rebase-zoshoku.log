@@ -28,4 +28,3 @@ test hand_rules_sfnn_rejects_incompatible_rules ... ok
 test hand_rules_growth_evaluates_the_material_difference_before_clamping ... ok
 
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
