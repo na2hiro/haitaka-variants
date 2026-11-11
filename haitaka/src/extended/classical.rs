@@ -149,7 +149,10 @@ include!("classical/defs.rs");
     feature = "torazu-gin",
     feature = "ai-torazu-gin",
     feature = "zarikani",
-    feature = "zarikani-tonbo"
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -162,7 +165,10 @@ mod ordinary;
     feature = "torazu-gin",
     feature = "ai-torazu-gin",
     feature = "zarikani",
-    feature = "zarikani-tonbo"
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -981,7 +987,10 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "torazu-gin",
     feature = "ai-torazu-gin",
     feature = "zarikani",
-    feature = "zarikani-tonbo"
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi"
 ))]
 pub mod compiled {
     use super::*;
@@ -1024,6 +1033,13 @@ pub mod compiled {
     pub type Selected = Zarikani;
     #[cfg(feature = "zarikani-tonbo")]
     pub type Selected = ZarikaniTonbo;
+
+    #[cfg(feature = "semai")]
+    pub type Selected = Semai;
+    #[cfg(feature = "semmai")]
+    pub type Selected = Semmai;
+    #[cfg(feature = "hiroi")]
+    pub type Selected = Hiroi;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;

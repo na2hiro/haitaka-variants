@@ -339,7 +339,10 @@ const _: () = assert!(
         + cfg!(feature = "torazu-gin") as u8
         + cfg!(feature = "ai-torazu-gin") as u8
         + cfg!(feature = "zarikani") as u8
-        + cfg!(feature = "zarikani-tonbo") as u8)
+        + cfg!(feature = "zarikani-tonbo") as u8
+        + cfg!(feature = "semai") as u8
+        + cfg!(feature = "semmai") as u8
+        + cfg!(feature = "hiroi") as u8)
         <= 1,
     "select exactly one extended ruleset"
 );
