@@ -17,4 +17,3 @@ test four_pieces_promote_to_canonical_gold ... ok
 test generated_and_individual_legality_and_hash_agree ... ok
 
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
-

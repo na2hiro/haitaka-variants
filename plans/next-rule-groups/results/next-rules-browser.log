@@ -31,7 +31,7 @@ Running 16 tests using 1 worker
   ✓  16 tests/haitaka-ordinary.spec.ts:73:3 › 取る一手: bundled WASM prepares and replies with a legal move (10.9s)
 
 
-  1) tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move 
+  1) tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move
 
     Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
 
@@ -61,5 +61,5 @@ Running 16 tests using 1 worker
     Error Context: test-results/haitaka-ordinary-取らず銀-bund-94d61-d-replies-with-a-legal-move/error-context.md
 
   1 failed
-    tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move 
+    tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move
   15 passed (2.6m)
