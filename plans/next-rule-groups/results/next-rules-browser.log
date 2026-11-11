@@ -1,0 +1,65 @@
+(node:49009) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:49058) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49058) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:49058) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/haitaka-ordinary.spec.ts:73:3 › 持ち駒不使用将棋: bundled WASM prepares and replies with a legal move (6.6s)
+  ✓   2 tests/haitaka-ordinary.spec.ts:73:3 › 不成将棋: bundled WASM prepares and replies with a legal move (8.7s)
+  ✓   3 tests/haitaka-ordinary.spec.ts:73:3 › 二歩あり将棋: bundled WASM prepares and replies with a legal move (9.1s)
+  ✓   4 tests/haitaka-ordinary.spec.ts:73:3 › 小京将棋左京: bundled WASM prepares and replies with a legal move (8.2s)
+  ✓   5 tests/haitaka-ordinary.spec.ts:73:3 › 小京将棋右京: bundled WASM prepares and replies with a legal move (7.9s)
+  ✓   6 tests/haitaka-ordinary.spec.ts:73:3 › 仲人将棋: bundled WASM prepares and replies with a legal move (8.4s)
+  ✓   7 tests/haitaka-ordinary.spec.ts:73:3 › クイーン王: bundled WASM prepares and replies with a legal move (7.5s)
+  ✘   8 tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move (34.3s)
+(node:51828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:51828) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:51828) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 tests/haitaka-ordinary.spec.ts:73:3 › 相取らず銀: bundled WASM prepares and replies with a legal move (9.5s)
+  ✓  10 tests/haitaka-ordinary.spec.ts:73:3 › ざりかに将棋: bundled WASM prepares and replies with a legal move (5.5s)
+  ✓  11 tests/haitaka-ordinary.spec.ts:73:3 › ざりかにとんぼ: bundled WASM prepares and replies with a legal move (6.3s)
+  ✓  12 tests/haitaka-ordinary.spec.ts:73:3 › 狭い将棋: bundled WASM prepares and replies with a legal move (8.6s)
+  ✓  13 tests/haitaka-ordinary.spec.ts:73:3 › せっまい将棋: bundled WASM prepares and replies with a legal move (8.6s)
+  ✓  14 tests/haitaka-ordinary.spec.ts:73:3 › 広い将棋: bundled WASM prepares and replies with a legal move (8.5s)
+  ✓  15 tests/haitaka-ordinary.spec.ts:73:3 › どうぶつしょうぎ: bundled WASM prepares and replies with a legal move (4.6s)
+  ✓  16 tests/haitaka-ordinary.spec.ts:73:3 › 取る一手: bundled WASM prepares and replies with a legal move (10.9s)
+
+
+  1) tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: getByRole('listbox').getByRole('option', { selected: true })
+    Expected pattern: [32m/^2(?:\D|$)/[39m
+    Received string:  [31m"1☖7四歩"[39m
+    Timeout: 30000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 30000ms[22m
+    [2m  - waiting for getByRole('listbox').getByRole('option', { selected: true })[22m
+    [2m    6 × locator resolved to <div role="option" aria-selected="true">…</div>[22m
+    [2m      - unexpected value "初期局面"[22m
+    [2m    27 × locator resolved to <div role="option" aria-selected="true">…</div>[22m
+    [2m       - unexpected value "1☖7四歩"[22m
+
+
+      61 |     await expect(
+      62 |       page.getByRole("listbox").getByRole("option", { selected: true })
+    > 63 |     ).toContainText(/^2(?:\D|$)/, { timeout: 30_000 });
+         |       ^
+      64 |     expect(errors).toEqual([]);
+      65 |   });
+      66 | }
+        at /home/na2hiro/proj/shogitter-3/tests/haitaka-ordinary.spec.ts:63:7
+
+    Error Context: test-results/haitaka-ordinary-取らず銀-bund-94d61-d-replies-with-a-legal-move/error-context.md
+
+  1 failed
+    tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move 
+  15 passed (2.6m)

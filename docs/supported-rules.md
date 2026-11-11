@@ -116,3 +116,7 @@ Historical move generation uses direct royal attack checks, incremental search k
 shared turn effects and reversible small deltas while preserving the public protocols.
 See [performance measurements and compatibility checks](historical-shogi-performance.md)
 for the 32-rule perft comparison, fixed midgame/pending inputs and actual WASM results.
+
+## Additional ordinary-movement rules
+
+Fifteen additional rules cover promotion/file constraints, custom pieces, capture restrictions, rectangular boards, Dobutsu try wins and compulsory capture. See [Ordinary shogi rules](ordinary-shogi-rules.md) for features, precise core-compatible behavior and verification.

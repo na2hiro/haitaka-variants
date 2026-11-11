@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "wasmBindgen": "0.2.118",
+  "nativeProfiles": {
+    "earlyStages": "release",
+    "laterStages": "release, LTO off, 16 codegen units"
+  },
+  "rules": [
+    {
+      "ruleId": 54,
+      "feature": "fushiyo",
+      "sourceCommit": "d91af8bd416ac4a624828a72c7b5a04b39bf321d",
+      "wasmBytes": 18461307,
+      "sha256": "9839a819ab3bcbb47dc29e2b1af332b90a0ce2efff9728de7565fb77aeb7e466",
+      "browserVerified": true
+    },
+    {
+      "ruleId": 111,
+      "feature": "narazu",
+      "sourceCommit": "d91af8bd416ac4a624828a72c7b5a04b39bf321d",
+      "wasmBytes": 338389,
+      "sha256": "c764ad230b0f926b1da39d407184d1deafa32f7fa2938b4788b3ab1f9658d27b",
+      "browserVerified": true,
+      "positions": 78,
+      "transitions": 2534
+    },
+    {
+      "ruleId": 138,
+      "feature": "nifu-ari",
+      "sourceCommit": "d91af8bd416ac4a624828a72c7b5a04b39bf321d",
+      "wasmBytes": 339233,
+      "sha256": "699cce8c11d7b320af9464f550c94c551ff59dad109382d9db3def3957d44299",
+      "browserVerified": true,
+      "positions": 79,
+      "transitions": 2905
+    },
+    {
+      "ruleId": 46,
+      "feature": "sho-kyo-left",
+      "sourceCommit": "1137e841ca1508dc81d95bfc8231795a61ba4971",
+      "wasmBytes": 340361,
+      "sha256": "f07b735ce232fdd0270660ed9d5b994e62aa6d72a0046e20032e9ff3e0cd1b55",
+      "browserVerified": true,
+      "positions": 80,
+      "transitions": 2840
+    },
+    {
+      "ruleId": 47,
+      "feature": "sho-kyo-right",
+      "sourceCommit": "1137e841ca1508dc81d95bfc8231795a61ba4971",
+      "wasmBytes": 340448,
+      "sha256": "1cd5ce33ee78c4dddb789ce809f625adeb38041d1eabe1a980111132f300d3b5",
+      "browserVerified": true,
+      "positions": 80,
+      "transitions": 2631
+    },
+    {
+      "ruleId": 65,
+      "feature": "nakodo",
+      "sourceCommit": "8e15ed8560570518398318bb307345b950604eaf",
+      "wasmBytes": 339859,
+      "sha256": "ecc790748bd034ad0237c623eaf2292e4db6c65590efb09785da96e4fb26ea70",
+      "browserVerified": true,
+      "positions": 79,
+      "transitions": 3033
+    },
+    {
+      "ruleId": 147,
+      "feature": "queen-king",
+      "sourceCommit": "1137e841ca1508dc81d95bfc8231795a61ba4971",
+      "wasmBytes": 340222,
+      "sha256": "ec98ece25d38f6395a330c689f4f190c1d8a382e46bec89e51978fd70b544b95",
+      "browserVerified": true,
+      "positions": 78,
+      "transitions": 2221
+    },
+    {
+      "ruleId": 30,
+      "feature": "torazu-gin",
+      "sourceCommit": "e48e1bdb54da2a5aba1bf74ee6be050d74e6e62e",
+      "wasmBytes": 340490,
+      "sha256": "cbfb905bc2c3ea04609335f7aa14dbbe8d25044e4db0a4b26b3e99bbe0d7b02f",
+      "browserVerified": true,
+      "positions": 82,
+      "transitions": 2255
+    },
+    {
+      "ruleId": 31,
+      "feature": "ai-torazu-gin",
+      "sourceCommit": "e48e1bdb54da2a5aba1bf74ee6be050d74e6e62e",
+      "wasmBytes": 340697,
+      "sha256": "37417143985c798ee7f19da5c63e11d3a4422ff228745ec6c9daf5ecd8a55f85",
+      "browserVerified": true,
+      "positions": 82,
+      "transitions": 2634
+    },
+    {
+      "ruleId": 153,
+      "feature": "zarikani",
+      "sourceCommit": "e48e1bdb54da2a5aba1bf74ee6be050d74e6e62e",
+      "wasmBytes": 332823,
+      "sha256": "95312204ca9b173d6d3b6bdad9c34db8d3c849e9261fbe6e65f4a6da20df3a24",
+      "browserVerified": true,
+      "positions": 70,
+      "transitions": 1352
+    },
+    {
+      "ruleId": 165,
+      "feature": "zarikani-tonbo",
+      "sourceCommit": "e48e1bdb54da2a5aba1bf74ee6be050d74e6e62e",
+      "wasmBytes": 333999,
+      "sha256": "c80dd6456fb0fef1f1710ea682efee0ca118a65adc82ff5d88c718992f9b6c86",
+      "browserVerified": true,
+      "positions": 72,
+      "transitions": 1347
+    },
+    {
+      "ruleId": 79,
+      "feature": "semai",
+      "sourceCommit": "25283293221d28d446b6700da1ba2ad9a5a452c4",
+      "wasmBytes": 338391,
+      "sha256": "a5d96f0963371ed1deb1863fbf54e7efce5805bfe622c78f136cddfc831a10ff",
+      "browserVerified": true,
+      "positions": 78,
+      "transitions": 3128
+    },
+    {
+      "ruleId": 90,
+      "feature": "semmai",
+      "sourceCommit": "25283293221d28d446b6700da1ba2ad9a5a452c4",
+      "wasmBytes": 338485,
+      "sha256": "571fd49d6a4a26a0acedc75c63a531e6c027b5c49d04d12f4f7343017a9a65a8",
+      "browserVerified": true,
+      "positions": 78,
+      "transitions": 2542
+    },
+    {
+      "ruleId": 91,
+      "feature": "hiroi",
+      "sourceCommit": "25283293221d28d446b6700da1ba2ad9a5a452c4",
+      "wasmBytes": 340153,
+      "sha256": "5f55ec380a7a59c82b13c0366f7aaa59158703c1fe9ff7ad64688b4a38fa5f46",
+      "browserVerified": true,
+      "positions": 78,
+      "transitions": 2908
+    },
+    {
+      "ruleId": 17,
+      "feature": "dobutsu",
+      "sourceCommit": "090e8f9d135d69890e8cf15a05406251a295fde5",
+      "wasmBytes": 335072,
+      "sha256": "76ee82778a678c308c82ecac9ff9e9b75745fc697e4141adf5d06532f7523d34",
+      "browserVerified": true,
+      "positions": 16,
+      "transitions": 113
+    },
+    {
+      "ruleId": 28,
+      "feature": "toruichi",
+      "sourceCommit": "5354d33edae12199897189c8eead50ee6d8be733",
+      "wasmBytes": 342162,
+      "sha256": "c3ee10d549b24728304df1051287068365f71d9c0c2ba7ee80741113f1f294a9",
+      "browserVerified": true,
+      "positions": 83,
+      "transitions": 2724
+    }
+  ],
+  "positions": 1113,
+  "transitions": 35167
+}

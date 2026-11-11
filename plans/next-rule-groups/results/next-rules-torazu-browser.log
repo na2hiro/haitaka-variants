@@ -1,0 +1,14 @@
+(node:54571) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:54590) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54590) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:54590) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/haitaka-ordinary.spec.ts:73:3 › 取らず銀: bundled WASM prepares and replies with a legal move (11.7s)
+  ✓  2 tests/haitaka-ordinary.spec.ts:73:3 › 相取らず銀: bundled WASM prepares and replies with a legal move (8.7s)
+
+  2 passed (21.6s)
