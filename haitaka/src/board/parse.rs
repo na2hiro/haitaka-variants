@@ -237,7 +237,7 @@ impl Board {
                         .and_then(|n| n.checked_add(num))
                         .ok_or(())?;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    if piece as usize >= Piece::HAND_NUM || board.num_in_hand(color, piece) != 0 {
+                    if piece as usize > Piece::King as usize || board.num_in_hand(color, piece) != 0 {
                         return Err(()); // way... too large
                     }
                     board.unchecked_set_hand(color, piece, if count > 0 { count } else { 1 });
