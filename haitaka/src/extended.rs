@@ -939,7 +939,8 @@ pub mod classical;
     feature = "semai",
     feature = "semmai",
     feature = "hiroi",
-    feature = "dobutsu"
+    feature = "dobutsu",
+    feature = "toruichi"
 ))]
 pub use classical::compiled;
 

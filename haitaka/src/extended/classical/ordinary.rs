@@ -51,6 +51,7 @@ macro_rules! ordinary_rule {
             const STALEMATE: bool = false;
             const ONLY_KINGS: bool = false;
             const TRY: bool = Self::ID == 17;
+            const FORCE_CAPTURE: bool = Self::ID == 28;
             const LION: bool = false;
             const UCHIFU: Option<PieceId> = if matches!(Self::ID, 17 | 153 | 165) {
                 None
