@@ -58,6 +58,7 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const UCHIFU: Option<PieceId>;
     const INITIAL_SIDE: u8 = 0;
     const TRY: bool = false;
+    const FORCE_CAPTURE: bool = false;
     /// Canonical physical reserve consumed when either face is dropped.
     fn drop_hand(id: PieceId) -> PieceId {
         id
@@ -154,7 +155,8 @@ include!("classical/defs.rs");
     feature = "semai",
     feature = "semmai",
     feature = "hiroi",
-    feature = "dobutsu"
+    feature = "dobutsu",
+    feature = "toruichi"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -171,7 +173,8 @@ mod ordinary;
     feature = "semai",
     feature = "semmai",
     feature = "hiroi",
-    feature = "dobutsu"
+    feature = "dobutsu",
+    feature = "toruichi"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -579,6 +582,40 @@ impl<R: ClassicalRule> Position<R> {
         }
         Some(true)
     }
+    // Toruichi deliberately uses core's pseudo-capture test: a pinned non-royal
+    // still creates an obligation. In check there is no capture obligation.
+    fn classical_requires_capture(&self) -> bool {
+        if self.attacked(self.side) {
+            return false;
+        }
+        let mut royal_targets = Vec::new();
+        for (from, c) in self.cells.iter().enumerate() {
+            let Some(c) = *c else {
+                continue;
+            };
+            if c.color != self.side {
+                continue;
+            }
+            for to in self.targets(from, c) {
+                if self.cells[to].is_some_and(|victim| victim.color != self.side) {
+                    if !Self::def(c).royal {
+                        return true;
+                    }
+                    royal_targets.push(to);
+                }
+            }
+        }
+        royal_targets.into_iter().any(|target| {
+            !self.cells.iter().enumerate().any(|(from, c)| {
+                c.is_some_and(|c| {
+                    c.color != self.side && self.geometric_targets(from, c, true).contains(&target)
+                })
+            })
+        })
+    }
+    fn classical_is_capture(&self, mv: ClassicalMove<R>) -> bool {
+        matches!(mv, ClassicalMove::Move { path, .. } if self.cells[Self::index(path[0]).unwrap()].is_some())
+    }
     fn classical_append(
         &self,
         out: &mut Vec<ClassicalMove<R>>,
@@ -586,6 +623,9 @@ impl<R: ClassicalRule> Position<R> {
         limit: usize,
         stop: &mut dyn FnMut() -> bool,
     ) -> Option<bool> {
+        if R::FORCE_CAPTURE && self.classical_requires_capture() && !self.classical_is_capture(mv) {
+            return Some(false);
+        }
         if self.classical_acceptable(mv, stop)? {
             out.push(mv);
         }
@@ -1008,7 +1048,8 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "semai",
     feature = "semmai",
     feature = "hiroi",
-    feature = "dobutsu"
+    feature = "dobutsu",
+    feature = "toruichi"
 ))]
 pub mod compiled {
     use super::*;
@@ -1061,6 +1102,9 @@ pub mod compiled {
 
     #[cfg(feature = "dobutsu")]
     pub type Selected = Dobutsu;
+
+    #[cfg(feature = "toruichi")]
+    pub type Selected = Toruichi;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;
