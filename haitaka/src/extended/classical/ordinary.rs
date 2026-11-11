@@ -47,11 +47,12 @@ macro_rules! ordinary_rule {
         impl ClassicalRule for $rule {
             const NAME: &'static str = $name;
             const FORCED: bool = false;
-            const CHECK: bool = !matches!(Self::ID, 153 | 165);
+            const CHECK: bool = !matches!(Self::ID, 17 | 153 | 165);
             const STALEMATE: bool = false;
             const ONLY_KINGS: bool = false;
+            const TRY: bool = Self::ID == 17;
             const LION: bool = false;
-            const UCHIFU: Option<PieceId> = if matches!(Self::ID, 153 | 165) {
+            const UCHIFU: Option<PieceId> = if matches!(Self::ID, 17 | 153 | 165) {
                 None
             } else {
                 Some(PieceId(0))
