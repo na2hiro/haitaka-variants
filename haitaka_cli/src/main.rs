@@ -3890,11 +3890,13 @@ fn default_target_identifier() -> String {
 }
 
 fn package(args: PackageArgs) -> Result<()> {
-    if args.ruleset != default_ruleset() {
+    if (cfg!(feature = "variant-board") || cfg!(feature = "extended-json"))
+        && args.ruleset != active_rule_profile()
+    {
         bail!(
             "package ruleset {} does not match compiled ruleset {}",
             args.ruleset,
-            default_ruleset()
+            active_rule_profile()
         );
     }
     if (cfg!(feature = "extended-json") || !SelectedRule::ALLOW_STANDARD_MODELS)

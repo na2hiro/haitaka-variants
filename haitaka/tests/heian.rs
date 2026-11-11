@@ -145,6 +145,7 @@ fn only_kings_draw_stops_generation_including_final_capture() {
     let mut b = position(&[("1a", 'k'), ("4d", 'K'), ("3c", 'p')], Color::Black);
     b.play("4d3c".parse().unwrap());
     assert_eq!(b.status(), GameStatus::Drawn);
+    assert_eq!(b.winner(), None);
     assert!(b.is_rule_draw());
     assert!(moves(&b).is_empty());
     assert!(!b.is_legal("1a1b".parse().unwrap()));

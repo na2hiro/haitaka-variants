@@ -937,6 +937,9 @@ impl Board {
     /// no-legal-move ending. In Human Shogi, a checkmating player instead loses
     /// until every original, uncaptured piece of both players has moved.
     pub fn winner(&self) -> Option<Color> {
+        if self.is_rule_draw() {
+            return None;
+        }
         if let Some(winner) = self.immediate_winner() {
             return Some(winner);
         }
