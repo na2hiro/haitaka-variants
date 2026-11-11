@@ -935,7 +935,10 @@ pub mod classical;
     feature = "torazu-gin",
     feature = "ai-torazu-gin",
     feature = "zarikani",
-    feature = "zarikani-tonbo"
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi"
 ))]
 pub use classical::compiled;
 
