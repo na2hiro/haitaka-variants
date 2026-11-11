@@ -1,0 +1,31 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesWasm.test.ts (15 tests) 196303ms
+   ✓ narazu: bundled WASM matches core's legal moves, every transition and searches legally  11576ms
+   ✓ nifu-ari: bundled WASM matches core's legal moves, every transition and searches legally  15588ms
+   ✓ sho-kyo-left: bundled WASM matches core's legal moves, every transition and searches legally  15340ms
+   ✓ sho-kyo-right: bundled WASM matches core's legal moves, every transition and searches legally  11898ms
+   ✓ nakodo: bundled WASM matches core's legal moves, every transition and searches legally  14239ms
+   ✓ queen-king: bundled WASM matches core's legal moves, every transition and searches legally  11190ms
+   ✓ torazu-gin: bundled WASM matches core's legal moves, every transition and searches legally  15109ms
+   ✓ ai-torazu-gin: bundled WASM matches core's legal moves, every transition and searches legally  14455ms
+   ✓ zarikani: bundled WASM matches core's legal moves, every transition and searches legally  3819ms
+   ✓ zarikani-tonbo: bundled WASM matches core's legal moves, every transition and searches legally  3562ms
+   ✓ semai: bundled WASM matches core's legal moves, every transition and searches legally  23529ms
+   ✓ semmai: bundled WASM matches core's legal moves, every transition and searches legally  15072ms
+   ✓ hiroi: bundled WASM matches core's legal moves, every transition and searches legally  12506ms
+   ✓ toruichi: bundled WASM matches core's legal moves, every transition and searches legally  28210ms
+ ✓ app/bot/vendors/haitaka/index.test.ts (10 tests) 1362ms
+   ✓ haitaka vendor runtime > keeps the selected evaluator for subsequent searches  301ms
+ ✓ app/bot/fushiyoWasm.test.ts (1 test) 900ms
+   ✓ reuses main's Fushiyo WASM with core-compatible captures, no reserves and no drops  899ms
+ ✓ app/bot/haitakaPlayer.test.ts (15 tests) 390ms
+ ✓ app/engines/classicalJsonProtocol.test.ts (9 tests) 83ms
+ ✓ app/engines/flipSmallRules.test.ts (4 tests) 23ms
+
+ Test Files  6 passed (6)
+      Tests  54 passed (54)
+   Start at  13:33:39
+   Duration  203.27s (transform 1.59s, setup 0ms, collect 2.72s, tests 199.06s, environment 1ms, prepare 474ms)
+

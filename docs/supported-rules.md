@@ -129,3 +129,7 @@ Seven additional composable rules are supported: `nakamaware`, `fushiyo`,
 `share`, `zoshoku`, `babanuki`, `tensuu`, and `suika`. See
 [Composable hand rules](hand-rules.md) for precise behavior, configuration,
 composition constraints, NNUE compatibility, and verification commands.
+
+## Additional ordinary-movement rules
+
+Fifteen additional rules cover promotion/file constraints, custom pieces, capture restrictions, rectangular boards, Dobutsu try wins and compulsory capture. See [Ordinary shogi rules](ordinary-shogi-rules.md) for features, precise core-compatible behavior and verification.

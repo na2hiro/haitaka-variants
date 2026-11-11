@@ -1,0 +1,20 @@
+   Compiling haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/haitaka_types)
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling syn v2.0.117
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling serde_derive v1.0.228
+   Compiling criterion v0.3.6
+    Finished `release` profile [optimized] target(s) in 9.39s
+     Running tests/heian.rs (target/next-rule-groups/release/deps/heian-989d216aabcb08ea)
+
+running 6 tests
+test forced_promotion_and_capture_discard ... ok
+test geometry_storage_and_initial_material ... ok
+test gold_counts_and_illegal_sfen_are_checked ... ok
+test only_kings_draw_stops_generation_including_final_capture ... ok
+test four_pieces_promote_to_canonical_gold ... ok
+test generated_and_individual_legality_and_hash_agree ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

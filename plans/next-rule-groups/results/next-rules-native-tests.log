@@ -1,0 +1,24 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesReference.test.ts (15 tests) 60147ms
+   ✓ matches core's legal moves and every transition for narazu  4260ms
+   ✓ matches core's legal moves and every transition for nifu-ari  4811ms
+   ✓ matches core's legal moves and every transition for sho-kyo-left  4706ms
+   ✓ matches core's legal moves and every transition for sho-kyo-right  4171ms
+   ✓ matches core's legal moves and every transition for nakodo  4930ms
+   ✓ matches core's legal moves and every transition for queen-king  4264ms
+   ✓ matches core's legal moves and every transition for torazu-gin  3246ms
+   ✓ matches core's legal moves and every transition for ai-torazu-gin  4200ms
+   ✓ matches core's legal moves and every transition for zarikani  1855ms
+   ✓ matches core's legal moves and every transition for zarikani-tonbo  1733ms
+   ✓ matches core's legal moves and every transition for semai  6031ms
+   ✓ matches core's legal moves and every transition for semmai  4467ms
+   ✓ matches core's legal moves and every transition for hiroi  4753ms
+   ✓ matches core's legal moves and every transition for toruichi  6666ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  13:37:45
+   Duration  61.86s (transform 1.02s, setup 0ms, collect 1.38s, tests 60.15s, environment 0ms, prepare 67ms)
+

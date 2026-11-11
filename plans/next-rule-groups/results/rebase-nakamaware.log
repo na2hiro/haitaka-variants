@@ -1,0 +1,75 @@
+   Compiling serde_core v1.0.228
+   Compiling libc v0.2.184
+   Compiling crossbeam-utils v0.8.21
+   Compiling serde v1.0.228
+   Compiling autocfg v1.5.0
+   Compiling rayon-core v1.13.0
+   Compiling either v1.15.0
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling regex-syntax v0.8.10
+   Compiling plotters-backend v0.3.7
+   Compiling unicode-width v0.1.14
+   Compiling itertools v0.10.5
+   Compiling num-traits v0.2.19
+   Compiling plotters-svg v0.3.7
+   Compiling textwrap v0.11.0
+   Compiling crossbeam-epoch v0.9.18
+   Compiling crossbeam-deque v0.8.6
+   Compiling getrandom v0.3.4
+   Compiling csv-core v0.1.13
+   Compiling rand_core v0.9.5
+   Compiling ryu v1.0.23
+   Compiling half v1.8.3
+   Compiling regex-automata v0.4.14
+   Compiling cast v0.3.0
+   Compiling bitflags v1.3.2
+   Compiling same-file v1.0.6
+   Compiling clap v2.34.0
+   Compiling criterion-plot v0.4.5
+   Compiling walkdir v2.5.0
+   Compiling rayon v1.11.0
+   Compiling serde_json v1.0.149
+   Compiling csv v1.4.0
+   Compiling rand_chacha v0.9.0
+   Compiling regex v1.12.3
+   Compiling serde_cbor v0.11.2
+   Compiling tinytemplate v1.2.1
+   Compiling plotters v0.3.7
+   Compiling atty v0.2.14
+   Compiling oorandom v11.1.5
+   Compiling lazy_static v1.5.0
+   Compiling rand v0.9.2
+   Compiling criterion v0.3.6
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 23.39s
+     Running tests/hand_rules.rs (target/next-rule-groups/release/deps/hand_rules-dadbe2e9e40e1975)
+
+running 7 tests
+test hand_rules_capture_and_sfen_roundtrip ... ok
+test hand_rules_capture_commutes_with_color_swap ... ok
+test hand_rules_friendly_capture_and_king_loss ... ok
+test hand_rules_ignored_check_and_king_capture ... ok
+test hand_rules_nakamaware_reference_start_perft ... ok
+test hand_rules_geometric_checks_survive_ignored_evasions ... ok
+test hand_rules_generation_agrees_with_legality ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/hand_rules.rs (target/next-rule-groups/release/deps/hand_rules-a1b68163502fd356)
+
+running 3 tests
+test hand_rules_native_wasm_fixtures ... ok
+test hand_rules_sfnn_rejects_incompatible_rules ... ok
+test hand_rules_search_selects_king_capture ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

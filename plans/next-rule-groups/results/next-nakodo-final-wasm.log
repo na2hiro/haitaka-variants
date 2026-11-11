@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesWasm.test.ts (15 tests | 14 skipped) 12910ms
+   ✓ nakodo: bundled WASM matches core's legal moves, every transition and searches legally  12908ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 14 skipped (15)
+   Start at  13:45:13
+   Duration  14.63s (transform 1.05s, setup 0ms, collect 1.40s, tests 12.91s, environment 0ms, prepare 65ms)
+
