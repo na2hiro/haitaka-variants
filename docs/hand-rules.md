@@ -68,10 +68,13 @@ rejected before learning or loading a network. Its unbounded material growth
 requires a separate data/feature format. R5 terminal King positions are
 adjudicated before feature extraction and are not stored as NNUE inputs.
 
-TuyouraOu11 SFNN keeps its original 38-nonking material contract: `share`,
-`suika`, and `zoshoku` are rejected. Compatible hand/capture profiles use full
-refresh updates. A model trained for ordinary shogi may load where the feature
-layout is compatible; this does not establish its strength under new rules.
+TuyouraOu11 SFNN keeps its original 38-nonking material contract: `share`
+and `zoshoku` are rejected. Suika fusion reduces material, and normalized
+nonterminal hands contain at most one piece per species, so `suika` fits the
+existing feature layout. King acquisition is adjudicated before static
+evaluation. Compatible hand/capture profiles use full refresh updates.
+A model trained for ordinary shogi may load where the feature layout is
+compatible; this does not establish its strength under new rules.
 
 ## Verification
 

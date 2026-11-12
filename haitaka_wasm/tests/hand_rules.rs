@@ -20,14 +20,21 @@ fn hand_rules_search_selects_king_fusion() {
     assert!(result.best_score.unwrap() > 29_000);
 }
 #[test]
-fn hand_rules_sfnn_rejects_incompatible_rules() {
-    if cfg!(any(
-        feature = "share",
-        feature = "suika",
-        feature = "zoshoku"
-    )) {
-        let err = load_sfnn_impl(&[], &[], "SFNN_ka2_2048_8_64_progress8").unwrap_err();
-        assert!(err.contains("SFNN_UNSUPPORTED_RULESET"));
+fn hand_rules_sfnn_checks_ruleset_compatibility() {
+    let expected = if cfg!(any(feature = "share", feature = "zoshoku")) {
+        "SFNN_UNSUPPORTED_RULESET:"
+    } else if cfg!(feature = "suika") && !cfg!(feature = "donor-category") {
+        // Compatible rules must reach model parsing; empty bytes are invalid.
+        "SFNN_INVALID_NN:"
+    } else {
+        return;
+    };
+    for arch in [
+        haitaka_wasm::sfnn::MICRO_ARCH,
+        haitaka_wasm::sfnn::MINI_ARCH,
+    ] {
+        let err = load_sfnn_impl(&[], &[], arch).unwrap_err();
+        assert!(err.starts_with(expected), "{arch}: {err}");
     }
 }
 
