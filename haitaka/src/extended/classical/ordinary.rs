@@ -13,6 +13,25 @@ macro_rules! ordinary_rule {
             const PIECES: &'static [PieceDef] = $pieces;
             const INVENTORY: &'static [usize] = $inventory;
             const INVENTORY_MULTIPLIER: usize = 1;
+            const CONVERTS_INVENTORY: bool = Self::ID == 20;
+            const CAPTURE_SUPPORT: i8 = match Self::ID {
+                112 => 1,
+                113 => -1,
+                _ => 0,
+            };
+            fn captured_reserve(piece: PieceId, color: u8) -> Option<PieceId> {
+                let base = Self::capture_return(piece)?;
+                let species = Self::PIECES[base.0 as usize].id;
+                let target = match (Self::ID, species, color) {
+                    (20, "ac", 0) => "be",
+                    (20, "be", 1) => "ac",
+                    _ => return Some(base),
+                };
+                Self::PIECES
+                    .iter()
+                    .position(|p| p.id == target)
+                    .map(|i| PieceId(i as u16))
+            }
             const PROMOTION_RANKS: usize = $dan;
             // Core permits immobile moves when promotion is disabled; dead-rank drops remain forbidden.
             const ALLOW_DEAD_BOARD_PIECES: bool = Self::ID == 111;
@@ -47,7 +66,8 @@ macro_rules! ordinary_rule {
         impl ClassicalRule for $rule {
             const NAME: &'static str = $name;
             const FORCED: bool = false;
-            const CHECK: bool = !matches!(Self::ID, 17 | 153 | 165);
+            const CHECK: bool = !matches!(Self::ID, 17 | 20 | 21 | 153 | 165);
+            const CHECKMATE: bool = Self::CHECK || matches!(Self::ID, 20 | 21);
             const STALEMATE: bool = false;
             const ONLY_KINGS: bool = false;
             const TRY: bool = Self::ID == 17;
@@ -58,7 +78,7 @@ macro_rules! ordinary_rule {
             } else {
                 Some(PieceId(0))
             };
-            const INITIAL_SIDE: u8 = if Self::ID == 30 { 1 } else { 0 };
+            const INITIAL_SIDE: u8 = if matches!(Self::ID, 20 | 30) { 1 } else { 0 };
             fn droppable(id: PieceId) -> bool {
                 !Self::PIECES[id.0 as usize].royal && Self::capture_return(id) == Some(id)
             }

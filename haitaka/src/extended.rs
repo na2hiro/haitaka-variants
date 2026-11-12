@@ -182,6 +182,11 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     fn capture_allowed(_mover: PieceId, _victim: PieceId, _victim_color: u8) -> bool {
         true
     }
+    /// 1 requires friendly geometric support for capture; -1 forbids it.
+    const CAPTURE_SUPPORT: i8 = 0;
+    fn captured_reserve(piece: PieceId, _victim_color: u8) -> Option<PieceId> {
+        Self::capture_return(piece)
+    }
     const ALLOW_NO_ROYALS: bool = false;
     const CACHE_ROYALS: bool = false;
     /// Conversion rules conserve piece counts, but not each base species.
@@ -588,6 +593,15 @@ impl<R: CaptureRoyalRule> Position<R> {
         }
         out
     }
+    fn capture_allowed_at(&self, from: usize, to: usize) -> bool {
+        let Some(victim) = self.cells[to] else { return true; };
+        let mover = self.cells[from].unwrap();
+        if !R::capture_allowed(mover.piece, victim.piece, victim.color) { return false; }
+        if R::CAPTURE_SUPPORT == 0 { return true; }
+        let supported = self.cells.iter().enumerate().any(|(i, c)| i != from && c.is_some_and(|c|
+            c.color == mover.color && self.geometric_targets(i, c, true).contains(&from)));
+        supported == (R::CAPTURE_SUPPORT > 0)
+    }
     /// Any royal attacked, as in Shogitter's checkOuteByDirection. This is used
     /// only for continuous-check repetition, never to restrict Sho legal moves.
     fn attacked(&self, color: u8) -> bool {
@@ -598,7 +612,7 @@ impl<R: CaptureRoyalRule> Position<R> {
                         self.cells[j].is_some_and(|v| {
                             v.color == color
                                 && Self::def(v).royal
-                                && R::capture_allowed(c.piece, v.piece, v.color)
+                                && self.capture_allowed_at(i, j)
                         })
                     })
             })
@@ -945,7 +959,12 @@ pub mod classical;
     feature = "kaku",
     feature = "seireigi",
     feature = "kyo-left",
-    feature = "kyo-right"
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap"
 ))]
 pub use classical::compiled;
 

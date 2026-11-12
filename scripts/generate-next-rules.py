@@ -14,11 +14,13 @@ RULES = {
     79: (5, 'Semai', 'semai'), 90: (5, 'Semmai', 'semmai'), 91: (5, 'Hiroi', 'hiroi'),
     17: (6, 'Dobutsu', 'dobutsu'), 28: (7, 'Toruichi', 'toruichi'),
     92: (8, 'Hisha', 'hisha'), 103: (8, 'Kaku', 'kaku'),
+    88: (9, 'Totsugeki', 'totsugeki'), 21: (10, 'AiHappokei', 'ai-happokei'), 20: (10, 'Happokei', 'happokei'),
+    112: (11, 'Patrol', 'patrol'), 113: (11, 'Lortap', 'lortap'),
     159: (8, 'Seireigi', 'seireigi'), 44: (8, 'KyoLeft', 'kyo-left'), 45: (8, 'KyoRight', 'kyo-right'),
 }
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('input', type=Path)
-p.add_argument('--through', type=int, default=8)
+p.add_argument('--through', type=int, default=11)
 p.add_argument('--web', type=Path, required=True)
 a = p.parse_args()
 root = Path(__file__).resolve().parents[1]
@@ -42,6 +44,7 @@ for q in json.loads(a.input.read_text()):
     for id in entries:
         d = defs[id]; steps = []; rays = []
         for move in d['move']:
+            if rid == 88 and move['move'][1] > 0: continue
             assert move['type'] in [1, 2], (rid, id, move)
             (steps if move['type'] == 1 else rays).append(move['move'])
         dead = next((y for y in range(h) if any(0 <= w//2+dx < w and 0 <= y+dy < h for dx,dy in steps+rays)), h)
