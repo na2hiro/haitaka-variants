@@ -52,6 +52,7 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const NAME: &'static str;
     const FORCED: bool;
     const CHECK: bool;
+    const CHECKMATE: bool = Self::CHECK;
     const STALEMATE: bool;
     const ONLY_KINGS: bool;
     const LION: bool;
@@ -161,7 +162,12 @@ include!("classical/defs.rs");
     feature = "kaku",
     feature = "seireigi",
     feature = "kyo-left",
-    feature = "kyo-right"
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -184,7 +190,12 @@ mod ordinary;
     feature = "kaku",
     feature = "seireigi",
     feature = "kyo-left",
-    feature = "kyo-right"
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -322,7 +333,7 @@ impl<R: ClassicalRule> Position<R> {
         };
         let mover = self.cells[from].unwrap();
         if victim.color == mover.color
-            || !R::capture_allowed(mover.piece, victim.piece, victim.color)
+            || !self.capture_allowed_at(from, to)
         {
             return false;
         }
@@ -355,7 +366,7 @@ impl<R: ClassicalRule> Position<R> {
         }
         if R::Hands::ENABLED {
             if let Some(victim) = victim {
-                let id = R::capture_return(victim.piece).expect("reserve capture mapping");
+                let id = R::captured_reserve(victim.piece, victim.color).expect("reserve capture mapping");
                 self.hands.set(
                     mover.color,
                     id,
@@ -585,12 +596,20 @@ impl<R: ClassicalRule> Position<R> {
         if let ClassicalMove::Drop { piece, .. } = mv {
             if Some(piece.id) == R::UCHIFU
                 && next.attacked(next.side)
-                && next.classical_moves(1, stop)?.is_empty()
+                && !next.classical_has_check_escape(stop)?
             {
                 return Some(false);
             }
         }
         Some(true)
+    }
+    fn classical_has_check_escape(&self, stop: &mut dyn FnMut() -> bool) -> Option<bool> {
+        if R::CHECK { return Some(!self.classical_moves(1, stop)?.is_empty()); }
+        for mv in self.classical_moves(usize::MAX, stop)? {
+            if stop() { return None; }
+            if !self.classical_apply(mv).attacked(self.side) { return Some(true); }
+        }
+        Some(false)
     }
     // Toruichi deliberately uses core's pseudo-capture test: a pinned non-royal
     // still creates an obligation. In check there is no capture obligation.
@@ -933,8 +952,12 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         if outcome != Outcome::ONGOING {
             return Some(outcome);
         }
-        if (R::STALEMATE || (R::CHECK && self.current().attacked(self.current().side)))
-            && self.paths(1, stop)?.is_empty()
+        if (R::STALEMATE || (R::CHECKMATE && self.current().attacked(self.current().side)))
+            && (if R::CHECK {
+                self.paths(1, stop)?.is_empty()
+            } else {
+                !self.current().classical_has_check_escape(stop)?
+            })
         {
             return Some(Outcome::win(self.current().side ^ 1));
         }
@@ -1064,7 +1087,12 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "kaku",
     feature = "seireigi",
     feature = "kyo-left",
-    feature = "kyo-right"
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap"
 ))]
 pub mod compiled {
     use super::*;
@@ -1131,6 +1159,17 @@ pub mod compiled {
     pub type Selected = KyoLeft;
     #[cfg(feature = "kyo-right")]
     pub type Selected = KyoRight;
+
+    #[cfg(feature = "totsugeki")]
+    pub type Selected = Totsugeki;
+    #[cfg(feature = "ai-happokei")]
+    pub type Selected = AiHappokei;
+    #[cfg(feature = "happokei")]
+    pub type Selected = Happokei;
+    #[cfg(feature = "patrol")]
+    pub type Selected = Patrol;
+    #[cfg(feature = "lortap")]
+    pub type Selected = Lortap;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;
