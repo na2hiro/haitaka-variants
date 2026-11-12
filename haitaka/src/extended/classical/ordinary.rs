@@ -1,13 +1,13 @@
 //! Orthodox movement rules share geometry, reserves and completed-turn search.
 use super::*;
 macro_rules! ordinary_rule {
-    ($rule:ident,$id:literal,$name:literal,$w:literal,$h:literal,$pieces:ident,$initial:ident,$inventory:expr,$hands:literal,$dan:literal) => {
+    ($rule:ident,$id:literal,$name:literal,$w:literal,$h:literal,$pieces:ident,$initial:ident,$inventory:expr,$hands:ty,$dan:literal) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
         pub struct $rule;
         impl CaptureRoyalRule for $rule {
             type Geometry = Rect<$w, $h>;
             type State = ClassicalState;
-            type Hands = Hands<$hands>;
+            type Hands = $hands;
             type Placement = ClassicalPiece;
             const ID: u32 = $id;
             const PIECES: &'static [PieceDef] = $pieces;
@@ -53,7 +53,7 @@ macro_rules! ordinary_rule {
             const TRY: bool = Self::ID == 17;
             const FORCE_CAPTURE: bool = Self::ID == 28;
             const LION: bool = false;
-            const UCHIFU: Option<PieceId> = if matches!(Self::ID, 17 | 65 | 153 | 165) {
+            const UCHIFU: Option<PieceId> = if matches!(Self::ID, 17 | 65 | 92 | 103 | 153 | 165) {
                 None
             } else {
                 Some(PieceId(0))

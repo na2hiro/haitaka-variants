@@ -940,7 +940,12 @@ pub mod classical;
     feature = "semmai",
     feature = "hiroi",
     feature = "dobutsu",
-    feature = "toruichi"
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right"
 ))]
 pub use classical::compiled;
 
