@@ -56,6 +56,7 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     const STALEMATE: bool;
     const ONLY_KINGS: bool;
     const LION: bool;
+    const LION_CAPTURE_RULES: bool = Self::LION;
     const UCHIFU: Option<PieceId>;
     const INITIAL_SIDE: u8 = 0;
     const TRY: bool = false;
@@ -167,7 +168,10 @@ include!("classical/defs.rs");
     feature = "ai-happokei",
     feature = "happokei",
     feature = "patrol",
-    feature = "lortap"
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -195,7 +199,10 @@ mod ordinary;
     feature = "ai-happokei",
     feature = "happokei",
     feature = "patrol",
-    feature = "lortap"
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -337,7 +344,7 @@ impl<R: ClassicalRule> Position<R> {
         {
             return false;
         }
-        if !R::LION || !lion::<R>(victim) {
+        if !R::LION_CAPTURE_RULES || !lion::<R>(victim) {
             return true;
         }
         if !lion::<R>(mover) {
@@ -360,7 +367,7 @@ impl<R: ClassicalRule> Position<R> {
     fn classical_hop(&mut self, from: usize, to: usize) {
         let mover = self.cells[from].unwrap();
         let victim = self.cells[to];
-        if R::LION {
+        if R::LION_CAPTURE_RULES {
             self.state
                 .set_senjishi(victim.is_some_and(lion::<R>) && !lion::<R>(mover));
         }
@@ -1092,7 +1099,10 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "ai-happokei",
     feature = "happokei",
     feature = "patrol",
-    feature = "lortap"
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
 ))]
 pub mod compiled {
     use super::*;
@@ -1170,6 +1180,13 @@ pub mod compiled {
     pub type Selected = Patrol;
     #[cfg(feature = "lortap")]
     pub type Selected = Lortap;
+
+    #[cfg(feature = "shishio")]
+    pub type Selected = Shishio;
+    #[cfg(feature = "hono-shishi")]
+    pub type Selected = HonoShishi;
+    #[cfg(feature = "nigyoku")]
+    pub type Selected = Nigyoku;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;

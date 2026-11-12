@@ -120,3 +120,6 @@ ai-happokei = ["extended-json", "haitaka/ai-happokei", "haitaka_wasm/ai-happokei
 happokei = ["extended-json", "haitaka/happokei", "haitaka_wasm/happokei"]
 patrol = ["extended-json", "haitaka/patrol", "haitaka_wasm/patrol"]
 lortap = ["extended-json", "haitaka/lortap", "haitaka_wasm/lortap"]
+shishio = ["extended-json", "haitaka/shishio", "haitaka_wasm/shishio"]
+hono-shishi = ["extended-json", "haitaka/hono-shishi", "haitaka_wasm/hono-shishi"]
+nigyoku = ["extended-json", "haitaka/nigyoku", "haitaka_wasm/nigyoku"]

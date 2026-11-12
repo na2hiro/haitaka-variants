@@ -72,21 +72,42 @@ macro_rules! ordinary_rule {
             const ONLY_KINGS: bool = false;
             const TRY: bool = Self::ID == 17;
             const FORCE_CAPTURE: bool = Self::ID == 28;
-            const LION: bool = false;
+            const LION: bool = matches!(Self::ID, 22 | 117);
+            const LION_CAPTURE_RULES: bool = false;
             const UCHIFU: Option<PieceId> = if matches!(Self::ID, 17 | 65 | 92 | 103 | 153 | 165) {
                 None
             } else {
                 Some(PieceId(0))
             };
-            const INITIAL_SIDE: u8 = if matches!(Self::ID, 20 | 30) { 1 } else { 0 };
+            const INITIAL_SIDE: u8 = if matches!(Self::ID, 20 | 22 | 30) {
+                1
+            } else {
+                0
+            };
             fn droppable(id: PieceId) -> bool {
                 !Self::PIECES[id.0 as usize].royal && Self::capture_return(id) == Some(id)
             }
             fn continuation(
-                _id: PieceId,
-                _delta: (isize, isize),
+                id: PieceId,
+                delta: (isize, isize),
             ) -> Option<&'static [(isize, isize)]> {
-                None
+                if Self::LION
+                    && Self::PIECES[id.0 as usize].id == "bl"
+                    && delta.0.abs().max(delta.1.abs()) == 1
+                {
+                    Some(&[
+                        (1, -1),
+                        (0, -1),
+                        (-1, -1),
+                        (1, 0),
+                        (-1, 0),
+                        (1, 1),
+                        (0, 1),
+                        (-1, 1),
+                    ])
+                } else {
+                    None
+                }
             }
         }
     };

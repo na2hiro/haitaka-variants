@@ -964,7 +964,10 @@ pub mod classical;
     feature = "ai-happokei",
     feature = "happokei",
     feature = "patrol",
-    feature = "lortap"
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
 ))]
 pub use classical::compiled;
 
