@@ -1,0 +1,71 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ❯ app/bot/ordinaryRulesReference.test.ts (28 tests | 1 failed | 16 skipped) 95258ms
+   ↓ matches core's legal moves and every transition for narazu
+   ↓ matches core's legal moves and every transition for nifu-ari
+   ✓ matches core's legal moves and every transition for sho-kyo-left  9023ms
+   ✓ matches core's legal moves and every transition for sho-kyo-right  5852ms
+   ↓ matches core's legal moves and every transition for nakodo
+   ↓ matches core's legal moves and every transition for queen-king
+   ↓ matches core's legal moves and every transition for torazu-gin
+   ↓ matches core's legal moves and every transition for ai-torazu-gin
+   ↓ matches core's legal moves and every transition for zarikani
+   ↓ matches core's legal moves and every transition for zarikani-tonbo
+   ↓ matches core's legal moves and every transition for semai
+   ↓ matches core's legal moves and every transition for semmai
+   ↓ matches core's legal moves and every transition for hiroi
+   ↓ matches core's legal moves and every transition for dobutsu
+   ↓ matches core's legal moves and every transition for toruichi
+   ✓ matches core's legal moves and every transition for hisha  30908ms
+   ✓ matches core's legal moves and every transition for kaku  11713ms
+   ✓ matches core's legal moves and every transition for seireigi  4588ms
+   ✓ matches core's legal moves and every transition for kyo-left  5832ms
+   ✓ matches core's legal moves and every transition for kyo-right  5763ms
+   × matches core's legal moves and every transition for totsugeki 3370ms
+     → moves totsugeki position 32: expected [ …(29) ] to deeply equal [ …(30) ]
+   ✓ matches core's legal moves and every transition for ai-happokei  5102ms
+   ✓ matches core's legal moves and every transition for happokei  3892ms
+   ✓ matches core's legal moves and every transition for patrol  5461ms
+   ✓ matches core's legal moves and every transition for lortap  3748ms
+   ↓ matches core's legal moves and every transition for shishio
+   ↓ matches core's legal moves and every transition for hono-shishi
+   ↓ matches core's legal moves and every transition for nigyoku
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/bot/ordinaryRulesReference.test.ts > matches core's legal moves and every transition for totsugeki
+AssertionError: moves totsugeki position 32: expected [ …(29) ] to deeply equal [ …(30) ]
+
+- Expected
++ Received
+
+@@ -15,11 +15,10 @@
+    "[\"move\",[6,4],[[5,3]],true]",
+    "[\"move\",[6,4],[[7,3]],false]",
+    "[\"move\",[6,4],[[7,3]],true]",
+    "[\"move\",[6,4],[[8,2]],false]",
+    "[\"move\",[6,4],[[8,2]],true]",
+-   "[\"move\",[6,4],[[9,1]],false]",
+    "[\"move\",[6,4],[[9,1]],true]",
+    "[\"move\",[6,7],[[6,6]],false]",
+    "[\"move\",[6,8],[[5,8]],false]",
+    "[\"move\",[6,8],[[7,8]],false]",
+    "[\"move\",[7,6],[[7,5]],false]",
+
+ ❯ app/bot/ordinaryRulesReference.test.ts:42:11
+     40|           row.moves.map(ordinaryMoveKey).sort(),
+     41|           `moves ${rule.name} position ${i}`
+     42|         ).toEqual([...expected.keys()].sort());
+       |           ^
+     43|         for (const t of row.transitions) {
+     44|           const e = expected.get(ordinaryMoveKey(t.move))!;
+ ❯ app/bot/ordinaryRulesReference.test.ts:35:14
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed | 16 skipped (28)
+   Start at  13:53:21
+   Duration  97.95s (transform 1.64s, setup 0ms, collect 2.19s, tests 95.26s, environment 0ms, prepare 106ms)

@@ -1,0 +1,14 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesWasm.test.ts (20 tests | 15 skipped) 306183ms
+   ✓ hisha: bundled WASM matches core's legal moves, every transition and searches legally  190157ms
+   ✓ kaku: bundled WASM matches core's legal moves, every transition and searches legally  73564ms
+   ✓ seireigi: bundled WASM matches core's legal moves, every transition and searches legally  12176ms
+   ✓ kyo-left: bundled WASM matches core's legal moves, every transition and searches legally  13050ms
+   ✓ kyo-right: bundled WASM matches core's legal moves, every transition and searches legally  17233ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed | 15 skipped (20)
+   Start at  13:47:04
+   Duration  307.91s (transform 1.12s, setup 0ms, collect 1.40s, tests 306.18s, environment 0ms, prepare 76ms)

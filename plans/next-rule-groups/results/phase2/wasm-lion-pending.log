@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesWasm.test.ts (28 tests | 26 skipped) 52655ms
+   ✓ shishio: bundled WASM matches core's legal moves, every transition and searches legally  26307ms
+   ✓ hono-shishi: bundled WASM matches core's legal moves, every transition and searches legally  26346ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 26 skipped (28)
+   Start at  13:58:49
+   Duration  54.53s (transform 1.14s, setup 0ms, collect 1.51s, tests 52.66s, environment 0ms, prepare 98ms)

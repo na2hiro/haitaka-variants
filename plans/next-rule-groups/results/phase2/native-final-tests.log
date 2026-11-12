@@ -1,0 +1,15 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesReference.test.ts (28 tests | 22 skipped) 55014ms
+   ✓ matches core's legal moves and every transition for totsugeki  9144ms
+   ✓ matches core's legal moves and every transition for ai-happokei  7854ms
+   ✓ matches core's legal moves and every transition for happokei  6404ms
+   ✓ matches core's legal moves and every transition for shishio  14027ms
+   ✓ matches core's legal moves and every transition for hono-shishi  10746ms
+   ✓ matches core's legal moves and every transition for nigyoku  6836ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed | 22 skipped (28)
+   Start at  13:56:05
+   Duration  60.17s (transform 2.90s, setup 0ms, collect 4.29s, tests 55.01s, environment 3ms, prepare 258ms)

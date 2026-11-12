@@ -1,8 +1,8 @@
 # 通常移動を使う追加ルール
 
-古将棋・５五系のJSON v3基盤を再利用し、次の15ルールを追加した。
+古将棋・５五系のJSON v3基盤を再利用し、次の28ルールを追加した。
 持ち駒不使用54は最新mainの `fushiyo` を再利用するため、新しい駒取り処理は実装しない。
-将棋ったー側ではこの16ルールをHaitakaに接続する。
+将棋ったー側ではこれらに既存の持ち駒系6種を加え、計35ルールをHaitakaに接続する。
 
 | 段階 | ルールID | feature |
 | --- | --- | --- |
@@ -12,6 +12,12 @@
 | 5 | 狭い79・せっまい90・広い91 | `semai`, `semmai`, `hiroi` |
 | 6 | どうぶつしょうぎ17 | `dobutsu` |
 | 7 | 取る一手28 | `toruichi` |
+| 8 | 飛車92・角103・精霊棋159・京左京44・右京45 | `hisha`, `kaku`, `seireigi`, `kyo-left`, `kyo-right` |
+| 9 | 突撃88 | `totsugeki` |
+| 10 | 相八方桂21・八方桂20 | `ai-happokei`, `happokei` |
+| 11 | Patrol112・Lortap113 | `patrol`, `lortap` |
+| 12 | 獅子王22・奔王vs獅子117 | `shishio`, `hono-shishi` |
+| 13 | 二玉163 | `nigyoku` |
 
 ## ルール固有の挙動
 
@@ -29,16 +35,17 @@
 `classical/ordinary.rs` がルールの方針、`ordinary_defs.rs` が生成された駒・配置の定義を持つ。
 盤・持ち駒・成り・棋譜・探索は既存のClassicalGameを再利用する。評価はhandcraftedで、9×9 NNUE/SFNNはロードしない。
 
-採用元の解決済みcore定義は `plans/next-rule-groups/inputs/definitions.json` に固定した。
+第1巡の定義は `inputs/definitions.json`、全28種の最新の定義は
+`plans/next-rule-groups/inputs/phase2-definitions.json` に固定した。
 再生成時は将棋ったー側の `nextRulesDefinitions.test.ts` で定義を出力し、次を実行する。
 
 ```sh
-python3 scripts/generate-next-rules.py plans/next-rule-groups/inputs/definitions.json \
-  --through 7 --web ../shogitter-3
+python3 scripts/generate-next-rules.py plans/next-rule-groups/inputs/phase2-definitions.json \
+  --through 13 --web ../shogitter-3
 rustfmt --edition 2024 haitaka/src/extended/classical/ordinary_defs.rs
 ```
 
-各featureを単独でビルドする。通常のSFEN/USI形式は `fushiyo` のみで、残る15種はJSON v3のCLI・WASM APIを使う。
+各featureを単独でビルドする。通常のSFEN/USI形式は `fushiyo` のみで、この表の28種はJSON v3のCLI・WASM APIを使う。
 
 ```sh
 cargo build --release -p haitaka_cli --features dobutsu
@@ -55,3 +62,11 @@ cargo run --release -p haitaka_cli --features dobutsu -- json startpos
 coreとnativeの照合は将棋ったー側の `ordinaryRulesReference.test.ts`、coreと同梱WASMの照合は
 `ordinaryRulesWasm.test.ts`、画面上の対局確認は `haitaka-ordinary.spec.ts` にある。
 原本・WASMハッシュ・ビルド元commitは `plans/next-rule-groups/results/verification.json` と同ディレクトリのログに保存した。
+
+第2巡の13種は1,044局面・44,783遷移でnative/WASMとcoreが一致した。
+既存の持ち駒系6種も588局面・32,531遷移でWASMとcoreを照合し、19種のブラウザー対局を確認した。
+詳細は `plans/next-rule-groups/phase2.md` と `results/phase2/verification.json` を参照。
+
+第2巡では `CHECK`（自玉の王手放置を禁ずる）と `CHECKMATE`（詰みを判定する）を分離した。
+獅子は `LION`（複数段移動）と `LION_CAPTURE_RULES`（中将棋固有の捕獲制限）を分離し、
+獅子王と奔王vs獅子では後者を無効にする。Patrol/Lortapは捕獲前の盤上の幾何学的な味方の利きを使う。

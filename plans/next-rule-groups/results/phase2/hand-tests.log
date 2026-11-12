@@ -1,0 +1,15 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/handRulesWasm.test.ts (6 tests) 42099ms
+   ✓ nakamaware: bundled WASM matches all core legal moves and resulting boards, hands and winners  1743ms
+   ✓ share: bundled WASM matches all core legal moves and resulting boards, hands and winners  7896ms
+   ✓ zoshoku: bundled WASM matches all core legal moves and resulting boards, hands and winners  7729ms
+   ✓ babanuki: bundled WASM matches all core legal moves and resulting boards, hands and winners  8613ms
+   ✓ tensuu: bundled WASM matches all core legal moves and resulting boards, hands and winners  7877ms
+   ✓ suika: bundled WASM matches all core legal moves and resulting boards, hands and winners  8240ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  13:46:02
+   Duration  44.01s (transform 1.21s, setup 0ms, collect 1.54s, tests 42.10s, environment 0ms, prepare 67ms)
