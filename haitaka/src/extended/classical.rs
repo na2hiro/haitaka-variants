@@ -156,7 +156,12 @@ include!("classical/defs.rs");
     feature = "semmai",
     feature = "hiroi",
     feature = "dobutsu",
-    feature = "toruichi"
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right"
 ))]
 mod ordinary;
 #[cfg(any(
@@ -174,7 +179,12 @@ mod ordinary;
     feature = "semmai",
     feature = "hiroi",
     feature = "dobutsu",
-    feature = "toruichi"
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right"
 ))]
 use ordinary::*;
 #[cfg(any(
@@ -1049,7 +1059,12 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     feature = "semmai",
     feature = "hiroi",
     feature = "dobutsu",
-    feature = "toruichi"
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right"
 ))]
 pub mod compiled {
     use super::*;
@@ -1105,6 +1120,17 @@ pub mod compiled {
 
     #[cfg(feature = "toruichi")]
     pub type Selected = Toruichi;
+
+    #[cfg(feature = "hisha")]
+    pub type Selected = Hisha;
+    #[cfg(feature = "kaku")]
+    pub type Selected = Kaku;
+    #[cfg(feature = "seireigi")]
+    pub type Selected = Seireigi;
+    #[cfg(feature = "kyo-left")]
+    pub type Selected = KyoLeft;
+    #[cfg(feature = "kyo-right")]
+    pub type Selected = KyoRight;
 
     pub type CompiledGame = ClassicalGame<Selected>;
     pub const PROTOCOL: &str = super::PROTOCOL;

@@ -18,19 +18,19 @@ use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
-    HistoryAdjudication, Move, Piece, PositionHistory, RuleSpec, SelectedRule,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus, HistoryAdjudication, Move,
+    Piece, PositionHistory, RuleSpec, SelectedRule,
 };
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
-    collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
-    donor_receiver_pair_v2_quantized_rows, donor_receiver_pair_v2_stats,
-    migrate_donor_single_to_receiver_pair_v2, r1_donor_single_active_feature_indices,
-    DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats, NnueModel,
-    NnuePositionState, R1ActiveFeatureIndices, R1InferenceTrace, R1SentinelNetwork,
-    NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH, NNUE_TRANSFORMER_WIDTH,
-    R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION,
+    DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats,
+    NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH, NNUE_TRANSFORMER_WIDTH, NnueModel,
+    NnuePositionState, R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices,
+    R1InferenceTrace, R1SentinelNetwork, collapse_donor_receiver_pair_v2,
+    donor_receiver_pair_v2_active_rows, donor_receiver_pair_v2_quantized_rows,
+    donor_receiver_pair_v2_stats, migrate_donor_single_to_receiver_pair_v2,
+    r1_donor_single_active_feature_indices,
 };
 use sfnn::{SfnnModel, SfnnPositionState};
 use tt::{Bound, SearchTtStats, TranspositionTable};
@@ -4769,9 +4769,11 @@ mod tests {
     #[test]
     fn usi_timed_mate_reports_dfpn_selection_evidence() {
         let mut session = UsiSession::default();
-        assert!(session
-            .handle_line(&format!("position sfen {DFPN_MATE_SFEN}"))
-            .is_empty());
+        assert!(
+            session
+                .handle_line(&format!("position sfen {DFPN_MATE_SFEN}"))
+                .is_empty()
+        );
         let outputs = session.handle_line("go movetime 1000");
         let tokens = outputs[0].split_whitespace().collect::<Vec<_>>();
         let field = |name| {
@@ -4793,9 +4795,11 @@ mod tests {
         // Avoid an adjacent rook: in NekoNeko it would give the king rook moves.
         let mut session = UsiSession::default();
         assert!(session.terminal_notifications().is_empty());
-        assert!(session
-            .handle_line("position sfen 8k/6G2/9/9/9/9/9/9/K8 b R 1 moves R*1d")
-            .is_empty());
+        assert!(
+            session
+                .handle_line("position sfen 8k/6G2/9/9/9/9/9/9/K8 b R 1 moves R*1d")
+                .is_empty()
+        );
         let terminal = session.terminal_notifications();
         assert_eq!(session.handle_line("go depth 1"), terminal);
         assert_eq!(session.terminal_notifications(), terminal);
@@ -4852,9 +4856,11 @@ mod tests {
                 })
                 .collect::<Vec<_>>();
             let mut session = UsiSession::default();
-            assert!(session
-                .handle_line(&format!("position sfen {root} moves {}", moves.join(" ")))
-                .is_empty());
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {}", moves.join(" ")))
+                    .is_empty()
+            );
             assert_eq!(session.board.status(), GameStatus::WonBySideToMove);
             let winner = session.board.winner().unwrap();
             assert_eq!(winner, session.board.side_to_move());
@@ -4913,16 +4919,20 @@ mod tests {
             };
             let mv = if swap { "5d5e" } else { "5f5e" };
             let mut session = UsiSession::default();
-            assert!(session
-                .handle_line(&format!("position sfen {root}"))
-                .is_empty());
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root}"))
+                    .is_empty()
+            );
             assert_eq!(
                 session.handle_line("go depth 1").last().unwrap(),
                 &format!("bestmove {mv}")
             );
-            assert!(session
-                .handle_line(&format!("position sfen {root} moves {mv}"))
-                .is_empty());
+            assert!(
+                session
+                    .handle_line(&format!("position sfen {root} moves {mv}"))
+                    .is_empty()
+            );
             assert_eq!(session.board.winner(), Some(root.side_to_move()));
             let terminal = session.terminal_notifications();
             assert!(terminal[0].starts_with("info string gameover no-legal-move "));
@@ -5349,9 +5359,11 @@ mod tests {
             .unwrap();
 
         assert!(summary.completed_depth > 0);
-        assert!(summary
-            .best_score
-            .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD));
+        assert!(
+            summary
+                .best_score
+                .is_some_and(|score| score.abs() >= SEARCH_MATE_SCORE_THRESHOLD)
+        );
         assert!(trace.as_ref().is_none_or(|trace| trace.terminal));
     }
 
