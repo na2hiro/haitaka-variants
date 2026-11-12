@@ -1,0 +1,9 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3/packages/ai
+
+ ✓ src/converters/shogiSfen.test.ts (21 tests) 11ms
+
+ Test Files  1 passed (1)
+      Tests  21 passed (21)
+   Start at  14:00:14
+   Duration  1.86s (transform 1.13s, setup 0ms, collect 1.45s, tests 11ms, environment 0ms, prepare 121ms)

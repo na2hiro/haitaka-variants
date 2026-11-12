@@ -1,0 +1,32 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > runs worker-owned iterative deepening and returns the deepest command
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > keeps the last completed command when a deeper search times out
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > runs ponder without posting a command and keeps the same bot for go
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > calls player stop and can search again without reinitializing
+loading a bot from  possibilityist
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > requires a matching prepared rule and reports preparation separately from init
+loading a bot from  haitaka
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > returns preparation failure as a retryable state without resigning
+loading a bot from  haitaka
+
+stdout | app/bot/bot.worker.test.ts > bot.worker > discards a preparation response after disposal
+loading a bot from  haitaka
+
+ ✓ app/bot/bot.worker.test.ts (7 tests) 183ms
+ ✓ app/engines/classicalJsonProtocol.test.ts (9 tests) 117ms
+ ✓ app/bot/haitakaPlayer.test.ts (15 tests) 270ms
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  13:58:53
+   Duration  2.37s (transform 1.49s, setup 0ms, collect 3.47s, tests 570ms, environment 1ms, prepare 286ms)

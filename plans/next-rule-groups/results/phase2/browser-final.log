@@ -1,0 +1,57 @@
+(node:474868) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:474898) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:474898) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:474898) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール22: bundled WASM prepares and replies with a legal move (38.8s)
+(node:476735) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:476735) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:476735) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール117: bundled WASM prepares and replies with a legal move (11.0s)
+  ✓  3 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール163: bundled WASM prepares and replies with a legal move (10.0s)
+  ✓  4 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール88: bundled WASM prepares and replies with a legal move (10.3s)
+  ✓  5 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール21: bundled WASM prepares and replies with a legal move (8.3s)
+  ✓  6 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール20: bundled WASM prepares and replies with a legal move (12.6s)
+  ✓  7 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール112: bundled WASM prepares and replies with a legal move (7.9s)
+  ✓  8 tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール113: bundled WASM prepares and replies with a legal move (7.1s)
+
+
+  1) tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール22: bundled WASM prepares and replies with a legal move
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: getByRole('listbox').getByRole('option', { selected: true })
+    Expected pattern: [32m/^3(?:\D|$)/[39m
+    Received string:  [31m"4☖5四獅子"[39m
+    Timeout: 30000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 30000ms[22m
+    [2m  - waiting for getByRole('listbox').getByRole('option', { selected: true })[22m
+    [2m    7 × locator resolved to <div role="option" aria-selected="true">…</div>[22m
+    [2m      - unexpected value "2☗7六歩"[22m
+    [2m    26 × locator resolved to <div role="option" aria-selected="true">…</div>[22m
+    [2m       - unexpected value "4☖5四獅子"[22m
+
+
+      86 |     }
+      87 |     await move(page, ...first);
+    > 88 |     await expect(selected).toContainText(
+         |                            ^
+      89 |       [20, 22, 30].includes(ruleId) ? /^3(?:\D|$)/ : /^2(?:\D|$)/,
+      90 |       { timeout: 30_000 }
+      91 |     );
+        at /home/na2hiro/proj/shogitter-3/tests/haitaka-ordinary.spec.ts:88:28
+
+    Error Context: test-results/haitaka-ordinary-追加ルール22-b-fe553-d-replies-with-a-legal-move/error-context.md
+
+  1 failed
+    tests/haitaka-ordinary.spec.ts:105:3 › 追加ルール22: bundled WASM prepares and replies with a legal move
+  7 passed (1.8m)

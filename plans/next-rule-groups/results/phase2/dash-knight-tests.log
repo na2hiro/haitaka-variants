@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesWasm.test.ts (28 tests | 25 skipped) 24800ms
+   ✓ totsugeki: bundled WASM matches core's legal moves, every transition and searches legally  11324ms
+   ✓ ai-happokei: bundled WASM matches core's legal moves, every transition and searches legally  7920ms
+   ✓ happokei: bundled WASM matches core's legal moves, every transition and searches legally  5553ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 25 skipped (28)
+   Start at  13:56:37
+   Duration  27.59s (transform 1.69s, setup 0ms, collect 2.21s, tests 24.80s, environment 0ms, prepare 152ms)
