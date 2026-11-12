@@ -48,7 +48,8 @@ for q in json.loads(a.input.read_text()):
             if rid == 88 and move['move'][1] > 0: continue
             assert move['type'] in [1, 2, 8], (rid, id, move)
             (steps if move['type'] in [1,8] else rays).append(move['move'])
-        dead = next((y for y in range(h) if any(0 <= w//2+dx < w and 0 <= y+dy < h for dx,dy in steps+rays)), h)
+        dead_moves = [m['move'] for m in d['move']]
+        dead = next((y for y in range(h) if any(0 <= w//2+dx < w and 0 <= y+dy < h for dx,dy in dead_moves)), h)
         promotion = rule['nari'].get(id)
         promo = f'Some(PieceId({ix[promotion]}))' if promotion else 'None'
         value = {'aa':100,'ab':300,'ac':300,'ad':450,'ae':550,'af':750,'ag':900,'ah':2500,'bg':100,'bh':500,'bi':400,'bj':2500}.get(id, 350+80*len(rays)+20*len(steps))

@@ -3357,7 +3357,7 @@ const TOTSUGEKI_PIECES: &[PieceDef] = &[
         Some(PieceId(11)),
         3,
         false,
-        1,
+        0,
         450
     ),
     piece!(
@@ -3377,7 +3377,7 @@ const TOTSUGEKI_PIECES: &[PieceDef] = &[
         Some(PieceId(12)),
         5,
         false,
-        1,
+        0,
         750
     ),
     piece!(
