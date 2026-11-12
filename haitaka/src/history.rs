@@ -78,6 +78,10 @@ impl PositionHistory {
 
     /// Apply the frozen fourfold/perpetual-check rule to the current position.
     pub fn adjudication(&self) -> HistoryAdjudication {
+        // Shogitter rule 162 disables both repetition and perpetual-check endings.
+        if cfg!(feature = "tesushogi") {
+            return HistoryAdjudication::Ongoing;
+        }
         let current = self.current();
         let occurrences = self
             .positions

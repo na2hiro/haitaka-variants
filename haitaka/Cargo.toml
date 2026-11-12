@@ -65,6 +65,7 @@ ningenshogi = ["win-condition-category"]
 tennouzan = ["win-condition-category"]
 igyoku = ["king-constraint-category"]
 hitomasuou = ["king-constraint-category"]
+tesushogi = ["win-condition-category"]
 
 # Orthogonal capture, hand, and outcome rules.
 hand-category = []

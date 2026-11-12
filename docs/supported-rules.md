@@ -26,6 +26,15 @@ orthogonal to the following win-condition and king-constraint features:
   every original, uncaptured piece. If either player has an original piece on
   the board that has never moved, the checkmating player loses, even if that
   player has already completed their own moves.
+- `tesushogi`: 手数将棋 (rule ID 162). White wins after 49, 99, or 149
+  individual moves unless the final move has already ended the game by mate.
+  The default is 49; select the limit with `Board::set_move_limit` or USI
+  `setoption name MoveLimit value 99` **before** sending `position`.
+  Replay from the initial SFEN with its complete move list to preserve elapsed
+  moves; the SFEN move number is the next move (played plies + 1).
+  Repetition and perpetual-check adjudication are disabled. Elapsed moves and
+  the selected limit participate in board and search keys. DFPN returns
+  `unknown` / `unsupported-ruleset`; gameplay uses alpha-beta search.
 - `igyoku`: the physical King cannot move.
 - `hitomasuou`: the physical King may only move within the six squares on files
   4--6 and its two home ranks.
@@ -65,7 +74,7 @@ Position-based outcomes are checked before the normal no-legal-move ending.
 `Board::winner()` returns the winning color directly; `GameStatus::WonBySideToMove`
 represents rules such as `shihonkangen` where the previous mover lost.
 
-Human Shogi is the one supported rule that requires history. `Board` tracks a
+Human Shogi requires original-piece movement history. `Board` tracks a
 bitboard of original pieces that have not moved or been captured, and includes
 it in position identity and the transposition hash. Because SFEN has no field
 for this history, every board piece in a newly parsed SFEN is treated as not yet
@@ -83,7 +92,7 @@ The `neko` family is also a "donor" family — a piece adopts only its partner's
 
 `tenkyo`, `tenjiku`, and `anki` also use correctness-first replay filtering for legal move generation because a move can change donor relationships outside ordinary pin and interposition masks.
 
-`haitaka_learn` now covers NNUE data generation, training orchestration, export, and verification for all of the supported rule modes above. Use the matching Cargo feature for variant workflows.
+`haitaka_learn` covers NNUE data generation, training orchestration, export, and verification for the rule modes above except `tesushogi`. Tesu Shogi currently uses handcrafted evaluation and does not enable a learning workflow. Use the matching Cargo feature for variant workflows.
 
 ## Capture and hand rules
 

@@ -60,6 +60,8 @@ jobs:
         cargo test -p haitaka --features hitomasuou hitomasuou_only_allows_destinations_in_the_home_zone
         cargo test -p haitaka --features annan,hitomasuou king_constraint_only_applies_to_the_physical_king
         cargo test -p haitaka --features sanmaime,shihonkangen immediate_loss_takes_precedence_over_win_conditions
+    - name: Run Tesu Shogi deadline and history tests
+      run: cargo test -p haitaka -p haitaka_wasm --features tesushogi --test tesushogi
     - name: Check replay-filter donor composition
       run: cargo check --workspace --features neko,hitomasuou --verbose
     - name: Run history and loss outcome tests
@@ -118,6 +120,8 @@ jobs:
     - run: cargo test -p haitaka --test hand_rules --features ${{ matrix.rule }}
     - run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} hand_rules
     - run: cargo test -p haitaka_cli --features ${{ matrix.rule }} hand_rules
+    - name: Compose hand rules with Tesu Shogi
+      run: cargo test -p haitaka --test hand_rules --features "tesushogi,${{ matrix.rule }}" hand_rules_tesushogi
     - name: Compose capture-King and check-win conditions
       if: matrix.rule == 'nakamaware' || matrix.rule == 'suika'
       run: cargo test -p haitaka --test hand_rules --features "${{ matrix.rule }},oute" hand_rules_geometric_checks_survive_ignored_evasions

@@ -263,3 +263,48 @@ fn hand_rules_geometric_checks_survive_ignored_evasions() {
         Board::from_sfen(&b.to_string()).unwrap().checkers()
     );
 }
+
+#[cfg(feature = "tesushogi")]
+#[test]
+fn hand_rules_tesushogi_deadline_still_applies() {
+    for limit in [49, 99, 149] {
+        let mut b = board("-");
+        b.set_move_number(limit);
+        b.set_move_limit(limit).unwrap();
+        play(&mut b, "5e5d");
+        assert_eq!(b.winner(), Some(Color::White));
+        assert_eq!(
+            b.num_in_hand(Color::Black, Piece::Pawn),
+            if cfg!(feature = "fushiyo") {
+                0
+            } else if cfg!(feature = "zoshoku") {
+                2
+            } else {
+                1
+            }
+        );
+    }
+}
+
+#[cfg(all(
+    feature = "tesushogi",
+    any(feature = "nakamaware", feature = "tensuu", feature = "suika")
+))]
+#[test]
+fn hand_rules_tesushogi_keeps_immediate_wins_on_the_final_move() {
+    let sfen = if cfg!(feature = "nakamaware") {
+        "9/9/9/4k4/4R4/9/9/9/K8 b - 1"
+    } else if cfg!(feature = "suika") {
+        "8k/9/9/4r4/4R4/9/9/9/K8 b R 1"
+    } else {
+        "8k/9/9/4p4/4R4/9/9/9/K8 b 2G2L 1"
+    };
+    for limit in [49, 99, 149] {
+        let mut b = Board::from_sfen(sfen).unwrap();
+        b.set_move_number(limit);
+        b.set_move_limit(limit).unwrap();
+        play(&mut b, "5e5d");
+        assert_eq!(b.winner(), Some(Color::Black));
+        assert!(!b.generate_moves(|_| true));
+    }
+}

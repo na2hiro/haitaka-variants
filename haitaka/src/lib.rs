@@ -154,6 +154,7 @@ compile_error!("donor-category is internal; enable one concrete donor feature in
         feature = "shihonkangen",
         feature = "ningenshogi",
         feature = "tennouzan",
+        feature = "tesushogi",
         feature = "tensuu",
         feature = "suika"
     ))
