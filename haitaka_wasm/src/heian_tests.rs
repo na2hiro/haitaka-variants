@@ -125,7 +125,7 @@ fn repetition_and_models_and_dfpn_are_rule_aware() {
     );
     let cycle = format!("{king}{up} 1a1b {up}{king} 1b1a ").repeat(3);
     let command = format!("position sfen {before} moves {}", cycle.trim());
-    let (b, h) = parse_usi_position_with_history(&command).unwrap();
+    let (b, h) = parse_usi_position_with_limit(&command, 99).unwrap();
     assert_eq!(h.adjudication(), HistoryAdjudication::RepetitionDraw);
     let result = search_board_impl_handcrafted_with_history(&b, &h, 2).unwrap();
     assert!(result.best_move.is_none());
@@ -136,12 +136,19 @@ fn repetition_and_models_and_dfpn_are_rule_aware() {
             .to_string()
             .contains("UNSUPPORTED_RULESET")
     );
-    assert!(
-        SfnnModel::from_bytes(&[], &[], sfnn::MICRO_ARCH)
-            .unwrap_err()
-            .to_string()
-            .contains("UNSUPPORTED_RULESET")
-    );
+    let expected = if SelectedRule::ALLOW_SFNN_MODELS {
+        "SFNN_INVALID_NN"
+    } else {
+        "SFNN_UNSUPPORTED_RULESET"
+    };
+    for arch in [sfnn::MICRO_ARCH, sfnn::MINI_ARCH] {
+        assert!(
+            SfnnModel::from_bytes(&[], &[], arch)
+                .unwrap_err()
+                .to_string()
+                .contains(expected)
+        );
+    }
     assert!(
         load_nnue_impl(&[])
             .unwrap_err()

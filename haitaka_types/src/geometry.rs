@@ -133,6 +133,8 @@ pub trait RuleSpec {
     const ONLY_KINGS_DRAW: bool = false;
     const ALLOW_DFPN: bool = true;
     const ALLOW_STANDARD_MODELS: bool = Self::Geometry::WIDTH == 9 && Self::Geometry::HEIGHT == 9;
+    /// SFNN compatibility is separate from legacy NNUE and training formats.
+    const ALLOW_SFNN_MODELS: bool = Self::ALLOW_STANDARD_MODELS;
     const PROMOTIONS: [Option<crate::Piece>; crate::Piece::NUM] = {
         use crate::Piece::*;
         [
@@ -338,6 +340,7 @@ macro_rules! heian_rule {
             const ONLY_KINGS_DRAW: bool = true;
             const ALLOW_DFPN: bool = false;
             const ALLOW_STANDARD_MODELS: bool = false;
+            const ALLOW_SFNN_MODELS: bool = $w == 9 && $h == 9;
             const PROMOTIONS: [Option<crate::Piece>; crate::Piece::NUM] = {
                 use crate::Piece::*;
                 [

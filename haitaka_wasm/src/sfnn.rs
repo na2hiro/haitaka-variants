@@ -90,7 +90,7 @@ pub struct SfnnModel {
 impl SfnnModel {
     /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
     pub fn from_bytes(nn: &[u8], progress: &[u8], arch: &str) -> Result<Self, SfnnError> {
-        if cfg!(feature = "extended-json") || !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
+        if cfg!(feature = "extended-json") || !haitaka::SelectedRule::ALLOW_SFNN_MODELS {
             return Err(invalid(format!(
                 "SFNN_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
                 haitaka::SelectedRule::NAME
@@ -263,13 +263,19 @@ impl SfnnModel {
                             "terminal king capture has no SFNN state"
                         );
                         removed.push(board_index(captured.piece, captured.color, to, p));
-                        let hand_piece = captured.piece.unpromote();
-                        added.push(hand_index(
-                            hand_piece,
-                            mover,
-                            p,
-                            parent.num_in_hand(mover, hand_piece) as usize,
-                        ));
+                        if haitaka::SelectedRule::CAPTURE_TO_HAND {
+                            let hand_piece = captured.piece.unpromote();
+                            added.push(hand_index(
+                                hand_piece,
+                                mover,
+                                p,
+                                parent.num_in_hand(mover, hand_piece) as usize,
+                            ));
+                        } else {
+                            // A discarded capture becomes one missing physical
+                            // slot, represented by feature zero in a full refresh.
+                            added.push(0);
+                        }
                     }
                 }
             }
@@ -679,3 +685,7 @@ mod search_range_test {
         );
     }
 }
+
+#[cfg(all(test, feature = "heian-9x9"))]
+#[path = "sfnn_heian_tests.rs"]
+mod heian_tests;
