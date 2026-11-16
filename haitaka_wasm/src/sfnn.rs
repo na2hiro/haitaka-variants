@@ -77,6 +77,8 @@ struct Stack {
 pub struct SfnnPositionState {
     accumulators: [Vec<i16>; 2],
     progress_sums_q16: [i64; 2],
+    #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+    ghost_hands: Option<no_hand_diagnostics::GhostHands>,
 }
 
 /// Immutable shared weights for full-refresh and incremental integer evaluation.
@@ -86,6 +88,8 @@ pub struct SfnnModel {
     weights: Vec<i16>,
     progress: Vec<i32>,
     stacks: Vec<Stack>,
+    #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+    diagnostic_ghost_hands: bool,
 }
 impl SfnnModel {
     /// Strict micro/mini loader. Error prefixes follow the P0 public contract.
@@ -132,6 +136,8 @@ impl SfnnModel {
             weights: parsed.1,
             stacks: parsed.2,
             progress,
+            #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+            diagnostic_ghost_hands: false,
         })
     }
     fn read_nn(bytes: &[u8], width: usize) -> Result<(Vec<i16>, Vec<i16>, Vec<Stack>), SfnnError> {
@@ -167,12 +173,37 @@ impl SfnnModel {
             stacks,
         ))
     }
+    /// Native diagnostic only: inspect the otherwise unobserved missing-slot row.
+    #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+    pub fn diagnostic_missing_slot(&self) -> (i64, i16, i16, i64) {
+        let row = &self.weights[..self.biases.len()];
+        (
+            row.iter().map(|&x| i64::from(x).abs()).sum(),
+            *row.iter().min().unwrap(),
+            *row.iter().max().unwrap(),
+            (0..81)
+                .map(|king| i64::from(self.progress[king * BONA_NONKING]).abs())
+                .sum(),
+        )
+    }
+
+    /// Native counterfactual: zero only the missing physical-slot contribution.
+    #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+    pub fn diagnostic_zero_missing_slot(&mut self) {
+        self.weights[..self.biases.len()].fill(0);
+        for king in 0..81 {
+            self.progress[king * BONA_NONKING] = 0;
+        }
+    }
+
     /// Panics if either king is missing or more than 38 nonking pieces exist.
     pub fn build_position_state_full(&self, board: &Board) -> SfnnPositionState {
         let pieces = bona_pieces(board);
         let mut state = SfnnPositionState {
             accumulators: [self.biases.clone(), self.biases.clone()],
             progress_sums_q16: [0; 2],
+            #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+            ghost_hands: None,
         };
         for p in 0..2 {
             let friendly = orient(
@@ -217,6 +248,17 @@ impl SfnnModel {
         state: &SfnnPositionState,
         mv: Move,
     ) -> SfnnPositionState {
+        #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+        if self.diagnostic_ghost_hands {
+            let mut ghost = state
+                .ghost_hands
+                .clone()
+                .expect("diagnostic root must retain capture history");
+            ghost.play(parent, mv);
+            let mut next = self.build_position_state_full(&ghost.feature_board(child));
+            next.ghost_hands = Some(ghost);
+            return next;
+        }
         if cfg!(feature = "hand-category") {
             return self.build_position_state_full(child);
         }
@@ -689,3 +731,7 @@ mod search_range_test {
 #[cfg(all(test, feature = "heian-9x9"))]
 #[path = "sfnn_heian_tests.rs"]
 mod heian_tests;
+
+#[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+#[path = "sfnn_no_hand_diagnostics.rs"]
+mod no_hand_diagnostics;

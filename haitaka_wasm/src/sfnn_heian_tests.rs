@@ -9,6 +9,8 @@ fn discarded_captures_replace_board_features_with_missing_slots() {
         weights: (0..FEATURES * 32).map(|i| (i % 31) as i16 - 15).collect(),
         progress: (0..PROGRESS_COUNT).map(|i| (i % 19) as i32 - 9).collect(),
         stacks: Vec::new(),
+        #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+        diagnostic_ghost_hands: false,
     };
     for (sfen, text) in [
         ("8k/9/6g2/6S2/9/9/9/9/K8 b - 1", "3d3c+"),

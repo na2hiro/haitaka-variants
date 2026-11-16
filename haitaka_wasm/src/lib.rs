@@ -1538,9 +1538,12 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
         EvaluationStrategy::Sfnn {
             model,
             mode: SearchEvalMode::Incremental,
-        } if has_both_kings(board) => Some(EvaluationState::Sfnn(
-            model.build_position_state_full(board),
-        )),
+        } if has_both_kings(board) => {
+            let state = model.build_position_state_full(board);
+            #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+            let state = model.diagnostic_seed_history(board, history, state);
+            Some(EvaluationState::Sfnn(state))
+        }
         _ => None,
     };
     let mut ctx = SearchContext {
@@ -1926,6 +1929,16 @@ impl UsiSession {
         };
         self.tt.clear();
         Ok(arch.to_string())
+    }
+
+    /// Use a prepared counterfactual model only in native diagnostic builds.
+    #[cfg(all(feature = "sfnn-diagnostics", not(target_arch = "wasm32")))]
+    pub fn diagnostic_set_sfnn_model(&mut self, model: SfnnModel, mode: SearchEvalMode) {
+        self.evaluation = EvaluationStrategy::Sfnn {
+            model: Arc::new(model),
+            mode,
+        };
+        self.tt.clear();
     }
 
     pub fn handle_line(&mut self, line: &str) -> Vec<String> {
