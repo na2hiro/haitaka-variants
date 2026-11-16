@@ -1,0 +1,97 @@
+{
+  "conditions": {
+    "sourceCommit": "feb12d6b448ecaede97983bf91911f2b27b4b43a",
+    "startedUtc": "2026-11-16T08:30:53.063249+00:00",
+    "games": 100,
+    "movetimeMs": 100,
+    "maxPlies": 512,
+    "threads": 4,
+    "seed": 330011,
+    "openingRandomPlies": 8,
+    "runtime": "native CPU",
+    "maxDepth": 64,
+    "modelSha256": {
+      "micro": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
+      "mini": "45323c65135da65d6c2c364eea93a5af6a285c27ebfb07eab4afbe737ef74508",
+      "progress": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+    },
+    "cliSha256": "d7e9054ebdde2156c05ce66ca7a578f28fc203c544b53a0f8ce091eb1b613d65",
+    "engineSha256": "19d064295b29a8788427b71a991001b2a1c135055a308ba65dd94b54ea3baaa6",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "platform": "Linux ubuntu 7.0.0-31-generic #31-Ubuntu SMP PREEMPT_DYNAMIC Sat Aug  1 04:26:38 UTC 2026 x86_64 GNU/Linux",
+    "cpuAffinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "cpuModel": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz"
+  },
+  "interval": "10,000 percentile bootstrap resamples of color-swapped opening pairs; seed as above",
+  "limitations": "Native CPU, transferred standard-shogi models, fixed time and ply cap; exploratory comparison of two profiles without multiplicity adjustment.",
+  "rows": [
+    {
+      "profile": "micro",
+      "games": 100,
+      "sfnnWins": 0,
+      "handcraftedWins": 99,
+      "draws": 1,
+      "scoreRate": 0.005,
+      "scoreCi95": [
+        0.0,
+        0.015
+      ],
+      "terminationReasons": {
+        "no-legal-move": 99,
+        "maximum-ply-capped": 1
+      },
+      "fallbacks": {
+        "sfnn": 0,
+        "handcrafted": 0
+      },
+      "avgPlies": 110.68,
+      "byColor": {
+        "black": {
+          "B": 49,
+          "draw": 1
+        },
+        "white": {
+          "B": 50
+        }
+      },
+      "gamesSha256": "9bcc8adba9a73928d54057f5e8a2b6b68d8793626b5d4a209e9e5fe8db308b7d",
+      "reportSha256": "eb933b41257690066676dd9a57322db01e6ad8da9d679f0e1ee4734e32de5d96"
+    },
+    {
+      "profile": "mini",
+      "games": 100,
+      "sfnnWins": 1,
+      "handcraftedWins": 99,
+      "draws": 0,
+      "scoreRate": 0.01,
+      "scoreCi95": [
+        0.0,
+        0.03
+      ],
+      "terminationReasons": {
+        "no-legal-move": 100
+      },
+      "fallbacks": {
+        "sfnn": 0,
+        "handcrafted": 0
+      },
+      "avgPlies": 117.45,
+      "byColor": {
+        "black": {
+          "B": 50
+        },
+        "white": {
+          "B": 49,
+          "A": 1
+        }
+      },
+      "gamesSha256": "c64a824b9f4b2db4d1eb0c4b41fc13be2dc3fac99cff5ed61fba948a64a82c3d",
+      "reportSha256": "02f36ac9418b7b9847350023209ed9ff4b9b102f01c63832019076bf63c2ef2c"
+    }
+  ]
+}

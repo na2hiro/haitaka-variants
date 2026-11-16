@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "games": 200,
+  "completeColorSwappedPairs": 100,
+  "identicalOpeningSuitesAcrossProfiles": true,
+  "sourceCommit": "feb12d6b448ecaede97983bf91911f2b27b4b43a",
+  "trackedSourceCleanDuringBothMatches": true,
+  "fixedEngineSha256": "19d064295b29a8788427b71a991001b2a1c135055a308ba65dd94b54ea3baaa6",
+  "cliSha256": "d7e9054ebdde2156c05ce66ca7a578f28fc203c544b53a0f8ce091eb1b613d65",
+  "gameErrors": 0,
+  "fallbacks": 0,
+  "evidenceSha256": {
+    "conditions.json": "8472ded2f5e8219ec6bdabf60fc7e9518cce9e99337c889edb4c44d17cb8b43f",
+    "micro/main-command.json": "31af85fee2b1eac222971dbb7f391847e2951191c8b982a6f73a239f7a2bdc42",
+    "micro/main/self-play-games.jsonl": "9bcc8adba9a73928d54057f5e8a2b6b68d8793626b5d4a209e9e5fe8db308b7d",
+    "micro/main/self-play-report.json": "eb933b41257690066676dd9a57322db01e6ad8da9d679f0e1ee4734e32de5d96",
+    "micro/smoke-command.json": "5a6d3534022e3c78a32030c5afe66b5e4e3b2b7eeb0c174f00e008cca3ff9927",
+    "micro-real-model-tests.log": "3c9f1ca295feaf48bf06927b395af792d6da4e049d842722d8c4bffd2fe704c4",
+    "mini/main-command.json": "99310cabd786a205736d79c6f28886f9d05465c69b3b0a949bb5ccdb1ab68291",
+    "mini/main/self-play-games.jsonl": "c64a824b9f4b2db4d1eb0c4b41fc13be2dc3fac99cff5ed61fba948a64a82c3d",
+    "mini/main/self-play-report.json": "02f36ac9418b7b9847350023209ed9ff4b9b102f01c63832019076bf63c2ef2c",
+    "mini/smoke-command.json": "f9e3b5fcd6ef44911dd75c88060e18ae29ca5745a3d6d3829a728ebfb4b863b5",
+    "mini-real-model-tests.log": "df0c507fe5329aaa4dc724bc41b68a5ebe1c4609b518983a7847fdd133961322",
+    "summary.json": "87faa438df2cd2ccc4f26ff091d8927d41f384db787df5d33fed9ff7f3cf3bdb"
+  },
+  "testLogNormalization": "Removed trailing blank lines from captured test logs; game records and reports are unchanged."
+}

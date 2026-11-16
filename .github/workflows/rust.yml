@@ -138,3 +138,18 @@ jobs:
         if cargo check -p haitaka --features share,suika; then exit 1; fi
         if cargo check -p haitaka --features fushiyo,babanuki; then exit 1; fi
         if cargo check -p haitaka --features hand-category; then exit 1; fi
+
+
+  heian-sfnn:
+    name: Heian SFNN compatibility (${{ matrix.rule }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rule: [heian-8x8, heian-9x8, heian-9x9]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check Heian rules and capture-discard behavior
+      run: cargo test -p haitaka --features ${{ matrix.rule }} --test heian
+    - name: Check SFNN eligibility, terminal handling and synthetic deltas
+      run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} --lib heian

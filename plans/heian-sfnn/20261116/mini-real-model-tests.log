@@ -1,0 +1,18 @@
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 0.06s
+     Running tests/sfnn_heian.rs (target/release/deps/sfnn_heian-42a137f283f1239a)
+
+running 2 tests
+test heian_sfnn_search_usi_and_only_kings_draw_match_both_modes ... ok
+2304 exact transitions; captures=[120, 137]; gold promotions=[44, 51]
+test heian_sfnn_incremental_matches_refresh_through_captures_and_gold_promotions ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
