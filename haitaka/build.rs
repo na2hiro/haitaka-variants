@@ -23,10 +23,10 @@ use haitaka_types::*;
 // - num of zero stretches: 9105
 // - average length of zero stretches: 12
 
-#[cfg(not(feature = "qugiy"))]
+#[cfg(not(any(feature = "qugiy", feature = "compact-board")))]
 const GENERATED_FILE_NAME: &str = "sliding_moves_table.rs";
 
-#[cfg(not(feature = "qugiy"))]
+#[cfg(not(any(feature = "qugiy", feature = "compact-board")))]
 fn write_moves(
     table: &mut [u128],
     relevant_blockers: impl Fn(Square) -> BitBoard,
@@ -47,14 +47,12 @@ fn write_moves(
     assert!(table.len() != zeros, "write_moves only generated zeros!");
 }
 
-#[cfg(feature = "qugiy")]
+#[cfg(any(feature = "qugiy", feature = "compact-board"))]
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:warning=INFO: The 'qugiy' feature is active in build.rs.");
-    return; // Exit early, do nothing
 }
 
-#[cfg(not(feature = "qugiy"))]
+#[cfg(not(any(feature = "qugiy", feature = "compact-board")))]
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 

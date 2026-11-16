@@ -12,6 +12,7 @@ The workspace `xtask` helper can be run directly through the Cargo alias:
 ```bash
 cargo xtask package
 cargo xtask package --ruleset annan
+cargo xtask package --ruleset minishogi
 ```
 
 It builds the WASM artifacts and then invokes `haitaka_cli package`. The

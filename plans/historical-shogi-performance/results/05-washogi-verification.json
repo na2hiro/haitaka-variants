@@ -1,0 +1,96 @@
+{
+  "rule": "washogi",
+  "positions": 218,
+  "transitions": 8008,
+  "native": {
+    "positions": 218,
+    "transitions": 8008,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 55,
+      "transitions": 2103,
+      "initializationMs": 0.7333180000000539,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 55,
+      "transitions": 1902,
+      "initializationMs": 1.6215069999998377,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 54,
+      "transitions": 2078,
+      "initializationMs": 0.7127399999999398,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 54,
+      "transitions": 1925,
+      "initializationMs": 0.810167999999976,
+      "linearMemoryBytes": 1310720
+    }
+  ],
+  "perft": [
+    51,
+    2601
+  ],
+  "inputSha256": "ade06076c68ef789c745a891b5ec597d522c5d204be33d2a33ffcfd10ba2fb06",
+  "beforeWasmSha256": "7ac6a137632b538513e417d32f4095c136a993204415fb66762edb11b4e0538a",
+  "afterWasmSha256": "8f925b810db3b16162be5f74f6a9926def1aca9a79fe46caa7618b7b1541c6d1",
+  "linearMemoryBytes": 1310720,
+  "wasmBytes": 322660,
+  "lowBudgetElapsedMs": 1.003624,
+  "pendingFallbacks": [],
+  "search": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        8,
+        9
+      ],
+      "path": [
+        [
+          6,
+          7
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        8,
+        9
+      ],
+      "path": [
+        [
+          6,
+          7
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  }
+}

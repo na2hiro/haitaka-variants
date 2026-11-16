@@ -1,0 +1,239 @@
+{
+  "baseCommit": "d3df8279cae1128a3a42df3a2c49bdef6f8c0b16",
+  "worktreeChanges": true,
+  "rules": {
+    "kyoto": {
+      "ruleId": 19,
+      "reference": {
+        "positions": 154,
+        "transitions": 2245,
+        "randomPositions": 128,
+        "fixedPositions": 26,
+        "perft": [
+          12,
+          137
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1245184,
+        "lowBudgetElapsedMs": 1.00267,
+        "positions": 154,
+        "transitions": 2245,
+        "perftDepth2": 137,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              1,
+              5
+            ],
+            "path": [
+              [
+                1,
+                4
+              ]
+            ],
+            "promotion": true
+          },
+          "completedDepth": 1,
+          "states": 1000,
+          "score": 302
+        },
+        "wasmBytes": 336524
+      }
+    },
+    "kinkei-mai": {
+      "ruleId": 123,
+      "reference": {
+        "positions": 136,
+        "transitions": 1302,
+        "randomPositions": 128,
+        "fixedPositions": 8,
+        "perft": [
+          13,
+          157
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1245184,
+        "lowBudgetElapsedMs": 1.005672,
+        "positions": 136,
+        "transitions": 1302,
+        "perftDepth2": 157,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              3,
+              5
+            ],
+            "path": [
+              [
+                2,
+                4
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 332769
+      }
+    },
+    "microshogi": {
+      "ruleId": 98,
+      "reference": {
+        "positions": 154,
+        "transitions": 2145,
+        "randomPositions": 128,
+        "fixedPositions": 26,
+        "perft": [
+          9,
+          80
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1245184,
+        "lowBudgetElapsedMs": 1.002195,
+        "positions": 154,
+        "transitions": 2145,
+        "perftDepth2": 80,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              2,
+              5
+            ],
+            "path": [
+              [
+                3,
+                4
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 3,
+          "states": 1000,
+          "score": 2
+        },
+        "wasmBytes": 336604
+      }
+    },
+    "kyoto-minishogi": {
+      "ruleId": 125,
+      "reference": {
+        "positions": 181,
+        "transitions": 2342,
+        "randomPositions": 128,
+        "fixedPositions": 52,
+        "perft": [
+          12,
+          172
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1179648,
+        "lowBudgetElapsedMs": 1.002249,
+        "positions": 181,
+        "transitions": 2342,
+        "perftDepth2": 172,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              5,
+              5
+            ],
+            "path": [
+              [
+                5,
+                4
+              ]
+            ],
+            "promotion": true
+          },
+          "completedDepth": 3,
+          "states": 1000,
+          "score": 92
+        },
+        "wasmBytes": 339486
+      }
+    }
+  },
+  "packages": [
+    {
+      "ruleset": "kyoto",
+      "ruleId": 19,
+      "bytes": 120800,
+      "checks": "correct rule/protocol, NNUE and mismatched rule/ID rejected"
+    },
+    {
+      "ruleset": "kinkei-mai",
+      "ruleId": 123,
+      "bytes": 119759,
+      "checks": "correct rule/protocol, NNUE and mismatched rule/ID rejected"
+    },
+    {
+      "ruleset": "microshogi",
+      "ruleId": 98,
+      "bytes": 120856,
+      "checks": "correct rule/protocol, NNUE and mismatched rule/ID rejected"
+    },
+    {
+      "ruleset": "kyoto-minishogi",
+      "ruleId": 125,
+      "bytes": 122251,
+      "checks": "correct rule/protocol, NNUE and mismatched rule/ID rejected"
+    }
+  ],
+  "referenceTotals": {
+    "positions": 625,
+    "transitions": 8034
+  },
+  "checks": {
+    "classical": {
+      "passed": 42,
+      "logSha256": "176cdc98957ddd266f46ac2d7e8d7163669a9ef0a8d1ac0afacdbbf9050a985b"
+    },
+    "standard": {
+      "passed": 63,
+      "logSha256": "1ba912fc12e2a8c8be8110f015798d6cfb6f0eb3a3a25f4011963b167889b07c"
+    },
+    "minishogi": {
+      "passed": 27,
+      "logSha256": "113e50a14d720b16b9c2fcf57d9506486fbfd89dff8731874e2067bfe03b0a69"
+    },
+    "xtask": {
+      "passed": 21,
+      "logSha256": "94846b57d55461b5e75eac74e0c66d92409dc67a145ae39f1ee7ec2bbfdc92f7"
+    },
+    "AI": {
+      "logSha256": "b3e25084efc841ef31d6290aa55bd2176400509bf4ec922796408998e3bb0104"
+    },
+    "app": {
+      "logSha256": "e0ccbcbfa1bba442831c25c00e2513cf817d13cf8d05da1feefd6702aaea2c32"
+    },
+    "browser": {
+      "logSha256": "181118b6e0cc395ea4f0bae078bf371df4a0577016197cf1d98ea18af66a700d"
+    }
+  },
+  "sourceSha256": {
+    "haitaka/src/extended.rs": "8f4a2fc7b8a411e883434707bde6515b861f2b6b6b65ba64dd24a28cba0a1886",
+    "haitaka/src/extended/classical.rs": "d444623bef3b69a37baad2f8dd4c2bd2166cb45d03b0eb1dfd63cd9b5e6c18c7",
+    "haitaka/src/extended/classical/small_flip.rs": "b2ba0fece5600bde597b66ac136cff744c528873787ddc670f01a6f8502e0d70",
+    "haitaka/src/extended/classical/small_flip/tests.rs": "c98c7b4a4b952ed5f55ad2290cbc39dd839a59f8f2f5a4427089d0294bc31438"
+  },
+  "verificationStage": "pre-commit local worktree",
+  "pushedAtVerification": false
+}

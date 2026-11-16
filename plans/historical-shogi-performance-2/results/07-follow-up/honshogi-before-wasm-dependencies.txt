@@ -1,0 +1,35 @@
+haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka_wasm)
+haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka)
+haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka_types)
+instant v0.1.13
+cfg-if v1.0.4
+js-sys v0.3.95
+once_cell v1.21.4
+wasm-bindgen v0.2.118
+cfg-if v1.0.4
+once_cell v1.21.4
+wasm-bindgen-macro v0.2.118 (proc-macro)
+quote v1.0.45
+proc-macro2 v1.0.106
+unicode-ident v1.0.24
+wasm-bindgen-macro-support v0.2.118
+bumpalo v3.20.2
+proc-macro2 v1.0.106 (*)
+quote v1.0.45 (*)
+syn v2.0.117
+proc-macro2 v1.0.106 (*)
+quote v1.0.45 (*)
+unicode-ident v1.0.24
+wasm-bindgen-shared v0.2.118
+unicode-ident v1.0.24
+wasm-bindgen-shared v0.2.118
+unicode-ident v1.0.24
+rustversion v1.0.22 (proc-macro)
+wasm-bindgen v0.2.118 (*)
+web-sys v0.3.95
+js-sys v0.3.95 (*)
+wasm-bindgen v0.2.118 (*)
+haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka_types)
+instant v0.1.13 (*)
+js-sys v0.3.95 (*)
+wasm-bindgen v0.2.118 (*)

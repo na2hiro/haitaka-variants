@@ -1,0 +1,108 @@
+{
+  "rule": "taikyoku",
+  "positions": 2199,
+  "transitions": 253099,
+  "native": {
+    "positions": 2199,
+    "transitions": 253099,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "legacySearchParity": true,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 550,
+      "transitions": 63272,
+      "initializationMs": 1.266237000003457,
+      "linearMemoryBytes": 1769472
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 550,
+      "transitions": 58536,
+      "initializationMs": 1.229713000007905,
+      "linearMemoryBytes": 1835008
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 550,
+      "transitions": 71340,
+      "initializationMs": 1.2197000000160187,
+      "linearMemoryBytes": 1638400
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 549,
+      "transitions": 59951,
+      "initializationMs": 1.0835340000048745,
+      "linearMemoryBytes": 1835008
+    }
+  ],
+  "perft": [
+    282,
+    79035
+  ],
+  "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+  "beforeWasmSha256": "c4c29d4481b49048fb92a006871094fc484c4db40c501505657239b192fb41e0",
+  "afterWasmSha256": "022f03d9f6079cade5caf14e49cd3d0c142c8955f4b6ecfba45ff153d885377b",
+  "linearMemoryBytes": 1835008,
+  "wasmBytes": 426647,
+  "lowBudgetElapsedMs": 1.002122,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.0021470000000001
+    },
+    {
+      "pendingHops": 2,
+      "elapsedMs": 1.002648
+    },
+    {
+      "pendingHops": 3,
+      "elapsedMs": 1.0548899999999999
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "schemaVersion": 5,
+      "from": [
+        1,
+        26
+      ],
+      "path": [
+        [
+          1,
+          25
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "schemaVersion": 5,
+      "from": [
+        1,
+        26
+      ],
+      "path": [
+        [
+          1,
+          25
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  }
+}

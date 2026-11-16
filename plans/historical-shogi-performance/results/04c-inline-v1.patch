@@ -1,0 +1,94 @@
+diff --git a/haitaka/src/extended/large.rs b/haitaka/src/extended/large.rs
+index bc30c38..d508762 100644
+--- a/haitaka/src/extended/large.rs
++++ b/haitaka/src/extended/large.rs
+@@ -50,7 +50,9 @@ type Geometry = Rect<25, 25>;
+ #[cfg(feature = "taikyoku")]
+ type Geometry = Rect<36, 36>;
+ type Pos = Position<LargeRule>;
++mod delta;
+ mod effects;
++use delta::SquareChanges;
+ mod hash;
+ use effects::{EffectContext, settle_residents};
+ use hash::TimelineEntry;
+@@ -191,14 +193,14 @@ pub struct Request {
+ }
+ #[derive(Clone, Debug)]
+ struct Delta {
+-    squares: Vec<(usize, Option<Cell>)>,
++    squares: SquareChanges,
+     state: TenjikuState,
+     side: u8,
+ }
+ impl Delta {
+     fn new(p: &Pos) -> Self {
+         Self {
+-            squares: vec![],
++            squares: SquareChanges::default(),
+             state: p.state.clone(),
+             side: p.side,
+         }
+@@ -212,7 +214,7 @@ impl Delta {
+         }
+     }
+     fn restore(self, p: &mut Pos) {
+-        for (i, c) in self.squares {
++        for &(i, c) in self.squares.iter() {
+             p.set_cell(i, c);
+         }
+         p.state = self.state;
+diff --git a/haitaka/src/extended/large/hash.rs b/haitaka/src/extended/large/hash.rs
+index a486d72..3c5f122 100644
+--- a/haitaka/src/extended/large/hash.rs
++++ b/haitaka/src/extended/large/hash.rs
+@@ -50,7 +50,7 @@ pub(super) fn full(p: &Pos) -> u64 {
+ pub(super) fn updated(mut key: u64, p: &Pos, delta: &Delta) -> u64 {
+     // Delta retains each square's first value even if a multi-hop move changes
+     // it repeatedly. XOR only its old/final identities after all turn effects.
+-    for &(i, old) in &delta.squares {
++    for &(i, old) in delta.squares.iter() {
+         key ^= cell(i, old) ^ cell(i, p.cells[i]);
+     }
+     key ^ side(delta.side) ^ side(p.side) ^ state(&delta.state) ^ state(&p.state)
+diff --git a/haitaka/src/extended/large/hash_tests.rs b/haitaka/src/extended/large/hash_tests.rs
+index 7563f5c..f21710e 100644
+--- a/haitaka/src/extended/large/hash_tests.rs
++++ b/haitaka/src/extended/large/hash_tests.rs
+@@ -310,3 +310,36 @@ fn benchmark_full_fnv_and_delta_key() {
+         })
+     );
+ }
++
++#[test]
++fn inline_delta_spills_without_losing_any_square_and_restores_its_clone() {
++    let mut p = LargeGame::parse(&compiled::start_position_json())
++        .unwrap()
++        .position;
++    let original = p.clone();
++    let key = hash::full(&p);
++    let occupied: Vec<_> = p
++        .cells
++        .iter()
++        .enumerate()
++        .filter_map(|(i, c)| c.map(|_| i))
++        .collect();
++    assert!(occupied.len() > 4);
++    let mut delta = Delta::new(&p);
++    for &i in &occupied {
++        delta.set(&mut p, i, None);
++        // Repeated touches retain the first old value, including after spill.
++        delta.set(&mut p, i, original.cells[i]);
++        delta.set(&mut p, i, None);
++    }
++    assert_eq!(delta.squares.iter().count(), occupied.len());
++    p.side ^= 1;
++    p.state.senjishi = !p.state.senjishi;
++    assert_eq!(hash::updated(key, &p, &delta), hash::full(&p));
++    let mut restored_clone = p.clone();
++    delta.clone().restore(&mut restored_clone);
++    assert_eq!(restored_clone, original);
++    delta.restore(&mut p);
++    assert_eq!(p, original);
++    assert_eq!(hash::full(&p), key);
++}

@@ -1,0 +1,10 @@
+{
+  "baselineFile": "00-native-32-before.json",
+  "source": "plans/historical-shogi-performance/results/05-native-after.json",
+  "sha256": "6e31ef67205c23a39a21badbffde72886babd7ff902e073d352e15a6562b9d5e",
+  "measuredRevision": "d95f3b3",
+  "phase2Start": "790422b",
+  "engineSourceDiff": "empty for haitaka and haitaka_types",
+  "engineDirectory": "/home/na2hiro/proj/haitaka-variants/target/perft-original",
+  "method": "Reuse preceding final measurements with byte-identical engine sources, same toolchain, lock, harness and canonical engine path; final measurements must use this path again."
+}

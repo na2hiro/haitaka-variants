@@ -1,0 +1,103 @@
+{
+  "rule": "dai-dai",
+  "positions": 483,
+  "transitions": 20014,
+  "native": {
+    "positions": 483,
+    "transitions": 20014,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 121,
+      "transitions": 6105,
+      "initializationMs": 0.7778809999999794,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 121,
+      "transitions": 4067,
+      "initializationMs": 0.7513499999995474,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 121,
+      "transitions": 6024,
+      "initializationMs": 0.727444999999534,
+      "linearMemoryBytes": 1245184
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 120,
+      "transitions": 3818,
+      "initializationMs": 1.6217079999996713,
+      "linearMemoryBytes": 1245184
+    }
+  ],
+  "perft": [
+    63,
+    3951
+  ],
+  "inputSha256": "c67963d0f344431a2efe44ec06ca80b0c340da63e364de6af4a516c9e87a5813",
+  "beforeWasmSha256": "ede1c12d906f4d6fd5c5c0c7865ffad0f15a7c9d547e6c64b3822878b9a7fffd",
+  "afterWasmSha256": "3040037a2a41d44c442482174e89629c1081c0de1221ece588df88d303868982",
+  "linearMemoryBytes": 1245184,
+  "wasmBytes": 329699,
+  "lowBudgetElapsedMs": 1.003802,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.001746
+    },
+    {
+      "pendingHops": 2,
+      "elapsedMs": 1.001878
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        1,
+        12
+      ],
+      "path": [
+        [
+          1,
+          11
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 1,
+    "states": 1000,
+    "score": 2
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        1,
+        12
+      ],
+      "path": [
+        [
+          1,
+          11
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 1,
+    "states": 1000,
+    "score": 2
+  }
+}

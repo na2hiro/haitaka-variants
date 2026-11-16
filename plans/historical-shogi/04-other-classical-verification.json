@@ -1,0 +1,360 @@
+{
+  "date": "2026-11-08",
+  "status": "complete",
+  "protocol": "haitaka-json-v3",
+  "engineBranch": "feat/classical-stage4",
+  "shogitterBranch": "feat/haitaka-classical-stage4",
+  "referenceSeed": "xorshift32 initialized to 0x4c2026 + ruleId",
+  "rules": [
+    {
+      "ruleset": "torishogi",
+      "ruleId": 16,
+      "source": {
+        "positions": 154,
+        "transitions": 4009,
+        "randomPositions": 128,
+        "fixedPositions": 26,
+        "perft": [
+          17,
+          288
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1245184,
+        "lowBudgetElapsedMs": 1.002936,
+        "positions": 154,
+        "transitions": 4009,
+        "perftDepth2": 288,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              5,
+              5
+            ],
+            "path": [
+              [
+                5,
+                4
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 335987
+      }
+    },
+    {
+      "ruleset": "washogi",
+      "ruleId": 50,
+      "source": {
+        "positions": 218,
+        "transitions": 8008,
+        "randomPositions": 128,
+        "fixedPositions": 90,
+        "perft": [
+          51,
+          2601
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1310720,
+        "lowBudgetElapsedMs": 1.001393,
+        "positions": 218,
+        "transitions": 8008,
+        "perftDepth2": 2601,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              8,
+              9
+            ],
+            "path": [
+              [
+                6,
+                7
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 321074
+      }
+    },
+    {
+      "ruleset": "heian-dai",
+      "ruleId": 15,
+      "source": {
+        "positions": 198,
+        "transitions": 6578,
+        "randomPositions": 128,
+        "fixedPositions": 70,
+        "perft": [
+          29,
+          841
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1376256,
+        "lowBudgetElapsedMs": 1.003012,
+        "positions": 198,
+        "transitions": 6578,
+        "perftDepth2": 841,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              1,
+              11
+            ],
+            "path": [
+              [
+                1,
+                10
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 323317
+      }
+    },
+    {
+      "ruleset": "daishogi",
+      "ruleId": 49,
+      "source": {
+        "positions": 295,
+        "transitions": 18664,
+        "randomPositions": 128,
+        "fixedPositions": 167,
+        "perft": [
+          71,
+          5041
+        ]
+      },
+      "wasm": {
+        "schemaVersion": 3,
+        "linearMemoryBytes": 1441792,
+        "lowBudgetElapsedMs": 1.001774,
+        "positions": 295,
+        "transitions": 18664,
+        "perftDepth2": 5041,
+        "search": {
+          "bestMove": {
+            "kind": "move",
+            "schemaVersion": 3,
+            "from": [
+              2,
+              15
+            ],
+            "path": [
+              [
+                1,
+                13
+              ]
+            ],
+            "promotion": false
+          },
+          "completedDepth": 2,
+          "states": 1000,
+          "score": 0
+        },
+        "wasmBytes": 332980
+      }
+    }
+  ],
+  "totals": {
+    "positions": 865,
+    "transitions": 37259
+  },
+  "browser": {
+    "browser": "Chrome",
+    "url": "http://localhost:3002",
+    "cases": 16,
+    "passed": 16,
+    "spec": "tests/haitaka-classical.spec.ts"
+  },
+  "specialCases": [
+    "forced promotion versus unpromoted drops",
+    "third swallow and dead-rank drops",
+    "swallow drop mate",
+    "global reserve inventory and unpromotion",
+    "finite rays versus jumps",
+    "ambiguous origin in history, reload, undo and repetition",
+    "Wa stalemate loss",
+    "Heian Dai kings-only draw",
+    "Dai lion double capture, pending paths and Normal promotion"
+  ],
+  "packages": [
+    {
+      "ruleset": "torishogi",
+      "ruleId": 16,
+      "protocol": "haitaka-json-v3",
+      "packageBytes": 121874,
+      "rejectsWrongRuleId": true,
+      "rejectsNNUE": true,
+      "rejectsUSI": true
+    },
+    {
+      "ruleset": "washogi",
+      "ruleId": 50,
+      "protocol": "haitaka-json-v3",
+      "packageBytes": 116938,
+      "rejectsWrongRuleId": true,
+      "rejectsNNUE": true,
+      "rejectsUSI": true
+    },
+    {
+      "ruleset": "heian-dai",
+      "ruleId": 15,
+      "protocol": "haitaka-json-v3",
+      "packageBytes": 117630,
+      "rejectsWrongRuleId": true,
+      "rejectsNNUE": true,
+      "rejectsUSI": true
+    },
+    {
+      "ruleset": "daishogi",
+      "ruleId": 49,
+      "protocol": "haitaka-json-v3",
+      "packageBytes": 121684,
+      "rejectsWrongRuleId": true,
+      "rejectsNNUE": true,
+      "rejectsUSI": true
+    }
+  ],
+  "regression": {
+    "core": {
+      "passed": 2568,
+      "skipped": 345,
+      "todo": 1
+    },
+    "ai": {
+      "passed": 434,
+      "skipped": 231
+    },
+    "app": {
+      "passed": 159,
+      "skipped": 2
+    },
+    "typecheck": "passed",
+    "eslintMaxWarnings0": "passed",
+    "rustStandardWorkspace": "passed",
+    "extendedRust": 26,
+    "chuRust": 21,
+    "shoNative": {
+      "positions": 167,
+      "transitions": 4896,
+      "exactMatchWithStage2": true
+    },
+    "chuNative": {
+      "positions": 242,
+      "transitions": 16121,
+      "exactMatchWithStage3": true
+    },
+    "legacyBrowser": {
+      "passed": 19,
+      "newAndLegacyTotal": 35
+    },
+    "shoWasm": {
+      "positions": 167,
+      "transitions": 4896,
+      "perftDepth3": 17368,
+      "search": {
+        "bestMove": {
+          "schemaVersion": 1,
+          "from": [
+            1,
+            7
+          ],
+          "to": [
+            1,
+            6
+          ],
+          "promotion": false
+        },
+        "completedDepth": 2,
+        "states": 1000,
+        "score": 0
+      },
+      "wasmBytes": 263049
+    },
+    "chuWasm": {
+      "schemaVersion": 2,
+      "linearMemoryBytes": 1310720,
+      "lowBudgetElapsedMs": 1.001641,
+      "positions": 242,
+      "transitions": 16121,
+      "perftDepth2": 1296,
+      "search": {
+        "bestMove": {
+          "schemaVersion": 2,
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 2,
+        "states": 1000,
+        "score": 0
+      },
+      "wasmBytes": 291907
+    },
+    "standardPerformance": [
+      {
+        "name": "startpos",
+        "nodes": 10000,
+        "beforeMedianMs": 20.9271115,
+        "afterMedianMs": 20.921049,
+        "medianPairedChangePercent": -0.11778568423875813,
+        "searchResultsMatch": true
+      },
+      {
+        "name": "endgame",
+        "nodes": 10000,
+        "beforeMedianMs": 59.014005,
+        "afterMedianMs": 58.2755795,
+        "medianPairedChangePercent": -0.4072356490649631,
+        "searchResultsMatch": true
+      }
+    ]
+  },
+  "engineCommit": "5aae64dd5aa16881a6e93f58a3b2933df1937721",
+  "shogitterCommit": "e12907e2809e1e0a8cffaffd87a045b7b5425096",
+  "referenceFixes": [
+    "Forced board promotion must not suppress drop generation",
+    "Board/kifu diffs must retain ambiguous promotion origin",
+    "Keep stored hash format and compare promotion origins during repetition",
+    "Include Dai Senjishi in legal-move cache and repetition; skip intermediate boards for continuous check"
+  ],
+  "environment": {
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "node": "v26.8.1",
+    "browser": "Google Chrome 155.0.8059.39",
+    "referenceWorktree": "/home/na2hiro/proj/shogitter-3",
+    "timezone": "Asia/Tokyo"
+  }
+}

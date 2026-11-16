@@ -1,0 +1,357 @@
+{
+  "gitCommit": "521ebca3395e8b68126195bfd32a24798c312b2e",
+  "coreStatus": "",
+  "builtAt": "2026-11-09T07:35:50.483917+00:00",
+  "rules": [
+    {
+      "rule": "heian-8x8",
+      "files": [
+        {
+          "path": "target/haitaka-heian-8x8",
+          "sha256": "8946c4d0447a290a295c2faa3c32ed485187c1c573120d450496dcb5cd4a1141",
+          "bytes": 2109872
+        },
+        {
+          "path": "target/performance2-final-raw/heian-8x8.wasm",
+          "sha256": "b1c5639003ac0d9fa94d6601075b5c3d35b659db9618cf99e1f80c7b3336ea37",
+          "bytes": 1006166
+        },
+        {
+          "path": "target/wasm-heian-8x8/haitaka_wasm.js",
+          "sha256": "b44a98d0e96b5e9032698c146f6c5b37293ad2d8f5a025723a9409c009bcbb23",
+          "bytes": 38729
+        },
+        {
+          "path": "target/wasm-heian-8x8/haitaka_wasm_bg.wasm",
+          "sha256": "c1c6e8b249a6ddfe9b5106ba80fff1ab9ca948d69547467c804e357f44afac0f",
+          "bytes": 457949
+        }
+      ]
+    },
+    {
+      "rule": "heian-9x8",
+      "files": [
+        {
+          "path": "target/haitaka-heian-9x8",
+          "sha256": "9c8e09965e9b7dc32a2d7e04f40c2f79f8b1b74649361a61fd0536f14be1be3e",
+          "bytes": 2271160
+        },
+        {
+          "path": "target/performance2-final-raw/heian-9x8.wasm",
+          "sha256": "304c11c8f30d9383704b6e06529a3a14d8e309299b056e3cf6944040a7ba56b4",
+          "bytes": 1231678
+        },
+        {
+          "path": "target/wasm-heian-9x8/haitaka_wasm.js",
+          "sha256": "b44a98d0e96b5e9032698c146f6c5b37293ad2d8f5a025723a9409c009bcbb23",
+          "bytes": 38729
+        },
+        {
+          "path": "target/wasm-heian-9x8/haitaka_wasm_bg.wasm",
+          "sha256": "525d48273c3161619be9a42daa94a76d2266ff445e580a40b7632b6e664cdecd",
+          "bytes": 679499
+        }
+      ]
+    },
+    {
+      "rule": "heian-9x9",
+      "files": [
+        {
+          "path": "target/haitaka-heian-9x9",
+          "sha256": "5642c5422e5d07fc409006fe439b3d02751937154dd81f8bd03a53832d86d2bb",
+          "bytes": 11097360
+        },
+        {
+          "path": "target/performance2-final-raw/heian-9x9.wasm",
+          "sha256": "b2b3afbf0896d0d146c1b6cd23d04e6f21f72b7969b93b9c107b4c90bb50f530",
+          "bytes": 18873518
+        },
+        {
+          "path": "target/wasm-heian-9x9/haitaka_wasm.js",
+          "sha256": "b44a98d0e96b5e9032698c146f6c5b37293ad2d8f5a025723a9409c009bcbb23",
+          "bytes": 38729
+        },
+        {
+          "path": "target/wasm-heian-9x9/haitaka_wasm_bg.wasm",
+          "sha256": "f9d8726a3e59d35a70acd29b2275d9e85f325b003978f1b09527c3ff4100620a",
+          "bytes": 18323041
+        }
+      ]
+    },
+    {
+      "rule": "shoshogi",
+      "files": [
+        {
+          "path": "target/haitaka-shoshogi",
+          "sha256": "d0c57a2567eb49b405dc25d7362e4244c591e0f7043a96d1d2018aac8566fe1b",
+          "bytes": 1498712
+        },
+        {
+          "path": "target/performance2-final-raw/shoshogi.wasm",
+          "sha256": "45cd659f7fc04eded322f0b1cd09964508a2bd2cdcbcaf09fff667d7e42d6aa8",
+          "bytes": 787290
+        },
+        {
+          "path": "target/wasm-shoshogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-shoshogi/haitaka_wasm_bg.wasm",
+          "sha256": "4ff6965922d40ea62775e416746b9f8a32a45f3316e580e6c0c37f4a138d50ac",
+          "bytes": 263407
+        }
+      ]
+    },
+    {
+      "rule": "chushogi",
+      "files": [
+        {
+          "path": "target/haitaka-chushogi",
+          "sha256": "e035288010fb9ceae9ea7f82e5b3e92f4ef75dd36b78a37b7ec8e389e41bd990",
+          "bytes": 1484152
+        },
+        {
+          "path": "target/performance2-final-raw/chushogi.wasm",
+          "sha256": "6ca2075bb68f1ddceeaeac1362e8f43f3604f9e0642c39b5b15a673e3b858f8e",
+          "bytes": 815119
+        },
+        {
+          "path": "target/wasm-chushogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-chushogi/haitaka_wasm_bg.wasm",
+          "sha256": "fad21e34c490a18685c4bbbd841ac674ae63450f6102bf004131db6910fb51b7",
+          "bytes": 290976
+        }
+      ]
+    },
+    {
+      "rule": "torishogi",
+      "files": [
+        {
+          "path": "target/haitaka-torishogi",
+          "sha256": "aaa5ec360efc8f06be34f29adcb0c7fb7de01b2be89384b9a4cf1696c39e5ba1",
+          "bytes": 1651216
+        },
+        {
+          "path": "target/performance2-final-raw/torishogi.wasm",
+          "sha256": "4575b095e00db0cf61acd0946baa150b265b87b0371dbd94b448831b5c87277c",
+          "bytes": 856924
+        },
+        {
+          "path": "target/wasm-torishogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-torishogi/haitaka_wasm_bg.wasm",
+          "sha256": "390a97c65eae24b61d4782f3b616863104d5bbc688e8ff857a7e92af68c2590d",
+          "bytes": 336382
+        }
+      ]
+    },
+    {
+      "rule": "washogi",
+      "files": [
+        {
+          "path": "target/haitaka-washogi",
+          "sha256": "8f1ae1494c1e767ddbc7379c7c57c6facfbacd69f36a5ea4f3330f34791e976f",
+          "bytes": 1631248
+        },
+        {
+          "path": "target/performance2-final-raw/washogi.wasm",
+          "sha256": "9ba6546db0b7e8968b94e09cce86dd8bc061fceae73361f1fa8e6003fec64f0b",
+          "bytes": 846193
+        },
+        {
+          "path": "target/wasm-washogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-washogi/haitaka_wasm_bg.wasm",
+          "sha256": "184b89c638c7698ef8ae68d1794f6f84cf279deacd3889d22681e0fcb09fa85c",
+          "bytes": 322986
+        }
+      ]
+    },
+    {
+      "rule": "heian-dai",
+      "files": [
+        {
+          "path": "target/haitaka-heian-dai",
+          "sha256": "356649a9524ef84bace4a27d705d2552f32530db681b32fb340e7249dc1ffa21",
+          "bytes": 1634280
+        },
+        {
+          "path": "target/performance2-final-raw/heian-dai.wasm",
+          "sha256": "82efac185b429d9e97660af599a4a7dee8e92c355daee97d4081d41748ff600b",
+          "bytes": 846075
+        },
+        {
+          "path": "target/wasm-heian-dai/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-heian-dai/haitaka_wasm_bg.wasm",
+          "sha256": "43c1ce4cc903eaf17761f0c940d91959f9ab4c7e0051d3ee3cc703f28e58bc9c",
+          "bytes": 323225
+        }
+      ]
+    },
+    {
+      "rule": "daishogi",
+      "files": [
+        {
+          "path": "target/haitaka-daishogi",
+          "sha256": "7f7710cd7a55418276a401cf7e54ef783dee03ddd760cbf1ae0220c4b4a09e46",
+          "bytes": 1652776
+        },
+        {
+          "path": "target/performance2-final-raw/daishogi.wasm",
+          "sha256": "5ff2a4f7b897347cf7eb45afc0019cf908298ca68bbd27e00e65a8dff963e870",
+          "bytes": 855676
+        },
+        {
+          "path": "target/wasm-daishogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-daishogi/haitaka_wasm_bg.wasm",
+          "sha256": "e845f7250bda08449fbfd161637418f45f6f8103382a5bfe8ab81139967c12a6",
+          "bytes": 332963
+        }
+      ]
+    },
+    {
+      "rule": "tenjiku-dai",
+      "files": [
+        {
+          "path": "target/haitaka-tenjiku-dai",
+          "sha256": "f79daa452d55908f64c835823d3fbee00d90fcf3fcf4db9031600ba3f76e5e50",
+          "bytes": 1593288
+        },
+        {
+          "path": "target/performance2-final-raw/tenjiku-dai.wasm",
+          "sha256": "550552983c2b87a319ec8b86438a54485c2dac8d4167ddd774057ca3a0125908",
+          "bytes": 888958
+        },
+        {
+          "path": "target/wasm-tenjiku-dai/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-tenjiku-dai/haitaka_wasm_bg.wasm",
+          "sha256": "1a6a394d0fd601476940cb4c695156100ed579e45f41e831f76ad9fd43d0381c",
+          "bytes": 362735
+        }
+      ]
+    },
+    {
+      "rule": "dai-dai",
+      "files": [
+        {
+          "path": "target/haitaka-dai-dai",
+          "sha256": "f93ed6fb1b959d2a3ec43a76bfc7bd0065afad8dc7ca9e53cf20ea9896445e24",
+          "bytes": 1565512
+        },
+        {
+          "path": "target/performance2-final-raw/dai-dai.wasm",
+          "sha256": "d9c8742bf97365ba2cd56ad88867a245068cb05dcbeeb04ed4d1bb20787b6a0c",
+          "bytes": 864341
+        },
+        {
+          "path": "target/wasm-dai-dai/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-dai-dai/haitaka_wasm_bg.wasm",
+          "sha256": "2ec7c39a5cf0c10f57751f29ba74d08209e39facaff37323a4836df981f42559",
+          "bytes": 338864
+        }
+      ]
+    },
+    {
+      "rule": "maka-dai-dai",
+      "files": [
+        {
+          "path": "target/haitaka-maka-dai-dai",
+          "sha256": "be588cd7862005e3386565a35fe6b4c42f8b01dc4d8e2b9a444dedb5789c0762",
+          "bytes": 1576288
+        },
+        {
+          "path": "target/performance2-final-raw/maka-dai-dai.wasm",
+          "sha256": "a7e1263f1829a9a46374e5098028d1e8d57933dcc0a359c315d3e134eeccc08e",
+          "bytes": 871786
+        },
+        {
+          "path": "target/wasm-maka-dai-dai/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-maka-dai-dai/haitaka_wasm_bg.wasm",
+          "sha256": "868a764ac764ab4a1efdcdd20fe36c4b4bce9765667513fd6e1929497f89116f",
+          "bytes": 346702
+        }
+      ]
+    },
+    {
+      "rule": "taishogi",
+      "files": [
+        {
+          "path": "target/haitaka-taishogi",
+          "sha256": "2b01062112a2b645f50b9eb179ceb302342475682f1f5cebdde67649e80af22a",
+          "bytes": 1606080
+        },
+        {
+          "path": "target/performance2-final-raw/taishogi.wasm",
+          "sha256": "4ba0105d03237b3c47e2d87b81a5ba9d5b854e81edc24abf5b07cabee9fb8f91",
+          "bytes": 884214
+        },
+        {
+          "path": "target/wasm-taishogi/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-taishogi/haitaka_wasm_bg.wasm",
+          "sha256": "76640cd6041c0318a79602c123560566e9ebf06cda647a189108e200aa90c014",
+          "bytes": 359118
+        }
+      ]
+    },
+    {
+      "rule": "taikyoku",
+      "files": [
+        {
+          "path": "target/haitaka-taikyoku",
+          "sha256": "0c82643f03f75f50c21eef917b95bbc5b41c8b96a5701eaeebc6d9775d619ab8",
+          "bytes": 1730696
+        },
+        {
+          "path": "target/performance2-final-raw/taikyoku.wasm",
+          "sha256": "1ce95bd1a5905ff0662f22f6bfc03318cc61f2f8fefe2c7a8de472ba56d536ae",
+          "bytes": 952268
+        },
+        {
+          "path": "target/wasm-taikyoku/haitaka_wasm.js",
+          "sha256": "534e4208be97431b54f445f07048cc8020563d7e06bea04a2c69332a9f300f12",
+          "bytes": 17801
+        },
+        {
+          "path": "target/wasm-taikyoku/haitaka_wasm_bg.wasm",
+          "sha256": "022f03d9f6079cade5caf14e49cd3d0c142c8955f4b6ecfba45ff153d885377b",
+          "bytes": 426647
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "initializationMs": 1.3639919999999996,
+  "schemaVersion": 2,
+  "linearMemoryBytes": 1310720,
+  "lowBudgetElapsedMs": 1.002065,
+  "positions": 242,
+  "transitions": 16121,
+  "perftDepth2": 1296,
+  "search": {
+    "bestMove": {
+      "schemaVersion": 2,
+      "from": [
+        7,
+        10
+      ],
+      "path": [
+        [
+          5,
+          8
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  },
+  "wasmBytes": 291999
+}

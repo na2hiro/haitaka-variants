@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "stage": 3,
+  "status": "complete",
+  "date": "2026-11-07",
+  "ruleId": 48,
+  "ruleset": "chushogi",
+  "protocol": "haitaka-json-v2",
+  "engineCommit": "2a1d3dcd362b3a43039c2ceb83bdafe07e2ade5f",
+  "frontendCommit": "0e135434f06f11860b55cf90371638e9b14b557e",
+  "baselineEngineCommit": "e44e5c3b626d87fdbfc73d63970aa64ad90fea17",
+  "baselineFrontendCommit": "31eb78eeae16c8b2b41c3e2f49c32c9af6c385bd",
+  "referenceCommit": "0e135434f06f11860b55cf90371638e9b14b557e",
+  "ruleDefinitionsLastChangedCommit": "4a80d43f8ecace05464b62091174c0dd95f0f2b9",
+  "geometry": {
+    "width": 12,
+    "height": 12,
+    "squareSet": "MultiBitBoard<3,144>",
+    "pieceIds": 39,
+    "initialPieces": 92
+  },
+  "reference": {
+    "seed": "0x48c02026",
+    "positions": 242,
+    "transitions": 16121,
+    "randomPositions": 128,
+    "fixedPositions": 113,
+    "pendingPositions": 1
+  },
+  "nativeWasmParity": {
+    "schemaVersion": 2,
+    "linearMemoryBytes": 1310720,
+    "lowBudgetElapsedMs": 1.001693,
+    "positions": 242,
+    "transitions": 16121,
+    "perftDepth2": 1296,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 2,
+        "from": [
+          7,
+          10
+        ],
+        "path": [
+          [
+            5,
+            8
+          ]
+        ],
+        "promotion": false
+      },
+      "completedDepth": 2,
+      "states": 1000,
+      "score": 0
+    },
+    "wasmBytes": 289483
+  },
+  "independentShogitterPerft": [
+    36,
+    1296
+  ],
+  "browser": {
+    "baseURL": "http://localhost:3002",
+    "runtime": "Google Chrome 155",
+    "passed": 19,
+    "newRuleCases": 6,
+    "regressionCases": 13,
+    "newRuleScenarios": [
+      "initial AI reply",
+      "AI lion double capture, rollback and repeated reply",
+      "resume AI lion after saved first hop",
+      "elephant promotion to prince",
+      "king capture with surviving prince, ending first hop by clicking the lion again",
+      "last royal capture ends game"
+    ]
+  },
+  "rustTests": {
+    "chushogiRelease": {
+      "passed": 130,
+      "failed": 0,
+      "ignored": 5
+    },
+    "latestExtendedCoreDebug": {
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0
+    },
+    "chushogiCli": {
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0
+    },
+    "shoshogi": {
+      "passed": 121,
+      "failed": 0,
+      "ignored": 5
+    },
+    "standard": {
+      "passed": 263,
+      "failed": 0,
+      "ignored": 5
+    },
+    "regressions": {
+      "gorogoro-plus": {
+        "passed": 13,
+        "failed": 0,
+        "ignored": 31
+      },
+      "gorogoro": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-8x8": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-9x8": {
+        "passed": 16,
+        "failed": 0,
+        "ignored": 31
+      },
+      "heian-9x9": {
+        "passed": 27,
+        "failed": 0,
+        "ignored": 33
+      },
+      "judkins": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "minishogi-kingin": {
+        "passed": 12,
+        "failed": 0,
+        "ignored": 31
+      },
+      "minishogi": {
+        "passed": 29,
+        "failed": 0,
+        "ignored": 31
+      }
+    }
+  },
+  "frontendChecks": {
+    "typecheck": "passed",
+    "prettier": "passed",
+    "eslintMaxWarnings0": "passed",
+    "unitTests": 92,
+    "coreTests": 2568,
+    "coreSkipped": 345,
+    "coreTodo": 1,
+    "aiCiTests": 434,
+    "aiCiSkipped": 231,
+    "nonCiFullPerft": "Stopped the optional full depth-2 run; completed the normal CI suite, plus direct Chu depth-2 and native/WASM reference checks."
+  },
+  "referenceFixes": [
+    "pass actual capture flag to promotion candidate generation",
+    "include Senjishi in repetition comparison and ShogiGame cache identity while preserving saved board-hash format",
+    "ignore intermediate lion boards for continuous-check repetition",
+    "return no repetition for empty history"
+  ],
+  "standardNativePerformance": [
+    {
+      "name": "startpos",
+      "nodes": 10000,
+      "beforeMedianMs": 10.568093999999999,
+      "afterMedianMs": 10.472038999999999,
+      "medianPairedChangePercent": -0.7488833049038579,
+      "searchResultsMatch": true
+    },
+    {
+      "name": "endgame",
+      "nodes": 10000,
+      "beforeMedianMs": 28.901787499999998,
+      "afterMedianMs": 28.896055500000003,
+      "medianPairedChangePercent": 0.08612359164045236,
+      "searchResultsMatch": true
+    }
+  ],
+  "initialNativePerformance": [
+    {
+      "name": "startpos",
+      "nodes": 10000,
+      "beforeMedianMs": 15.8807165,
+      "afterMedianMs": 16.899726,
+      "medianPairedChangePercent": 8.059154672365288,
+      "searchResultsMatch": true
+    },
+    {
+      "name": "endgame",
+      "nodes": 10000,
+      "beforeMedianMs": 30.28385,
+      "afterMedianMs": 30.1710285,
+      "medianPairedChangePercent": -0.49790588405856373,
+      "searchResultsMatch": true
+    }
+  ],
+  "performanceNotes": "Initial 20-pair timing had variability; repeated with 40 paired samples. Search best moves, scores and node counts match in both runs. Positive timing change means slower.",
+  "standardWasmPerformance": [
+    {
+      "name": "startpos",
+      "depth": 4,
+      "nodes": 719731,
+      "beforeMedianMs": 13.5,
+      "afterMedianMs": 13.400000095367432,
+      "medianPairedChangePercent": -3.5584861057813555e-06
+    },
+    {
+      "name": "endgame",
+      "depth": 3,
+      "nodes": 3107043,
+      "beforeMedianMs": 14.90000057220459,
+      "afterMedianMs": 14.90000057220459,
+      "medianPairedChangePercent": 3.2002494654292946e-06
+    }
+  ],
+  "shothroughSharedSearch": {
+    "positions": 167,
+    "transitions": 4896,
+    "perftDepth3": 17368,
+    "search": {
+      "bestMove": {
+        "schemaVersion": 1,
+        "from": [
+          1,
+          7
+        ],
+        "to": [
+          1,
+          6
+        ],
+        "promotion": false
+      },
+      "completedDepth": 2,
+      "states": 1000,
+      "score": 0
+    },
+    "wasmBytes": 260319
+  },
+  "artifacts": {
+    "nativeCli": "target/haitaka-chushogi",
+    "package": "target/haitaka-variants-chushogi.tgz",
+    "wasmDirectory": "target/wasm-chushogi",
+    "wasmSha256": "80593460074a9092f4dc247557acb2adca4d103f51e58407726ec17ad7031ceb",
+    "frontendWasmBytes": 289505
+  },
+  "limitations": [
+    "handcrafted evaluation; strength not calibrated",
+    "v2 supports Chu completed one/two-hop moves and Senjishi; unknown extra states rejected",
+    "NNUE, SFNN, DFPN and USI unavailable in the Chu package"
+  ],
+  "reproduction": [
+    "cargo test --release -p haitaka -p haitaka_cli -p haitaka_wasm --features chushogi",
+    "cd ../shogitter-3 && CHU_PERFT=1 pnpm exec vitest run app/bot/chushogiReference.test.ts",
+    "node scripts/verify-chushogi.mjs",
+    "cargo pack-chushogi"
+  ]
+}

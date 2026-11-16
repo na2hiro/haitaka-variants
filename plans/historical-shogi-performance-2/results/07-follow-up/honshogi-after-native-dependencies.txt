@@ -1,0 +1,11 @@
+honshogi-historical-impact v0.0.0 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/native-bench)
+haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka)
+haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka_types)
+instant v0.1.13
+cfg-if v1.0.4
+haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka_types)
+serde_json v1.0.149
+itoa v1.0.18
+memchr v2.8.0
+serde_core v1.0.228
+zmij v1.0.21

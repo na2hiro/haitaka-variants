@@ -29,7 +29,7 @@ pub fn criterion_benchmark(criterion: &mut Criterion) {
     // the board should have about 20 bits set.
 
     let blockers = (0..1000)
-        .map(|_| BitBoard::new(rand() ^ rand()))
+        .map(|_| BitBoard::new((rand() ^ rand()) as haitaka::BitBoardWord))
         .collect::<Vec<_>>();
 
     bench(

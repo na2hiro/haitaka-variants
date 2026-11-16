@@ -1,0 +1,234 @@
+{
+  "engineCommit": "d95f3b3ec09cad5b86c86fcf5bc578a95250b232",
+  "engineImplementationCommit": "c19c890",
+  "frontendBeforeCommit": "bdec1bbd3270b181cf05ac21e8b2ce652123c11f",
+  "generatedAt": "2026-11-08T22:56:55.525291+00:00",
+  "command": "wasm-bindgen --target web --out-name haitaka_engine --out-dir app/bot/vendors/haitaka/RULE/generated target/performance-final-raw/RULE.wasm",
+  "rules": [
+    {
+      "rule": "heian-8x8",
+      "rawWasmSha256": "b1c5639003ac0d9fa94d6601075b5c3d35b659db9618cf99e1f80c7b3336ea37",
+      "before": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "5d2c74b04585d4d110e85617a546a29fd8a5aed28290c8965caced9ca57ec494",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "5d2c74b04585d4d110e85617a546a29fd8a5aed28290c8965caced9ca57ec494",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      }
+    },
+    {
+      "rule": "heian-9x8",
+      "rawWasmSha256": "304c11c8f30d9383704b6e06529a3a14d8e309299b056e3cf6944040a7ba56b4",
+      "before": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "bbe7b89de8e04e409965296f56207b8d98fe1b0057ef58a898d717f21a42c258",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "0e620108925e54a8596e96bdfa5a863e5e86e983981d0ad0a0a67cf787fdb3de",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      }
+    },
+    {
+      "rule": "heian-9x9",
+      "rawWasmSha256": "b2b3afbf0896d0d146c1b6cd23d04e6f21f72b7969b93b9c107b4c90bb50f530",
+      "before": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "8be7c1a5daa539c019f5393f27a745cc2ad8f834ba514d816f04ac2499eb7ea0",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "026ca7cd6d2f4f9f5b94d6e184488f4121823e17825f932f23e619b34c895dde",
+        "haitaka_engine.js": "fe7a4296991b3c2e4968d963b6127b726a40a6adfbe5874c3a40ab591b60d5a1",
+        "haitaka_engine_bg.wasm": "8be7c1a5daa539c019f5393f27a745cc2ad8f834ba514d816f04ac2499eb7ea0",
+        "haitaka_engine_bg.wasm.d.ts": "fa0a9b11f31ea1357d7b7cd68836278a0fc8993373379d4f04f43e531d76e524"
+      }
+    },
+    {
+      "rule": "shoshogi",
+      "rawWasmSha256": "16462322ff725225b7ce210e51c6cc84259d028ef13585818cf8d5d63b030486",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "c9e92245b1fa9fe2a63a6e0933fa610a7162e3c9bb9a2f0e9994f3f81d5e287f",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "346d061a8d7772c3cb5b12be02ee1c30f8171bd68ec82d9a30b13e968e0bde39",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "chushogi",
+      "rawWasmSha256": "02a4ea1c2c169e8290bfa04391b95e25b04f8ba5fa5780a3b7318f618e8853e7",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "514bc9706652773c1240d1333bc4d538ab29ef9eb393465beeec06e09c3d28e3",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "801b5125b092375b478e90fe6951001b9a8beb9a1ca4caf2a94851d9c426b8f4",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "torishogi",
+      "rawWasmSha256": "bdfed323c0f4fb8c8a55d06eba9071d928b92ba8bd869ee7bab2c12f78a3f7ab",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "a870db7fc196059a1b608c5c24c45e4ea0ee0ba55a4dccc8f2faa49a3081b176",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "b3e2bea939bce9764fd91737790a6b5b2ecef90a6ae495f68e696c8279e38ab4",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "washogi",
+      "rawWasmSha256": "4b8beb8e69b0049f33e4b4ed56a0d293dc77a9e74032cbbacf2888b348d0a3e0",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "7ac6a137632b538513e417d32f4095c136a993204415fb66762edb11b4e0538a",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "72ec5e756b336a390d783870cdf4f584fcc2fb66031208631246ef7833cdbf8d",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "heian-dai",
+      "rawWasmSha256": "623b93bd647b7ceb0941adbbf43f6c8cee68ef191f89ea0d11c1a00a76ad2b36",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "0acb049404cd2e7b53336953cd6f3db0888d71c30d1eb2f9d41f51b3c4af5977",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "27a8950f960644b1fc60b10708f28ce62eb60585c1c88a2e1fe7aed465c5c0ad",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "daishogi",
+      "rawWasmSha256": "c674c10b32a279774f2217dc91ed8da23dea017dbe805cfd11ee0d7ae597a49f",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "806e4f971f1660145bf4e56fb78beecb455999c3760b812f05730bf456bfa0ca",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "1583cac39928371e9389073a374d4c0d3761bfc20a09edc5ef840ad5eabada8f",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "tenjiku-dai",
+      "rawWasmSha256": "a703f7aa3dab5884526f28cce4ca7b121fc132dc37e7199f279efe5745125788",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "f759e3cf9ca4ec1936cccbda3a7d1d4c0f32aef96047cd9ba00b671d1bea72d3",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "65694c6ff57a1271efbece917d3071b1ccb29ba8c687310ff98ebed9c42e1651",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "dai-dai",
+      "rawWasmSha256": "db151f711cfb712b54edff655e66345f4423b68379fdb3e72374664cfbc4485e",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "ede1c12d906f4d6fd5c5c0c7865ffad0f15a7c9d547e6c64b3822878b9a7fffd",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "5b6177ade6baea71c3cfba2f0d7b5071ce731819089be9517d8b0e1e322ed92b",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "maka-dai-dai",
+      "rawWasmSha256": "45a4d8bcdd0a15274bc3b26925c6dac740a2d4d12ae401c9808fac677ee3e23f",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "c196aad1f3b9ba8efe416558c8ea7f833a4a843b3ae2108d28bfb50b9e133933",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "fa0f08ebd3cbbb535dbaa01fa977984880b8e6c0150ba938813bbfcf3ace8c37",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "taishogi",
+      "rawWasmSha256": "c0409cca0c5c63083d6ffba91a165be5854f64a8e1b697ac37359466b5b40a5a",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "11b75af7b1e0fbab7165d179f6e38f0f6dc013ff6922a2c838e1a5626d476706",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "4e96853954fbe115ff5b97d318920dc893c967886a8d4deb9f30648985d4a822",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    },
+    {
+      "rule": "taikyoku",
+      "rawWasmSha256": "20eb7a7ce5640336b2eb3e4437bfb7cf7059ad1a16bd540e1fdaa0945ed4b1f3",
+      "before": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "dfd1f52f942d217f6788aaf38487c972452ef49baa7f84550ce6f1c2db39bf81",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      },
+      "after": {
+        "haitaka_engine.d.ts": "1e66c59a2451c153bd6c1c43284d8b71c522281ac6b923fddeac2551c44966b8",
+        "haitaka_engine.js": "8d49479f7c54fe4dc8f5d44bb94100117a8b56c6490fd7e2f50bc55ee630de3d",
+        "haitaka_engine_bg.wasm": "c4c29d4481b49048fb92a006871094fc484c4db40c501505657239b192fb41e0",
+        "haitaka_engine_bg.wasm.d.ts": "c8145cb790ada0119a028c0d019cbc5f9c8cdcf9b3620f299280228d421cb656"
+      }
+    }
+  ],
+  "frontendAfterCommit": "3cbfc427b20af9cacdd05afb175df43ac45b8a12"
+}

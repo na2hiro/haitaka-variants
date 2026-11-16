@@ -1,0 +1,240 @@
+{
+  "measuredAt": "2026-11-08T13:48:11.608876+00:00",
+  "method": "Wall-clock RAII timers in isolated source copy; 1.5+ seconds per rule, one sample, CPU 7. Inclusive timing sections overlap. Instrumentation adds overhead; percentages approximate. Every measured perft node count matched original uninstrumented depth probe.",
+  "productionCodeChanged": false,
+  "perfEventSampling": "unavailable: kernel perf_event_paranoid=4; no settings changed",
+  "measurements": [
+    {
+      "rule": "washogi",
+      "label": "和将棋",
+      "depth": 3,
+      "nodesPerPerft": 126574,
+      "seconds": 1.645586501,
+      "timingPercentInclusive": {
+        "moves_inclusive": 93.79128924927903,
+        "candidate_apply": 3.976826679134262,
+        "check_attack": 80.53648976791163,
+        "push_inclusive": 4.093936353941931,
+        "targets_inclusive": 0.0,
+        "active_effects_inclusive": 0.0,
+        "finish_effects_inclusive": 0.0,
+        "unused": 0.0,
+        "full_hash": 0.0
+      },
+      "calls": {
+        "moves_inclusive": 21224,
+        "candidate_apply": 1033808,
+        "check_attack": 1033808,
+        "push_inclusive": 1033808,
+        "targets_inclusive": 0,
+        "active_effects_inclusive": 0,
+        "finish_effects_inclusive": 0,
+        "unused": 0,
+        "full_hash": 0
+      }
+    },
+    {
+      "rule": "heian-dai",
+      "label": "平安大将棋",
+      "depth": 3,
+      "nodesPerPerft": 25085,
+      "seconds": 1.531497494,
+      "timingPercentInclusive": {
+        "moves_inclusive": 92.27519062463449,
+        "candidate_apply": 5.36848792257965,
+        "check_attack": 74.86425811938024,
+        "push_inclusive": 5.276574419259219,
+        "targets_inclusive": 0.0,
+        "active_effects_inclusive": 0.0,
+        "finish_effects_inclusive": 0.0,
+        "unused": 0.0,
+        "full_hash": 0.0
+      },
+      "calls": {
+        "moves_inclusive": 34840,
+        "candidate_apply": 1038200,
+        "check_attack": 1038200,
+        "push_inclusive": 1038200,
+        "targets_inclusive": 0,
+        "active_effects_inclusive": 0,
+        "finish_effects_inclusive": 0,
+        "unused": 0,
+        "full_hash": 0
+      }
+    },
+    {
+      "rule": "daishogi",
+      "label": "大将棋",
+      "depth": 3,
+      "nodesPerPerft": 358191,
+      "seconds": 1.533002646,
+      "timingPercentInclusive": {
+        "moves_inclusive": 67.27594480616442,
+        "candidate_apply": 23.15744685283472,
+        "check_attack": 0.0,
+        "push_inclusive": 22.52316588630337,
+        "targets_inclusive": 0.0,
+        "active_effects_inclusive": 0.0,
+        "finish_effects_inclusive": 0.0,
+        "unused": 0.0,
+        "full_hash": 0.0
+      },
+      "calls": {
+        "moves_inclusive": 56243,
+        "candidate_apply": 3996333,
+        "check_attack": 0,
+        "push_inclusive": 3996333,
+        "targets_inclusive": 0,
+        "active_effects_inclusive": 0,
+        "finish_effects_inclusive": 0,
+        "unused": 0,
+        "full_hash": 0
+      }
+    },
+    {
+      "rule": "tenjiku-dai",
+      "label": "天竺大将棋",
+      "depth": 2,
+      "nodesPerPerft": 17226,
+      "seconds": 1.517176125,
+      "timingPercentInclusive": {
+        "moves_inclusive": 33.82722879322927,
+        "candidate_apply": 0.0,
+        "check_attack": 0.0,
+        "push_inclusive": 65.52228779634929,
+        "targets_inclusive": 22.691161976991957,
+        "active_effects_inclusive": 30.7303528125319,
+        "finish_effects_inclusive": 49.36699099453599,
+        "unused": 0.0,
+        "full_hash": 6.819021423765155
+      },
+      "calls": {
+        "moves_inclusive": 1197,
+        "candidate_apply": 0,
+        "check_attack": 0,
+        "push_inclusive": 156222,
+        "targets_inclusive": 249669,
+        "active_effects_inclusive": 719244,
+        "finish_effects_inclusive": 312444,
+        "unused": 0,
+        "full_hash": 157421
+      }
+    },
+    {
+      "rule": "dai-dai",
+      "label": "大大将棋",
+      "depth": 3,
+      "nodesPerPerft": 251479,
+      "seconds": 1.942091511,
+      "timingPercentInclusive": {
+        "moves_inclusive": 33.73373109811199,
+        "candidate_apply": 0.0,
+        "check_attack": 0.0,
+        "push_inclusive": 63.31887215586516,
+        "targets_inclusive": 28.969163956146865,
+        "active_effects_inclusive": 2.230822788453041,
+        "finish_effects_inclusive": 1.7725865030054189,
+        "unused": 0.0,
+        "full_hash": 38.72092976776314
+      },
+      "calls": {
+        "moves_inclusive": 16060,
+        "candidate_apply": 0,
+        "check_attack": 0,
+        "push_inclusive": 1021972,
+        "targets_inclusive": 2631996,
+        "active_effects_inclusive": 2563220,
+        "finish_effects_inclusive": 2043944,
+        "unused": 0,
+        "full_hash": 1038034
+      }
+    },
+    {
+      "rule": "maka-dai-dai",
+      "label": "摩訶大大将棋",
+      "depth": 3,
+      "nodesPerPerft": 537260,
+      "seconds": 2.272706602,
+      "timingPercentInclusive": {
+        "moves_inclusive": 25.727595347566997,
+        "candidate_apply": 0.0,
+        "check_attack": 0.0,
+        "push_inclusive": 71.63633038102117,
+        "targets_inclusive": 23.414381008604998,
+        "active_effects_inclusive": 1.7399358969257748,
+        "finish_effects_inclusive": 1.6171712603666737,
+        "unused": 0.0,
+        "full_hash": 49.894335106965116
+      },
+      "calls": {
+        "moves_inclusive": 12962,
+        "candidate_apply": 0,
+        "check_attack": 0,
+        "push_inclusive": 1087480,
+        "targets_inclusive": 2352152,
+        "active_effects_inclusive": 2331832,
+        "finish_effects_inclusive": 2174960,
+        "unused": 0,
+        "full_hash": 1100444
+      }
+    },
+    {
+      "rule": "taishogi",
+      "label": "泰将棋",
+      "depth": 2,
+      "nodesPerPerft": 92676,
+      "seconds": 1.5115432819999999,
+      "timingPercentInclusive": {
+        "moves_inclusive": 23.168817801672454,
+        "candidate_apply": 0.0,
+        "check_attack": 0.0,
+        "push_inclusive": 74.73504976353037,
+        "targets_inclusive": 29.061090491486176,
+        "active_effects_inclusive": 1.089515741700078,
+        "finish_effects_inclusive": 1.254433215760209,
+        "unused": 0.0,
+        "full_hash": 61.33485326158197
+      },
+      "calls": {
+        "moves_inclusive": 1830,
+        "candidate_apply": 0,
+        "check_attack": 0,
+        "push_inclusive": 557880,
+        "targets_inclusive": 1489410,
+        "active_effects_inclusive": 979110,
+        "finish_effects_inclusive": 1115760,
+        "unused": 0,
+        "full_hash": 559712
+      }
+    },
+    {
+      "rule": "taikyoku",
+      "label": "大局将棋",
+      "depth": 2,
+      "nodesPerPerft": 79035,
+      "seconds": 1.825681342,
+      "timingPercentInclusive": {
+        "moves_inclusive": 11.639236273687022,
+        "candidate_apply": 0.0,
+        "check_attack": 0.0,
+        "push_inclusive": 85.84821956295153,
+        "targets_inclusive": 26.396686207685416,
+        "active_effects_inclusive": 0.35543086576605876,
+        "finish_effects_inclusive": 0.2926384181670626,
+        "unused": 0.0,
+        "full_hash": 57.406167488784035
+      },
+      "calls": {
+        "moves_inclusive": 566,
+        "candidate_apply": 0,
+        "check_attack": 0,
+        "push_inclusive": 158634,
+        "targets_inclusive": 385530,
+        "active_effects_inclusive": 385340,
+        "finish_effects_inclusive": 317268,
+        "unused": 0,
+        "full_hash": 159202
+      }
+    }
+  ]
+}

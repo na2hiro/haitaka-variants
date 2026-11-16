@@ -1,0 +1,534 @@
+{
+  "positions": 4482,
+  "transitions": 457780,
+  "differences": 0,
+  "rules": {
+    "tenjiku-dai": {
+      "rule": "tenjiku-dai",
+      "positions": 352,
+      "transitions": 77025,
+      "native": {
+        "positions": 352,
+        "transitions": 77025,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 4,
+          "positions": 88,
+          "transitions": 23894,
+          "initializationMs": 0.5755129999997735,
+          "linearMemoryBytes": 1310720
+        },
+        {
+          "index": 1,
+          "count": 4,
+          "positions": 88,
+          "transitions": 13228,
+          "initializationMs": 1.4210759999987204,
+          "linearMemoryBytes": 1310720
+        },
+        {
+          "index": 2,
+          "count": 4,
+          "positions": 88,
+          "transitions": 24867,
+          "initializationMs": 1.4210879999991448,
+          "linearMemoryBytes": 1507328
+        },
+        {
+          "index": 3,
+          "count": 4,
+          "positions": 88,
+          "transitions": 15036,
+          "initializationMs": 0.7981459999973595,
+          "linearMemoryBytes": 1310720
+        }
+      ],
+      "perft": [
+        132,
+        17226
+      ],
+      "inputSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+      "beforeWasmSha256": "3e366f34de19ddb98c55a1e8880e1842d62ac3af238a4f26ed2ac706f2fd1ee7",
+      "afterWasmSha256": "4bb1cbc306acc2fe3cfad06da42e2bfdc08dca5429300b073f2dbe0deba87a03",
+      "linearMemoryBytes": 1507328,
+      "wasmBytes": 343717,
+      "lowBudgetElapsedMs": 1.002056,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002673
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.001914
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      }
+    },
+    "dai-dai": {
+      "rule": "dai-dai",
+      "positions": 483,
+      "transitions": 20014,
+      "native": {
+        "positions": 483,
+        "transitions": 20014,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 242,
+          "transitions": 12129,
+          "initializationMs": 1.1404039999997622,
+          "linearMemoryBytes": 1245184
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 241,
+          "transitions": 7885,
+          "initializationMs": 0.5064899999997579,
+          "linearMemoryBytes": 1245184
+        }
+      ],
+      "perft": [
+        63,
+        3951
+      ],
+      "inputSha256": "c67963d0f344431a2efe44ec06ca80b0c340da63e364de6af4a516c9e87a5813",
+      "beforeWasmSha256": "208a023566fce870153463426140fbf9dd81d6db13a6a95ea74825221236299f",
+      "afterWasmSha256": "f895e6a4ffae8e8ffa804dacc8df1560d34f0bd9cb15e44f06b84d8ddbb2da80",
+      "linearMemoryBytes": 1245184,
+      "wasmBytes": 330148,
+      "lowBudgetElapsedMs": 1.004138,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001941
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.001713
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 2
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            1,
+            12
+          ],
+          "path": [
+            [
+              1,
+              11
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 2
+      }
+    },
+    "maka-dai-dai": {
+      "rule": "maka-dai-dai",
+      "positions": 524,
+      "transitions": 33383,
+      "native": {
+        "positions": 524,
+        "transitions": 33383,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 262,
+          "transitions": 17488,
+          "initializationMs": 1.0940410000002885,
+          "linearMemoryBytes": 1245184
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 262,
+          "transitions": 15895,
+          "initializationMs": 1.1482879999994111,
+          "linearMemoryBytes": 1245184
+        }
+      ],
+      "perft": [
+        80,
+        6400
+      ],
+      "inputSha256": "f1aafc506dc27a6f2812135d10293a3ee2e724a695d64b6a7fae4846d4ede3be",
+      "beforeWasmSha256": "d7e268a28dc2b1d18d46e869346736f6e230a30283d96dfb21c1708f76802c75",
+      "afterWasmSha256": "703c5e0082935dbec53a63c5ac96d07ff0a9c15f0252cf8ca5d66b6379a838a8",
+      "linearMemoryBytes": 1245184,
+      "wasmBytes": 337259,
+      "lowBudgetElapsedMs": 1.003646,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001973
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002211
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.004334
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002157
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001926
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.001754
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002801
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.00218
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            10,
+            16
+          ],
+          "path": [
+            [
+              7,
+              13
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            10,
+            16
+          ],
+          "path": [
+            [
+              7,
+              13
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      }
+    },
+    "taishogi": {
+      "rule": "taishogi",
+      "positions": 924,
+      "transitions": 74259,
+      "native": {
+        "positions": 924,
+        "transitions": 74259,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 2,
+          "positions": 462,
+          "transitions": 41106,
+          "initializationMs": 1.1300860000010289,
+          "linearMemoryBytes": 1376256
+        },
+        {
+          "index": 1,
+          "count": 2,
+          "positions": 462,
+          "transitions": 33153,
+          "initializationMs": 1.1177040000002307,
+          "linearMemoryBytes": 1376256
+        }
+      ],
+      "perft": [
+        304,
+        92676
+      ],
+      "inputSha256": "7124df234f90231c3eaaecb85db0d87d08ea4f70c400f97f5ffb3f3bac62265c",
+      "beforeWasmSha256": "a695d9b0baa16793920f241dc8006efb616cfd87f32c5b6034b45fd84ba4e303",
+      "afterWasmSha256": "b89b74bed72ea337374a565a7e89a188de0f250fc610a8b05cb302b92ceefdd3",
+      "linearMemoryBytes": 1376256,
+      "wasmBytes": 348930,
+      "lowBudgetElapsedMs": 1.0023600000000001,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0024039999999999
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.00262
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0295400000000001
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.04099
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.003301
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0021330000000002
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.0025419999999998
+        },
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.009527
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            13,
+            20
+          ],
+          "path": [
+            [
+              11,
+              18
+            ],
+            [
+              10,
+              17
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 4,
+          "from": [
+            13,
+            20
+          ],
+          "path": [
+            [
+              11,
+              18
+            ],
+            [
+              10,
+              17
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 1,
+        "states": 1000,
+        "score": 6
+      }
+    },
+    "taikyoku": {
+      "rule": "taikyoku",
+      "positions": 2199,
+      "transitions": 253099,
+      "native": {
+        "positions": 2199,
+        "transitions": 253099,
+        "byteIdentical": true
+      },
+      "legacyPositionAndContextHashDifferences": 0,
+      "partitions": [
+        {
+          "index": 0,
+          "count": 4,
+          "positions": 550,
+          "transitions": 63272,
+          "initializationMs": 1.3023120000143535,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 1,
+          "count": 4,
+          "positions": 550,
+          "transitions": 58536,
+          "initializationMs": 0.8027130000118632,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 2,
+          "count": 4,
+          "positions": 550,
+          "transitions": 71340,
+          "initializationMs": 0.7471839999780059,
+          "linearMemoryBytes": 1703936
+        },
+        {
+          "index": 3,
+          "count": 4,
+          "positions": 549,
+          "transitions": 59951,
+          "initializationMs": 0.8291599999938626,
+          "linearMemoryBytes": 1703936
+        }
+      ],
+      "perft": [
+        282,
+        79035
+      ],
+      "inputSha256": "d5dd9fd1771f656271c1337b9153b85827460c96948e55195edbe4b50de0ef14",
+      "beforeWasmSha256": "5efdff865cdbe5fbb9899e15590a1455ee9e57c17b544a5a574f984f11439337",
+      "afterWasmSha256": "6b243ec070933ca42ac1bfcebb5d1bfd0c787c9314f3f640ab5ab8edd1ffadf8",
+      "linearMemoryBytes": 1703936,
+      "wasmBytes": 408392,
+      "lowBudgetElapsedMs": 1.002651,
+      "pendingFallbacks": [
+        {
+          "pendingHops": 1,
+          "elapsedMs": 1.002648
+        },
+        {
+          "pendingHops": 2,
+          "elapsedMs": 1.001582
+        },
+        {
+          "pendingHops": 3,
+          "elapsedMs": 1.042535
+        }
+      ],
+      "search": {
+        "bestMove": {
+          "schemaVersion": 5,
+          "from": [
+            1,
+            26
+          ],
+          "path": [
+            [
+              1,
+              25
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      },
+      "beforeSearch": {
+        "bestMove": {
+          "schemaVersion": 5,
+          "from": [
+            1,
+            26
+          ],
+          "path": [
+            [
+              1,
+              25
+            ]
+          ],
+          "promotion": false
+        },
+        "completedDepth": 0,
+        "states": 1000,
+        "score": 0
+      }
+    }
+  }
+}

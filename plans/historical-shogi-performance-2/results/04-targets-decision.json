@@ -1,0 +1,15 @@
+{
+  "stage": "04-targets",
+  "status": "adopted",
+  "performance": "04-targets-after.json",
+  "geometricMeanSpeedup": {
+    "tenjiku-dai": 1.0289828757772852,
+    "taikyoku": 1.104151511099699
+  },
+  "sourceSha256": {
+    "haitaka/src/extended/large.rs": "8f56679062e55e68908287444d64bbb8ea1484307444110ee256b1a75e6f77ab",
+    "haitaka/src/extended/large/known_target_tests.rs": "64316a9de9cc1691d8ea3c677df4ad1adb463079fca1ee6e97c3a66d024fe62e",
+    "haitaka/src/extended/large/target_builder.rs": "58781c408e657f1e476933938057daa822afcfbe725b7daf88eb82b6aa8e9ff4"
+  },
+  "flags": []
+}

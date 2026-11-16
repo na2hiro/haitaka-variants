@@ -1,0 +1,1335 @@
+{
+  "schemaVersion": 1,
+  "gitCommit": "521ebca3395e8b68126195bfd32a24798c312b2e",
+  "engineStatus": "",
+  "engineDirectory": "/home/na2hiro/proj/haitaka-variants/target/perft-original",
+  "engineTrackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "baselineSha256": "bd17cc472fe8a81743064fd69ba97824c9de4f41a89d882ebdc2d55517ff97d4",
+  "dependencyLockSha256": "21e149581bcd526d06d4f0ad905d5de4aee1f1e1fb0c94730e8d0700421a0262",
+  "effectiveDependencyLockSha256": "b6e083da170005953584175b9e84bc9066129197176931ca8a66a6f3df511b3e",
+  "harnessSha256": "b9e61ae2ab9cd92fcd234cdafe8526cfac721b6339e98eb644e51003d25956fe",
+  "cpu": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+  "logicalCpuAffinity": 7,
+  "threads": 1,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "build": "Rust release, opt-level=3, codegen-units=1, lto=fat; workspace dependency versions",
+  "metric": "leaf nodes per second; actual perft with every move applied; no bulk counting; no transposition cache; no evaluation or pruning; root parsing excluded",
+  "minimumBatchSeconds": 3.0,
+  "samplesPerRule": 3,
+  "warmupPerftRuns": 1,
+  "rules": [
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 18749855.439405564,
+        "nodesPerPerft": 19861490,
+        "samples": [
+          {
+            "nodesPerPerft": 19861490,
+            "nps": 18576854.797857627,
+            "repetitions": 3,
+            "seconds": 3.207457379,
+            "totalLeafNodes": 59584470
+          },
+          {
+            "nodesPerPerft": 19861490,
+            "nps": 18749855.439405564,
+            "repetitions": 3,
+            "seconds": 3.177862901,
+            "totalLeafNodes": 59584470
+          },
+          {
+            "nodesPerPerft": 19861490,
+            "nps": 18756032.897332404,
+            "repetitions": 3,
+            "seconds": 3.176816245,
+            "totalLeafNodes": 59584470
+          }
+        ]
+      },
+      "ruleset": "standard",
+      "transpositionCache": false,
+      "ruleId": 0,
+      "label": "本将棋",
+      "name": "standard",
+      "sampleRangePercent": 0.9645233352173266,
+      "needsRemeasurement": false,
+      "beforeNps": 18830503.952866856,
+      "speedup": 0.9957171346203396
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 7,
+        "medianNps": 25124542.424310397,
+        "nodesPerPerft": 132680617,
+        "samples": [
+          {
+            "nodesPerPerft": 132680617,
+            "nps": 25124542.424310397,
+            "repetitions": 1,
+            "seconds": 5.280916753,
+            "totalLeafNodes": 132680617
+          },
+          {
+            "nodesPerPerft": 132680617,
+            "nps": 25018773.90220138,
+            "repetitions": 1,
+            "seconds": 5.303242178,
+            "totalLeafNodes": 132680617
+          },
+          {
+            "nodesPerPerft": 132680617,
+            "nps": 25229181.912292685,
+            "repetitions": 1,
+            "seconds": 5.259013846,
+            "totalLeafNodes": 132680617
+          }
+        ]
+      },
+      "ruleset": "minishogi",
+      "transpositionCache": false,
+      "ruleId": 51,
+      "label": "5五将棋",
+      "name": "minishogi",
+      "sampleRangePercent": 0.8410004859302544,
+      "needsRemeasurement": false,
+      "beforeNps": 25321634.42289819,
+      "speedup": 0.9922164582547814
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 6,
+        "medianNps": 26968955.36326524,
+        "nodesPerPerft": 51190232,
+        "samples": [
+          {
+            "nodesPerPerft": 51190232,
+            "nps": 26788451.890881635,
+            "repetitions": 2,
+            "seconds": 3.821813385,
+            "totalLeafNodes": 102380464
+          },
+          {
+            "nodesPerPerft": 51190232,
+            "nps": 27348620.835363187,
+            "repetitions": 2,
+            "seconds": 3.743532978,
+            "totalLeafNodes": 102380464
+          },
+          {
+            "nodesPerPerft": 51190232,
+            "nps": 26968955.36326524,
+            "repetitions": 2,
+            "seconds": 3.796233952,
+            "totalLeafNodes": 102380464
+          }
+        ]
+      },
+      "ruleset": "judkins",
+      "transpositionCache": false,
+      "ruleId": 52,
+      "label": "ジャドケンス将棋",
+      "name": "judkins",
+      "sampleRangePercent": 2.0910836757693563,
+      "needsRemeasurement": false,
+      "beforeNps": 27285774.200496506,
+      "speedup": 0.9883888639221569
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 6,
+        "medianNps": 25826373.53060361,
+        "nodesPerPerft": 20552765,
+        "samples": [
+          {
+            "nodesPerPerft": 20552765,
+            "nps": 25826380.459348883,
+            "repetitions": 4,
+            "seconds": 3.183220356,
+            "totalLeafNodes": 82211060
+          },
+          {
+            "nodesPerPerft": 20552765,
+            "nps": 25826373.53060361,
+            "repetitions": 4,
+            "seconds": 3.18322121,
+            "totalLeafNodes": 82211060
+          },
+          {
+            "nodesPerPerft": 20552765,
+            "nps": 25648432.27941478,
+            "repetitions": 4,
+            "seconds": 3.205305459,
+            "totalLeafNodes": 82211060
+          }
+        ]
+      },
+      "ruleset": "gorogoro",
+      "transpositionCache": false,
+      "ruleId": 96,
+      "label": "ゴロゴロ将棋",
+      "name": "gorogoro",
+      "sampleRangePercent": 0.6937974921645607,
+      "needsRemeasurement": false,
+      "beforeNps": 25860950.736714378,
+      "speedup": 0.9986629568857389
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 31214192.608604383,
+        "nodesPerPerft": 36102221,
+        "samples": [
+          {
+            "nodesPerPerft": 36102221,
+            "nps": 31349942.4811272,
+            "repetitions": 3,
+            "seconds": 3.454764329,
+            "totalLeafNodes": 108306663
+          },
+          {
+            "nodesPerPerft": 36102221,
+            "nps": 31100239.18997403,
+            "repetitions": 3,
+            "seconds": 3.482502573,
+            "totalLeafNodes": 108306663
+          },
+          {
+            "nodesPerPerft": 36102221,
+            "nps": 31214192.608604383,
+            "repetitions": 3,
+            "seconds": 3.469789027,
+            "totalLeafNodes": 108306663
+          }
+        ]
+      },
+      "ruleset": "gorogoro-plus",
+      "transpositionCache": false,
+      "ruleId": 97,
+      "label": "ゴロゴロ将棋+桂香",
+      "name": "gorogoro-plus",
+      "sampleRangePercent": 0.802898298073762,
+      "needsRemeasurement": false,
+      "beforeNps": 31648483.025356058,
+      "speedup": 0.986277686156277
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 32264014.874009848,
+        "nodesPerPerft": 36536515,
+        "samples": [
+          {
+            "nodesPerPerft": 36536515,
+            "nps": 32448291.914275564,
+            "repetitions": 3,
+            "seconds": 3.377975805,
+            "totalLeafNodes": 109609545
+          },
+          {
+            "nodesPerPerft": 36536515,
+            "nps": 31658725.51709949,
+            "repetitions": 3,
+            "seconds": 3.462222285,
+            "totalLeafNodes": 109609545
+          },
+          {
+            "nodesPerPerft": 36536515,
+            "nps": 32264014.874009848,
+            "repetitions": 3,
+            "seconds": 3.397269231,
+            "totalLeafNodes": 109609545
+          }
+        ]
+      },
+      "ruleset": "minishogi-kingin",
+      "transpositionCache": false,
+      "ruleId": 110,
+      "label": "5五将棋 金銀",
+      "name": "minishogi-kingin",
+      "sampleRangePercent": 2.4939929964951313,
+      "needsRemeasurement": false,
+      "beforeNps": 32548569.958834518,
+      "speedup": 0.9912575242112155
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 7176587.434431543,
+        "nodesPerPerft": 16593022,
+        "samples": [
+          {
+            "nodesPerPerft": 16593022,
+            "nps": 7137894.524136223,
+            "repetitions": 2,
+            "seconds": 4.649276322,
+            "totalLeafNodes": 33186044
+          },
+          {
+            "nodesPerPerft": 16593022,
+            "nps": 7236794.667280463,
+            "repetitions": 2,
+            "seconds": 4.585737958,
+            "totalLeafNodes": 33186044
+          },
+          {
+            "nodesPerPerft": 16593022,
+            "nps": 7176587.434431543,
+            "repetitions": 2,
+            "seconds": 4.624209529,
+            "totalLeafNodes": 33186044
+          }
+        ]
+      },
+      "ruleset": "annan",
+      "transpositionCache": false,
+      "ruleId": 26,
+      "label": "安南将棋",
+      "name": "annan",
+      "sampleRangePercent": 1.385564648087989,
+      "needsRemeasurement": false,
+      "beforeNps": 7208835.698975255,
+      "speedup": 0.9955265640818675
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 6709917.067886963,
+        "nodesPerPerft": 9673891,
+        "samples": [
+          {
+            "nodesPerPerft": 9673891,
+            "nps": 6663577.456864013,
+            "repetitions": 3,
+            "seconds": 4.355269101,
+            "totalLeafNodes": 29021673
+          },
+          {
+            "nodesPerPerft": 9673891,
+            "nps": 6709917.067886963,
+            "repetitions": 3,
+            "seconds": 4.3251910129999995,
+            "totalLeafNodes": 29021673
+          },
+          {
+            "nodesPerPerft": 9673891,
+            "nps": 6763948.989312069,
+            "repetitions": 3,
+            "seconds": 4.29064043,
+            "totalLeafNodes": 29021673
+          }
+        ]
+      },
+      "ruleset": "anhoku",
+      "transpositionCache": false,
+      "ruleId": 55,
+      "label": "安北将棋",
+      "name": "anhoku",
+      "sampleRangePercent": 1.5062709647753136,
+      "needsRemeasurement": false,
+      "beforeNps": 6763084.8165742,
+      "speedup": 0.9921385358709476
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 5730850.183599921,
+        "nodesPerPerft": 26211862,
+        "samples": [
+          {
+            "nodesPerPerft": 26211862,
+            "nps": 5730850.183599921,
+            "repetitions": 1,
+            "seconds": 4.57381735,
+            "totalLeafNodes": 26211862
+          },
+          {
+            "nodesPerPerft": 26211862,
+            "nps": 5747575.999850176,
+            "repetitions": 1,
+            "seconds": 4.560507247,
+            "totalLeafNodes": 26211862
+          },
+          {
+            "nodesPerPerft": 26211862,
+            "nps": 5723461.414149911,
+            "repetitions": 1,
+            "seconds": 4.579721973,
+            "totalLeafNodes": 26211862
+          }
+        ]
+      },
+      "ruleset": "antouzai",
+      "transpositionCache": false,
+      "ruleId": 95,
+      "label": "安東西将棋",
+      "name": "antouzai",
+      "sampleRangePercent": 0.42132870225433106,
+      "needsRemeasurement": false,
+      "beforeNps": 5809791.237442446,
+      "speedup": 0.9864124112870404
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 7011268.842619923,
+        "nodesPerPerft": 19867515,
+        "samples": [
+          {
+            "nodesPerPerft": 19867515,
+            "nps": 6982325.075491102,
+            "repetitions": 2,
+            "seconds": 5.690802071,
+            "totalLeafNodes": 39735030
+          },
+          {
+            "nodesPerPerft": 19867515,
+            "nps": 7050912.059141036,
+            "repetitions": 2,
+            "seconds": 5.63544541,
+            "totalLeafNodes": 39735030
+          },
+          {
+            "nodesPerPerft": 19867515,
+            "nps": 7011268.842619923,
+            "repetitions": 2,
+            "seconds": 5.667309426,
+            "totalLeafNodes": 39735030
+          }
+        ]
+      },
+      "ruleset": "taimen",
+      "transpositionCache": false,
+      "ruleId": 72,
+      "label": "対面将棋",
+      "name": "taimen",
+      "sampleRangePercent": 0.9822943347436386,
+      "needsRemeasurement": false,
+      "beforeNps": 7013370.510135966,
+      "speedup": 0.999700334167002
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 6628839.201719909,
+        "nodesPerPerft": 19864557,
+        "samples": [
+          {
+            "nodesPerPerft": 19864557,
+            "nps": 6602931.718599439,
+            "repetitions": 1,
+            "seconds": 3.008445013,
+            "totalLeafNodes": 19864557
+          },
+          {
+            "nodesPerPerft": 19864557,
+            "nps": 6628839.201719909,
+            "repetitions": 2,
+            "seconds": 5.993374223,
+            "totalLeafNodes": 39729114
+          },
+          {
+            "nodesPerPerft": 19864557,
+            "nps": 6702940.595812347,
+            "repetitions": 2,
+            "seconds": 5.927117126,
+            "totalLeafNodes": 39729114
+          }
+        ]
+      },
+      "ruleset": "haimen",
+      "transpositionCache": false,
+      "ruleId": 74,
+      "label": "背面将棋",
+      "name": "haimen",
+      "sampleRangePercent": 1.5146132275031476,
+      "needsRemeasurement": false,
+      "beforeNps": 6718528.809426476,
+      "speedup": 0.9866504095984931
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 783629.5500568938,
+        "nodesPerPerft": 500040,
+        "samples": [
+          {
+            "nodesPerPerft": 500040,
+            "nps": 778102.0255112678,
+            "repetitions": 5,
+            "seconds": 3.213203305,
+            "totalLeafNodes": 2500200
+          },
+          {
+            "nodesPerPerft": 500040,
+            "nps": 788194.5942518315,
+            "repetitions": 5,
+            "seconds": 3.1720593089999998,
+            "totalLeafNodes": 2500200
+          },
+          {
+            "nodesPerPerft": 500040,
+            "nps": 783629.5500568938,
+            "repetitions": 5,
+            "seconds": 3.190538182,
+            "totalLeafNodes": 2500200
+          }
+        ]
+      },
+      "ruleset": "neko",
+      "transpositionCache": false,
+      "ruleId": 130,
+      "label": "ネコ将棋",
+      "name": "neko",
+      "sampleRangePercent": 1.2970752433052901,
+      "needsRemeasurement": false,
+      "beforeNps": 787019.471351523,
+      "speedup": 0.9956927097511226
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 164212.1517393402,
+        "nodesPerPerft": 500274,
+        "samples": [
+          {
+            "nodesPerPerft": 500274,
+            "nps": 164212.1517393402,
+            "repetitions": 1,
+            "seconds": 3.046510229,
+            "totalLeafNodes": 500274
+          },
+          {
+            "nodesPerPerft": 500274,
+            "nps": 162649.69812410904,
+            "repetitions": 1,
+            "seconds": 3.075775767,
+            "totalLeafNodes": 500274
+          },
+          {
+            "nodesPerPerft": 500274,
+            "nps": 164598.81756559596,
+            "repetitions": 1,
+            "seconds": 3.039353547,
+            "totalLeafNodes": 500274
+          }
+        ]
+      },
+      "ruleset": "nekoneko",
+      "transpositionCache": false,
+      "ruleId": 131,
+      "label": "ネコネコ将棋",
+      "name": "nekoneko",
+      "sampleRangePercent": 1.1983541709371437,
+      "needsRemeasurement": false,
+      "beforeNps": 164409.00513348923,
+      "speedup": 0.9988026605112705
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 783371.8957690824,
+        "nodesPerPerft": 626210,
+        "samples": [
+          {
+            "nodesPerPerft": 626210,
+            "nps": 783513.085703429,
+            "repetitions": 4,
+            "seconds": 3.196934481,
+            "totalLeafNodes": 2504840
+          },
+          {
+            "nodesPerPerft": 626210,
+            "nps": 783371.8957690824,
+            "repetitions": 4,
+            "seconds": 3.197510676,
+            "totalLeafNodes": 2504840
+          },
+          {
+            "nodesPerPerft": 626210,
+            "nps": 762337.2850292299,
+            "repetitions": 4,
+            "seconds": 3.285737231,
+            "totalLeafNodes": 2504840
+          }
+        ]
+      },
+      "ruleset": "yokoneko",
+      "transpositionCache": false,
+      "ruleId": 132,
+      "label": "横ネコ将棋",
+      "name": "yokoneko",
+      "sampleRangePercent": 2.777746948765225,
+      "needsRemeasurement": false,
+      "beforeNps": 787719.1536024553,
+      "speedup": 0.9944812084186455
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 196105.5533884827,
+        "nodesPerPerft": 627302,
+        "samples": [
+          {
+            "nodesPerPerft": 627302,
+            "nps": 196026.49437902067,
+            "repetitions": 1,
+            "seconds": 3.200087835,
+            "totalLeafNodes": 627302
+          },
+          {
+            "nodesPerPerft": 627302,
+            "nps": 196682.19780315922,
+            "repetitions": 1,
+            "seconds": 3.189419312,
+            "totalLeafNodes": 627302
+          },
+          {
+            "nodesPerPerft": 627302,
+            "nps": 196105.5533884827,
+            "repetitions": 1,
+            "seconds": 3.198797735,
+            "totalLeafNodes": 627302
+          }
+        ]
+      },
+      "ruleset": "yokonekoneko",
+      "transpositionCache": false,
+      "ruleId": 133,
+      "label": "横ネコネコ将棋",
+      "name": "yokonekoneko",
+      "sampleRangePercent": 0.33449734752217797,
+      "needsRemeasurement": false,
+      "beforeNps": 196120.80604078693,
+      "speedup": 0.9999222282805574
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 1216639.9826475596,
+        "nodesPerPerft": 716743,
+        "samples": [
+          {
+            "nodesPerPerft": 716743,
+            "nps": 1216639.9826475596,
+            "repetitions": 6,
+            "seconds": 3.534700537,
+            "totalLeafNodes": 4300458
+          },
+          {
+            "nodesPerPerft": 716743,
+            "nps": 1207755.2943214613,
+            "repetitions": 6,
+            "seconds": 3.560703083,
+            "totalLeafNodes": 4300458
+          },
+          {
+            "nodesPerPerft": 716743,
+            "nps": 1230924.9116114078,
+            "repetitions": 6,
+            "seconds": 3.493680207,
+            "totalLeafNodes": 4300458
+          }
+        ]
+      },
+      "ruleset": "tenkyo",
+      "transpositionCache": false,
+      "ruleId": 151,
+      "label": "点鏡将棋",
+      "name": "tenkyo",
+      "sampleRangePercent": 1.918403289050663,
+      "needsRemeasurement": false,
+      "beforeNps": 1233169.3769528214,
+      "speedup": 0.9865960065063356
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 3193762.309105791,
+        "nodesPerPerft": 2187650,
+        "samples": [
+          {
+            "nodesPerPerft": 2187650,
+            "nps": 3193762.309105791,
+            "repetitions": 5,
+            "seconds": 3.424879168,
+            "totalLeafNodes": 10938250
+          },
+          {
+            "nodesPerPerft": 2187650,
+            "nps": 3139489.7735518836,
+            "repetitions": 5,
+            "seconds": 3.4840852460000002,
+            "totalLeafNodes": 10938250
+          },
+          {
+            "nodesPerPerft": 2187650,
+            "nps": 3196722.0834989813,
+            "repetitions": 5,
+            "seconds": 3.421708148,
+            "totalLeafNodes": 10938250
+          }
+        ]
+      },
+      "ruleset": "tenjiku",
+      "transpositionCache": false,
+      "ruleId": 56,
+      "label": "天竺将棋（9×9）",
+      "name": "tenjiku",
+      "sampleRangePercent": 1.8229812509421794,
+      "needsRemeasurement": false,
+      "beforeNps": 3205414.306661549,
+      "speedup": 0.9963649012448897
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 2092907.7968278306,
+        "nodesPerPerft": 2272871,
+        "samples": [
+          {
+            "nodesPerPerft": 2272871,
+            "nps": 2092907.7968278306,
+            "repetitions": 3,
+            "seconds": 3.257961488,
+            "totalLeafNodes": 6818613
+          },
+          {
+            "nodesPerPerft": 2272871,
+            "nps": 2096401.7032661652,
+            "repetitions": 3,
+            "seconds": 3.252531702,
+            "totalLeafNodes": 6818613
+          },
+          {
+            "nodesPerPerft": 2272871,
+            "nps": 2078501.1630340428,
+            "repetitions": 3,
+            "seconds": 3.280543269,
+            "totalLeafNodes": 6818613
+          }
+        ]
+      },
+      "ruleset": "anki",
+      "transpositionCache": false,
+      "ruleId": 94,
+      "label": "安騎将棋",
+      "name": "anki",
+      "sampleRangePercent": 0.8612234888525361,
+      "needsRemeasurement": false,
+      "beforeNps": 2084810.4617334753,
+      "speedup": 1.003883967028649
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 6,
+        "medianNps": 32372815.537096463,
+        "nodesPerPerft": 96673959,
+        "samples": [
+          {
+            "nodesPerPerft": 96673959,
+            "nps": 32639842.590661157,
+            "repetitions": 2,
+            "seconds": 5.923678016,
+            "totalLeafNodes": 193347918
+          },
+          {
+            "nodesPerPerft": 96673959,
+            "nps": 31907422.99779966,
+            "repetitions": 2,
+            "seconds": 6.059653204,
+            "totalLeafNodes": 193347918
+          },
+          {
+            "nodesPerPerft": 96673959,
+            "nps": 32372815.537096463,
+            "repetitions": 2,
+            "seconds": 5.9725394529999996,
+            "totalLeafNodes": 193347918
+          }
+        ]
+      },
+      "ruleset": "heian-8x8",
+      "transpositionCache": false,
+      "ruleId": 12,
+      "label": "平安将棋8×8",
+      "name": "heian-8x8",
+      "sampleRangePercent": 2.295452042341384,
+      "needsRemeasurement": false,
+      "beforeNps": 32534819.63614877,
+      "speedup": 0.9950205932946895
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 19939726.216647416,
+        "nodesPerPerft": 10804053,
+        "samples": [
+          {
+            "nodesPerPerft": 10804053,
+            "nps": 19969446.945343424,
+            "repetitions": 6,
+            "seconds": 3.246174928,
+            "totalLeafNodes": 64824318
+          },
+          {
+            "nodesPerPerft": 10804053,
+            "nps": 19939726.216647416,
+            "repetitions": 6,
+            "seconds": 3.251013444,
+            "totalLeafNodes": 64824318
+          },
+          {
+            "nodesPerPerft": 10804053,
+            "nps": 19745771.767288238,
+            "repetitions": 6,
+            "seconds": 3.282946788,
+            "totalLeafNodes": 64824318
+          }
+        ]
+      },
+      "ruleset": "heian-9x8",
+      "transpositionCache": false,
+      "ruleId": 13,
+      "label": "平安将棋9×8",
+      "name": "heian-9x8",
+      "sampleRangePercent": 1.1327750603586706,
+      "needsRemeasurement": false,
+      "beforeNps": 19933310.329246588,
+      "speedup": 1.0003218676323629
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 19744152.207647853,
+        "nodesPerPerft": 10799089,
+        "samples": [
+          {
+            "nodesPerPerft": 10799089,
+            "nps": 19744152.207647853,
+            "repetitions": 6,
+            "seconds": 3.281707582,
+            "totalLeafNodes": 64794534
+          },
+          {
+            "nodesPerPerft": 10799089,
+            "nps": 20011462.35899876,
+            "repetitions": 6,
+            "seconds": 3.237871018,
+            "totalLeafNodes": 64794534
+          },
+          {
+            "nodesPerPerft": 10799089,
+            "nps": 19448794.478237573,
+            "repetitions": 6,
+            "seconds": 3.331545,
+            "totalLeafNodes": 64794534
+          }
+        ]
+      },
+      "ruleset": "heian-9x9",
+      "transpositionCache": false,
+      "ruleId": 14,
+      "label": "平安将棋9×9",
+      "name": "heian-9x9",
+      "sampleRangePercent": 2.8930733027735522,
+      "needsRemeasurement": false,
+      "beforeNps": 20033559.345673624,
+      "speedup": 0.9855538832100612
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 7477311.870166685,
+        "nodesPerPerft": 11553437,
+        "samples": [
+          {
+            "nodesPerPerft": 11553437,
+            "nps": 7455094.331419668,
+            "repetitions": 2,
+            "seconds": 3.099474396,
+            "totalLeafNodes": 23106874
+          },
+          {
+            "nodesPerPerft": 11553437,
+            "nps": 7477311.870166685,
+            "repetitions": 2,
+            "seconds": 3.090264844,
+            "totalLeafNodes": 23106874
+          },
+          {
+            "nodesPerPerft": 11553437,
+            "nps": 7620898.091692471,
+            "repetitions": 2,
+            "seconds": 3.032040807,
+            "totalLeafNodes": 23106874
+          }
+        ]
+      },
+      "ruleset": "shoshogi",
+      "transpositionCache": false,
+      "ruleId": 43,
+      "label": "小将棋",
+      "name": "shoshogi",
+      "sampleRangePercent": 2.2240330289855503,
+      "needsRemeasurement": false,
+      "beforeNps": 7545406.942935225,
+      "speedup": 0.9909752948669923
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 5605003.083345344,
+        "nodesPerPerft": 2134748,
+        "samples": [
+          {
+            "nodesPerPerft": 2134748,
+            "nps": 5616039.663706969,
+            "repetitions": 8,
+            "seconds": 3.04093009,
+            "totalLeafNodes": 17077984
+          },
+          {
+            "nodesPerPerft": 2134748,
+            "nps": 5605003.083345344,
+            "repetitions": 8,
+            "seconds": 3.04691786,
+            "totalLeafNodes": 17077984
+          },
+          {
+            "nodesPerPerft": 2134748,
+            "nps": 5540822.380334749,
+            "repetitions": 8,
+            "seconds": 3.0822110560000002,
+            "totalLeafNodes": 17077984
+          }
+        ]
+      },
+      "ruleset": "chushogi",
+      "transpositionCache": false,
+      "ruleId": 48,
+      "label": "中将棋",
+      "name": "chushogi",
+      "sampleRangePercent": 1.3575111817187624,
+      "needsRemeasurement": false,
+      "beforeNps": 5595978.796253536,
+      "speedup": 1.0016126378280508
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 5,
+        "medianNps": 1204747.013929594,
+        "nodesPerPerft": 2179749,
+        "samples": [
+          {
+            "nodesPerPerft": 2179749,
+            "nps": 1204747.013929594,
+            "repetitions": 2,
+            "seconds": 3.618600378,
+            "totalLeafNodes": 4359498
+          },
+          {
+            "nodesPerPerft": 2179749,
+            "nps": 1204703.3062355297,
+            "repetitions": 2,
+            "seconds": 3.6187316640000002,
+            "totalLeafNodes": 4359498
+          },
+          {
+            "nodesPerPerft": 2179749,
+            "nps": 1206910.98649136,
+            "repetitions": 2,
+            "seconds": 3.612112284,
+            "totalLeafNodes": 4359498
+          }
+        ]
+      },
+      "ruleset": "torishogi",
+      "transpositionCache": false,
+      "ruleId": 16,
+      "label": "禽将棋",
+      "name": "torishogi",
+      "sampleRangePercent": 0.18325510060472894,
+      "needsRemeasurement": false,
+      "beforeNps": 1093919.4487523905,
+      "speedup": 1.1013123638158202
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 3,
+        "medianNps": 1580970.2242408972,
+        "nodesPerPerft": 126574,
+        "samples": [
+          {
+            "nodesPerPerft": 126574,
+            "nps": 1541219.6916676213,
+            "repetitions": 37,
+            "seconds": 3.038656997,
+            "totalLeafNodes": 4683238
+          },
+          {
+            "nodesPerPerft": 126574,
+            "nps": 1583492.046590788,
+            "repetitions": 38,
+            "seconds": 3.037471524,
+            "totalLeafNodes": 4809812
+          },
+          {
+            "nodesPerPerft": 126574,
+            "nps": 1580970.2242408972,
+            "repetitions": 38,
+            "seconds": 3.042316627,
+            "totalLeafNodes": 4809812
+          }
+        ]
+      },
+      "ruleset": "washogi",
+      "transpositionCache": false,
+      "ruleId": 50,
+      "label": "和将棋",
+      "name": "washogi",
+      "sampleRangePercent": 2.742785804756198,
+      "needsRemeasurement": false,
+      "beforeNps": 1621971.351161398,
+      "speedup": 0.9747214234757339
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 1431213.2666390094,
+        "nodesPerPerft": 748121,
+        "samples": [
+          {
+            "nodesPerPerft": 748121,
+            "nps": 1433772.871103757,
+            "repetitions": 6,
+            "seconds": 3.130709257,
+            "totalLeafNodes": 4488726
+          },
+          {
+            "nodesPerPerft": 748121,
+            "nps": 1431213.2666390094,
+            "repetitions": 6,
+            "seconds": 3.136308267,
+            "totalLeafNodes": 4488726
+          },
+          {
+            "nodesPerPerft": 748121,
+            "nps": 1430245.3784596028,
+            "repetitions": 6,
+            "seconds": 3.138430697,
+            "totalLeafNodes": 4488726
+          }
+        ]
+      },
+      "ruleset": "heian-dai",
+      "transpositionCache": false,
+      "ruleId": 15,
+      "label": "平安大将棋",
+      "name": "heian-dai",
+      "sampleRangePercent": 0.2466354862795228,
+      "needsRemeasurement": false,
+      "beforeNps": 1443161.6314975477,
+      "speedup": 0.9917207022430746
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 4,
+        "medianNps": 4737650.774811939,
+        "nodesPerPerft": 25451513,
+        "samples": [
+          {
+            "nodesPerPerft": 25451513,
+            "nps": 4763469.944454662,
+            "repetitions": 1,
+            "seconds": 5.343061528,
+            "totalLeafNodes": 25451513
+          },
+          {
+            "nodesPerPerft": 25451513,
+            "nps": 4654771.828411992,
+            "repetitions": 1,
+            "seconds": 5.467832568,
+            "totalLeafNodes": 25451513
+          },
+          {
+            "nodesPerPerft": 25451513,
+            "nps": 4737650.774811939,
+            "repetitions": 1,
+            "seconds": 5.372180055,
+            "totalLeafNodes": 25451513
+          }
+        ]
+      },
+      "ruleset": "daishogi",
+      "transpositionCache": false,
+      "ruleId": 49,
+      "label": "大将棋",
+      "name": "daishogi",
+      "sampleRangePercent": 2.3351975144988657,
+      "needsRemeasurement": false,
+      "beforeNps": 4812515.38031972,
+      "speedup": 0.984443768052372
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 2,
+        "medianNps": 1543682.1976722125,
+        "nodesPerPerft": 17226,
+        "samples": [
+          {
+            "nodesPerPerft": 17226,
+            "nps": 1543682.1976722125,
+            "repetitions": 269,
+            "seconds": 3.001779775,
+            "totalLeafNodes": 4633794
+          },
+          {
+            "nodesPerPerft": 17226,
+            "nps": 1538814.9798090833,
+            "repetitions": 268,
+            "seconds": 3.000079971,
+            "totalLeafNodes": 4616568
+          },
+          {
+            "nodesPerPerft": 17226,
+            "nps": 1549630.4314570446,
+            "repetitions": 270,
+            "seconds": 3.001373686,
+            "totalLeafNodes": 4651020
+          }
+        ]
+      },
+      "ruleset": "tenjiku-dai",
+      "transpositionCache": false,
+      "ruleId": 59,
+      "label": "天竺大将棋",
+      "name": "tenjiku-dai",
+      "sampleRangePercent": 0.7028428881880933,
+      "needsRemeasurement": false,
+      "beforeNps": 430211.9329707491,
+      "speedup": 3.588190097407573
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 3,
+        "medianNps": 1428661.8292204773,
+        "nodesPerPerft": 251479,
+        "samples": [
+          {
+            "nodesPerPerft": 251479,
+            "nps": 1455781.8410373467,
+            "repetitions": 18,
+            "seconds": 3.109409578,
+            "totalLeafNodes": 4526622
+          },
+          {
+            "nodesPerPerft": 251479,
+            "nps": 1423404.14967163,
+            "repetitions": 17,
+            "seconds": 3.003463915,
+            "totalLeafNodes": 4275143
+          },
+          {
+            "nodesPerPerft": 251479,
+            "nps": 1428661.8292204773,
+            "repetitions": 18,
+            "seconds": 3.1684349,
+            "totalLeafNodes": 4526622
+          }
+        ]
+      },
+      "ruleset": "dai-dai",
+      "transpositionCache": false,
+      "ruleId": 60,
+      "label": "大大将棋",
+      "name": "dai-dai",
+      "sampleRangePercent": 2.2746660794255913,
+      "needsRemeasurement": false,
+      "beforeNps": 1426758.4443660476,
+      "speedup": 1.0013340624419962
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 3,
+        "medianNps": 1779538.7788570921,
+        "nodesPerPerft": 537260,
+        "samples": [
+          {
+            "nodesPerPerft": 537260,
+            "nps": 1779538.7788570921,
+            "repetitions": 10,
+            "seconds": 3.019096894,
+            "totalLeafNodes": 5372600
+          },
+          {
+            "nodesPerPerft": 537260,
+            "nps": 1740883.7229385104,
+            "repetitions": 10,
+            "seconds": 3.086133743,
+            "totalLeafNodes": 5372600
+          },
+          {
+            "nodesPerPerft": 537260,
+            "nps": 1797893.1277554447,
+            "repetitions": 11,
+            "seconds": 3.287103059,
+            "totalLeafNodes": 5909860
+          }
+        ]
+      },
+      "ruleset": "maka-dai-dai",
+      "transpositionCache": false,
+      "ruleId": 61,
+      "label": "摩訶大大将棋",
+      "name": "maka-dai-dai",
+      "sampleRangePercent": 3.274739378957814,
+      "needsRemeasurement": false,
+      "beforeNps": 1716979.8822672653,
+      "speedup": 1.0364354278322807
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 2,
+        "medianNps": 1422400.2888326477,
+        "nodesPerPerft": 92676,
+        "samples": [
+          {
+            "nodesPerPerft": 92676,
+            "nps": 1429628.875732369,
+            "repetitions": 47,
+            "seconds": 3.04678513,
+            "totalLeafNodes": 4355772
+          },
+          {
+            "nodesPerPerft": 92676,
+            "nps": 1418523.7794926565,
+            "repetitions": 46,
+            "seconds": 3.005304572,
+            "totalLeafNodes": 4263096
+          },
+          {
+            "nodesPerPerft": 92676,
+            "nps": 1422400.2888326477,
+            "repetitions": 47,
+            "seconds": 3.062268782,
+            "totalLeafNodes": 4355772
+          }
+        ]
+      },
+      "ruleset": "taishogi",
+      "transpositionCache": false,
+      "ruleId": 63,
+      "label": "泰将棋",
+      "name": "taishogi",
+      "sampleRangePercent": 0.7828628888889133,
+      "needsRemeasurement": false,
+      "beforeNps": 1408141.4172288678,
+      "speedup": 1.0101260224501034
+    },
+    {
+      "bulkCounting": false,
+      "position": "initial",
+      "result": {
+        "depth": 2,
+        "medianNps": 621402.3958024506,
+        "nodesPerPerft": 79035,
+        "samples": [
+          {
+            "nodesPerPerft": 79035,
+            "nps": 619048.8320113687,
+            "repetitions": 24,
+            "seconds": 3.06412015,
+            "totalLeafNodes": 1896840
+          },
+          {
+            "nodesPerPerft": 79035,
+            "nps": 626317.3386828107,
+            "repetitions": 24,
+            "seconds": 3.028560576,
+            "totalLeafNodes": 1896840
+          },
+          {
+            "nodesPerPerft": 79035,
+            "nps": 621402.3958024506,
+            "repetitions": 24,
+            "seconds": 3.052514784,
+            "totalLeafNodes": 1896840
+          }
+        ]
+      },
+      "ruleset": "taikyoku",
+      "transpositionCache": false,
+      "ruleId": 64,
+      "label": "大局将棋",
+      "name": "taikyoku",
+      "sampleRangePercent": 1.1741410847712297,
+      "needsRemeasurement": false,
+      "beforeNps": 302295.5630275659,
+      "speedup": 2.055612029428913
+    }
+  ],
+  "measuredAt": "2026-11-09T08:04:02.669659+00:00"
+}

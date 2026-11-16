@@ -1,0 +1,12 @@
+[package]
+name="honshogi-historical-impact"
+version="0.0.0"
+edition="2024"
+[workspace]
+[dependencies]
+haitaka={path="/home/na2hiro/proj/haitaka-variants/target/honshogi-historical-impact/source/haitaka",default-features=false}
+serde_json="=1.0.149"
+[profile.release]
+opt-level=3
+codegen-units=1
+lto="fat"

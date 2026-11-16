@@ -20,7 +20,8 @@ impl Board {
     /// Parse a SFEN string. You can also parse the board with [`FromStr`].
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board = Board::from_sfen(STARTPOS).unwrap();
@@ -40,6 +41,9 @@ impl Board {
     /// structural, king-safety, checker, pin, and move-number checks remain.
     #[doc(hidden)]
     pub fn from_training_sfen(sfen: &str) -> Result<Self, SFENParseError> {
+        if !SelectedRule::ALLOW_STANDARD_MODELS {
+            return Err(SFENParseError::InvalidBoard);
+        }
         use SFENParseError::*;
         let mut board = Self::parse(sfen)?;
         if !board.move_number_is_valid() {
@@ -89,7 +93,8 @@ impl Board {
     ///
     /// # Examples
     ///
-    /// ```
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// use haitaka::*;
     /// let sfen = "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1";
     /// // from_sfen will fail - since there is only one King on board
@@ -102,10 +107,16 @@ impl Board {
     /// assert_eq!(board.num_in_hand(Color::White, Piece::Silver), 3);
     /// ```
     pub fn tsume(sfen: &str) -> Result<Self, SFENParseError> {
+        if !SelectedRule::CAPTURE_TO_HAND {
+            return Err(SFENParseError::InvalidBoard);
+        }
         let mut board = Self::parse(sfen)?;
         if board.side_to_move() != Color::Black {
             Err(SFENParseError::InvalidSideToMove)
         } else {
+            if !board.piece_counts_are_valid() {
+                return Err(SFENParseError::InvalidBoard);
+            }
             // Nonstandard inventories have no meaningful "all remaining pieces"
             // complement; use their explicitly supplied defensive hand.
             if !cfg!(feature = "hand-category") {
@@ -171,14 +182,23 @@ impl Board {
                     if prom {
                         return Err(());
                     };
-                    file -= offset as usize; // let it panic!
+                    if offset == 0 {
+                        return Err(());
+                    }
+                    file = file.checked_sub(offset as usize).ok_or(())?;
                 } else if c == '+' {
-                    if prom {
+                    if !SelectedRule::ALLOW_PROMOTED_SFEN || prom {
                         return Err(());
                     };
                     prom = true;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    file -= 1; // let it panic
+                    if SelectedRule::ALLOWED_PIECES & (1 << piece as usize) == 0 {
+                        return Err(());
+                    }
+                    file = file.checked_sub(1).ok_or(())?;
+                    if prom && !piece.is_promotable() {
+                        return Err(());
+                    }
                     let piece = if prom { piece.promote() } else { piece };
                     let square = Square::new(File::try_index(file).ok_or(())?, rank);
                     board.unchecked_put(color, piece, square);
@@ -187,12 +207,12 @@ impl Board {
                     return Err(());
                 }
             }
-            if file != 0 {
+            if file != 0 || prom {
                 return Err(());
             }
         }
         if let Some(last_rank) = last_rank {
-            if last_rank == 8 || !strict {
+            if last_rank + 1 == Rank::NUM || !strict {
                 return Ok(());
             }
         }
@@ -202,6 +222,9 @@ impl Board {
 
     /// Parse the SFEN hands.
     fn parse_hands(board: &mut Board, s: &str) -> Result<(), ()> {
+        if !SelectedRule::CAPTURE_TO_HAND {
+            return if s == "-" { Ok(()) } else { Err(()) };
+        }
         let mut empty = false;
         let mut found: bool = false;
         let mut count: u32 = 0;
@@ -216,7 +239,11 @@ impl Board {
                         .and_then(|n| n.checked_add(num))
                         .ok_or(())?;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    if piece as usize > Piece::King as usize || board.num_in_hand(color, piece) != 0
+                    if piece as usize > Piece::King as usize
+                        || board.num_in_hand(color, piece) != 0
+                        || (!cfg!(feature = "hand-category")
+                            && (piece as usize >= Piece::HAND_NUM
+                                || count > u32::from(Piece::MAX_HAND[piece as usize])))
                     {
                         return Err(()); // way... too large
                     }
@@ -270,7 +297,8 @@ impl FromStr for Board {
     /// See also: [`Board::from_sfen`].
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// const STARTPOS: &str = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1";
     /// let board: Board = STARTPOS.parse().unwrap();
@@ -288,7 +316,8 @@ impl Display for Board {
     /// Display the board.
     ///
     /// # Examples
-    /// ```
+    #[cfg_attr(not(feature = "variant-board"), doc = "```")]
+    #[cfg_attr(feature = "variant-board", doc = "```ignore")]
     /// # use haitaka::*;
     /// let mut board: Board = SFEN_6PIECE_HANDICAP.parse().unwrap();
     /// assert_eq!(format!("{}", board), SFEN_6PIECE_HANDICAP);
@@ -316,7 +345,7 @@ impl Display for Board {
             if empty > 0 {
                 write!(f, "{}", empty)?;
             }
-            if (rank as usize) < 8 {
+            if (rank as usize) + 1 < Rank::NUM {
                 write!(f, "/")?;
             }
         }
@@ -432,6 +461,7 @@ mod nekoneko_tests {
         feature = "anki"
     ))
 ))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use super::*;
 

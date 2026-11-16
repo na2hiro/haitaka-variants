@@ -1,0 +1,247 @@
+{
+  "status": "passed",
+  "engineCommit": "521ebca3395e8b68126195bfd32a24798c312b2e",
+  "verifiedAt": "2026-11-09T08:04:04.069748+00:00",
+  "rustWorkspace": {
+    "passed": 478,
+    "failed": 0,
+    "ignored": 5,
+    "groups": 19,
+    "logSha256": "13ef2ccc02d8c84a7b73ccdb263bab22a4984f024c0aac9cfd047aab2afeb416"
+  },
+  "rustRules": {
+    "heian-8x8": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 26,
+      "groups": 5,
+      "logSha256": "245132dfa3ac8197c3b12ccb6a6dd02dca71b66e46e1718239e8d45a315b04b4"
+    },
+    "heian-9x8": {
+      "passed": 7,
+      "failed": 0,
+      "ignored": 26,
+      "groups": 5,
+      "logSha256": "21b0898d7cddda0070798aaad8ddaf37314efd100bed1655c03223b994b117af"
+    },
+    "heian-9x9": {
+      "passed": 18,
+      "failed": 0,
+      "ignored": 28,
+      "groups": 5,
+      "logSha256": "ec1e76565472bc4cb6e9e76093a2d2bc3ea228056e94c2ad4096424ed602b704"
+    },
+    "shoshogi": {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0,
+      "groups": 4,
+      "logSha256": "37b4e472f86efbbced14b05f133e27986a178cea8f87846f8d938ab1b36eeea2"
+    },
+    "chushogi": {
+      "passed": 21,
+      "failed": 0,
+      "ignored": 0,
+      "groups": 4,
+      "logSha256": "f936f173cea9e80f20ca3cc741b9d7de164823b3f81c3d9aab73b0c5042fd887"
+    },
+    "torishogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "b77376508a3a350e7f5dde57611298f96c13387ce6f5af686204614e18bc7aff"
+    },
+    "washogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "942a6ae073b8418e51ce224322ca7a9e5b11cc25d8793dfc4f8e8166516305d1"
+    },
+    "heian-dai": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "d84cfdf8ece2a3a26961fd33da03f28b7591e9ea2c7df938bd9eb786126cc0ef"
+    },
+    "daishogi": {
+      "passed": 34,
+      "failed": 0,
+      "ignored": 1,
+      "groups": 4,
+      "logSha256": "0e94f4e8deb39d3b734e84bfeac0f9ff47893916c134762ce86a860d2f5431ea"
+    },
+    "tenjiku-dai": {
+      "passed": 64,
+      "failed": 0,
+      "ignored": 3,
+      "groups": 4,
+      "logSha256": "06f49275f506f9cbfe6170d3f5c9f06a7514fd55194231a1c5921046cdde07f8"
+    },
+    "dai-dai": {
+      "passed": 55,
+      "failed": 0,
+      "ignored": 3,
+      "groups": 4,
+      "logSha256": "d2fd4b680dd0b2ad166eb204971e7c972e09a8f19b9d772c589a719ac972c202"
+    },
+    "maka-dai-dai": {
+      "passed": 56,
+      "failed": 0,
+      "ignored": 3,
+      "groups": 4,
+      "logSha256": "afa14869346cf5049130a9b58d9020177e7c1feed34555e0ae04c3ae2913480e"
+    },
+    "taishogi": {
+      "passed": 58,
+      "failed": 0,
+      "ignored": 3,
+      "groups": 4,
+      "logSha256": "51603e888baf09b9f2ae0139f9a0646ff388d95dee003542168e0365f7d93666"
+    },
+    "taikyoku": {
+      "passed": 59,
+      "failed": 0,
+      "ignored": 3,
+      "groups": 4,
+      "logSha256": "8c40b57d8ac158622f02af0b7a8882d7c81e9af09db68f36c0b672a66a9b33e4"
+    }
+  },
+  "cachedCorpus": [
+    {
+      "rule": "tenjiku-dai",
+      "positions": 352,
+      "transitions": 77025,
+      "checks": "Every cached child board, replay JSON, internal history key and parent restoration vs checked application. Public context hash at first/last child of every root; all public hashes independently checked in WASM corpus."
+    },
+    {
+      "rule": "taikyoku",
+      "positions": 2199,
+      "transitions": 253099,
+      "checks": "Every cached child board, replay JSON, internal history key and parent restoration vs checked application. Public context hash at first/last child of every root; all public hashes independently checked in WASM corpus."
+    }
+  ],
+  "frontend": {
+    "core": {
+      "passed": 2580,
+      "logSha256": "bef2daacfc6cd25c1760955c6d34c6f37d7dcc5d005ff5d57645d8a30d6d9dbf"
+    },
+    "ai": {
+      "passed": 436,
+      "logSha256": "f8a7472c02d2e5c070797a41d5cc6e18199d44c37114f847677a2cfd4b0b0e43"
+    },
+    "app": {
+      "passed": 726,
+      "logSha256": "342624f607f8eb3e2a2cf0239c98e7410e6e577fd75b1ddd5ca8f16ecda1db67"
+    },
+    "typecheck": "passed",
+    "lint": "passed",
+    "browser": {
+      "passed": 82,
+      "historical": 77,
+      "smallShogiControls": 5,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0,
+      "seconds": 322.84249900000003,
+      "workers": 2,
+      "browser": "system Google Chrome",
+      "url": "http://localhost:3002",
+      "report": "06-browser.json"
+    },
+    "commit": "c0d003b0b701f65c8b0371f331ea47341acfbf16",
+    "branch": "perf/large-shogi-movegen-2"
+  },
+  "corpora": [
+    {
+      "rule": "heian-8x8",
+      "positions": 151,
+      "transitions": 2888,
+      "report": "06-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "heian-9x8",
+      "positions": 151,
+      "transitions": 3662,
+      "report": "06-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "heian-9x9",
+      "positions": 151,
+      "transitions": 3689,
+      "report": "06-heian-wasm-all-transitions.json"
+    },
+    {
+      "rule": "shoshogi",
+      "positions": 167,
+      "transitions": 4896,
+      "report": "06-shoshogi-wasm.json"
+    },
+    {
+      "rule": "chushogi",
+      "positions": 242,
+      "transitions": 16121,
+      "report": "06-chushogi-wasm.json"
+    },
+    {
+      "rule": "torishogi",
+      "positions": 154,
+      "transitions": 4009,
+      "report": "06-torishogi-verification.json"
+    },
+    {
+      "rule": "washogi",
+      "positions": 218,
+      "transitions": 8008,
+      "report": "06-washogi-verification.json"
+    },
+    {
+      "rule": "heian-dai",
+      "positions": 198,
+      "transitions": 6578,
+      "report": "06-heian-dai-verification.json"
+    },
+    {
+      "rule": "daishogi",
+      "positions": 295,
+      "transitions": 18664,
+      "report": "06-daishogi-verification.json"
+    },
+    {
+      "rule": "tenjiku-dai",
+      "positions": 352,
+      "transitions": 77025,
+      "report": "06-tenjiku-dai-verification.json"
+    },
+    {
+      "rule": "dai-dai",
+      "positions": 483,
+      "transitions": 20014,
+      "report": "06-dai-dai-verification.json"
+    },
+    {
+      "rule": "maka-dai-dai",
+      "positions": 524,
+      "transitions": 33383,
+      "report": "06-maka-dai-dai-verification.json"
+    },
+    {
+      "rule": "taishogi",
+      "positions": 924,
+      "transitions": 74259,
+      "report": "06-taishogi-verification.json"
+    },
+    {
+      "rule": "taikyoku",
+      "positions": 2199,
+      "transitions": 253099,
+      "report": "06-taikyoku-verification.json"
+    }
+  ],
+  "nativeAndWasmPositions": 6209,
+  "nativeAndWasmTransitions": 526295,
+  "oracleReuse": "JSON corpora were previously independently checked with unchanged Shogitter core. This run executes fresh Native and WASM over every position and transition; it does not label old Native output as fresh. Heian Native TSV was regenerated and independently compared with Shogitter, then compared byte-for-byte with a verification-only WASM wrapper. Production Heian APIs tested separately.",
+  "cacheWasmCoverage": "Tenjiku/Taikyoku perft(1) applies every generated cached leaf for all frozen corpus inputs in addition to every public transition comparison."
+}

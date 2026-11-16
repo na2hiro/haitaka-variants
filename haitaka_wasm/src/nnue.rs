@@ -1,3 +1,4 @@
+use haitaka::RuleSpec;
 use std::fmt;
 
 use crate::nnue_kernels::AffineKernel;
@@ -584,6 +585,12 @@ fn read_feature_family(reader: &mut ByteReader<'_>) -> Result<FeatureFamily, Nnu
 
 impl NnueModel {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
+        if cfg!(feature = "extended-json") || !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
+            return Err(NnueError::new(format!(
+                "NNUE_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
+                haitaka::SelectedRule::NAME
+            )));
+        }
         if cfg!(feature = "zoshoku") {
             return Err(NnueError::new("zoshoku NNUE inference is not supported"));
         }
@@ -2355,6 +2362,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(not(any(feature = "variant-board", feature = "extended-json")))]
 mod tests {
     use super::*;
     use rand::prelude::IndexedRandom;

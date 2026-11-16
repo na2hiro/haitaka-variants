@@ -1,0 +1,96 @@
+{
+  "stage": "04A-copy-elision",
+  "status": "adopted",
+  "beforeCommit": "7285f24",
+  "afterCommit": "e52673fa8d419866a220989990edc99af685f391",
+  "changedFiles": [
+    "haitaka/src/extended/classical.rs",
+    "haitaka/src/extended/classical/memory_tests.rs",
+    "scripts/verify-large-hashes.mjs"
+  ],
+  "sourceSha256": {
+    "haitaka/src/extended/classical.rs": "4ce83d06e3e6bcb22983af34926d4c6561bb8a029bb1a902f303c621718c0745",
+    "haitaka/src/extended/classical/memory_tests.rs": "89a4cf68b2bc954b7733757655f02021ecf71ddd99ed894cc8611e44c756c446",
+    "scripts/verify-large-hashes.mjs": "7169db8e29cc5daab824d76d736f85eb94b861685a59720f7cba48e9b9c63a9a"
+  },
+  "implementation": "CHECK=false and no pawn-drop-mate verification: derive final piece/color and own-file count from the original board minus old mover plus final mover. No candidate position copy. Copied validator retained as production fallback and test oracle.",
+  "correctness": {
+    "commands": [
+      "cargo test --release -p haitaka --features RULE extended",
+      "LARGE_HASH_WORKERS=2 node scripts/verify-large-hashes.mjs target daishogi target/performance-original-wasm/daishogi"
+    ],
+    "rules": [
+      "daishogi",
+      "torishogi",
+      "washogi",
+      "heian-dai"
+    ],
+    "passedPerRule": 34,
+    "checks": [
+      "Every fast candidate compares to original copy validator",
+      "Preexisting excess pawns, promotion, returning lion path, cancellation and fixed-seed 256-ply walk/backtracking"
+    ],
+    "positions": 295,
+    "transitions": 18664,
+    "differences": 0,
+    "verificationFile": "04a-copy-elision-verification.json"
+  },
+  "performance": {
+    "beforeFile": "04-memory-before.json",
+    "afterFile": "04a-copy-elision-after.json",
+    "command": "python3 scripts/perft-benchmark.py --rules daishogi torishogi washogi heian-dai standard --compare target/perft-before-04.json --output target/perft-after-04a.json",
+    "sameDepthAndLeaves": true,
+    "ruleResults": [
+      {
+        "rule": "daishogi",
+        "beforeNps": 3541046.5873993565,
+        "afterNps": 4826330.415514382,
+        "speedup": 1.3629672178526668,
+        "sampleRangePercent": 0.560567250023225
+      },
+      {
+        "rule": "torishogi",
+        "beforeNps": 1098567.9308082263,
+        "afterNps": 1100309.7388100757,
+        "speedup": 1.0015855259861517,
+        "sampleRangePercent": 1.077150254032766
+      },
+      {
+        "rule": "washogi",
+        "beforeNps": 1633496.2160528952,
+        "afterNps": 1634941.4579968236,
+        "speedup": 1.0008847537752004,
+        "sampleRangePercent": 0.35932572391095263
+      },
+      {
+        "rule": "heian-dai",
+        "beforeNps": 1444236.6300203223,
+        "afterNps": 1443510.5137770476,
+        "speedup": 0.9994972318052447,
+        "sampleRangePercent": 2.3364681157861167
+      },
+      {
+        "rule": "standard",
+        "beforeNps": 18623484.302324235,
+        "afterNps": 18691358.996023204,
+        "speedup": 1.0036445754509267,
+        "sampleRangePercent": 1.6745856420224747
+      }
+    ],
+    "sampleNoiseReviewed": true,
+    "controlNote": "Control medians within 0.4%; all sample ranges <5%."
+  },
+  "allocations": {
+    "beforeProfile": "04-memory-profile-before.json",
+    "afterProfile": "04a-copy-elision-profile-after.json",
+    "daishogiPerft4": {
+      "beforeEvents": 201370052,
+      "afterEvents": 149694376,
+      "beforeRequestedBytes": 74896148272,
+      "afterRequestedBytes": 39425486032
+    },
+    "method": "One warmed perft with allocator counting; alloc/realloc requested bytes, not peak live memory. Inclusive timer probes separate from production NPS."
+  },
+  "decision": "adopt",
+  "nextStage": "04B-no-hands-scratch-prototype, then 04C-small-delta"
+}

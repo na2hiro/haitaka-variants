@@ -1,0 +1,104 @@
+{
+  "rule": "tenjiku-dai",
+  "positions": 352,
+  "transitions": 77025,
+  "native": {
+    "positions": 352,
+    "transitions": 77025,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "legacySearchParity": true,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 4,
+      "positions": 88,
+      "transitions": 23894,
+      "initializationMs": 0.7322789999980159,
+      "linearMemoryBytes": 1376256
+    },
+    {
+      "index": 1,
+      "count": 4,
+      "positions": 88,
+      "transitions": 13228,
+      "initializationMs": 1.3459199999997509,
+      "linearMemoryBytes": 1310720
+    },
+    {
+      "index": 2,
+      "count": 4,
+      "positions": 88,
+      "transitions": 24867,
+      "initializationMs": 0.6143659999997908,
+      "linearMemoryBytes": 1376256
+    },
+    {
+      "index": 3,
+      "count": 4,
+      "positions": 88,
+      "transitions": 15036,
+      "initializationMs": 0.9115010000023176,
+      "linearMemoryBytes": 1310720
+    }
+  ],
+  "perft": [
+    132,
+    17226
+  ],
+  "inputSha256": "1157c0f9808f3ddbe16715fa2f61bc175274c1d6cd27ad162884d9a49e99db5e",
+  "beforeWasmSha256": "65694c6ff57a1271efbece917d3071b1ccb29ba8c687310ff98ebed9c42e1651",
+  "afterWasmSha256": "1a6a394d0fd601476940cb4c695156100ed579e45f41e831f76ad9fd43d0381c",
+  "linearMemoryBytes": 1376256,
+  "wasmBytes": 362735,
+  "lowBudgetElapsedMs": 1.002326,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.0031020000000002
+    },
+    {
+      "pendingHops": 2,
+      "elapsedMs": 1.002336
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        1,
+        12
+      ],
+      "path": [
+        [
+          1,
+          11
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "schemaVersion": 4,
+      "from": [
+        1,
+        12
+      ],
+      "path": [
+        [
+          1,
+          11
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 0,
+    "states": 1000,
+    "score": 0
+  }
+}

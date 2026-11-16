@@ -294,6 +294,7 @@ impl ZobristBoard {
         feature = "anki"
     ))
 ))]
+#[cfg(not(feature = "variant-board"))]
 mod tests {
     use crate::Board;
 

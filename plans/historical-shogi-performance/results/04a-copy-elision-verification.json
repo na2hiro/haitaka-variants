@@ -1,0 +1,85 @@
+{
+  "rule": "daishogi",
+  "positions": 295,
+  "transitions": 18664,
+  "native": {
+    "positions": 295,
+    "transitions": 18664,
+    "byteIdentical": true
+  },
+  "legacyPositionAndContextHashDifferences": 0,
+  "partitions": [
+    {
+      "index": 0,
+      "count": 2,
+      "positions": 148,
+      "transitions": 9215,
+      "initializationMs": 1.0762050000003,
+      "linearMemoryBytes": 1441792
+    },
+    {
+      "index": 1,
+      "count": 2,
+      "positions": 147,
+      "transitions": 9449,
+      "initializationMs": 1.0455709999996543,
+      "linearMemoryBytes": 1376256
+    }
+  ],
+  "perft": [
+    71,
+    5041
+  ],
+  "inputSha256": "17b531f1ac6fc4713b42a6d00b570944235a54e9e7e0d1beedf900ff6b2c0e6b",
+  "beforeWasmSha256": "806e4f971f1660145bf4e56fb78beecb455999c3760b812f05730bf456bfa0ca",
+  "afterWasmSha256": "5f248dcbaa3c044c0549645ac630e59b9c752b604ab44ae643b883a1de00dd4b",
+  "linearMemoryBytes": 1441792,
+  "wasmBytes": 334164,
+  "lowBudgetElapsedMs": 1.001755,
+  "pendingFallbacks": [
+    {
+      "pendingHops": 1,
+      "elapsedMs": 1.008987
+    }
+  ],
+  "search": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        2,
+        15
+      ],
+      "path": [
+        [
+          1,
+          13
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  },
+  "beforeSearch": {
+    "bestMove": {
+      "kind": "move",
+      "schemaVersion": 3,
+      "from": [
+        2,
+        15
+      ],
+      "path": [
+        [
+          1,
+          13
+        ]
+      ],
+      "promotion": false
+    },
+    "completedDepth": 2,
+    "states": 1000,
+    "score": 0
+  }
+}
