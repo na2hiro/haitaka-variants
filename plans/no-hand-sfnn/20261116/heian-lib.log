@@ -1,0 +1,39 @@
+warning: function `search_iterative_deepening_impl_with_deadline` is never used
+    --> haitaka_wasm/src/lib.rs:2908:4
+     |
+2908 | fn search_iterative_deepening_impl_with_deadline(
+     |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `network_hash_for_transformer_width` is never used
+   --> haitaka_wasm/src/nnue.rs:150:10
+    |
+150 | const fn network_hash_for_transformer_width(
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+
+warning: `haitaka_wasm` (lib test) generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/haitaka_wasm-e5da4375d450b727)
+
+running 12 tests
+test sfnn::no_hand_diagnostics::heian_tests::ghost_capture_ledger_preserves_physical_pawn_through_canonical_gold_promotion ... ok
+test sfnn::search_range_test::sfnn_score_stays_outside_search_mate_range ... ignored, requires micro; explicit P2 score-range verification
+test sfnn_kernels::tests::kernels_match_scalar_at_wrap_clamp_and_tail_boundaries ... ok
+test sfnn_runtime_tests::sfnn_profile_switches_clear_tt_and_return_the_selected_arch ... ignored, requires both micro and mini; explicit P6 profile-switch verification
+test sfnn_runtime_tests::sfnn_runtime_contract ... ignored, requires micro; explicit P2 runtime verification
+test nnue_kernels::tests::affine_rows_and_padding_match_scalar ... ok
+test sfnn::heian_tests::discarded_captures_replace_board_features_with_missing_slots ... ok
+test heian_tests::repetition_and_models_and_dfpn_are_rule_aware ... ok
+test heian_tests::usi_promotion_and_capture_roundtrip_and_low_budget ... ok
+test heian_tests::selected_geometry_perft_and_direct_search_are_legal ... ok
+test heian_tests::rule_draw_has_zero_score_and_no_fallback_or_moves ... ok
+test nnue_kernels::tests::detected_kernel_matches_scalar_for_random_and_boundary_inputs ... ok
+
+test result: ok. 9 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.05s

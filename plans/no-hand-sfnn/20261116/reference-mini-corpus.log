@@ -1,0 +1,101 @@
+id name YaneuraOu NNUE 9.80git 64OTHER
+id author yaneurao
+option name Threads type spin default 4 min 1 max 1024
+option name NumaPolicy type string default auto
+option name USI_Ponder type check default false
+option name Stochastic_Ponder type check default false
+option name DepthLimit type spin default 0 min 0 max 2147483647
+option name NodesLimit type spin default 0 min 0 max 9223372036854775807
+option name DebugLogFile type string default <empty>
+option name USI_Hash type spin default 1024 min 1 max 33554432
+option name MultiPV type spin default 1 min 1 max 600
+option name DrawValueBlack type spin default -2 min -30000 max 30000
+option name DrawValueWhite type spin default -2 min -30000 max 30000
+option name ResignValue type spin default 99999 min 0 max 99999
+option name MaxMovesToDraw type spin default 0 min 0 max 100000
+option name PvInterval type spin default 300 min 0 max 100000000
+option name ConsiderationMode type check default false
+option name OutputFailLHPV type check default true
+option name GenerateAllLegalMoves type check default false
+option name EnteringKingRule type combo default CSARule27 var NoEnteringKing var CSARule24 var CSARule24H var CSARule27 var CSARule27H var TryRule
+option name NetworkDelay type spin default 120 min 0 max 10000
+option name NetworkDelay2 type spin default 1120 min 0 max 10000
+option name MinimumThinkingTime type spin default 2000 min 1 max 100000
+option name SlowMover type spin default 100 min 1 max 1000
+option name RoundUpToFullSecond type check default true
+option name USI_OwnBook type check default true
+option name NarrowBook type check default false
+option name BookMoves type spin default 16 min 0 max 10000
+option name BookIgnoreRate type spin default 0 min 0 max 100
+option name BookFile type combo default standard_book.db var no_book var standard_book.db var yaneura_book1.db var yaneura_book2.db var yaneura_book3.db var yaneura_book4.db var user_book1.db var user_book2.db var user_book3.db var book.bin
+option name BookDir type string default book
+option name BookEvalDiff type spin default 30 min 0 max 99999
+option name BookEvalBlackLimit type spin default 0 min -99999 max 99999
+option name BookEvalWhiteLimit type spin default -140 min -99999 max 99999
+option name BookDepthLimit type spin default 16 min 0 max 99999
+option name BookOnTheFly type check default false
+option name ConsiderBookMoveCount type check default false
+option name BookPvMoves type spin default 8 min 1 max 246
+option name IgnoreBookPly type check default false
+option name FlippedBook type check default true
+option name EvalDir type string default eval
+option name FV_SCALE type spin default 16 min 1 max 128
+usiok
+info string Using 1 thread
+info string read engine options, path = /home/na2hiro/proj/haitaka-variants/target/tuyouraou11/mini-model/eval_options.txt
+info string engine option override. name = FV_SCALE , value = 24
+info string loading eval file : /home/na2hiro/proj/haitaka-variants/target/tuyouraou11/mini-model/nn.bin
+info string loading progress file : /home/na2hiro/proj/haitaka-variants/target/tuyouraou11/mini-model/progress.bin
+info string USI_Hash : Start clearing with 1 threads , size =  16[MB]
+info string USI_Hash : Finish clearing.
+readyok
+P1REF -89565 -89565 -179130 0 -36
+P1REF -81975 -50029 -132004 0 -115
+P1REF -44047 -53671 -97718 1 -9
+P1REF -36429 -39923 -76352 1 294
+P1REF -61911 -45823 -107734 1 -135
+P1REF -53273 -44436 -97709 1 -322
+P1REF -73070 -81218 -154288 0 -46
+P1REF -43384 -54440 -97824 1 147
+P1REF -42244 -50883 -93127 1 -284
+P1REF -29336 -32537 -61873 2 -578
+P1REF -110710 -110710 -221420 0 39
+P1REF -105331 -70403 -175734 0 21
+P1REF -92907 -43874 -136781 0 920
+P1REF -96912 -60247 -157159 0 643
+P1REF -68974 -61293 -130267 0 355
+P1REF -51489 -45484 -96973 1 187
+P1REF -40122 20559 -19563 3 463
+P1REF -18681 16452 -2229 3 -176
+P1REF -7941 20077 12136 4 -758
+P1REF -97799 -77689 -175488 0 -432
+P1REF -55294 -57471 -112765 1 -1016
+P1REF -24634 -45048 -69682 2 -835
+P1REF -11723 -28509 -40232 2 34
+P1REF -11060 -13610 -24670 3 -196
+P1REF -4943 -9053 -13996 3 -201
+P1REF -7209 -19596 -26805 3 269
+P1REF 11707 -21032 -9325 3 33
+P1REF 8220 -1562 6658 4 984
+P1REF -101341 -88846 -190187 0 103
+P1REF -61570 -65341 -126911 1 556
+P1REF -52525 -58921 -111446 1 293
+P1REF -26033 -41972 -68005 2 174
+P1REF -30476 -21935 -52411 2 -107
+P1REF -4053 11254 7201 4 -69
+P1REF -7416 13750 6334 4 -167
+P1REF 755 18944 19699 4 -500
+P1REF 2527 14788 17315 4 -229
+P1REF 7118 13259 20377 4 107
+P1REF 21475 12130 33605 5 -304
+P1REF -78536 -80498 -159034 0 125
+P1REF -47478 -59457 -106935 1 -645
+P1REF -36400 -41986 -78386 1 -414
+P1REF -33367 -33379 -66746 2 -60
+P1REF -31842 -33189 -65031 2 209
+P1REF -13845 -14274 -28119 3 502
+P1REF -5812 -5381 -11193 3 7
+P1REF -6358 -6348 -12706 3 204
+P1REF -9924 -7129 -17053 3 214
+P1REF -1252 6141 4889 4 944
+P1REF 17168 19999 37167 5 1838

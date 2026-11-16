@@ -1,0 +1,13 @@
+{
+  "upstreamCommit": "7d9743646f1006ff6d84da45d6d6160048a5a416",
+  "edition": "mini",
+  "executableSha256": "e73dd2c34baac0fe2965033ca0b5bc505e09ba76a72678eef77ac91d6d8fb911",
+  "options": {
+    "Threads": 1,
+    "USI_Hash": 16,
+    "BookFile": "no_book",
+    "FV_SCALE": 24
+  },
+  "command": "test nn p1ref",
+  "selection": "position rows from both mini corpus files; canonical gold count <=4; unique SFEN; 10 Heian and 40 Fushiyo"
+}

@@ -1,0 +1,56 @@
+    Checking libc v0.2.184
+    Checking serde_core v1.0.228
+    Checking crossbeam-utils v0.8.21
+   Compiling haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-pr932/haitaka_types)
+    Checking either v1.15.0
+    Checking unicode-width v0.1.14
+    Checking plotters-backend v0.3.7
+    Checking once_cell v1.21.4
+    Checking regex-syntax v0.8.10
+    Checking itertools v0.10.5
+    Checking plotters-svg v0.3.7
+    Checking textwrap v0.11.0
+    Checking wasm-bindgen v0.2.118
+    Checking num-traits v0.2.19
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-pr932/haitaka)
+    Checking crossbeam-epoch v0.9.18
+    Checking crossbeam-deque v0.8.6
+    Checking rayon-core v1.13.0
+    Checking csv-core v0.1.13
+    Checking regex-automata v0.4.14
+    Checking getrandom v0.3.4
+    Checking half v1.8.3
+    Checking rand_core v0.9.5
+    Checking ryu v1.0.23
+    Checking bitflags v1.3.2
+    Checking same-file v1.0.6
+    Checking cast v0.3.0
+    Checking rand_chacha v0.9.0
+    Checking clap v2.34.0
+    Checking walkdir v2.5.0
+    Checking js-sys v0.3.95
+    Checking criterion-plot v0.4.5
+    Checking rayon v1.11.0
+    Checking plotters v0.3.7
+    Checking atty v0.2.14
+    Checking oorandom v11.1.5
+    Checking lazy_static v1.5.0
+    Checking rand v0.9.2
+    Checking serde v1.0.228
+    Checking serde_json v1.0.149
+    Checking regex v1.12.3
+    Checking csv v1.4.0
+    Checking serde_cbor v0.11.2
+    Checking tinytemplate v1.2.1
+    Checking criterion v0.3.6
+    Checking haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-pr932/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.96s

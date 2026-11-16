@@ -1,0 +1,66 @@
+{
+  "heian-micro": {
+    "initialOpponentPawnDeletionCount": 9,
+    "initialOpponentPawnDeletionMean": {
+      "delta": 45.111111111111114,
+      "zeroSlotDelta": 57.44444444444444,
+      "ghostHandDelta": 251.77777777777777
+    },
+    "initialOpponentPawnDeletionNegativeCount": 2,
+    "positions": 35,
+    "legalCaptureCount": 18,
+    "legalCaptureMedianGain": {
+      "actualGain": -146.0,
+      "zeroSlotGain": -65.5,
+      "ghostHandGain": -142.5
+    }
+  },
+  "heian-mini": {
+    "initialOpponentPawnDeletionCount": 9,
+    "initialOpponentPawnDeletionMean": {
+      "delta": 61,
+      "zeroSlotDelta": 56,
+      "ghostHandDelta": 195.88888888888889
+    },
+    "initialOpponentPawnDeletionNegativeCount": 2,
+    "positions": 35,
+    "legalCaptureCount": 18,
+    "legalCaptureMedianGain": {
+      "actualGain": 144.5,
+      "zeroSlotGain": 21.5,
+      "ghostHandGain": 295.5
+    }
+  },
+  "fushiyo-micro": {
+    "initialOpponentPawnDeletionCount": 9,
+    "initialOpponentPawnDeletionMean": {
+      "delta": 25,
+      "zeroSlotDelta": 30.11111111111111,
+      "ghostHandDelta": 235.44444444444446
+    },
+    "initialOpponentPawnDeletionNegativeCount": 3,
+    "positions": 42,
+    "legalCaptureCount": 34,
+    "legalCaptureMedianGain": {
+      "actualGain": -178.5,
+      "zeroSlotGain": -157.5,
+      "ghostHandGain": -32.0
+    }
+  },
+  "fushiyo-mini": {
+    "initialOpponentPawnDeletionCount": 9,
+    "initialOpponentPawnDeletionMean": {
+      "delta": 45.77777777777778,
+      "zeroSlotDelta": 52.44444444444444,
+      "ghostHandDelta": 291.55555555555554
+    },
+    "initialOpponentPawnDeletionNegativeCount": 1,
+    "positions": 42,
+    "legalCaptureCount": 34,
+    "legalCaptureMedianGain": {
+      "actualGain": -84.5,
+      "zeroSlotGain": -154.5,
+      "ghostHandGain": -31.0
+    }
+  }
+}

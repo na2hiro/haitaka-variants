@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import time
@@ -17,13 +18,27 @@ def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def summarize(out):
     rows=[];suites={}
+    conditions=json.loads((out/"match-conditions.json").read_text())
+    expected={f"{rule}-{name}" for rule,name,_ in conditions["cases"]}
+    assert {d.parent.name for d in out.glob("matches/*/self-play-report.json")} == expected
     for d in sorted(out.glob("matches/*")):
         report=d/"self-play-report.json"
         if not report.exists(): continue
         r=json.loads(report.read_text());games=[json.loads(s) for s in (d/"self-play-games.jsonl").read_text().splitlines()]
+        rule=d.name.split("-",1)[0]
+        assert r["git"]["commit"] == conditions["sourceCommit"] and not r["git"]["dirty"]
+        assert r["git"]["executableSha256"] == conditions["binaries"][f"{rule}-cli"]
+        assert r["engines"][0]["command"] == r["engines"][1]["command"]
+        assert r["engines"][1]["args"] == []
+        assert {g["gameIndex"] for g in games} == set(range(1,25))
         pairs=defaultdict(list)
         for g in games:
             assert g["failureState"] is None
+            assert len(g["moves"]) == g["plies"] <= conditions["maxPlies"]
+            for side in ["aBreakdown","bBreakdown"]:
+                assert g[side]["fallbacks"] == 0
+                if "-nodes-" in d.name:
+                    assert g[side]["requestedBudgetNodes"] == g[side]["consumedBudgetNodes"]
             assert g["pairIndex"]==(g["gameIndex"]-1)//2
             assert g["aColor"]==("black" if g["gameIndex"]%2 else "white")
             pairs[g["pairIndex"]].append(g)
@@ -39,9 +54,20 @@ def summarize(out):
     print(json.dumps(rows,ensure_ascii=False,indent=2),flush=True)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument("phase",choices=["run","summarize"]);p.add_argument("--output",type=Path,default=ROOT/"target/no-hand-diagnosis");p.add_argument("--model",type=Path);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument("phase",choices=["prepare","run","summarize"]);p.add_argument("--output",type=Path,default=ROOT/"target/no-hand-diagnosis");p.add_argument("--model",type=Path);a=p.parse_args()
     out=a.output.resolve()
     if a.phase=="summarize":summarize(out);return
+    if a.phase=="prepare":
+        assert not subprocess.check_output(["git","status","--porcelain","--untracked-files=no"],cwd=ROOT).strip(), "commit source before building"
+        assert not (out/"match-conditions.json").exists(), "use a fresh output directory"
+        (out/"bin").mkdir(parents=True,exist_ok=True)
+        for rule,features in [("standard","sfnn-diagnostics"),("heian","heian-9x9,sfnn-diagnostics"),("fushiyo","fushiyo,sfnn-diagnostics")]:
+            cmd=["cargo","build","--offline","--release","-p","haitaka_cli","-p","haitaka_wasm","--bin","haitaka_cli","--example","sfnn_no_hand_usi","--example","sfnn_no_hand_probe","--features",features]
+            with (out/f"{rule}-build.log").open("w") as log:
+                subprocess.run(cmd,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,check=True)
+            for source,name in [("haitaka_cli","cli"),("examples/sfnn_no_hand_usi","engine"),("examples/sfnn_no_hand_probe","probe")]:
+                shutil.copy2(ROOT/"target/release"/source,out/"bin"/f"{rule}-{name}")
+        return
     if not a.model:p.error("--model is required to run")
     model=a.model.resolve();assert sha(model/"nn.bin")=="7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb"
     assert sha(model/"progress.bin")=="a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
