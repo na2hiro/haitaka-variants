@@ -709,9 +709,9 @@ fn update_position_coverage(coverage: &mut Coverage, board: &Board) {
         coverage.terminal_adjacent += 1;
     }
     if [Color::Black, Color::White].iter().any(|&color| {
-        Piece::ALL[..Piece::HAND_NUM]
-            .iter()
-            .all(|&piece| board.num_in_hand(color, piece) == Piece::MAX_HAND[piece as usize])
+        Piece::ALL[..Piece::HAND_NUM].iter().all(|&piece| {
+            board.num_in_hand(color, piece) == u32::from(Piece::MAX_HAND[piece as usize])
+        })
     }) {
         coverage.maximum_legal_hands += 1;
     }
@@ -846,7 +846,7 @@ fn independent_material(board: &Board, color: Color) -> i32 {
             };
             value
                 * (board.colored_pieces(color, piece).len() as i32
-                    + i32::from(board.num_in_hand(color, piece)))
+                    + (board.num_in_hand(color, piece) as i32))
         })
         .sum()
 }
@@ -900,7 +900,7 @@ fn signature_for_board(board: &Board) -> PackedSignature {
     for &color in &[Color::Black, Color::White] {
         for &piece in &Piece::ALL[..Piece::HAND_NUM] {
             hands[trainer_color(color) as usize][trainer_piece_type(piece)] =
-                board.num_in_hand(color, piece);
+                u8::try_from(board.num_in_hand(color, piece)).expect("R1 inventory overflow");
         }
     }
     PackedSignature {

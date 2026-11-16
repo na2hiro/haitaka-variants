@@ -1579,7 +1579,7 @@ fn material(board: &Board, color: Color) -> i32 {
             };
             value
                 * (board.colored_pieces(color, piece).len() as i32
-                    + i32::from(board.num_in_hand(color, piece)))
+                    + (board.num_in_hand(color, piece) as i32))
         })
         .sum()
 }

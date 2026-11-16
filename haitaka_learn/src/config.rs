@@ -1073,12 +1073,17 @@ impl LoadedConfig {
     }
 
     pub fn effective_rule_id(&self) -> Result<u16> {
+        if let Some(id) = haitaka::hand_rules::single_rule_id(&self.runtime_mode()) {
+            return Ok(self.config.rules.rule_id.unwrap_or(id));
+        }
         if let Some(rule_id) = self.config.rules.rule_id {
             return Ok(rule_id);
         }
 
         if !self.config.rules.win_conditions.is_empty()
             || self.config.rules.movement_constraint.is_some()
+            || !self.config.rules.capture_rules.is_empty()
+            || self.config.rules.hand_rule != HandRule::Standard
         {
             bail!(
                 "rules.rule_id must be set for composite or auxiliary rule profile {}",
@@ -1219,10 +1224,17 @@ where
 }
 
 fn effective_rule_id_for(rules: &RulesConfig) -> Result<u16> {
+    if let Some(id) = haitaka::hand_rules::single_rule_id(&rules.profile().canonical_name()) {
+        return Ok(rules.rule_id.unwrap_or(id));
+    }
     if let Some(rule_id) = rules.rule_id {
         return Ok(rule_id);
     }
-    if !rules.win_conditions.is_empty() || rules.movement_constraint.is_some() {
+    if !rules.win_conditions.is_empty()
+        || rules.movement_constraint.is_some()
+        || !rules.capture_rules.is_empty()
+        || rules.hand_rule != HandRule::Standard
+    {
         bail!(
             "rules.rule_id must be set for composite or auxiliary rule profile {}",
             rules.profile().canonical_name()
@@ -1318,6 +1330,19 @@ pub struct LearnConfig {
 
 impl LearnConfig {
     fn validate(&self) -> Result<()> {
+        ensure!(
+            self.rules.hand_rule != HandRule::Zoshoku,
+            "zoshoku NNUE training is not supported"
+        );
+        ensure!(
+            self.rules.capture_rules.len() <= 1,
+            "rules.capture_rules contains duplicates"
+        );
+        ensure!(
+            !self.rules.win_conditions.contains(&WinCondition::Suika)
+                || self.rules.hand_rule == HandRule::Standard,
+            "suika is incompatible with other hand rules"
+        );
         let mut win_conditions = self.rules.win_conditions.clone();
         win_conditions.sort_unstable();
         win_conditions.dedup();
@@ -1325,9 +1350,15 @@ impl LearnConfig {
             win_conditions.len() == self.rules.win_conditions.len(),
             "rules.win_conditions must not contain duplicates"
         );
-        if !self.rules.win_conditions.is_empty() || self.rules.movement_constraint.is_some() {
+        if !self.rules.win_conditions.is_empty()
+            || self.rules.movement_constraint.is_some()
+            || !self.rules.capture_rules.is_empty()
+            || self.rules.hand_rule != HandRule::Standard
+        {
             ensure!(
-                self.rules.rule_id.is_some(),
+                self.rules.rule_id.is_some()
+                    || haitaka::hand_rules::single_rule_id(&self.rules.profile().canonical_name())
+                        .is_some(),
                 "rules.rule_id must be set for composite or auxiliary rule profiles"
             );
         }
@@ -1661,6 +1692,10 @@ pub struct RulesConfig {
     #[serde(default)]
     pub win_conditions: Vec<WinCondition>,
     #[serde(default)]
+    pub capture_rules: Vec<CaptureRule>,
+    #[serde(default)]
+    pub hand_rule: HandRule,
+    #[serde(default)]
     pub movement_constraint: Option<MovementConstraint>,
     #[serde(default)]
     pub rule_id: Option<u16>,
@@ -1679,6 +1714,8 @@ pub enum WinCondition {
     Shihonkangen,
     Ningenshogi,
     Tennouzan,
+    Tensuu,
+    Suika,
 }
 
 impl WinCondition {
@@ -1690,6 +1727,8 @@ impl WinCondition {
             Self::Shihonkangen => "shihonkangen",
             Self::Ningenshogi => "ningenshogi",
             Self::Tennouzan => "tennouzan",
+            Self::Tensuu => "tensuu",
+            Self::Suika => "suika",
         }
     }
 }
@@ -1714,6 +1753,8 @@ impl MovementConstraint {
 pub struct RuleProfile {
     pub ruleset: Ruleset,
     pub win_conditions: Vec<WinCondition>,
+    pub capture_rules: Vec<CaptureRule>,
+    pub hand_rule: HandRule,
     pub movement_constraint: Option<MovementConstraint>,
 }
 
@@ -1727,6 +1768,8 @@ impl RuleProfile {
             WinCondition::Shihonkangen,
             WinCondition::Ningenshogi,
             WinCondition::Tennouzan,
+            WinCondition::Tensuu,
+            WinCondition::Suika,
         ] {
             if self.win_conditions.contains(&condition) {
                 name.push('+');
@@ -1737,6 +1780,13 @@ impl RuleProfile {
             name.push('+');
             name.push_str(constraint.as_str());
         }
+        if self.capture_rules.contains(&CaptureRule::Nakamaware) {
+            name.push_str("+nakamaware");
+        }
+        if self.hand_rule != HandRule::Standard {
+            name.push('+');
+            name.push_str(self.hand_rule.as_str());
+        }
         name
     }
 }
@@ -1746,11 +1796,30 @@ impl RulesConfig {
         RuleProfile {
             ruleset: self.ruleset,
             win_conditions: self.win_conditions.clone(),
+            capture_rules: self.capture_rules.clone(),
+            hand_rule: self.hand_rule,
             movement_constraint: self.movement_constraint,
         }
     }
 
     fn ensure_auxiliary_features_match(&self) -> Result<()> {
+        ensure!(
+            !cfg!(feature = "zoshoku"),
+            "zoshoku NNUE training is not supported; use handcrafted play"
+        );
+        ensure!(
+            self.capture_rules == active_capture_rules(),
+            "rules.capture_rules does not match compiled features or contains duplicates"
+        );
+        ensure!(
+            self.hand_rule == active_hand_rule(),
+            "rules.hand_rule does not match compiled features"
+        );
+        ensure!(
+            !self.win_conditions.contains(&WinCondition::Suika)
+                || self.hand_rule == HandRule::Standard,
+            "suika is incompatible with other hand rules"
+        );
         let mut configured = self.win_conditions.clone();
         configured.sort_unstable();
         configured.dedup();
@@ -2521,6 +2590,8 @@ fn default_selection_top_k() -> usize {
 #[cfg(test)]
 pub(crate) fn active_rules_for_tests() -> RulesConfig {
     RulesConfig {
+        capture_rules: active_capture_rules(),
+        hand_rule: active_hand_rule(),
         ruleset: serde_json::from_value(serde_json::json!(
             active_variant_feature().unwrap_or("standard")
         ))
@@ -2582,6 +2653,12 @@ fn active_win_conditions() -> Vec<WinCondition> {
     }
     if cfg!(feature = "tennouzan") {
         conditions.push(WinCondition::Tennouzan);
+    }
+    if cfg!(feature = "tensuu") {
+        conditions.push(WinCondition::Tensuu);
+    }
+    if cfg!(feature = "suika") {
+        conditions.push(WinCondition::Suika);
     }
     conditions
 }
@@ -2791,6 +2868,8 @@ rule_id = 172
     #[test]
     fn composite_rule_profile_has_stable_canonical_name() {
         let rules = RulesConfig {
+            capture_rules: Vec::new(),
+            hand_rule: crate::config::HandRule::default(),
             ruleset: Ruleset::Annan,
             win_conditions: vec![WinCondition::Sanmaime, WinCondition::Oute],
             movement_constraint: Some(MovementConstraint::Igyoku),
@@ -2830,6 +2909,8 @@ rule_id = 123
     #[test]
     fn history_and_loss_conditions_have_stable_profile_names() {
         let rules = RulesConfig {
+            capture_rules: Vec::new(),
+            hand_rule: crate::config::HandRule::default(),
             ruleset: Ruleset::Standard,
             win_conditions: vec![
                 WinCondition::Ningenshogi,
@@ -3392,6 +3473,8 @@ validation_games = 1
                 hash_hex: "hash".to_string(),
                 config: LearnConfig {
                     rules: RulesConfig {
+                        capture_rules: Vec::new(),
+                        hand_rule: crate::config::HandRule::default(),
                         ruleset,
                         win_conditions: Vec::new(),
                         movement_constraint: None,
@@ -3418,6 +3501,8 @@ validation_games = 1
             hash_hex: "hash".to_string(),
             config: LearnConfig {
                 rules: RulesConfig {
+                    capture_rules: Vec::new(),
+                    hand_rule: crate::config::HandRule::default(),
                     ruleset: Ruleset::Handicap,
                     win_conditions: Vec::new(),
                     movement_constraint: None,
@@ -3465,5 +3550,97 @@ validation_games = 1
 
         assert!(loaded.path.is_absolute());
         assert_eq!(loaded.path, config_path.canonicalize().unwrap());
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CaptureRule {
+    Nakamaware,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HandRule {
+    #[default]
+    Standard,
+    Fushiyo,
+    Share,
+    Zoshoku,
+    Babanuki,
+}
+impl HandRule {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Standard => "standard",
+            Self::Fushiyo => "fushiyo",
+            Self::Share => "share",
+            Self::Zoshoku => "zoshoku",
+            Self::Babanuki => "babanuki",
+        }
+    }
+}
+fn active_capture_rules() -> Vec<CaptureRule> {
+    if cfg!(feature = "nakamaware") {
+        vec![CaptureRule::Nakamaware]
+    } else {
+        vec![]
+    }
+}
+fn active_hand_rule() -> HandRule {
+    if cfg!(feature = "fushiyo") {
+        HandRule::Fushiyo
+    } else if cfg!(feature = "share") {
+        HandRule::Share
+    } else if cfg!(feature = "zoshoku") {
+        HandRule::Zoshoku
+    } else if cfg!(feature = "babanuki") {
+        HandRule::Babanuki
+    } else {
+        HandRule::Standard
+    }
+}
+
+#[cfg(test)]
+mod hand_rule_tests {
+    use super::*;
+    #[test]
+    fn hand_rules_profile_and_single_identity() {
+        let rules = active_rules_for_tests();
+        if !cfg!(feature = "zoshoku") {
+            rules.ensure_auxiliary_features_match().unwrap();
+        }
+        let mut rules = rules;
+        rules.rule_id = None;
+        let profile = rules.profile().canonical_name();
+        if let Some(id) = haitaka::hand_rules::single_rule_id(&profile) {
+            assert_eq!(effective_rule_id_for(&rules).unwrap(), id);
+        }
+        rules.capture_rules = vec![CaptureRule::Nakamaware];
+        rules.hand_rule = HandRule::Share;
+        rules.ruleset = Ruleset::Annan;
+        rules.rule_id = Some(65001);
+        assert!(
+            rules
+                .profile()
+                .canonical_name()
+                .ends_with("+nakamaware+share")
+        );
+        assert_eq!(effective_rule_id_for(&rules).unwrap(), 65001);
+    }
+    #[test]
+    fn hand_rules_legacy_config_defaults_and_conflicts() {
+        let rules: RulesConfig = toml::from_str("ruleset='standard'").unwrap();
+        assert_eq!(rules.hand_rule, HandRule::Standard);
+        assert!(rules.capture_rules.is_empty());
+        let config: LearnConfig =
+            toml::from_str("[rules]\nruleset='standard'\nhand_rule='zoshoku'").unwrap();
+        assert!(
+            config
+                .validate()
+                .unwrap_err()
+                .to_string()
+                .contains("zoshoku")
+        );
     }
 }

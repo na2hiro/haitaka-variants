@@ -106,6 +106,8 @@ impl SfnnModel {
             }
         };
         if cfg!(any(
+            feature = "share",
+            feature = "zoshoku",
             feature = "annan",
             feature = "anhoku",
             feature = "antouzai",
@@ -215,6 +217,9 @@ impl SfnnModel {
         state: &SfnnPositionState,
         mv: Move,
     ) -> SfnnPositionState {
+        if cfg!(feature = "hand-category") {
+            return self.build_position_state_full(child);
+        }
         let mut next = state.clone();
         let mover = parent.side_to_move();
         let king_moved = match mv {
@@ -233,7 +238,7 @@ impl SfnnModel {
                         piece,
                         mover,
                         p,
-                        usize::from(parent.num_in_hand(mover, piece)) - 1,
+                        (parent.num_in_hand(mover, piece) as usize) - 1,
                     ));
                     added.push(board_index(piece, mover, to, p));
                 }
@@ -263,7 +268,7 @@ impl SfnnModel {
                             hand_piece,
                             mover,
                             p,
-                            usize::from(parent.num_in_hand(mover, hand_piece)),
+                            parent.num_in_hand(mover, hand_piece) as usize,
                         ));
                     }
                 }
@@ -367,7 +372,7 @@ fn bona_pieces(board: &Board) -> [Vec<usize>; 2] {
         Piece::Rook,
     ] {
         for color in Color::ALL {
-            for ordinal in 0..usize::from(board.num_in_hand(color, piece)) {
+            for ordinal in 0..board.num_in_hand(color, piece) as usize {
                 for p in 0..2 {
                     lists[p].push(hand_index(piece, color, p, ordinal));
                 }
@@ -542,6 +547,8 @@ mod tests {
         for arch in [MICRO_ARCH, MINI_ARCH] {
             let err = SfnnModel::from_bytes(&[], &[], arch).err().unwrap();
             if cfg!(any(
+                feature = "share",
+                feature = "zoshoku",
                 feature = "annan",
                 feature = "anhoku",
                 feature = "antouzai",
@@ -561,6 +568,43 @@ mod tests {
             }
         }
     }
+    #[cfg(feature = "suika")]
+    #[test]
+    fn suika_inputs_fit_existing_sfnn_features() {
+        fn check(board: &Board) {
+            for features in bona_pieces(board) {
+                assert_eq!(features.len(), 38);
+                assert!(features.iter().all(|&i| i < BONA_NONKING));
+                let real = features.into_iter().filter(|&i| i != 0).collect::<Vec<_>>();
+                let unique = real
+                    .iter()
+                    .copied()
+                    .collect::<std::collections::HashSet<_>>();
+                assert_eq!(real.len(), unique.len(), "feature alias in {board}");
+            }
+        }
+        // Suika accepts changed species counts, including more than two Rooks.
+        // Even the maximal parser-accepted 38-Rook board fits the same IDs.
+        for sfen in [
+            haitaka::SFEN_STARTPOS,
+            "8k/9/9/4p4/4R4/9/9/9/K8 b GSNLP 1",
+            "8k/RRRRRRRRR/RRRRRRRRR/RRRRRRRRR/RRRRRRRRR/RR7/9/9/K8 b - 1",
+            "8k/9/4P4/9/9/9/9/9/K8 b RBGSNLP 1",
+        ] {
+            let board = Board::from_sfen(sfen).unwrap();
+            check(&board);
+            check(&board.color_swapped());
+        }
+        let mut board = Board::from_sfen("8k/9/9/4p4/4R4/9/9/9/K8 b GSNLP 1").unwrap();
+        board.try_play("5e5d".parse().unwrap()).unwrap();
+        assert_eq!(board.num_in_hand(Color::Black, Piece::Bishop), 1);
+        assert_eq!(board.num_in_hand(Color::Black, Piece::Pawn), 0);
+        check(&board);
+        board.try_play("1a1b".parse().unwrap()).unwrap();
+        board.try_play("B*4f".parse().unwrap()).unwrap();
+        check(&board);
+    }
+
     #[test]
     fn leb128_checks() {
         fn payload(b: &[u8]) -> Vec<u8> {

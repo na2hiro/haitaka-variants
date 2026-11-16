@@ -1943,6 +1943,8 @@ impl UsiSession {
                     tt::MIN_HASH_MB,
                     tt::MAX_HASH_MB
                 ),
+                #[cfg(feature = "tesushogi")]
+                "option name MoveLimit type combo default 49 var 49 var 99 var 149".to_string(),
                 "usiok".to_string(),
             ],
             "isready" => {
@@ -1980,7 +1982,11 @@ impl UsiSession {
     }
 
     fn apply_position(&mut self, command: &str) -> Result<(), String> {
-        let (board, history) = parse_usi_position_with_history(command)?;
+        #[cfg(feature = "tesushogi")]
+        let move_limit = self.board.move_limit();
+        #[cfg(not(feature = "tesushogi"))]
+        let move_limit = 49;
+        let (board, history) = parse_usi_position_with_limit(command, move_limit)?;
         self.board = board;
         self.history = history;
         Ok(())
@@ -2004,6 +2010,21 @@ impl UsiSession {
         }
 
         let name = tokens[1..value_index].join(" ");
+        #[cfg(feature = "tesushogi")]
+        if name == "MoveLimit" {
+            if tokens.len() != value_index + 2 {
+                return Err("expected a single MoveLimit value".to_string());
+            }
+            let limit = tokens[value_index + 1]
+                .parse::<u16>()
+                .map_err(|_| "invalid MoveLimit value".to_string())?;
+            self.board.set_move_limit(limit).map_err(str::to_string)?;
+            // Repetition is disabled in this ruleset. Search only needs the
+            // current board, whose move number retains the elapsed plies.
+            self.history = PositionHistory::new(self.board.clone());
+            self.tt.clear();
+            return Ok(());
+        }
         if name != "Hash" {
             return Err(format!("unsupported option {name}"));
         }
@@ -2225,7 +2246,10 @@ impl UsiSession {
     }
 }
 
-fn parse_usi_position_with_history(command: &str) -> Result<(Board, PositionHistory), String> {
+fn parse_usi_position_with_limit(
+    command: &str,
+    _move_limit: u16,
+) -> Result<(Board, PositionHistory), String> {
     let rest = command
         .strip_prefix("position ")
         .ok_or_else(|| "expected position command".to_string())?;
@@ -2255,6 +2279,8 @@ fn parse_usi_position_with_history(command: &str) -> Result<(Board, PositionHist
         other => return Err(format!("unsupported position source {other}")),
     };
 
+    #[cfg(feature = "tesushogi")]
+    board.set_move_limit(_move_limit).map_err(str::to_string)?;
     let mut history = PositionHistory::new(board.clone());
     if index < tokens.len() {
         if tokens[index] != "moves" {
@@ -2364,7 +2390,7 @@ fn root_dfpn_options(timeout_ms: u32) -> DfpnOptions {
 }
 
 fn dfpn_budget_allows(timeout_ms: u32) -> bool {
-    SelectedRule::ALLOW_DFPN && (timeout_ms == 0 || timeout_ms >= 4)
+    SelectedRule::ALLOW_DFPN && !cfg!(feature = "tesushogi") && (timeout_ms == 0 || timeout_ms >= 4)
 }
 
 fn dfpn_reserved_alpha_beta_ms(timeout_ms: u32) -> u32 {
@@ -3573,6 +3599,15 @@ pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
 pub fn evaluate_nnue(sfen: &str) -> Result<i32, JsValue> {
     let board = Board::from_sfen(sfen)
         .map_err(|err| JsValue::from_str(&format!("failed to parse SFEN: {err}")))?;
+    if !has_both_kings(&board)
+        || Color::ALL
+            .into_iter()
+            .any(|c| board.num_in_hand(c, Piece::King) > 0)
+    {
+        return Err(JsValue::from_str(
+            "terminal King positions are not static NNUE inputs",
+        ));
+    }
     let EvaluationStrategy::Nnue { model, .. } = current_evaluation_strategy() else {
         return Err(JsValue::from_str("NNUE is not loaded"));
     };
@@ -3977,7 +4012,7 @@ fn quiescence(
         return Ok(score);
     }
 
-    let in_check = !board.checkers().is_empty();
+    let in_check = !haitaka::hand_rules::allows_ignored_check() && !board.checkers().is_empty();
     let mut stand_pat_for_delta = None;
     if !in_check {
         let stand_pat = evaluate_or_mate(board, ply, ctx, eval_state.as_ref());
@@ -4000,7 +4035,8 @@ fn quiescence(
     while let Some(picked) = tactical_picker.next() {
         let mv = picked.mv;
         if let Some(stand_pat) = stand_pat_for_delta {
-            if qply >= ctx.qsearch_limits.delta_min_qply
+            if !cfg!(feature = "hand-category")
+                && qply >= ctx.qsearch_limits.delta_min_qply
                 && stand_pat
                     .saturating_add(picked.tactical_score.optimistic_delta)
                     .saturating_add(ctx.qsearch_limits.delta_margin)
@@ -4348,17 +4384,15 @@ fn no_legal_moves_terminal_score(board: &Board, ply: i32) -> i32 {
     terminal_score_for_winner(board.side_to_move(), winner, ply)
 }
 
-fn material_score(board: &Board, color: Color) -> i32 {
-    let mut score = 0;
-
-    for &piece in &Piece::ALL {
-        score += board.colored_pieces(color, piece).len() as i32 * piece_value(piece);
+fn material_score(board: &Board, color: Color) -> i64 {
+    let mut score = 0i64;
+    for piece in Piece::ALL {
+        score +=
+            i64::from(board.colored_pieces(color, piece).len()) * i64::from(piece_value(piece));
     }
-
-    for &piece in &HAND_PIECES {
-        score += i32::from(board.num_in_hand(color, piece)) * piece_value(piece);
+    for piece in HAND_PIECES {
+        score += i64::from(board.num_in_hand(color, piece)) * i64::from(piece_value(piece));
     }
-
     score
 }
 
@@ -4386,8 +4420,10 @@ fn count_legal_moves(board: &Board) -> usize {
 pub fn handcrafted_static_eval(board: &Board) -> i32 {
     let us = board.side_to_move();
     let them = !us;
-    material_score(board, us) - material_score(board, them)
-        + MOBILITY_WEIGHT * (count_legal_moves(board) as i32 - opponent_mobility(board) as i32)
+    (material_score(board, us) - material_score(board, them)
+        + i64::from(MOBILITY_WEIGHT)
+            * (count_legal_moves(board) as i64 - opponent_mobility(board) as i64))
+        .clamp(-28_000, 28_000) as i32
 }
 
 fn record_move_try(ctx: &mut SearchContext<'_>, source: MoveSource) {
@@ -5901,7 +5937,7 @@ mod tests {
             return reference_handcrafted_eval(board, ply);
         }
 
-        let in_check = !board.checkers().is_empty();
+        let in_check = !haitaka::hand_rules::allows_ignored_check() && !board.checkers().is_empty();
         let mut stand_pat_for_delta = None;
         if !in_check {
             let stand_pat = reference_handcrafted_eval(board, ply);
@@ -6003,8 +6039,10 @@ mod tests {
             return no_legal_moves_terminal_score(board, ply);
         }
         let them = !us;
-        material_score(board, us) - material_score(board, them)
-            + MOBILITY_WEIGHT * (our_mobility - opponent_mobility(board) as i32)
+        (material_score(board, us) - material_score(board, them)
+            + i64::from(MOBILITY_WEIGHT)
+                * i64::from(our_mobility - opponent_mobility(board) as i32))
+        .clamp(-28_000, 28_000) as i32
     }
 
     #[cfg(not(any(

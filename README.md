@@ -262,3 +262,9 @@ Relevant references:
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+### Composable hand rules
+
+Capture, shared/no-use/double/cancelling hands, points, and Suika fusion can be
+combined with existing donor and outcome profiles. See
+[hand-rule configuration and compatibility](docs/hand-rules.md).

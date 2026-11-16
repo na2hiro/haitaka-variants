@@ -117,7 +117,11 @@ impl Board {
             if !board.piece_counts_are_valid() {
                 return Err(SFENParseError::InvalidBoard);
             }
-            board.piece_counts_make_valid();
+            // Nonstandard inventories have no meaningful "all remaining pieces"
+            // complement; use their explicitly supplied defensive hand.
+            if !cfg!(feature = "hand-category") {
+                board.piece_counts_make_valid();
+            }
             board.validate_after_parse(true)?;
             Ok(board)
         }
@@ -132,6 +136,8 @@ impl Board {
             checkers: BitBoard::EMPTY,
             pawnless_files: [BitBoard::FULL; Color::NUM],
             move_number: 0,
+            #[cfg(feature = "tesushogi")]
+            move_limit: 49,
             #[cfg(feature = "ningenshogi")]
             unmoved_pieces: BitBoard::EMPTY,
         };
@@ -233,16 +239,15 @@ impl Board {
                         .and_then(|n| n.checked_add(num))
                         .ok_or(())?;
                 } else if let Some((piece, color)) = Piece::try_from_char(c) {
-                    if piece as usize >= Piece::HAND_NUM
-                        || count > u32::from(Piece::MAX_HAND[piece as usize])
+                    if piece as usize > Piece::King as usize
+                        || board.num_in_hand(color, piece) != 0
+                        || (!cfg!(feature = "hand-category")
+                            && (piece as usize >= Piece::HAND_NUM
+                                || count > u32::from(Piece::MAX_HAND[piece as usize])))
                     {
                         return Err(()); // way... too large
                     }
-                    board.unchecked_set_hand(
-                        color,
-                        piece,
-                        if count > 0 { count as u8 } else { 1u8 },
-                    );
+                    board.unchecked_set_hand(color, piece, if count > 0 { count } else { 1 });
                     count = 0;
                     found = true;
                 } else {
@@ -356,7 +361,8 @@ impl Display for Board {
             // http://hgm.nubati.net/usi.html
             // "The pieces are always listed in the order rook, bishop, gold, silver, knight, lance, pawn;
             // and with all black pieces before all white pieces."
-            let pieces: [Piece; 7] = [
+            let pieces: [Piece; 8] = [
+                Piece::King,
                 Piece::Rook,
                 Piece::Bishop,
                 Piece::Gold,
