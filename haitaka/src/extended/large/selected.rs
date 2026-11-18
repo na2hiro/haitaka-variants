@@ -129,7 +129,6 @@ fn selected(
             }
             continue;
         }
-        #[cfg(feature = "taikyoku")]
         let mut jumps = 0;
         for step in start..=k {
             #[cfg(feature = "taikyoku")]
@@ -137,7 +136,9 @@ fn selected(
                 break;
             }
             let v = at_cell(p, now, ignore);
-            if v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id)) {
+            let exception = v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id));
+            // Ordinary ranging can capture these pieces; jumping cannot.
+            if exception && jumps > 0 {
                 break;
             }
             if step == k {
@@ -152,7 +153,9 @@ fn selected(
                 }
                 break;
             }
-            #[cfg(feature = "taikyoku")]
+            if exception {
+                break;
+            }
             if v.is_some() {
                 jumps += 1;
             }

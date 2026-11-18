@@ -152,6 +152,13 @@ fn generals_skip_lower_pieces_but_cannot_land_on_or_cross_exceptions() {
     assert!(!ms.contains(&mv([8, 8], &[[8, 1]], false)));
 }
 #[test]
+fn generals_can_capture_exceptions_without_jumping() {
+    let g = game(&[([8, 8], "fk", 0), ([8, 2], "ah", 1)], false);
+    let ms = g.moves();
+    assert!(ms.contains(&mv([8, 8], &[[8, 2]], false)));
+    assert!(!ms.contains(&mv([8, 8], &[[8, 1]], false)));
+}
+#[test]
 fn passing_a_promotable_lion_can_promote_after_one_or_two_hops() {
     let g = game(&[([8, 6], "bl", 0)], false);
     assert!(g.moves().contains(&mv([8, 6], &[[8, 5]], true)));
