@@ -523,7 +523,6 @@ fn targets_selected(
         } else {
             1
         };
-        #[cfg(feature = "taikyoku")]
         let mut jumps = 0;
         for _ in 0..max {
             #[cfg(feature = "taikyoku")]
@@ -531,7 +530,9 @@ fn targets_selected(
                 break;
             }
             let v = at_cell(p, now, ignore);
-            if v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id)) {
+            let exception = v.is_some_and(|v| m.exceptions.contains(&Pos::def(v).id));
+            // Ordinary ranging can capture these pieces; jumping cannot.
+            if exception && jumps > 0 {
                 break;
             }
             if wanted.is_none_or(|w| w == now) {
@@ -558,7 +559,9 @@ fn targets_selected(
                     }
                 }
             }
-            #[cfg(feature = "taikyoku")]
+            if exception {
+                break;
+            }
             if v.is_some() {
                 jumps += 1;
             }

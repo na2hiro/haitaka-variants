@@ -3303,150 +3303,6 @@ const MOVEMENT: &[Movement] = &[
     Movement {
         root: &[
             Primitive {
-                delta: (3, -3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (0, -3),
-                kind: 27,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (0, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (0, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (-3, -3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (2, -2),
-                kind: 21,
-                limit: 0,
-                skip: 0,
-                next: 11,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (0, -2),
-                kind: 20,
-                limit: 0,
-                skip: 0,
-                next: 10,
-                occupied: &[Requirement {
-                    delta: (0, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (-2, -2),
-                kind: 19,
-                limit: 0,
-                skip: 0,
-                next: 9,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (1, -1),
-                kind: 13,
-                limit: 0,
-                skip: 0,
-                next: 3,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (0, -1),
-                kind: 12,
-                limit: 0,
-                skip: 0,
-                next: 2,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (-1, -1),
-                kind: 11,
-                limit: 0,
-                skip: 0,
-                next: 1,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (3, 0),
-                kind: 26,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, 0),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, 0),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (2, 0),
-                kind: 22,
-                limit: 0,
-                skip: 0,
-                next: 8,
-                occupied: &[Requirement {
-                    delta: (-1, 0),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (1, 0),
-                kind: 14,
-                limit: 0,
-                skip: 0,
-                next: 4,
-                occupied: &[],
-            },
-            Primitive {
                 delta: (-1, 0),
                 kind: 10,
                 limit: 0,
@@ -3460,27 +3316,111 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 8,
-                occupied: &[Requirement {
-                    delta: (-1, 0),
-                    kind: 1,
-                }],
+                occupied: &[],
             },
             Primitive {
                 delta: (-3, 0),
-                kind: 26,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, 0),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, 0),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, -1),
+                kind: 11,
+                limit: 0,
+                skip: 0,
+                next: 1,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-2, -2),
+                kind: 19,
+                limit: 0,
+                skip: 0,
+                next: 9,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-3, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -1),
+                kind: 12,
+                limit: 0,
+                skip: 0,
+                next: 2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -2),
+                kind: 20,
+                limit: 0,
+                skip: 0,
+                next: 10,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, -1),
+                kind: 13,
+                limit: 0,
+                skip: 0,
+                next: 3,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, -2),
+                kind: 21,
+                limit: 0,
+                skip: 0,
+                next: 11,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 0),
+                kind: 14,
+                limit: 0,
+                skip: 0,
+                next: 4,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, 0),
+                kind: 22,
+                limit: 0,
+                skip: 0,
+                next: 8,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -3488,6 +3428,22 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 5,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, 2),
+                kind: 23,
+                limit: 0,
+                skip: 0,
+                next: 9,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, 3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
                 occupied: &[],
             },
             Primitive {
@@ -3499,6 +3455,22 @@ const MOVEMENT: &[Movement] = &[
                 occupied: &[],
             },
             Primitive {
+                delta: (0, 2),
+                kind: 24,
+                limit: 0,
+                skip: 0,
+                next: 10,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, 3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
                 delta: (-1, 1),
                 kind: 17,
                 limit: 0,
@@ -3507,88 +3479,20 @@ const MOVEMENT: &[Movement] = &[
                 occupied: &[],
             },
             Primitive {
-                delta: (2, 2),
-                kind: 23,
-                limit: 0,
-                skip: 0,
-                next: 9,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (0, 2),
-                kind: 24,
-                limit: 0,
-                skip: 0,
-                next: 10,
-                occupied: &[Requirement {
-                    delta: (0, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
                 delta: (-2, 2),
                 kind: 25,
                 limit: 0,
                 skip: 0,
                 next: 11,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (3, 3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (0, 3),
-                kind: 27,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (0, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (0, -2),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
             },
             Primitive {
                 delta: (-3, 3),
-                kind: 28,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
             },
         ],
         states: &[
@@ -3609,6 +3513,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (-2, 0),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -3622,6 +3534,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (1, 1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (-2, -2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -3645,6 +3565,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (0, -2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -3658,6 +3586,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (-1, 1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (2, -2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -3681,6 +3617,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (2, 0),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -3694,6 +3638,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (-1, -1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (2, 2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -3717,6 +3669,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (0, 2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -3735,10 +3695,18 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (-2, 2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
-                    delta: (1, 0),
+                    delta: (-1, 0),
                     kind: 1,
                     limit: 0,
                     skip: 0,
@@ -3746,7 +3714,7 @@ const MOVEMENT: &[Movement] = &[
                     occupied: &[],
                 },
                 Primitive {
-                    delta: (-1, 0),
+                    delta: (1, 0),
                     kind: 1,
                     limit: 0,
                     skip: 0,
@@ -6734,150 +6702,6 @@ const MOVEMENT: &[Movement] = &[
     Movement {
         root: &[
             Primitive {
-                delta: (3, -3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (0, -3),
-                kind: 27,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (0, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (0, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (-3, -3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (2, -2),
-                kind: 21,
-                limit: 0,
-                skip: 0,
-                next: 11,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (0, -2),
-                kind: 20,
-                limit: 0,
-                skip: 0,
-                next: 10,
-                occupied: &[Requirement {
-                    delta: (0, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (-2, -2),
-                kind: 19,
-                limit: 0,
-                skip: 0,
-                next: 9,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (1, -1),
-                kind: 13,
-                limit: 0,
-                skip: 0,
-                next: 3,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (0, -1),
-                kind: 12,
-                limit: 0,
-                skip: 0,
-                next: 2,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (-1, -1),
-                kind: 11,
-                limit: 0,
-                skip: 0,
-                next: 1,
-                occupied: &[],
-            },
-            Primitive {
-                delta: (3, 0),
-                kind: 26,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, 0),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, 0),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (2, 0),
-                kind: 22,
-                limit: 0,
-                skip: 0,
-                next: 8,
-                occupied: &[Requirement {
-                    delta: (-1, 0),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (1, 0),
-                kind: 14,
-                limit: 0,
-                skip: 0,
-                next: 4,
-                occupied: &[],
-            },
-            Primitive {
                 delta: (-1, 0),
                 kind: 10,
                 limit: 0,
@@ -6891,27 +6715,111 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 8,
-                occupied: &[Requirement {
-                    delta: (-1, 0),
-                    kind: 1,
-                }],
+                occupied: &[],
             },
             Primitive {
                 delta: (-3, 0),
-                kind: 26,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, 0),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, 0),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-1, -1),
+                kind: 11,
+                limit: 0,
+                skip: 0,
+                next: 1,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-2, -2),
+                kind: 19,
+                limit: 0,
+                skip: 0,
+                next: 9,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (-3, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -1),
+                kind: 12,
+                limit: 0,
+                skip: 0,
+                next: 2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -2),
+                kind: 20,
+                limit: 0,
+                skip: 0,
+                next: 10,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, -1),
+                kind: 13,
+                limit: 0,
+                skip: 0,
+                next: 3,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, -2),
+                kind: 21,
+                limit: 0,
+                skip: 0,
+                next: 11,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, -3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (1, 0),
+                kind: 14,
+                limit: 0,
+                skip: 0,
+                next: 4,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, 0),
+                kind: 22,
+                limit: 0,
+                skip: 0,
+                next: 8,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, 0),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
             },
             Primitive {
                 delta: (1, 1),
@@ -6919,6 +6827,22 @@ const MOVEMENT: &[Movement] = &[
                 limit: 0,
                 skip: 0,
                 next: 5,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (2, 2),
+                kind: 23,
+                limit: 0,
+                skip: 0,
+                next: 9,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (3, 3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
                 occupied: &[],
             },
             Primitive {
@@ -6930,6 +6854,22 @@ const MOVEMENT: &[Movement] = &[
                 occupied: &[],
             },
             Primitive {
+                delta: (0, 2),
+                kind: 24,
+                limit: 0,
+                skip: 0,
+                next: 10,
+                occupied: &[],
+            },
+            Primitive {
+                delta: (0, 3),
+                kind: 1,
+                limit: 0,
+                skip: 0,
+                next: -2,
+                occupied: &[],
+            },
+            Primitive {
                 delta: (-1, 1),
                 kind: 17,
                 limit: 0,
@@ -6938,88 +6878,20 @@ const MOVEMENT: &[Movement] = &[
                 occupied: &[],
             },
             Primitive {
-                delta: (2, 2),
-                kind: 23,
-                limit: 0,
-                skip: 0,
-                next: 9,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (0, 2),
-                kind: 24,
-                limit: 0,
-                skip: 0,
-                next: 10,
-                occupied: &[Requirement {
-                    delta: (0, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
                 delta: (-2, 2),
                 kind: 25,
                 limit: 0,
                 skip: 0,
                 next: 11,
-                occupied: &[Requirement {
-                    delta: (-1, -1),
-                    kind: 1,
-                }],
-            },
-            Primitive {
-                delta: (3, 3),
-                kind: 28,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
-            },
-            Primitive {
-                delta: (0, 3),
-                kind: 27,
-                limit: 0,
-                skip: 0,
-                next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (0, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (0, -2),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
             },
             Primitive {
                 delta: (-3, 3),
-                kind: 28,
+                kind: 1,
                 limit: 0,
                 skip: 0,
                 next: -2,
-                occupied: &[
-                    Requirement {
-                        delta: (-1, -1),
-                        kind: 1,
-                    },
-                    Requirement {
-                        delta: (-2, -2),
-                        kind: 1,
-                    },
-                ],
+                occupied: &[],
             },
         ],
         states: &[
@@ -7040,6 +6912,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (-2, 0),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -7053,6 +6933,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (1, 1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (-2, -2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -7076,6 +6964,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (0, -2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -7089,6 +6985,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (-1, 1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (2, -2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -7112,6 +7016,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (2, 0),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -7125,6 +7037,14 @@ const MOVEMENT: &[Movement] = &[
                 Primitive {
                     delta: (-1, -1),
                     kind: 11,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
+                Primitive {
+                    delta: (2, 2),
+                    kind: 1,
                     limit: 0,
                     skip: 0,
                     next: -1,
@@ -7148,6 +7068,14 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (0, 2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
@@ -7166,10 +7094,18 @@ const MOVEMENT: &[Movement] = &[
                     next: -1,
                     occupied: &[],
                 },
+                Primitive {
+                    delta: (-2, 2),
+                    kind: 1,
+                    limit: 0,
+                    skip: 0,
+                    next: -1,
+                    occupied: &[],
+                },
             ],
             &[
                 Primitive {
-                    delta: (1, 0),
+                    delta: (-1, 0),
                     kind: 1,
                     limit: 0,
                     skip: 0,
@@ -7177,7 +7113,7 @@ const MOVEMENT: &[Movement] = &[
                     occupied: &[],
                 },
                 Primitive {
-                    delta: (-1, 0),
+                    delta: (1, 0),
                     kind: 1,
                     limit: 0,
                     skip: 0,
