@@ -2238,7 +2238,7 @@ const PIECES: &[PieceDef] = &[
         base: 60,
         royal: false,
         dead_ranks: 0,
-        value: 330,
+        value: 400,
     },
     PieceDef {
         id: "cw",
@@ -3748,7 +3748,7 @@ const PIECES: &[PieceDef] = &[
         base: 14,
         royal: false,
         dead_ranks: 0,
-        value: 330,
+        value: 400,
     },
     PieceDef {
         id: "vw",
@@ -3758,7 +3758,7 @@ const PIECES: &[PieceDef] = &[
         base: 60,
         royal: false,
         dead_ranks: 0,
-        value: 330,
+        value: 400,
     },
     PieceDef {
         id: "cw",
@@ -21244,7 +21244,7 @@ const MOVEMENT: &[Movement] = &[
         root: &[
             Primitive {
                 delta: (0, -1),
-                kind: 1,
+                kind: 2,
                 limit: 0,
                 skip: 0,
                 next: -2,
@@ -33609,7 +33609,7 @@ const MOVEMENT: &[Movement] = &[
         root: &[
             Primitive {
                 delta: (0, -1),
-                kind: 1,
+                kind: 2,
                 limit: 0,
                 skip: 0,
                 next: -2,
@@ -33658,7 +33658,7 @@ const MOVEMENT: &[Movement] = &[
         root: &[
             Primitive {
                 delta: (0, -1),
-                kind: 1,
+                kind: 2,
                 limit: 0,
                 skip: 0,
                 next: -2,
