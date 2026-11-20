@@ -1,0 +1,28 @@
+{
+  "sourceCommit": "feb12d6b448ecaede97983bf91911f2b27b4b43a",
+  "startedUtc": "2026-11-16T08:30:53.063249+00:00",
+  "games": 100,
+  "movetimeMs": 100,
+  "maxPlies": 512,
+  "threads": 4,
+  "seed": 330011,
+  "openingRandomPlies": 8,
+  "runtime": "native CPU",
+  "maxDepth": 64,
+  "modelSha256": {
+    "micro": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
+    "mini": "45323c65135da65d6c2c364eea93a5af6a285c27ebfb07eab4afbe737ef74508",
+    "progress": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1"
+  },
+  "cliSha256": "d7e9054ebdde2156c05ce66ca7a578f28fc203c544b53a0f8ce091eb1b613d65",
+  "engineSha256": "19d064295b29a8788427b71a991001b2a1c135055a308ba65dd94b54ea3baaa6",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "platform": "Linux ubuntu 7.0.0-31-generic #31-Ubuntu SMP PREEMPT_DYNAMIC Sat Aug  1 04:26:38 UTC 2026 x86_64 GNU/Linux",
+  "cpuAffinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "cpuModel": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz"
+}

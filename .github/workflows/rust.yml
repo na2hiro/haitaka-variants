@@ -119,6 +119,9 @@ jobs:
     - uses: actions/checkout@v4
     - run: cargo test -p haitaka --test hand_rules --features ${{ matrix.rule }}
     - run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} hand_rules
+    - name: Check no-hand diagnostic capture history
+      if: matrix.rule == 'fushiyo'
+      run: cargo test -p haitaka_wasm --lib --features fushiyo,sfnn-diagnostics ghost_capture
     - name: Check SFNN compatibility for each hand rule
       run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} sfnn::tests
     - run: cargo test -p haitaka_cli --features ${{ matrix.rule }} hand_rules
@@ -138,3 +141,21 @@ jobs:
         if cargo check -p haitaka --features share,suika; then exit 1; fi
         if cargo check -p haitaka --features fushiyo,babanuki; then exit 1; fi
         if cargo check -p haitaka --features hand-category; then exit 1; fi
+
+
+  heian-sfnn:
+    name: Heian SFNN compatibility (${{ matrix.rule }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rule: [heian-8x8, heian-9x8, heian-9x9]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check Heian rules and capture-discard behavior
+      run: cargo test -p haitaka --features ${{ matrix.rule }} --test heian
+    - name: Check SFNN eligibility, terminal handling and synthetic deltas
+      run: cargo test -p haitaka_wasm --features ${{ matrix.rule }} --lib heian
+    - name: Check Heian diagnostic capture history
+      if: matrix.rule == 'heian-9x9'
+      run: cargo test -p haitaka_wasm --lib --features heian-9x9,sfnn-diagnostics ghost_capture

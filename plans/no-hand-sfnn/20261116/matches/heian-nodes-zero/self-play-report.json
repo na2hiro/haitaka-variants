@@ -1,0 +1,136 @@
+{
+  "schema": "haitaka-self-play-report",
+  "schemaVersion": 3,
+  "generatedAtUnixSeconds": 1794822247,
+  "package": {
+    "name": "haitaka_cli",
+    "version": "0.1.0"
+  },
+  "git": {
+    "commit": "e389b0d5842f89513951ce96b90e301eecf7abd5",
+    "dirty": false,
+    "executableSha256": "b0b590668c189df64d143e6b943d5afdd2078f6c7eeb84dc8f06cc14a3931cfb"
+  },
+  "ruleset": "heian-9x9",
+  "command": {
+    "games": 24,
+    "threads": 4,
+    "aDepth": null,
+    "bDepth": null,
+    "movetimeMs": null,
+    "nodesPerMove": 4096,
+    "nodeCountingVersion": "alpha-beta-plus-qsearch-v2",
+    "sfen": null,
+    "openings": null,
+    "openingOrder": "sequential",
+    "openingUnit": "pair",
+    "openingRandomPlies": 8,
+    "seed": 330011,
+    "maxPlies": 512
+  },
+  "engines": [
+    {
+      "label": "A",
+      "kind": "external-usi",
+      "budget": "nodes_per_move=4096 max_depth=64 counting=alpha-beta-plus-qsearch-v2",
+      "command": "/home/na2hiro/proj/haitaka-pr932/target/no-hand-diagnosis/bin/heian-engine",
+      "args": [
+        "--model-dir",
+        "/home/na2hiro/proj/haitaka-variants/target/tuyouraou11/model",
+        "--zero-missing-slot"
+      ],
+      "nnue": null
+    },
+    {
+      "label": "B",
+      "kind": "external-usi",
+      "budget": "nodes_per_move=4096 max_depth=64 counting=alpha-beta-plus-qsearch-v2",
+      "command": "/home/na2hiro/proj/haitaka-pr932/target/no-hand-diagnosis/bin/heian-engine",
+      "args": [],
+      "nnue": null
+    }
+  ],
+  "summary": {
+    "games": 24,
+    "aWins": 0,
+    "bWins": 23,
+    "draws": 1,
+    "decidedGames": 23,
+    "aScore": 0.5,
+    "scoreRate": 0.020833333333333332,
+    "approxElo": -668.839143174287,
+    "approxElo95Ci": [
+      -798.2540778390199,
+      -429.11325986693373
+    ],
+    "pairCount": 12,
+    "pairScoreBins": [
+      11,
+      1,
+      0,
+      0,
+      0
+    ],
+    "pairedElo": -668.839143174287,
+    "pairedElo95Ci": [
+      -1016.5704185569077,
+      -321.10786779166625
+    ],
+    "avgPlies": 166.125,
+    "totalNodes": 7277593,
+    "requestedBudgetNodes": 16330752,
+    "consumedBudgetNodes": 16330752,
+    "alphaBetaNodes": 7277593,
+    "completedDepth": 5,
+    "incompleteIterations": 3987,
+    "nodeBudgetCapHits": 3987,
+    "fallbacks": 0,
+    "totalElapsedMs": 30473.453111999992,
+    "aggregateNps": 238817.47084101188,
+    "qnodes": 9053159,
+    "aggregateQnps": 297083.46365364816,
+    "qsearchMaxPly": 8,
+    "qsearchCapHits": 39449,
+    "qsearchCheckMoveTries": 241125,
+    "qsearchDeltaPrunes": 188518,
+    "aBreakdown": {
+      "totalNodes": 3625550,
+      "requestedBudgetNodes": 8142848,
+      "consumedBudgetNodes": 8142848,
+      "alphaBetaNodes": 3625550,
+      "completedDepth": 5,
+      "incompleteIterations": 1988,
+      "nodeBudgetCapHits": 1988,
+      "fallbacks": 0,
+      "totalElapsedMs": 21527.518286000002,
+      "aggregateNps": 168414.675200058,
+      "qnodes": 4517298,
+      "aggregateQnps": 209838.30741594287,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 7714,
+      "qsearchCheckMoveTries": 146047,
+      "qsearchDeltaPrunes": 87857
+    },
+    "bBreakdown": {
+      "totalNodes": 3652043,
+      "requestedBudgetNodes": 8187904,
+      "consumedBudgetNodes": 8187904,
+      "alphaBetaNodes": 3652043,
+      "completedDepth": 4,
+      "incompleteIterations": 1999,
+      "nodeBudgetCapHits": 1999,
+      "fallbacks": 0,
+      "totalElapsedMs": 8945.934825999999,
+      "aggregateNps": 408234.92133945494,
+      "qnodes": 4535861,
+      "aggregateQnps": 507030.4097026518,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 31735,
+      "qsearchCheckMoveTries": 95078,
+      "qsearchDeltaPrunes": 100661
+    },
+    "warnings": [
+      "low sample: Elo and confidence interval are approximate"
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "sourceCommit": "e389b0d5842f89513951ce96b90e301eecf7abd5",
+  "createdUtc": "2026-11-16T09:42:12.102652+00:00",
+  "gamesPerCase": 24,
+  "pairsPerCase": 12,
+  "maxPlies": 512,
+  "seed": 330011,
+  "randomOpeningPlies": 8,
+  "movetimeMs": 100,
+  "nodesPerMove": 4096,
+  "threads": 4,
+  "cpuAffinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "modelSha256": "7f9545dbf73b87acf312146daabf59c4f17d0845c87d587fa19caed51707dddb",
+  "progressSha256": "a2d18f0564639c945b5d6469e9b437cd64a526ad4fbcef02ab1d8f547d08e5f1",
+  "binaries": {
+    "fushiyo-engine": "48cc86e09ccdbadab112975012d9458797d386741959d67067e7d89b141e7eb6",
+    "heian-engine": "9accdb31d126387b4369e9f04de8da659ab630a98ac5bf57b9f4aeedeb0ae880",
+    "standard-engine": "56b9b81786a5df4abb974b4e7e5dc486e91fa1fa5ea7ce53b017060454944c04",
+    "fushiyo-cli": "27514b01e1fffabb6eea59b1fb89e292345eb3025c8d42e678613bdc5b45f9a4",
+    "heian-cli": "b0b590668c189df64d143e6b943d5afdd2078f6c7eeb84dc8f06cc14a3931cfb",
+    "standard-cli": "689f856f9f657184825eba338703fa66440117be62e2d609c6d027f5fd61e155"
+  },
+  "cases": [
+    [
+      "standard",
+      "nodes-baseline",
+      []
+    ],
+    [
+      "heian",
+      "time-baseline",
+      []
+    ],
+    [
+      "heian",
+      "nodes-baseline",
+      []
+    ],
+    [
+      "heian",
+      "nodes-ghost",
+      [
+        "--ghost-hands"
+      ]
+    ],
+    [
+      "heian",
+      "nodes-zero",
+      [
+        "--zero-missing-slot"
+      ]
+    ],
+    [
+      "fushiyo",
+      "time-baseline",
+      []
+    ],
+    [
+      "fushiyo",
+      "nodes-baseline",
+      []
+    ],
+    [
+      "fushiyo",
+      "nodes-ghost",
+      [
+        "--ghost-hands"
+      ]
+    ],
+    [
+      "fushiyo",
+      "nodes-zero",
+      [
+        "--zero-missing-slot"
+      ]
+    ]
+  ]
+}
