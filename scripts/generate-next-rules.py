@@ -33,13 +33,23 @@ for q in json.loads(a.input.read_text()):
     if priority > a.through: continue
     rule = q['rule']; w, h = rule['size']; bases = list(rule['nari'])
     entries = list(dict.fromkeys(bases + [v for v in rule['nari'].values() if v]))
-    defs = {d['species']: d for d in q['pieces']}; ix = {v: i for i, v in enumerate(entries)}
+    defs = {d['species']: d for d in q['pieces']}
+    if rid == 30:
+        # The JSON protocol uses the ordinary promoted silver for both origins.
+        bases = [id for id in bases if id != '1h']
+        entries = [id for id in entries if id not in ('1h', '1i')]
+        entries.append('1h')
+        defs['1h'] = defs['ad']
+    ix = {v: i for i, v in enumerate(entries)}
     base = {v: v for v in bases}
     for source, target in rule['nari'].items():
         if target:
             assert target not in base, (rid, target)
             base[target] = source
-    inv = collections.Counter(c[1] for f in q['initial']['ban'] for c in f if c)
+    inv = collections.Counter(
+        'ad' if rid == 30 and c[1] == '1h' else c[1]
+        for f in q['initial']['ban'] for c in f if c
+    )
     prefix = cls.upper()
     text += [f'#[cfg(feature = "{name}")]', f'const {prefix}_PIECES: &[PieceDef] = &[']
     for id in entries:
@@ -50,14 +60,20 @@ for q in json.loads(a.input.read_text()):
             (steps if move['type'] in [1,8] else rays).append(move['move'])
         dead_moves = [m['move'] for m in d['move']]
         dead = next((y for y in range(h) if any(0 <= w//2+dx < w and 0 <= y+dy < h for dx,dy in dead_moves)), h)
-        promotion = rule['nari'].get(id)
+        # The protected silver is a board-only face of the same physical piece.
+        base_id = 'ad' if id == '1h' else id
+        promotion = rule['nari'].get(base_id)
         promo = f'Some(PieceId({ix[promotion]}))' if promotion else 'None'
-        value = {'aa':100,'ab':300,'ac':300,'ad':450,'ae':550,'af':750,'ag':900,'ah':2500,'bg':100,'bh':500,'bi':400,'bj':2500}.get(id, 350+80*len(rays)+20*len(steps))
-        text.append(f'piece!("{id}", {fmt(steps)}, {fmt(rays)}, {promo}, {bases.index(base[id])}, {str(id in rule["winkoma"]).lower()}, {dead}, {value}),')
+        value = {'aa':100,'ab':300,'ac':300,'ad':450,'ae':550,'af':750,'ag':900,'ah':2500,'bg':100,'bh':500,'bi':400,'bj':2500}.get(base_id, 350+80*len(rays)+20*len(steps))
+        text.append(f'piece!("{id}", {fmt(steps)}, {fmt(rays)}, {promo}, {bases.index(base[base_id])}, {str(id in rule["winkoma"]).lower()}, {dead}, {value}),')
     text += ['];', f'#[cfg(feature = "{name}")]', f'const {prefix}_INITIAL: &[([u16;2], &str, u8)] = &[']
     for x, file in enumerate(q['initial']['ban']):
         for y, c in enumerate(file):
-            if c: text.append(f'([{x+1},{y+1}], "{c[1]}", {c[0]}),')
+            if c:
+                color, id = c[:2]
+                if rid == 30 and color == 1 and id == 'ad':
+                    id = '1h'
+                text.append(f'([{x+1},{y+1}], "{id}", {color}),')
     text += ['];', f'#[cfg(feature = "{name}")]', f'ordinary_rule!({cls}, {rid}, "{name}", {w}, {h}, {prefix}_PIECES, {prefix}_INITIAL, &[{",".join(str(inv[b]) for b in bases)}], {('NoHands' if rid==103 else 'Hands<'+str(len(entries))+'>')}, {1 if rid==17 else 3});']
     manifest.append({'ruleId':rid,'name':name,'width':w,'height':h,'royals':rule['winkoma'],'useHands':rid != 103,'lion':rid in [22,117],'pieces':[{'id':id} for id in entries],'handIds':bases})
 root.joinpath('haitaka/src/extended/classical/ordinary_defs.rs').write_text('\n'.join(text)+'\n')

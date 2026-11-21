@@ -1253,6 +1253,16 @@ const TORAZUGIN_PIECES: &[PieceDef] = &[
         0,
         750
     ),
+    piece!(
+        "1h",
+        &[(1, -1), (0, -1), (-1, -1), (1, 1), (-1, 1)],
+        &[],
+        Some(PieceId(11)),
+        3,
+        false,
+        0,
+        450
+    ),
 ];
 #[cfg(feature = "torazu-gin")]
 const TORAZUGIN_INITIAL: &[([u16; 2], &str, u8)] = &[
@@ -1264,7 +1274,7 @@ const TORAZUGIN_INITIAL: &[([u16; 2], &str, u8)] = &[
     ([2, 7], "aa", 0),
     ([2, 8], "ag", 0),
     ([2, 9], "ac", 0),
-    ([3, 1], "ad", 1),
+    ([3, 1], "1h", 1),
     ([3, 3], "aa", 1),
     ([3, 7], "aa", 0),
     ([3, 9], "ad", 0),
@@ -1278,7 +1288,7 @@ const TORAZUGIN_INITIAL: &[([u16; 2], &str, u8)] = &[
     ([6, 3], "aa", 1),
     ([6, 7], "aa", 0),
     ([6, 9], "ae", 0),
-    ([7, 1], "ad", 1),
+    ([7, 1], "1h", 1),
     ([7, 3], "aa", 1),
     ([7, 7], "aa", 0),
     ([7, 9], "ad", 0),
@@ -1301,7 +1311,7 @@ ordinary_rule!(
     TORAZUGIN_PIECES,
     TORAZUGIN_INITIAL,
     &[18, 2, 4, 4, 2, 1, 1, 2],
-    Hands<14>,
+    Hands<15>,
     3
 );
 #[cfg(feature = "ai-torazu-gin")]
