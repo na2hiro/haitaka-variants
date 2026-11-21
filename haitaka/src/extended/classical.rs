@@ -6,10 +6,17 @@ use serde::{Deserializer, Serializer};
 
 pub const PROTOCOL: &str = "haitaka-json-v3";
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ClassicalState {}
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ClassicalState {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    legacy_torazugin: Option<bool>,
+}
 impl PositionState for ClassicalState {
-    fn hash_bytes(&self, _add: &mut impl FnMut(u8)) {}
+    fn hash_bytes(&self, add: &mut impl FnMut(u8)) {
+        if self.legacy_torazugin == Some(true) {
+            add(1);
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -67,6 +74,9 @@ pub trait ClassicalRule: CaptureRoyalRule<Placement = ClassicalPiece> + Copy + O
     }
     fn droppable(id: PieceId) -> bool {
         Self::origin(id).is_none() && Self::capture_return(id) == Some(id)
+    }
+    fn capture_allowed_in_state(_state: &Self::State, _victim: PieceId, _color: u8) -> bool {
+        true
     }
     /// A promotion flag describes the resulting face change, including a reverse flip.
     fn promotion_options(
@@ -341,6 +351,7 @@ impl<R: ClassicalRule> Position<R> {
         let mover = self.cells[from].unwrap();
         if victim.color == mover.color
             || !self.capture_allowed_at(from, to)
+            || !R::capture_allowed_in_state(&self.state, victim.piece, victim.color)
         {
             return false;
         }

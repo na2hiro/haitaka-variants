@@ -46,11 +46,11 @@ macro_rules! ordinary_rule {
                     Self::ID != 138 && matches!(Self::PIECES[id.0 as usize].id, "aa" | "cq"),
                 )
             }
-            fn capture_allowed(mover: PieceId, victim: PieceId, color: u8) -> bool {
+            fn capture_allowed(mover: PieceId, victim: PieceId, _victim_color: u8) -> bool {
                 let from = Self::PIECES[mover.0 as usize].id;
                 let to = Self::PIECES[victim.0 as usize].id;
                 match Self::ID {
-                    30 => !(color == 1 && to == "ad"),
+                    30 => to != "torazu-silver",
                     31 => to != "ad",
                     153 | 165 => from != "1e",
                     _ => true,
@@ -86,6 +86,12 @@ macro_rules! ordinary_rule {
             };
             fn droppable(id: PieceId) -> bool {
                 !Self::PIECES[id.0 as usize].royal && Self::capture_return(id) == Some(id)
+            }
+            fn capture_allowed_in_state(state: &Self::State, victim: PieceId, color: u8) -> bool {
+                !(Self::ID == 30
+                    && state.legacy_torazugin == Some(true)
+                    && color == 1
+                    && Self::PIECES[victim.0 as usize].id == "ad")
             }
             fn continuation(
                 id: PieceId,
