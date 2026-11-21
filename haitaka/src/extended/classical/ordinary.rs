@@ -50,7 +50,7 @@ macro_rules! ordinary_rule {
                 let from = Self::PIECES[mover.0 as usize].id;
                 let to = Self::PIECES[victim.0 as usize].id;
                 match Self::ID {
-                    30 => to != "torazu-silver",
+                    30 => to != "1h",
                     31 => to != "ad",
                     153 | 165 => from != "1e",
                     _ => true,
