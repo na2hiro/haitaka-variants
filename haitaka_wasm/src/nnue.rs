@@ -14,6 +14,9 @@ use haitaka::{File, Rank};
 const VERSION: u32 = 0x7AF32F20;
 const HALFKAV2_FEATURE_SET_HASH: u32 = 0x5f234cb8;
 const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
+// Head hash for the king-free A block (`KingFreeA`). Serialized into every
+// KingFreeA+DonorSingleEff network header; keep stable.
+const KING_FREE_A_FEATURE_SET_HASH: u32 = 0x4b46_4131;
 // Anhoku-only V2 relation block. Keep this value stable: it is serialized into
 // every HalfKAv2^+DonorReceiverPairV2 network header.
 const DONOR_RECEIVER_PAIR_V2_BLOCK_HASH: u32 = 0x6d12_4a8f;
@@ -80,6 +83,11 @@ const PIECE_TYPE_COUNT: usize = 10;
 const NON_DROP_PIECE_INDICES: usize = (2 * PIECE_TYPE_COUNT - 1) * SQUARES;
 const PIECE_INDICES: usize = NON_DROP_PIECE_INDICES + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS;
 const HALFKAV2_REAL_FEATURES: usize = SQUARES * PIECE_INDICES;
+/// King-free base block: the HalfKAv2 piece/hand rows without the oriented-king
+/// offset, plus one extra plane so the two kings stay distinguishable (HalfKAv2
+/// shares one king plane because the own king is implied by the offset).
+const KING_FREE_ENEMY_KING_OFFSET: usize = PIECE_INDICES;
+const KING_FREE_BASE_FEATURES: usize = PIECE_INDICES + SQUARES;
 const DONOR_SINGLE_REAL_FEATURES: usize = SQUARES * PIECE_TYPE_COUNT * Color::NUM;
 const DONOR_RECEIVER_PAIR_V2_REAL_FEATURES: usize =
     SQUARES * Color::NUM * PIECE_TYPE_COUNT * PIECE_TYPE_COUNT;
@@ -192,6 +200,8 @@ const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_TENJIKU_BLOCK_HASH;
 const DONOR_SINGLE_MODE_BLOCK_HASH: u32 = DONOR_SINGLE_BLOCK_HASH;
 const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
+const KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(KING_FREE_A_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_RECEIVER_PAIR_V2_BLOCK_HASH);
 const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
@@ -204,6 +214,9 @@ const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
+#[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
+const KING_FREE_A_DONOR_SINGLE_NETWORK_HASH: u32 =
+    network_hash(KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
@@ -218,6 +231,7 @@ enum FeatureFamily {
     HalfKAv2DonorReceiverPairV2,
     HalfKAv2DonorPair,
     HalfKAv2DonorKnight8,
+    KingFreeADonorSingle,
 }
 
 impl FeatureFamily {
@@ -228,6 +242,7 @@ impl FeatureFamily {
             FeatureFamily::HalfKAv2DonorReceiverPairV2 => DONOR_RECEIVER_PAIR_V2_FEATURE_NAME,
             FeatureFamily::HalfKAv2DonorPair => "HalfKAv2^+DonorPairSlots",
             FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
+            FeatureFamily::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_NAME,
         }
     }
 
@@ -248,6 +263,8 @@ impl FeatureFamily {
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
             #[cfg(feature = "anhoku")]
+            KING_FREE_A_DONOR_SINGLE_NETWORK_HASH => Some(Self::KingFreeADonorSingle),
+            #[cfg(feature = "anhoku")]
             HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH => Some(Self::HalfKAv2DonorReceiverPairV2),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
             #[cfg(feature = "anki")]
@@ -263,6 +280,7 @@ impl FeatureFamily {
             Self::HalfKAv2DonorReceiverPairV2 => HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH,
             Self::HalfKAv2DonorPair => HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH,
+            Self::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH,
         }
     }
 
@@ -279,7 +297,20 @@ impl FeatureFamily {
             }
             Self::HalfKAv2DonorPair => HALFKAV2_REAL_FEATURES + DONOR_PAIR_REAL_FEATURES,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_REAL_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
+            Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
         }
+    }
+
+    /// First row of the donor block (end of the base block).
+    const fn base_features(self) -> usize {
+        match self {
+            Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES,
+            _ => HALFKAV2_REAL_FEATURES,
+        }
+    }
+
+    const fn is_king_free(self) -> bool {
+        matches!(self, Self::KingFreeADonorSingle)
     }
 
     const fn max_active_features(self) -> usize {
@@ -289,6 +320,7 @@ impl FeatureFamily {
             Self::HalfKAv2DonorReceiverPairV2 => 192,
             Self::HalfKAv2DonorPair => 256,
             Self::HalfKAv2DonorKnight8 => 512,
+            Self::KingFreeADonorSingle => 192,
         }
     }
 }
@@ -359,6 +391,10 @@ pub struct R1SentinelNetwork {
 
 pub const DONOR_SINGLE_FEATURE_NAME: &str = "HalfKAv2^+DonorSingleEff";
 pub const DONOR_RECEIVER_PAIR_V2_FEATURE_NAME: &str = "HalfKAv2^+DonorReceiverPairV2";
+pub const KING_FREE_A_DONOR_SINGLE_FEATURE_NAME: &str = "KingFreeA+DonorSingleEff";
+/// Total rows of the KingFreeA+DonorSingleEff transformer.
+pub const KING_FREE_A_DONOR_SINGLE_FEATURES: usize =
+    KING_FREE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES;
 
 /// Number of real HalfKAv2 rows before the variant donor block.
 pub const R1_HALFKAV2_BASE_FEATURES: usize = HALFKAV2_REAL_FEATURES;
@@ -391,6 +427,29 @@ pub fn r1_donor_single_active_feature_indices(
     base.sort_unstable();
     donor.sort_unstable();
     R1ActiveFeatureIndices { base, donor }
+}
+
+/// All active rows of one perspective for the king-free small-net family
+/// (`KingFreeA+DonorSingleEff`), in production enumeration order. Used by the
+/// CPU trainer's feature exporter so training and runtime share one geometry.
+#[cfg(feature = "anhoku")]
+pub fn king_free_donor_single_active_feature_indices(
+    board: &Board,
+    perspective: Color,
+) -> Vec<usize> {
+    let family = FeatureFamily::KingFreeADonorSingle;
+    active_features(board, perspective, board.king(perspective), family)
+        .iter()
+        .copied()
+        .collect()
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn king_free_donor_single_active_feature_indices(
+    _board: &Board,
+    _perspective: Color,
+) -> Vec<usize> {
+    Vec::new()
 }
 
 #[cfg(not(feature = "anhoku"))]
@@ -798,7 +857,7 @@ impl NnueModel {
             let new_king_square = child_board.king(perspective);
             let parent_accumulator = parent_state.perspective(perspective);
 
-            if new_king_square != parent_accumulator.king_square {
+            if new_king_square != parent_accumulator.king_square && !self.family.is_king_free() {
                 // The king move re-bases every base feature's king offset, so this
                 // perspective is rebuilt from scratch (which also covers its donor
                 // features via `active_features`).
@@ -809,6 +868,7 @@ impl NnueModel {
                 // The base HalfKAv2 block updates exactly as before; donor blocks
                 // (disjoint feature-index range) update via a separate local delta.
                 let delta = build_feature_delta(
+                    self.family,
                     parent_board,
                     child_board,
                     perspective,
@@ -1536,6 +1596,7 @@ fn bucket_for_board(board: &Board) -> usize {
 }
 
 fn build_feature_delta(
+    family: FeatureFamily,
     parent_board: &Board,
     child_board: &Board,
     perspective: Color,
@@ -1543,7 +1604,7 @@ fn build_feature_delta(
     mv: Move,
 ) -> FeatureDelta {
     let mover = parent_board.side_to_move();
-    let king_offset = king_offset(accumulator.king_square, perspective);
+    let king_offset = king_offset(family, accumulator.king_square, perspective);
     let mut delta = FeatureDelta {
         removed: [0; MAX_DELTA_FEATURES],
         removed_len: 0,
@@ -1554,6 +1615,7 @@ fn build_feature_delta(
     match mv {
         Move::Drop { piece, to } => {
             delta.push_added(board_feature_index(
+                family,
                 perspective,
                 king_offset,
                 mover,
@@ -1576,6 +1638,7 @@ fn build_feature_delta(
             };
 
             delta.push_removed(board_feature_index(
+                family,
                 perspective,
                 king_offset,
                 mover,
@@ -1585,6 +1648,7 @@ fn build_feature_delta(
 
             if let Some(captured_piece) = parent_board.piece_on(to) {
                 delta.push_removed(board_feature_index(
+                    family,
                     perspective,
                     king_offset,
                     parent_board.color_on(to).unwrap(),
@@ -1594,6 +1658,7 @@ fn build_feature_delta(
             }
 
             delta.push_added(board_feature_index(
+                family,
                 perspective,
                 king_offset,
                 mover,
@@ -1642,7 +1707,7 @@ fn active_features(
     king_square: Square,
     family: FeatureFamily,
 ) -> ActiveFeatures {
-    let king_offset = king_offset(king_square, perspective);
+    let king_offset = king_offset(family, king_square, perspective);
     let mut features = ActiveFeatures::default();
 
     for &square in &Square::ALL {
@@ -1651,6 +1716,7 @@ fn active_features(
         };
 
         features.push(board_feature_index(
+            family,
             perspective,
             king_offset,
             colored_piece.color,
@@ -1720,7 +1786,7 @@ fn for_each_donor_feature(
 ) {
     match family {
         FeatureFamily::HalfKAv2 => {}
-        FeatureFamily::HalfKAv2DonorSingle => {
+        FeatureFamily::HalfKAv2DonorSingle | FeatureFamily::KingFreeADonorSingle => {
             // The color plane is keyed on the donor's own color (matching the C++
             // training overlay's `donor_piece_index`), which differs from the
             // influenced piece's color for the enemy-donor variants: taimen/haimen
@@ -1751,7 +1817,7 @@ fn for_each_donor_feature(
                 return;
             };
             emit(
-                HALFKAV2_REAL_FEATURES
+                family.base_features()
                     + donor_single_feature_index(perspective, donor_color, donor_piece, square),
             );
         }
@@ -1990,7 +2056,9 @@ fn donor_influence_neighborhood(
     let mut neighbors = [None; DONOR_KNIGHT8_SLOT_COUNT];
     match family {
         FeatureFamily::HalfKAv2 => {}
-        FeatureFamily::HalfKAv2DonorSingle | FeatureFamily::HalfKAv2DonorReceiverPairV2 => {
+        FeatureFamily::HalfKAv2DonorSingle
+        | FeatureFamily::HalfKAv2DonorReceiverPairV2
+        | FeatureFamily::KingFreeADonorSingle => {
             neighbors[0] = square.try_offset(0, 1);
             neighbors[1] = square.try_offset(0, -1);
         }
@@ -2005,17 +2073,25 @@ fn donor_influence_neighborhood(
     neighbors
 }
 
-fn king_offset(king_square: Square, perspective: Color) -> usize {
-    orient_square(king_square, perspective) * PIECE_INDICES
+fn king_offset(family: FeatureFamily, king_square: Square, perspective: Color) -> usize {
+    if family.is_king_free() {
+        0
+    } else {
+        orient_square(king_square, perspective) * PIECE_INDICES
+    }
 }
 
 fn board_feature_index(
+    family: FeatureFamily,
     perspective: Color,
     king_offset: usize,
     color: Color,
     piece: Piece,
     square: Square,
 ) -> usize {
+    if family.is_king_free() && piece == Piece::King && color != perspective {
+        return KING_FREE_ENEMY_KING_OFFSET + orient_square(square, perspective);
+    }
     king_offset + piece_square_index(perspective, color, piece) + orient_square(square, perspective)
 }
 
@@ -2358,6 +2434,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
         FeatureFamily::HalfKAv2DonorReceiverPairV2 => cfg!(feature = "anhoku"),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => cfg!(feature = "anki"),
+        FeatureFamily::KingFreeADonorSingle => cfg!(feature = "anhoku"),
     }
 }
 
@@ -3465,6 +3542,115 @@ mod tests {
             // arise naturally over a deep variant rollout.
             assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
         }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_free_incremental_matches_full_refresh_random_rollouts() {
+        let model = synthetic_donor_model(FeatureFamily::KingFreeADonorSingle);
+        let mut rng = StdRng::seed_from_u64(0x6b66_2026);
+        for _ in 0..16 {
+            let mut board = Board::startpos();
+            let mut moves = Vec::new();
+            for _ in 0..60 {
+                let legal = collect_legal_moves(&board);
+                let Some(&mv) = legal.choose(&mut rng) else {
+                    break;
+                };
+                moves.push(mv);
+                board.play_unchecked(mv);
+            }
+            assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
+        }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_free_features_separate_kings_and_place_donor_block() {
+        let board = Board::startpos();
+        for perspective in [Color::Black, Color::White] {
+            let rows = king_free_donor_single_active_feature_indices(&board, perspective);
+            assert!(rows.iter().all(|&r| r < KING_FREE_A_DONOR_SINGLE_FEATURES));
+            let base: Vec<_> = rows
+                .iter()
+                .copied()
+                .filter(|&r| r < KING_FREE_BASE_FEATURES)
+                .collect();
+            assert_eq!(base.len(), 40, "one base row per piece at startpos");
+            let mut unique = base.clone();
+            unique.sort_unstable();
+            unique.dedup();
+            assert_eq!(unique.len(), 40, "king-free base rows must not collide");
+            let enemy_king: Vec<_> = base
+                .iter()
+                .filter(|&&r| (KING_FREE_ENEMY_KING_OFFSET..KING_FREE_BASE_FEATURES).contains(&r))
+                .collect();
+            assert_eq!(enemy_king.len(), 1);
+            let own_king_plane = 2 * piece_slot(Piece::King) * SQUARES;
+            assert_eq!(
+                base.iter()
+                    .filter(|&&r| (own_king_plane..own_king_plane + SQUARES).contains(&r))
+                    .count(),
+                1
+            );
+        }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_free_serialized_network_round_trips() {
+        let family = FeatureFamily::KingFreeADonorSingle;
+        let rows = family.num_real_features();
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&VERSION.to_le_bytes());
+        bytes.extend_from_slice(&KING_FREE_A_DONOR_SINGLE_NETWORK_HASH.to_le_bytes());
+        let description = b"king-free test";
+        bytes.extend_from_slice(&(description.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(description);
+        bytes.extend_from_slice(&family.feature_transformer_hash().to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0u8, TRANSFORMED_FEATURE_DIMENSIONS * 2));
+        bytes.extend(std::iter::repeat_n(
+            0u8,
+            TRANSFORMED_FEATURE_DIMENSIONS * rows * 2,
+        ));
+        // PSQT: one pawn-sized row for the own pawn plane, bucket-independent.
+        let own_pawn_row = 2 * piece_slot(Piece::Pawn) * SQUARES;
+        for row in 0..rows {
+            for _ in 0..PSQT_BUCKETS {
+                let value: i32 = if (own_pawn_row..own_pawn_row + SQUARES).contains(&row) {
+                    960
+                } else {
+                    0
+                };
+                bytes.extend_from_slice(&value.to_le_bytes());
+            }
+        }
+        for _ in 0..LAYER_STACKS {
+            bytes.extend_from_slice(&OUTPUT_LAYER_HASH.to_le_bytes());
+            for (outputs, padded) in [
+                (
+                    HIDDEN_LAYER_1_DIMENSIONS,
+                    PADDED_HIDDEN_LAYER_1_INPUT_DIMENSIONS,
+                ),
+                (
+                    HIDDEN_LAYER_2_DIMENSIONS,
+                    PADDED_HIDDEN_LAYER_2_INPUT_DIMENSIONS,
+                ),
+                (OUTPUT_LAYER_DIMENSIONS, PADDED_OUTPUT_INPUT_DIMENSIONS),
+            ] {
+                bytes.extend(std::iter::repeat_n(0u8, outputs * 4 + outputs * padded));
+            }
+        }
+        let model = NnueModel::from_bytes(&bytes).expect("king-free network must load");
+        assert_eq!(
+            model.feature_family_name(),
+            KING_FREE_A_DONOR_SINGLE_FEATURE_NAME
+        );
+        // Equal pawn counts at startpos: psqt cancels.
+        assert_eq!(model.evaluate(&Board::startpos()), 0);
+        let mut truncated = bytes.clone();
+        truncated.pop();
+        assert!(NnueModel::from_bytes(&truncated).is_err());
     }
 
     #[cfg(feature = "anhoku")]

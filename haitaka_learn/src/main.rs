@@ -19,6 +19,7 @@ mod r4f;
 mod r4replacement;
 mod selection;
 mod small_net_audit;
+mod small_net_features;
 mod step10_opening_gate;
 mod step11_opening_gate;
 mod step12_corpus_freeze;
@@ -57,6 +58,26 @@ enum Command {
         #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
         external_trainer: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
+    /// Export KingFreeA+DonorSingleEff feature rows for the CPU small-net trainer.
+    SmallNetExportFeatures {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, value_enum, default_value = "king-free")]
+        family: small_net_features::ExportFamily,
+    },
+    /// Write production static evaluations (i32 LE) of packed records for parity checks.
+    SmallNetEval {
+        #[arg(long)]
+        nnue: PathBuf,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long, default_value_t = usize::MAX)]
+        limit: usize,
+        #[arg(long)]
         output: PathBuf,
     },
     /// Phase 0 of the small-net plan: CPU-only HalfKA/king-free/donor row
@@ -1296,6 +1317,21 @@ fn main() -> Result<()> {
                 if passed { "PASS" } else { "FAIL" }
             );
             ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::SmallNetExportFeatures {
+            input,
+            output,
+            family,
+        } => {
+            small_net_features::export(&input, &output, family)?;
+        }
+        Command::SmallNetEval {
+            nnue,
+            input,
+            limit,
+            output,
+        } => {
+            small_net_features::evaluate(&nnue, &input, limit, &output)?;
         }
         Command::SmallNetCoverageAudit {
             train,
