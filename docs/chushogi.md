@@ -4,8 +4,9 @@
 獅子・角鷹・飛鷲の二段移動、居食い、途中終了を、探索では完了した1手として扱う。
 採用仕様は将棋ったーの `chushogi.ts`、駒定義、Chu成り・Shishi捕獲制御。
 
-対局: <http://localhost:3002/rule/48>。「相手」で「将棋ったーAI」を選ぶ。
-手作り評価で指す。既存NNUE/SFNN・DFPN・USIは使わない。
+将棋ったーの[中将棋](https://shogitter.com/rule/48)で「相手」を「将棋ったーAI」にすると対局できる。
+既定のモデルは「Minase NNUE (v2.6.0)」。将棋ったーのバージョン付きURLから重みを取得して探索に使う。
+「設定」→「モデル」で手書きの「選択肢評価」に切り替えられる。
 
 ## 駒・盤面・勝敗
 
@@ -101,6 +102,26 @@ WASMの関数名と引数は小将棋と同じで、v2のJSON文字列を入出�
 予算は反復全体へ適用し、経路の列挙中も停止を確認する。中断時も完了した合法手だけを返す。
 完了前に中断すれば合法な代替手、終局なら `bestMove: null`。perftの深さは0～4。
 既存の14駒種の `Board` / `Piece` と通常ルールの高速経路は維持している。
+
+### Minase NNUE
+
+対応するモデルは Minase v2.6.0 同梱の `nnue.bin`（MNUE v5、P型、幅128、direct-SCReLU）。
+探索は引き続き Haitaka の中将棋ルールで行う。先獅子の評価特徴は完了手の履歴から捕獲升を取得する。
+先獅子フラグだけの履歴なし局面では、この升の特徴を省略する。
+
+```bash
+curl -fL -o minase-v2.6.0.nnue https://raw.githubusercontent.com/stepney141/minase/bac8e2c9367107d47d8cb3c71ae6757044d0ddc8/crates/minase/nets/nnue.bin
+./target/release/haitaka_cli json search --nnue minase-v2.6.0.nnue --depth 4 < /tmp/chushogi.json
+```
+
+WASM は `load_nnue(Uint8Array)` の成功後に `search_json` が Minase NNUE を使う。
+GitHub 上の重みと形式仕様は公開元を参照。 [モデル](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/nets/nnue.bin) · [形式仕様](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/src/eval/nnue/format.rs)
+
+Minase の `eval` と照合した値と差分更新を、公開モデルを使って再検証できる。
+
+```bash
+HAITAKA_MINASE_NNUE="$PWD/minase-v2.6.0.nnue" cargo test -p haitaka --features chushogi minase_nnue -- --ignored
+```
 
 ## 参照元の修正
 

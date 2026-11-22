@@ -1,7 +1,13 @@
-//! The Sho build exports only the explicit JSON protocol. Ordinary Rust APIs
+//! Extended builds export the explicit JSON protocol. Ordinary Rust APIs
 //! remain available to legacy native consumers, but are not exposed to JS.
 use haitaka::extended::compiled as core;
+#[cfg(feature = "chushogi")]
+use std::sync::{Arc, RwLock};
 use wasm_bindgen::prelude::*;
+
+#[cfg(feature = "chushogi")]
+static MINASE_NNUE: RwLock<Option<Arc<core::MinaseNnue>>> = RwLock::new(None);
+
 fn js(result: Result<String, String>) -> Result<String, JsValue> {
     result.map_err(|e| JsValue::from_str(&e))
 }
@@ -36,6 +42,18 @@ pub fn search_json(
     timeout_ms: u32,
     node_budget: u32,
 ) -> Result<String, JsValue> {
+    #[cfg(feature = "chushogi")]
+    let model = MINASE_NNUE.read().unwrap().clone();
+    #[cfg(feature = "chushogi")]
+    if let Some(model) = model {
+        return js(core::search_json_with_nnue(
+            position,
+            max_depth,
+            timeout_ms,
+            node_budget,
+            &model,
+        ));
+    }
     js(core::search_json(
         position,
         max_depth,
@@ -43,6 +61,15 @@ pub fn search_json(
         node_budget,
     ))
 }
+#[cfg(feature = "chushogi")]
+#[wasm_bindgen]
+pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
+    let model = core::MinaseNnue::from_bytes(bytes).map_err(|e| JsValue::from_str(&e))?;
+    *MINASE_NNUE.write().unwrap() = Some(Arc::new(model));
+    Ok(core::MinaseNnue::FORMAT.into())
+}
+
+#[cfg(not(feature = "chushogi"))]
 #[wasm_bindgen(js_name=load_nnue)]
 pub fn reject_nnue(_bytes: &[u8]) -> Result<String, JsValue> {
     Err(JsValue::from_str(
