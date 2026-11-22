@@ -18,6 +18,7 @@ mod r4;
 mod r4f;
 mod r4replacement;
 mod selection;
+mod small_net_audit;
 mod step10_opening_gate;
 mod step11_opening_gate;
 mod step12_corpus_freeze;
@@ -56,6 +57,16 @@ enum Command {
         #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
         external_trainer: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
+    /// Phase 0 of the small-net plan: CPU-only HalfKA/king-free/donor row
+    /// coverage audit over packed 72-byte training records.
+    SmallNetCoverageAudit {
+        #[arg(long, required = true)]
+        train: Vec<PathBuf>,
+        #[arg(long)]
+        eval: Vec<PathBuf>,
+        #[arg(long)]
         output: PathBuf,
     },
     /// Expand an Anhoku DonorSingleEff network into the functionally identical
@@ -1285,6 +1296,18 @@ fn main() -> Result<()> {
                 if passed { "PASS" } else { "FAIL" }
             );
             ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::SmallNetCoverageAudit {
+            train,
+            eval,
+            output,
+        } => {
+            small_net_audit::run(small_net_audit::SmallNetAuditArgs {
+                train,
+                eval,
+                output: output.clone(),
+            })?;
+            println!("small-net coverage audit written to {}", output.display());
         }
         Command::Phase11cAudit {
             trainer_config,

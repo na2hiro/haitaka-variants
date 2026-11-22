@@ -1,0 +1,98 @@
+{
+ "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/training.bin": {
+  "records": 880000,
+  "shareAbsScoreBelow300": 0.17636477272727272,
+  "shareAbsScoreBelow1000": 0.3841363636363636,
+  "shareAbsScoreAtLeast3000": 0.31561704545454544,
+  "plyBands": [
+   {
+    "plyFrom": 0,
+    "plyTo": 20,
+    "records": 106551,
+    "share": 0.12108068181818182,
+    "medianAbsScore": 240,
+    "shareAbsScoreBelow300": 0.5257763887715742
+   },
+   {
+    "plyFrom": 20,
+    "plyTo": 40,
+    "records": 189558,
+    "share": 0.21540681818181817,
+    "medianAbsScore": 810.0,
+    "shareAbsScoreBelow300": 0.2629116154422393
+   },
+   {
+    "plyFrom": 40,
+    "plyTo": 80,
+    "records": 298028,
+    "share": 0.3386681818181818,
+    "medianAbsScore": 1604.0,
+    "shareAbsScoreBelow300": 0.121008764277182
+   },
+   {
+    "plyFrom": 80,
+    "plyTo": 120,
+    "records": 173926,
+    "share": 0.19764318181818183,
+    "medianAbsScore": 3242.0,
+    "shareAbsScoreBelow300": 0.0585363890390166
+   },
+   {
+    "plyFrom": 120,
+    "plyTo": 200,
+    "records": 111937,
+    "share": 0.12720113636363636,
+    "medianAbsScore": 5788,
+    "shareAbsScoreBelow300": 0.027667348597872017
+   }
+  ]
+ },
+ "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-reboot-r4-replacement/datasets/training.bin": {
+  "records": 880000,
+  "shareAbsScoreBelow300": 0.19701818181818181,
+  "shareAbsScoreBelow1000": 0.39364204545454545,
+  "shareAbsScoreAtLeast3000": 0.28412272727272725,
+  "plyBands": [
+   {
+    "plyFrom": 0,
+    "plyTo": 20,
+    "records": 21231,
+    "share": 0.024126136363636363,
+    "medianAbsScore": 26,
+    "shareAbsScoreBelow300": 0.7636003956478734
+   },
+   {
+    "plyFrom": 20,
+    "plyTo": 40,
+    "records": 152189,
+    "share": 0.17294204545454545,
+    "medianAbsScore": 386,
+    "shareAbsScoreBelow300": 0.48142769845389616
+   },
+   {
+    "plyFrom": 40,
+    "plyTo": 80,
+    "records": 342592,
+    "share": 0.3893090909090909,
+    "medianAbsScore": 1400.0,
+    "shareAbsScoreBelow300": 0.1680395339062208
+   },
+   {
+    "plyFrom": 80,
+    "plyTo": 120,
+    "records": 224903,
+    "share": 0.25557159090909093,
+    "medianAbsScore": 2260,
+    "shareAbsScoreBelow300": 0.07685980178121235
+   },
+   {
+    "plyFrom": 120,
+    "plyTo": 200,
+    "records": 139085,
+    "share": 0.15805113636363635,
+    "medianAbsScore": 2760,
+    "shareAbsScoreBelow300": 0.06500341517776899
+   }
+  ]
+ }
+}

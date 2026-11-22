@@ -1,0 +1,27 @@
+{
+ "files": 8,
+ "games": 512,
+ "playedPlies": {
+  "p05": 17,
+  "p25": 27,
+  "p50": 37,
+  "p75": 49,
+  "p95": 73
+ },
+ "finalAbsolutePly": {
+  "p05": 33,
+  "p25": 43,
+  "p50": 53,
+  "p75": 65,
+  "p95": 89
+ },
+ "shareReachingPly80": 0.107421875,
+ "shareReachingPly120": 0.00390625,
+ "terminationReasons": {
+  "no-legal-move": 512
+ },
+ "npsByEvaluator": {
+  "nnue": 244641.8540852788,
+  "handcrafted": 182574.03160833777
+ }
+}
