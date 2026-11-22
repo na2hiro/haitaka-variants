@@ -20,6 +20,7 @@ mod r4replacement;
 mod selection;
 mod small_net_audit;
 mod small_net_features;
+mod small_net_generate;
 mod step10_opening_gate;
 mod step11_opening_gate;
 mod step12_corpus_freeze;
@@ -58,6 +59,33 @@ enum Command {
         #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
         external_trainer: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
+    /// Self-play teacher generation for the small-net plan (search score of every played position).
+    SmallNetGenerate {
+        #[arg(long)]
+        games: u64,
+        #[arg(long, default_value_t = 10_000)]
+        nodes: u64,
+        #[arg(long, default_value_t = 8)]
+        random_plies: u16,
+        #[arg(long, default_value_t = 0.0)]
+        random_move_rate: f64,
+        #[arg(long, default_value_t = 3000)]
+        adjudicate_score: i32,
+        #[arg(long, default_value_t = 4)]
+        adjudicate_plies: u16,
+        #[arg(long, default_value_t = 200)]
+        max_plies: u16,
+        #[arg(long, default_value_t = 0)]
+        record_from_ply: u16,
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+        #[arg(long)]
+        nnue: Option<PathBuf>,
+        #[arg(long)]
         output: PathBuf,
     },
     /// Export KingFreeA+DonorSingleEff feature rows for the CPU small-net trainer.
@@ -1317,6 +1345,35 @@ fn main() -> Result<()> {
                 if passed { "PASS" } else { "FAIL" }
             );
             ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::SmallNetGenerate {
+            games,
+            nodes,
+            random_plies,
+            random_move_rate,
+            adjudicate_score,
+            adjudicate_plies,
+            max_plies,
+            record_from_ply,
+            seed,
+            jobs,
+            nnue,
+            output,
+        } => {
+            small_net_generate::run(small_net_generate::GenerateArgs {
+                games,
+                nodes,
+                random_plies,
+                random_move_rate,
+                adjudicate_score,
+                adjudicate_plies,
+                max_plies,
+                record_from_ply,
+                seed,
+                jobs,
+                nnue,
+                output,
+            })?;
         }
         Command::SmallNetExportFeatures {
             input,

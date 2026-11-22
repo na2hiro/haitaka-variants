@@ -139,7 +139,7 @@ def bag_inputs(indices, counts):
 
 # ---- model ------------------------------------------------------------------
 class SmallNet(nn.Module):
-    def __init__(self, l1, seed):
+    def __init__(self, l1, seed, init="small"):
         super().__init__()
         g = torch.Generator().manual_seed(seed)
         self.l1 = l1
@@ -169,9 +169,19 @@ class SmallNet(nn.Module):
                 self.h1.bias[i * L2:(i + 1) * L2] = self.h1.bias[:L2]
                 self.h2.weight[i * L3:(i + 1) * L3] = self.h2.weight[:L3]
                 self.h2.bias[i * L3:(i + 1) * L3] = self.h2.bias[:L3]
-            self.out.weight.mul_(0.1)
+            if init == "small":
+                self.out.weight.mul_(0.1)
             self.out.weight[1:] = self.out.weight[:1]
             self.out.bias.zero_()
+            if init == "nnue":
+                # variant-nnue-pytorch: FT weights/bias U(+-sqrt(1/rows)), virtual
+                # (factorizer) rows zero, PSQT = material, PSQT bias absent.
+                sigma = math.sqrt(1.0 / train_rows())
+                w[:, :l1].uniform_(-sigma, sigma, generator=g)
+                self.ft_bias.uniform_(-sigma, sigma, generator=g)
+                if FAMILY == "halfka":
+                    w[HALFKA_ROWS:, :] = 0.0
+                    w[:HALFKA_REAL, l1:] = mat.repeat(SQUARES).unsqueeze(1).expand(-1, PSQT_BUCKETS)
 
     def forward(self, black, nb, white, nw, stm, bucket):
         fb, ob = bag_inputs(black, nb)
@@ -368,52 +378,80 @@ def cmd_train(args):
     out.mkdir(parents=True, exist_ok=True)
     train = FeatureSet(args.train, args.max_ply, args.max_abs_score)
     val = FeatureSet(args.val)
-    model = SmallNet(args.l1, args.seed)
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+    model = SmallNet(args.l1, args.seed, args.init)
+    groups = [
+        {"params": list(model.ft.parameters()) + [model.ft_bias], "lr": args.lr},
+        {"params": list(model.h1.parameters()) + list(model.h2.parameters()), "lr": args.lr},
+        {"params": list(model.out.parameters()), "lr": args.lr * args.output_lr_mult},
+    ]
+    if args.optimizer == "ranger":
+        import sys
+        sys.path.insert(0, args.ranger_dir)
+        import ranger
+        opt = ranger.Ranger(groups, betas=(.9, 0.999), eps=1.0e-7, gc_loc=False, use_gc=False)
+    else:
+        opt = torch.optim.Adam(groups, lr=args.lr)
     steps_per_epoch = max(1, train.n // args.batch)
-    total_steps = steps_per_epoch * args.epochs
-    sched = torch.optim.lr_scheduler.LambdaLR(
-        opt, lambda s: max(args.lr_floor, 0.5 * (1 + math.cos(math.pi * min(1.0, s / total_steps)))))
+    total_steps = args.max_steps or steps_per_epoch * args.epochs
+    horizon = args.horizon or total_steps
+    min_mult = args.lr_floor
+
+    def lr_mult(s):
+        if args.warmup and s < args.warmup:
+            return (s + 1) / args.warmup
+        t = min(1.0, (s - args.warmup) / max(1, horizon - args.warmup))
+        return min_mult + (1 - min_mult) * 0.5 * (1 + math.cos(math.pi * t))
+
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_mult)
+    eval_every = args.eval_every or steps_per_epoch
     log = []
     init_loss, init_mae = evaluate(model, val, args.k)
     log.append({"epoch": 0, "step": 0, "valLoss": init_loss, "valMae": init_mae})
     print(f"init val loss {init_loss:.6f} mae {init_mae:.1f} (train rows {train.n}, val rows {val.n})", flush=True)
-    best = (init_loss, 0)
+    best = (float("inf"), 0)
     gen = torch.Generator().manual_seed(args.seed + 1)
     step = 0
     started = time.time()
-    for epoch in range(1, args.epochs + 1):
-        perm = torch.randperm(train.n, generator=gen)
-        running = 0.0
-        for s in range(steps_per_epoch):
-            idx = perm[s * args.batch:(s + 1) * args.batch]
-            *inp, target = train.batch(idx)
-            loss = loss_fn(model(*inp), target, args.k)
-            opt.zero_grad(set_to_none=True)
-            loss.backward()
-            opt.step()
-            sched.step()
-            model.clip_()
-            running += loss.item()
-            step += 1
-        vloss, vmae = evaluate(model, val, args.k)
-        entry = {"epoch": epoch, "step": step, "trainLoss": running / steps_per_epoch,
-                 "valLoss": vloss, "valMae": vmae, "lr": sched.get_last_lr()[0],
-                 "elapsedSec": time.time() - started}
-        log.append(entry)
-        print(json.dumps(entry), flush=True)
-        if vloss < best[0]:
-            best = (vloss, epoch)
-            torch.save(model.state_dict(), out / "best.pt")
-        if args.patience and epoch - best[1] >= args.patience:
-            break
+    running, running_n, epoch = 0.0, 0, 0
+    perm, pos = None, train.n
+    while step < total_steps:
+        if pos + args.batch > train.n:
+            perm, pos, epoch = torch.randperm(train.n, generator=gen), 0, epoch + 1
+        idx = perm[pos:pos + args.batch]
+        pos += args.batch
+        *inp, target = train.batch(idx)
+        model.clip_()
+        loss = loss_fn(model(*inp), target, args.k)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        opt.step()
+        sched.step()
+        model.clip_()
+        running += loss.item()
+        running_n += 1
+        step += 1
+        if step % eval_every == 0 or step == total_steps:
+            vloss, vmae = evaluate(model, val, args.k)
+            entry = {"epoch": epoch, "step": step, "trainLoss": running / running_n,
+                     "valLoss": vloss, "valMae": vmae, "lr": sched.get_last_lr()[0],
+                     "elapsedSec": time.time() - started}
+            running, running_n = 0.0, 0
+            log.append(entry)
+            print(json.dumps(entry), flush=True)
+            if args.keep_every and step % args.keep_every == 0:
+                torch.save(model.state_dict(), out / f"step{step:05d}.pt")
+            if vloss < best[0] and (not args.select_cap or step <= args.select_cap):
+                best = (vloss, step)
+                torch.save(model.state_dict(), out / "best.pt")
+            if args.patience and (step - best[1]) >= args.patience * eval_every:
+                break
     torch.save(model.state_dict(), out / "last.pt")
     model.load_state_dict(torch.load(out / "best.pt"))
-    size = export_nnue(model, out / "best.nnue", f"KingFreeA+DonorSingleEff L1={args.l1} {out.name} epoch={best[1]}")
-    summary = {"args": {k: v for k, v in vars(args).items() if k != "fn"}, "bestEpoch": best[1], "bestValLoss": best[0], "nnueBytes": size,
+    size = export_nnue(model, out / "best.nnue", f"{FAMILY} L1={args.l1} {out.name} step={best[1]}")
+    summary = {"args": {k: v for k, v in vars(args).items() if k != "fn"}, "bestStep": best[1], "bestValLoss": best[0], "nnueBytes": size,
                "trainRows": train.n, "valRows": val.n, "log": log}
     (out / "summary.json").write_text(json.dumps(summary, indent=1))
-    print(f"best epoch {best[1]} val loss {best[0]:.6f}; wrote {out/'best.nnue'} ({size} bytes)")
+    print(f"best step {best[1]} val loss {best[0]:.6f}; wrote {out/'best.nnue'} ({size} bytes)")
 
 
 def cmd_intref(args):
@@ -454,6 +492,16 @@ def main():
     t.add_argument("--k", type=float, default=1000.0, help="sigmoid scale of the score loss")
     t.add_argument("--loss", choices=["sigmoid", "huber"], default="sigmoid")
     t.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
+    t.add_argument("--init", choices=["small", "nnue"], default="small")
+    t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
+    t.add_argument("--ranger-dir", default="/home/na2hiro/proj/engine/variant-nnue-pytorch")
+    t.add_argument("--output-lr-mult", type=float, default=1.0)
+    t.add_argument("--warmup", type=int, default=0)
+    t.add_argument("--horizon", type=int, default=0, help="cosine horizon in steps (default: run length)")
+    t.add_argument("--max-steps", type=int, default=0)
+    t.add_argument("--eval-every", type=int, default=0)
+    t.add_argument("--keep-every", type=int, default=0)
+    t.add_argument("--select-cap", type=int, default=0, help="only select checkpoints at or before this step")
     t.add_argument("--seed", type=int, default=1)
     t.add_argument("--threads", type=int, default=4)
     t.add_argument("--patience", type=int, default=0)
