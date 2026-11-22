@@ -3,6 +3,8 @@ pub use super::path::{LionState as ChuState, Path, Prefix};
 use super::search::SearchGame;
 use super::*;
 include!("chu_defs.rs");
+mod minase_nnue;
+pub use minase_nnue::MinaseNnue;
 pub const PROTOCOL: &str = "haitaka-json-v2";
 pub const NAME: &str = "chushogi";
 pub const RULE_ID: u32 = 48;
@@ -531,6 +533,21 @@ pub fn search_json(
 ) -> Result<String, String> {
     let mut game = ChuGame::parse(json)?;
     search::search_json(&mut game, max_depth, timeout_ms, node_budget)
+}
+pub fn search_json_with_nnue(
+    json: &str,
+    max_depth: u8,
+    timeout_ms: u32,
+    node_budget: u32,
+    model: &MinaseNnue,
+) -> Result<String, String> {
+    let game = ChuGame::parse(json)?;
+    search::search_json(
+        &mut minase_nnue::NnueGame::new(game, model),
+        max_depth,
+        timeout_ms,
+        node_budget,
+    )
 }
 #[cfg(test)]
 mod tests;

@@ -1,5 +1,5 @@
 use super::*;
-fn game(pieces: &[([u16; 2], &str, u8)], side: u8, senjishi: bool) -> ChuGame {
+pub(super) fn game(pieces: &[([u16; 2], &str, u8)], side: u8, senjishi: bool) -> ChuGame {
     let wire = WirePosition {
         side_to_move: side,
         pieces: pieces
@@ -20,12 +20,12 @@ fn game(pieces: &[([u16; 2], &str, u8)], side: u8, senjishi: bool) -> ChuGame {
         pending_ply: 0,
     }
 }
-fn kings<'a>(extra: &[([u16; 2], &'a str, u8)]) -> Vec<([u16; 2], &'a str, u8)> {
+pub(super) fn kings<'a>(extra: &[([u16; 2], &'a str, u8)]) -> Vec<([u16; 2], &'a str, u8)> {
     let mut p = vec![([12, 12], "ah", 0), ([12, 1], "ah", 1)];
     p.extend_from_slice(extra);
     p
 }
-fn one(from: [u16; 2], to: [u16; 2], promotion: bool) -> PathMove {
+pub(super) fn one(from: [u16; 2], to: [u16; 2], promotion: bool) -> PathMove {
     PathMove {
         schema_version: 2,
         from,
@@ -33,7 +33,7 @@ fn one(from: [u16; 2], to: [u16; 2], promotion: bool) -> PathMove {
         promotion,
     }
 }
-fn two(from: [u16; 2], via: [u16; 2], to: [u16; 2]) -> PathMove {
+pub(super) fn two(from: [u16; 2], via: [u16; 2], to: [u16; 2]) -> PathMove {
     PathMove {
         schema_version: 2,
         from,

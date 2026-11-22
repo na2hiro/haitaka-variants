@@ -26,8 +26,17 @@ pub struct JsonArgs {
     nodes: u32,
     #[arg(long)]
     r#move: Option<String>,
+    /// Minase MNUE evaluation file for Chu shogi search.
+    #[cfg(feature = "chushogi")]
+    #[arg(long)]
+    nnue: Option<std::path::PathBuf>,
 }
 pub fn run(args: JsonArgs) -> Result<()> {
+    #[cfg(feature = "chushogi")]
+    anyhow::ensure!(
+        args.nnue.is_none() || matches!(args.action, Action::Search),
+        "--nnue requires json search"
+    );
     if matches!(args.action, Action::Startpos) {
         println!("{}", start_position_json());
         return Ok(());
@@ -63,7 +72,25 @@ pub fn run(args: JsonArgs) -> Result<()> {
                 .ok_or_else(|| anyhow!("apply requires --move JSON"))?,
         ),
         Action::Perft => perft_json(&input, args.depth),
-        Action::Search => search_json(&input, args.depth, args.timeout_ms, args.nodes),
+        Action::Search => {
+            #[cfg(feature = "chushogi")]
+            if let Some(path) = args.nnue {
+                use anyhow::Context;
+                let bytes =
+                    std::fs::read(&path).with_context(|| format!("read {}", path.display()))?;
+                let model = MinaseNnue::from_bytes(&bytes).map_err(|e| anyhow!(e))?;
+                return search_json_with_nnue(
+                    &input,
+                    args.depth,
+                    args.timeout_ms,
+                    args.nodes,
+                    &model,
+                )
+                .map(|result| println!("{result}"))
+                .map_err(|e| anyhow!(e));
+            }
+            search_json(&input, args.depth, args.timeout_ms, args.nodes)
+        }
         _ => unreachable!(),
     }
     .map_err(|e| anyhow!(e))?;
