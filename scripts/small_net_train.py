@@ -118,8 +118,9 @@ class FeatureSet:
         self.score = torch.from_numpy(np.clip(rows["score"].astype(np.float32), -SCORE_CLIP, SCORE_CLIP))
         self.stm = torch.from_numpy(rows["stm"].astype(np.int64))
         self.bucket = torch.from_numpy(rows["bucket"].astype(np.int64))
-        self.black = torch.from_numpy(rows["black"].astype(np.int64))
-        self.white = torch.from_numpy(rows["white"].astype(np.int64))
+        # int32 keeps a 5M-row corpus within a few GB; EmbeddingBag accepts int32
+        self.black = torch.from_numpy(rows["black"].astype(np.int32))
+        self.white = torch.from_numpy(rows["white"].astype(np.int32))
         self.nb = torch.from_numpy(rows["nb"].astype(np.int64))
         self.nw = torch.from_numpy(rows["nw"].astype(np.int64))
 
@@ -132,8 +133,8 @@ def bag_inputs(indices, counts):
     width = indices.shape[1]
     mask = torch.arange(width).unsqueeze(0) < counts.unsqueeze(1)
     flat = indices[mask]
-    offsets = torch.zeros(len(counts), dtype=torch.int64)
-    offsets[1:] = torch.cumsum(counts, 0)[:-1]
+    offsets = torch.zeros(len(counts), dtype=indices.dtype)
+    offsets[1:] = torch.cumsum(counts, 0)[:-1].to(indices.dtype)
     return flat, offsets
 
 

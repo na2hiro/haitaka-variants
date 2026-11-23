@@ -1,0 +1,50 @@
+{
+ "../gen/g2-nnue10k-train.bin": {
+  "records": 899743,
+  "shareAbsScoreBelow300": 0.2923657088746453,
+  "shareAbsScoreBelow1000": 0.6057440846997421,
+  "shareAbsScoreAtLeast3000": 0.05560476713906082,
+  "plyBands": [
+   {
+    "plyFrom": 0,
+    "plyTo": 20,
+    "records": 282952,
+    "share": 0.31448091288290103,
+    "medianAbsScore": 288.0,
+    "shareAbsScoreBelow300": 0.5135287964036302
+   },
+   {
+    "plyFrom": 20,
+    "plyTo": 40,
+    "records": 376790,
+    "share": 0.4187751391230607,
+    "medianAbsScore": 838.0,
+    "shareAbsScoreBelow300": 0.23312720613604396
+   },
+   {
+    "plyFrom": 40,
+    "plyTo": 80,
+    "records": 223272,
+    "share": 0.24815086085693358,
+    "medianAbsScore": 1337.0,
+    "shareAbsScoreBelow300": 0.12571661471210005
+   },
+   {
+    "plyFrom": 80,
+    "plyTo": 120,
+    "records": 15729,
+    "share": 0.017481658651414905,
+    "medianAbsScore": 1424,
+    "shareAbsScoreBelow300": 0.11367537669273317
+   },
+   {
+    "plyFrom": 120,
+    "plyTo": 200,
+    "records": 1000,
+    "share": 0.0011114284856898026,
+    "medianAbsScore": 1570.0,
+    "shareAbsScoreBelow300": 0.053
+   }
+  ]
+ }
+}
