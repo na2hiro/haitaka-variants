@@ -15,3 +15,4 @@ f8fa6378557a208f28dfbcb2f11a7160f5ff5cf6e895a98706c6f5f510141c6a  mbp:smallnet/m
 af9e80907a043026f2d5895030a8188838a76e62a7dda5423c3285628d6053da  mbp:smallnet/models/alone-g7sub-last.nnue
 c7fcbebc9d87336f0b30fba2777ca84884132e215c2430f1f0b4bab6597f7e27  mbp:smallnet/models/kf-all8-last.nnue
 7550f4e95d4ada24a6165dfa2134945ca3cca19bf1ed2783a4085c55889f4821  mbp:smallnet/models/kf-recent-last.nnue
+7df7fa086ec12b5ded5cc001fdbaf094b9064232faf41ef3ad51c8bcec73509a  mbp:smallnet/models/kz9-all8-last.nnue (KingZone9A, 10.5 MB)
