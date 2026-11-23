@@ -4,11 +4,11 @@
 //! training path. It replays frozen USI moves with the bound Anhoku
 //! `Board`/`PositionHistory` APIs and emits one explicit receipt per input row.
 
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::Parser;
 use haitaka::{Board, Color, GameStatus, HistoryAdjudication, Move, Piece, PositionHistory};
 use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde_json::{json, Map, Number, Value};
+use serde_json::{Map, Number, Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fmt;
@@ -286,7 +286,11 @@ fn parse_seat(value: &Value, field: &str) -> Result<Option<Seat>> {
     }
 }
 
-fn parse_record<'a>(value: &'a Value, checks: &mut Checks, max_plies: usize) -> Result<InputRecord<'a>> {
+fn parse_record<'a>(
+    value: &'a Value,
+    checks: &mut Checks,
+    max_plies: usize,
+) -> Result<InputRecord<'a>> {
     ensure!(value.is_object(), "JSONL record must be an object");
     ensure!(
         required_str(value, "schema")? == INPUT_SCHEMA,
@@ -346,7 +350,10 @@ fn parse_record<'a>(value: &'a Value, checks: &mut Checks, max_plies: usize) -> 
     let plies_u64 = required_u64(value, "plies")?;
     let plies = usize::try_from(plies_u64).context("plies does not fit usize")?;
     ensure!(plies == moves.len(), "plies does not equal moves length");
-    ensure!(plies <= max_plies, "recorded plies exceed configured maximum");
+    ensure!(
+        plies <= max_plies,
+        "recorded plies exceed configured maximum"
+    );
     checks.plies = true;
 
     let raw_end = required_str(value, "rawEnd")?;
@@ -405,11 +412,7 @@ fn board_status_name(status: GameStatus) -> &'static str {
 }
 
 fn seat_for_color(color: Color, a_color: Color) -> Seat {
-    if color == a_color {
-        Seat::A
-    } else {
-        Seat::B
-    }
+    if color == a_color { Seat::A } else { Seat::B }
 }
 
 /// Terminal precedence matches the bound game runtime: king availability,
@@ -663,7 +666,10 @@ fn main() -> Result<()> {
         args.input != args.output,
         "input and output paths must differ"
     );
-    ensure!(args.max_plies > 0 && args.max_plies <= MAX_PLIES, "max-plies must be in 1..=200");
+    ensure!(
+        args.max_plies > 0 && args.max_plies <= MAX_PLIES,
+        "max-plies must be in 1..=200"
+    );
     let input = BufReader::new(
         File::open(&args.input)
             .with_context(|| format!("cannot open input {}", args.input.display()))?,
@@ -751,10 +757,12 @@ mod tests {
     fn short_ongoing_transcript_is_incomplete() {
         let receipt = replay_one(&base(), 1, true, MAX_PLIES);
         assert_eq!(receipt["status"], "failed");
-        assert!(receipt["error"]
-            .as_str()
-            .unwrap()
-            .contains("incomplete ongoing transcript"));
+        assert!(
+            receipt["error"]
+                .as_str()
+                .unwrap()
+                .contains("incomplete ongoing transcript")
+        );
         assert_eq!(receipt["searchDispatched"], false);
         assert_eq!(receipt["modelLoaded"], false);
     }
@@ -821,10 +829,12 @@ mod tests {
         value["rawResult"] = json!("a-win");
         let receipt = replay_one(&value, 1, true, MAX_PLIES);
         assert_eq!(receipt["status"], "failed");
-        assert!(receipt["error"]
-            .as_str()
-            .unwrap()
-            .contains("after terminal adjudication"));
+        assert!(
+            receipt["error"]
+                .as_str()
+                .unwrap()
+                .contains("after terminal adjudication")
+        );
         assert_eq!(receipt["checks"]["noMoveAfterTerminal"], false);
     }
 
@@ -839,5 +849,4 @@ mod tests {
         assert_eq!(result.reason, TerminalReason::NoLegalMove);
         assert_eq!(board_status_name(board.status()), "won_by_side_to_move");
     }
-
 }

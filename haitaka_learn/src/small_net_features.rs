@@ -17,8 +17,10 @@ use std::path::Path;
 use anyhow::{Context, Result, bail, ensure};
 use haitaka::Color;
 use haitaka_wasm::{
-    KING_FREE_A_DONOR_SINGLE_FEATURES, NnueModel, R1_HALFKAV2_BASE_FEATURES,
-    king_free_donor_single_active_feature_indices, r1_donor_single_active_feature_indices,
+    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURES,
+    KING_ZONE9_A_DONOR_SINGLE_FEATURES, NnueModel, R1_HALFKAV2_BASE_FEATURES,
+    king_free_donor_single_active_feature_indices, king_zone9_donor_single_active_feature_indices,
+    r1_donor_single_active_feature_indices,
 };
 
 use crate::dataset::{PACKED_SFEN_BYTES, unpack_board_from_training};
@@ -37,6 +39,22 @@ pub const HALFKA_VIRTUAL_OFFSET: usize = R1_HALFKAV2_BASE_FEATURES + 1620;
 pub enum ExportFamily {
     KingFree,
     Halfka,
+    /// KingZone9A+DonorSingleEff plus shared (zone-free) factorizer rows; u16 x 128.
+    KingZone9,
+}
+
+/// Rows of the nine zone blocks (the donor block follows them).
+const KING_ZONE9_BASE_ROWS: usize = 9 * KING_FREE_A_BASE_FEATURES;
+
+fn king_zone9_rows(board: &haitaka::Board, perspective: Color) -> Vec<usize> {
+    let mut rows = king_zone9_donor_single_active_feature_indices(board, perspective);
+    let virtual_rows: Vec<usize> = rows
+        .iter()
+        .filter(|&&r| r < KING_ZONE9_BASE_ROWS)
+        .map(|&r| KING_ZONE9_A_DONOR_SINGLE_FEATURES + r % KING_FREE_A_BASE_FEATURES)
+        .collect();
+    rows.extend(virtual_rows);
+    rows
 }
 
 fn halfka_rows(board: &haitaka::Board, perspective: Color) -> Vec<usize> {
@@ -73,9 +91,11 @@ pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> 
     let (max_features, wide) = match family {
         ExportFamily::KingFree => (MAX_FEATURES, false),
         ExportFamily::Halfka => (HALFKA_MAX_FEATURES, true),
+        ExportFamily::KingZone9 => (HALFKA_MAX_FEATURES, false),
     };
     ensure!(
-        KING_FREE_A_DONOR_SINGLE_FEATURES < u16::MAX as usize,
+        KING_FREE_A_DONOR_SINGLE_FEATURES < u16::MAX as usize
+            && KING_ZONE9_A_DONOR_SINGLE_FEATURES + KING_FREE_A_BASE_FEATURES < u16::MAX as usize,
         "feature rows must fit u16"
     );
     let bytes = records(input)?;
@@ -99,6 +119,10 @@ pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> 
             ExportFamily::Halfka => (
                 halfka_rows(&board, Color::Black),
                 halfka_rows(&board, Color::White),
+            ),
+            ExportFamily::KingZone9 => (
+                king_zone9_rows(&board, Color::Black),
+                king_zone9_rows(&board, Color::White),
             ),
         };
         for list in [&black, &white] {

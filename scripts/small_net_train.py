@@ -55,9 +55,16 @@ HALFKA_ROWS = HALFKA_REAL + DONOR  # serialized rows
 HALFKA_TRAIN_ROWS = HALFKA_ROWS + PIECE_INDICES  # + factorizer virtual rows
 HALFKAV2_HASH = 0x5F234CB8
 
+# KingZone9A: nine own-king zones, each a KingFreeA block (BASE rows), then donor.
+KZ_ZONES = 9
+KZ_REAL = KZ_ZONES * BASE  # 17496
+KZ_ROWS = KZ_REAL + DONOR  # serialized rows (19116)
+KZ_TRAIN_ROWS = KZ_ROWS + BASE  # + shared zone-free factorizer rows
+KING_ZONE9_A_HASH = 0x4B5A3941
+
 
 def row_dtype(family):
-    width, dtype = (96, "<u2") if family == "king-free" else (128, "<u4")
+    width, dtype = {"king-free": (96, "<u2"), "king-zone9": (128, "<u2")}.get(family, (128, "<u4"))
     return np.dtype([
         ("score", "<i2"), ("ply", "<u2"), ("stm", "u1"), ("bucket", "u1"),
         ("nb", "u1"), ("nw", "u1"), ("result", "i1"), ("pad", "u1", 3),
@@ -69,11 +76,11 @@ FAMILY = "king-free"
 
 
 def train_rows():
-    return NUM_FEATURES if FAMILY == "king-free" else HALFKA_TRAIN_ROWS
+    return {"king-free": NUM_FEATURES, "king-zone9": KZ_TRAIN_ROWS}.get(FAMILY, HALFKA_TRAIN_ROWS)
 
 
 def serialized_rows():
-    return NUM_FEATURES if FAMILY == "king-free" else HALFKA_ROWS
+    return {"king-free": NUM_FEATURES, "king-zone9": KZ_ROWS}.get(FAMILY, HALFKA_ROWS)
 
 
 def composite(head, tail):
@@ -97,7 +104,7 @@ def output_layer_hash(l1):
 
 
 def hashes(l1):
-    head = KING_FREE_A_HASH if FAMILY == "king-free" else HALFKAV2_HASH
+    head = {"king-free": KING_FREE_A_HASH, "king-zone9": KING_ZONE9_A_HASH}.get(FAMILY, HALFKAV2_HASH)
     fs = composite(head, DONOR_SINGLE_ANHOKU_BLOCK_HASH)
     ft = fs ^ (2 * l1)
     out = output_layer_hash(l1)
@@ -164,6 +171,10 @@ class SmallNet(nn.Module):
             w[:, l1:] = 0.0
             if FAMILY == "king-free":
                 w[:PIECE_INDICES, l1:] = mat.unsqueeze(1).expand(-1, PSQT_BUCKETS)
+            elif FAMILY == "king-zone9":
+                # factorizer: real zone rows start as zero residuals over shared rows
+                w[:KZ_REAL, :] = 0.0
+                w[KZ_ROWS:KZ_ROWS + PIECE_INDICES, l1:] = mat.unsqueeze(1).expand(-1, PSQT_BUCKETS)
             else:
                 # factorizer: real king-bucket rows start as pure zero residuals
                 w[:HALFKA_REAL, :] = 0.0
@@ -191,6 +202,10 @@ class SmallNet(nn.Module):
                 if FAMILY == "halfka":
                     w[HALFKA_ROWS:, :] = 0.0
                     w[:HALFKA_REAL, l1:] = mat.repeat(SQUARES).unsqueeze(1).expand(-1, PSQT_BUCKETS)
+                if FAMILY == "king-zone9":
+                    w[KZ_ROWS:, :] = 0.0
+                    mat_base = torch.from_numpy(material_psqt()[:BASE])
+                    w[:KZ_REAL, l1:] = mat_base.repeat(KZ_ZONES).unsqueeze(1).expand(-1, PSQT_BUCKETS)
 
     def forward(self, black, nb, white, nw, stm, bucket):
         fb, ob = bag_inputs(black, nb)
@@ -279,6 +294,10 @@ def coalesced_ft(model):
     w = model.ft.weight.detach()
     if FAMILY == "king-free":
         return w
+    if FAMILY == "king-zone9":
+        real = w[:KZ_ROWS].clone()
+        real[:KZ_REAL] += w[KZ_ROWS:].repeat(KZ_ZONES, 1)
+        return real
     real = w[:HALFKA_ROWS].clone()
     virtual = w[HALFKA_ROWS:]
     real[:HALFKA_REAL] += virtual.repeat(SQUARES, 1)
@@ -524,7 +543,7 @@ def main():
     t.add_argument("--loss", choices=["sigmoid", "huber", "wdl"], default="sigmoid")
     t.add_argument("--wdl-lambda", type=float, default=1.0, help="score weight in the wdl target (1 = score only)")
     t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
-    t.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
+    t.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
     t.add_argument("--ranger-dir", default="/home/na2hiro/proj/engine/variant-nnue-pytorch")
@@ -545,14 +564,14 @@ def main():
     e.add_argument("--checkpoint", required=True)
     e.add_argument("--output", required=True)
     e.add_argument("--l1", type=int, default=256)
-    e.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
+    e.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
     e.add_argument("--description")
     e.set_defaults(fn=cmd_export)
     r = sub.add_parser("intref")
     r.add_argument("--nnue", required=True)
     r.add_argument("--feat", required=True)
     r.add_argument("--l1", type=int, default=256)
-    r.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
+    r.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
     r.add_argument("--limit", type=int, default=4096)
     r.add_argument("--rust")
     r.add_argument("--checkpoint")

@@ -25,12 +25,14 @@ use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
     DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats,
-    KING_FREE_A_DONOR_SINGLE_FEATURE_NAME, KING_FREE_A_DONOR_SINGLE_FEATURES,
-    NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH, NNUE_TRANSFORMER_WIDTH, NnueModel,
-    NnuePositionState, R1_HALFKAV2_BASE_FEATURES, R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices,
-    R1InferenceTrace, R1SentinelNetwork, collapse_donor_receiver_pair_v2,
-    donor_receiver_pair_v2_active_rows, donor_receiver_pair_v2_quantized_rows,
-    donor_receiver_pair_v2_stats, king_free_donor_single_active_feature_indices,
+    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURE_NAME,
+    KING_FREE_A_DONOR_SINGLE_FEATURES, KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME,
+    KING_ZONE9_A_DONOR_SINGLE_FEATURES, NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH,
+    NNUE_TRANSFORMER_WIDTH, NnueModel, NnuePositionState, R1_HALFKAV2_BASE_FEATURES,
+    R1_SENTINEL_CONSTRUCTION, R1ActiveFeatureIndices, R1InferenceTrace, R1SentinelNetwork,
+    collapse_donor_receiver_pair_v2, donor_receiver_pair_v2_active_rows,
+    donor_receiver_pair_v2_quantized_rows, donor_receiver_pair_v2_stats,
+    king_free_donor_single_active_feature_indices, king_zone9_donor_single_active_feature_indices,
     migrate_donor_single_to_receiver_pair_v2, r1_donor_single_active_feature_indices,
 };
 use sfnn::{SfnnModel, SfnnPositionState};

@@ -17,6 +17,8 @@ const DONOR_SINGLE_BLOCK_HASH: u32 = 0x23627e42;
 // Head hash for the king-free A block (`KingFreeA`). Serialized into every
 // KingFreeA+DonorSingleEff network header; keep stable.
 const KING_FREE_A_FEATURE_SET_HASH: u32 = 0x4b46_4131;
+/// "KZ9A": nine own-king zones, each holding a KingFreeA block.
+const KING_ZONE9_A_FEATURE_SET_HASH: u32 = 0x4b5a_3941;
 // Anhoku-only V2 relation block. Keep this value stable: it is serialized into
 // every HalfKAv2^+DonorReceiverPairV2 network header.
 const DONOR_RECEIVER_PAIR_V2_BLOCK_HASH: u32 = 0x6d12_4a8f;
@@ -88,6 +90,9 @@ const HALFKAV2_REAL_FEATURES: usize = SQUARES * PIECE_INDICES;
 /// shares one king plane because the own king is implied by the offset).
 const KING_FREE_ENEMY_KING_OFFSET: usize = PIECE_INDICES;
 const KING_FREE_BASE_FEATURES: usize = PIECE_INDICES + SQUARES;
+/// Own-king zones: 3 file groups x 3 rank groups (back rank, second rank, rest).
+const KING_ZONES: usize = 9;
+const KING_ZONE_BASE_FEATURES: usize = KING_ZONES * KING_FREE_BASE_FEATURES;
 const DONOR_SINGLE_REAL_FEATURES: usize = SQUARES * PIECE_TYPE_COUNT * Color::NUM;
 const DONOR_RECEIVER_PAIR_V2_REAL_FEATURES: usize =
     SQUARES * Color::NUM * PIECE_TYPE_COUNT * PIECE_TYPE_COUNT;
@@ -202,6 +207,8 @@ const HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
 const KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(KING_FREE_A_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
+const KING_ZONE9_A_DONOR_SINGLE_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(KING_ZONE9_A_FEATURE_SET_HASH, DONOR_SINGLE_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_RECEIVER_PAIR_V2_BLOCK_HASH);
 const HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH: u32 =
@@ -217,6 +224,9 @@ const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
 #[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
 const KING_FREE_A_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH);
+#[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
+const KING_ZONE9_A_DONOR_SINGLE_NETWORK_HASH: u32 =
+    network_hash(KING_ZONE9_A_DONOR_SINGLE_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_RECEIVER_PAIR_V2_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
@@ -232,6 +242,7 @@ enum FeatureFamily {
     HalfKAv2DonorPair,
     HalfKAv2DonorKnight8,
     KingFreeADonorSingle,
+    KingZone9ADonorSingle,
 }
 
 impl FeatureFamily {
@@ -243,6 +254,7 @@ impl FeatureFamily {
             FeatureFamily::HalfKAv2DonorPair => "HalfKAv2^+DonorPairSlots",
             FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
             FeatureFamily::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_NAME,
+            FeatureFamily::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME,
         }
     }
 
@@ -265,6 +277,8 @@ impl FeatureFamily {
             #[cfg(feature = "anhoku")]
             KING_FREE_A_DONOR_SINGLE_NETWORK_HASH => Some(Self::KingFreeADonorSingle),
             #[cfg(feature = "anhoku")]
+            KING_ZONE9_A_DONOR_SINGLE_NETWORK_HASH => Some(Self::KingZone9ADonorSingle),
+            #[cfg(feature = "anhoku")]
             HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH => Some(Self::HalfKAv2DonorReceiverPairV2),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
             #[cfg(feature = "anki")]
@@ -281,6 +295,7 @@ impl FeatureFamily {
             Self::HalfKAv2DonorPair => HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH,
             Self::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH,
+            Self::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_SET_HASH,
         }
     }
 
@@ -298,6 +313,7 @@ impl FeatureFamily {
             Self::HalfKAv2DonorPair => HALFKAV2_REAL_FEATURES + DONOR_PAIR_REAL_FEATURES,
             Self::HalfKAv2DonorKnight8 => HALFKAV2_REAL_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
             Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
+            Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
         }
     }
 
@@ -305,12 +321,18 @@ impl FeatureFamily {
     const fn base_features(self) -> usize {
         match self {
             Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES,
+            Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES,
             _ => HALFKAV2_REAL_FEATURES,
         }
     }
 
-    const fn is_king_free(self) -> bool {
-        matches!(self, Self::KingFreeADonorSingle)
+    /// Families whose base block is a KingFreeA block (own king as a piece,
+    /// enemy king on its own plane), optionally repeated per own-king zone.
+    const fn has_king_free_block(self) -> bool {
+        matches!(
+            self,
+            Self::KingFreeADonorSingle | Self::KingZone9ADonorSingle
+        )
     }
 
     const fn max_active_features(self) -> usize {
@@ -321,6 +343,7 @@ impl FeatureFamily {
             Self::HalfKAv2DonorPair => 256,
             Self::HalfKAv2DonorKnight8 => 512,
             Self::KingFreeADonorSingle => 192,
+            Self::KingZone9ADonorSingle => 192,
         }
     }
 }
@@ -395,6 +418,12 @@ pub const KING_FREE_A_DONOR_SINGLE_FEATURE_NAME: &str = "KingFreeA+DonorSingleEf
 /// Total rows of the KingFreeA+DonorSingleEff transformer.
 pub const KING_FREE_A_DONOR_SINGLE_FEATURES: usize =
     KING_FREE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES;
+pub const KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME: &str = "KingZone9A+DonorSingleEff";
+/// Total rows of the KingZone9A+DonorSingleEff transformer.
+pub const KING_ZONE9_A_DONOR_SINGLE_FEATURES: usize =
+    KING_ZONE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES;
+/// Rows of one zone's KingFreeA block (the trainer's shared factorizer width).
+pub const KING_FREE_A_BASE_FEATURES: usize = KING_FREE_BASE_FEATURES;
 
 /// Number of real HalfKAv2 rows before the variant donor block.
 pub const R1_HALFKAV2_BASE_FEATURES: usize = HALFKAV2_REAL_FEATURES;
@@ -442,6 +471,27 @@ pub fn king_free_donor_single_active_feature_indices(
         .iter()
         .copied()
         .collect()
+}
+
+/// Active rows of the KingZone9A+DonorSingleEff family for one perspective.
+#[cfg(feature = "anhoku")]
+pub fn king_zone9_donor_single_active_feature_indices(
+    board: &Board,
+    perspective: Color,
+) -> Vec<usize> {
+    let family = FeatureFamily::KingZone9ADonorSingle;
+    active_features(board, perspective, board.king(perspective), family)
+        .iter()
+        .copied()
+        .collect()
+}
+
+#[cfg(not(feature = "anhoku"))]
+pub fn king_zone9_donor_single_active_feature_indices(
+    _board: &Board,
+    _perspective: Color,
+) -> Vec<usize> {
+    Vec::new()
 }
 
 #[cfg(not(feature = "anhoku"))]
@@ -857,7 +907,9 @@ impl NnueModel {
             let new_king_square = child_board.king(perspective);
             let parent_accumulator = parent_state.perspective(perspective);
 
-            if new_king_square != parent_accumulator.king_square && !self.family.is_king_free() {
+            if king_offset(self.family, new_king_square, perspective)
+                != king_offset(self.family, parent_accumulator.king_square, perspective)
+            {
                 // The king move re-bases every base feature's king offset, so this
                 // perspective is rebuilt from scratch (which also covers its donor
                 // features via `active_features`).
@@ -1786,7 +1838,9 @@ fn for_each_donor_feature(
 ) {
     match family {
         FeatureFamily::HalfKAv2 => {}
-        FeatureFamily::HalfKAv2DonorSingle | FeatureFamily::KingFreeADonorSingle => {
+        FeatureFamily::HalfKAv2DonorSingle
+        | FeatureFamily::KingFreeADonorSingle
+        | FeatureFamily::KingZone9ADonorSingle => {
             // The color plane is keyed on the donor's own color (matching the C++
             // training overlay's `donor_piece_index`), which differs from the
             // influenced piece's color for the enemy-donor variants: taimen/haimen
@@ -2058,7 +2112,8 @@ fn donor_influence_neighborhood(
         FeatureFamily::HalfKAv2 => {}
         FeatureFamily::HalfKAv2DonorSingle
         | FeatureFamily::HalfKAv2DonorReceiverPairV2
-        | FeatureFamily::KingFreeADonorSingle => {
+        | FeatureFamily::KingFreeADonorSingle
+        | FeatureFamily::KingZone9ADonorSingle => {
             neighbors[0] = square.try_offset(0, 1);
             neighbors[1] = square.try_offset(0, -1);
         }
@@ -2074,11 +2129,27 @@ fn donor_influence_neighborhood(
 }
 
 fn king_offset(family: FeatureFamily, king_square: Square, perspective: Color) -> usize {
-    if family.is_king_free() {
-        0
-    } else {
-        orient_square(king_square, perspective) * PIECE_INDICES
+    match family {
+        FeatureFamily::KingFreeADonorSingle => 0,
+        FeatureFamily::KingZone9ADonorSingle => {
+            king_zone(orient_square(king_square, perspective)) * KING_FREE_BASE_FEATURES
+        }
+        _ => orient_square(king_square, perspective) * PIECE_INDICES,
     }
+}
+
+/// Zone of an oriented own-king square (rank 0 = the perspective's back rank).
+const fn king_zone(oriented_square: usize) -> usize {
+    let file_group = (oriented_square % 9) / 3;
+    let rank = oriented_square / 9;
+    let rank_group = if rank == 0 {
+        0
+    } else if rank == 1 {
+        1
+    } else {
+        2
+    };
+    rank_group * 3 + file_group
 }
 
 fn board_feature_index(
@@ -2089,8 +2160,8 @@ fn board_feature_index(
     piece: Piece,
     square: Square,
 ) -> usize {
-    if family.is_king_free() && piece == Piece::King && color != perspective {
-        return KING_FREE_ENEMY_KING_OFFSET + orient_square(square, perspective);
+    if family.has_king_free_block() && piece == Piece::King && color != perspective {
+        return king_offset + KING_FREE_ENEMY_KING_OFFSET + orient_square(square, perspective);
     }
     king_offset + piece_square_index(perspective, color, piece) + orient_square(square, perspective)
 }
@@ -2435,6 +2506,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => cfg!(feature = "anki"),
         FeatureFamily::KingFreeADonorSingle => cfg!(feature = "anhoku"),
+        FeatureFamily::KingZone9ADonorSingle => cfg!(feature = "anhoku"),
     }
 }
 
@@ -3647,6 +3719,121 @@ mod tests {
             KING_FREE_A_DONOR_SINGLE_FEATURE_NAME
         );
         // Equal pawn counts at startpos: psqt cancels.
+        assert_eq!(model.evaluate(&Board::startpos()), 0);
+        let mut truncated = bytes.clone();
+        truncated.pop();
+        assert!(NnueModel::from_bytes(&truncated).is_err());
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_zone9_incremental_matches_full_refresh_random_rollouts() {
+        // Random play walks kings across zones, exercising both the in-zone
+        // delta path and the zone-change refresh path.
+        let model = synthetic_donor_model(FeatureFamily::KingZone9ADonorSingle);
+        let mut rng = StdRng::seed_from_u64(0x6b7a_2026);
+        let mut zone_changes = 0;
+        for _ in 0..24 {
+            let mut board = Board::startpos();
+            let mut moves = Vec::new();
+            for _ in 0..80 {
+                let legal = collect_legal_moves(&board);
+                let Some(&mv) = legal.choose(&mut rng) else {
+                    break;
+                };
+                let before = [Color::Black, Color::White]
+                    .map(|c| king_offset(FeatureFamily::KingZone9ADonorSingle, board.king(c), c));
+                moves.push(mv);
+                board.play_unchecked(mv);
+                let after = [Color::Black, Color::White]
+                    .map(|c| king_offset(FeatureFamily::KingZone9ADonorSingle, board.king(c), c));
+                zone_changes += (before != after) as usize;
+            }
+            assert_donor_rollout_matches_full(&model, Board::startpos(), &moves);
+        }
+        assert!(zone_changes > 0, "rollouts must cross a king zone");
+    }
+
+    #[test]
+    fn king_zones_partition_the_board() {
+        let mut counts = [0usize; KING_ZONES];
+        for square in 0..SQUARES {
+            counts[king_zone(square)] += 1;
+        }
+        // back rank and second rank: 3 squares per zone; the rest: 21.
+        assert_eq!(counts, [3, 3, 3, 3, 3, 3, 21, 21, 21]);
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_zone9_rows_are_king_free_rows_shifted_by_zone() {
+        // At startpos each king sits on the centre file of its back rank
+        // (zone 1 from its own perspective), so every KingZone9 row is the
+        // KingFreeA row shifted into zone 1 and the donor block re-based.
+        let board = Board::startpos();
+        for perspective in [Color::Black, Color::White] {
+            let free = king_free_donor_single_active_feature_indices(&board, perspective);
+            let zoned = king_zone9_donor_single_active_feature_indices(&board, perspective);
+            let expected: Vec<_> = free
+                .iter()
+                .map(|&r| {
+                    if r < KING_FREE_BASE_FEATURES {
+                        r + KING_FREE_BASE_FEATURES
+                    } else {
+                        r - KING_FREE_BASE_FEATURES + KING_ZONE_BASE_FEATURES
+                    }
+                })
+                .collect();
+            assert_eq!(zoned, expected);
+            assert!(
+                zoned
+                    .iter()
+                    .all(|&r| r < KING_ZONE9_A_DONOR_SINGLE_FEATURES)
+            );
+        }
+    }
+
+    #[cfg(feature = "anhoku")]
+    #[test]
+    fn king_zone9_serialized_network_round_trips() {
+        let family = FeatureFamily::KingZone9ADonorSingle;
+        let rows = family.num_real_features();
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&VERSION.to_le_bytes());
+        bytes.extend_from_slice(&KING_ZONE9_A_DONOR_SINGLE_NETWORK_HASH.to_le_bytes());
+        let description = b"king-zone9 test";
+        bytes.extend_from_slice(&(description.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(description);
+        bytes.extend_from_slice(&family.feature_transformer_hash().to_le_bytes());
+        bytes.extend(std::iter::repeat_n(0u8, TRANSFORMED_FEATURE_DIMENSIONS * 2));
+        bytes.extend(std::iter::repeat_n(
+            0u8,
+            TRANSFORMED_FEATURE_DIMENSIONS * rows * 2,
+        ));
+        for _ in 0..rows * PSQT_BUCKETS {
+            bytes.extend_from_slice(&0i32.to_le_bytes());
+        }
+        for _ in 0..LAYER_STACKS {
+            bytes.extend_from_slice(&OUTPUT_LAYER_HASH.to_le_bytes());
+            for (outputs, padded) in [
+                (
+                    HIDDEN_LAYER_1_DIMENSIONS,
+                    PADDED_HIDDEN_LAYER_1_INPUT_DIMENSIONS,
+                ),
+                (
+                    HIDDEN_LAYER_2_DIMENSIONS,
+                    PADDED_HIDDEN_LAYER_2_INPUT_DIMENSIONS,
+                ),
+                (OUTPUT_LAYER_DIMENSIONS, PADDED_OUTPUT_INPUT_DIMENSIONS),
+            ] {
+                bytes.extend(std::iter::repeat_n(0u8, outputs * 4 + outputs * padded));
+            }
+        }
+        let model = NnueModel::from_bytes(&bytes).expect("king-zone9 network must load");
+        assert_eq!(
+            model.feature_family_name(),
+            KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME
+        );
         assert_eq!(model.evaluate(&Board::startpos()), 0);
         let mut truncated = bytes.clone();
         truncated.pop();
