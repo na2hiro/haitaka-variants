@@ -11,6 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow};
@@ -194,16 +195,27 @@ pub fn run(args: GenerateArgs) -> Result<()> {
     };
     let started = Instant::now();
     let jobs = args.jobs.max(1);
+    let finished = AtomicU64::new(0);
+    let step = (args.games / 20).max(1);
     let results: Vec<Result<Vec<(u64, GameOut)>>> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..jobs)
             .map(|worker| {
                 let args = &args;
                 let model = model.clone();
+                let finished = &finished;
                 scope.spawn(move || -> Result<Vec<(u64, GameOut)>> {
                     let mut done = Vec::new();
                     let mut index = worker as u64;
                     while index < args.games {
                         done.push((index, play_game(index, args, &model)?));
+                        let n = finished.fetch_add(1, Ordering::Relaxed) + 1;
+                        if n % step == 0 {
+                            eprintln!(
+                                "progress {n}/{} games, {:.0}s",
+                                args.games,
+                                started.elapsed().as_secs_f64()
+                            );
+                        }
                         index += jobs as u64;
                     }
                     Ok(done)

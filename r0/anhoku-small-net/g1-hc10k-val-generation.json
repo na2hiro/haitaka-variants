@@ -1,0 +1,22 @@
+{
+  "adjudicatePlies": 4,
+  "adjudicateScore": 3000,
+  "adjudicatedGames": 897,
+  "cappedGames": 0,
+  "elapsedSec": 2018.779256502,
+  "evaluator": "handcrafted",
+  "games": 1600,
+  "jobs": 6,
+  "maxPlies": 200,
+  "nodesPerMove": 10000,
+  "positions": 60226,
+  "positionsPerSec": 29.832880343914084,
+  "positionsPerWorkerSec": 4.972146723985681,
+  "randomMoveRate": 0.05,
+  "randomPlies": 8,
+  "recordFromPly": 0,
+  "schema": "haitaka-small-net-selfplay-generation-v1",
+  "searchedPlies": 62855,
+  "seed": 202,
+  "totalNodes": 637520000
+}

@@ -1,0 +1,50 @@
+{
+ "../gen/g1-hc10k-train.bin": {
+  "records": 926284,
+  "shareAbsScoreBelow300": 0.37530606163984265,
+  "shareAbsScoreBelow1000": 0.6334374770588718,
+  "shareAbsScoreAtLeast3000": 0.04421969935786433,
+  "plyBands": [
+   {
+    "plyFrom": 0,
+    "plyTo": 20,
+    "records": 283506,
+    "share": 0.3060681173376632,
+    "medianAbsScore": 148.0,
+    "shareAbsScoreBelow300": 0.6967930131990152
+   },
+   {
+    "plyFrom": 20,
+    "plyTo": 40,
+    "records": 378068,
+    "share": 0.4081555980671155,
+    "medianAbsScore": 708.0,
+    "shareAbsScoreBelow300": 0.2968540050996117
+   },
+   {
+    "plyFrom": 40,
+    "plyTo": 80,
+    "records": 239411,
+    "share": 0.25846392683021624,
+    "medianAbsScore": 1240,
+    "shareAbsScoreBelow300": 0.1452815451253284
+   },
+   {
+    "plyFrom": 80,
+    "plyTo": 120,
+    "records": 22457,
+    "share": 0.02424418428905174,
+    "medianAbsScore": 1354,
+    "shareAbsScoreBelow300": 0.12196642472280358
+   },
+   {
+    "plyFrom": 120,
+    "plyTo": 200,
+    "records": 2842,
+    "share": 0.003068173475953379,
+    "medianAbsScore": 1378.0,
+    "shareAbsScoreBelow300": 0.1206896551724138
+   }
+  ]
+ }
+}
