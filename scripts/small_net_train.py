@@ -107,7 +107,8 @@ def hashes(l1):
 # ---- data -------------------------------------------------------------------
 class FeatureSet:
     def __init__(self, path, max_ply=None, max_abs_score=None):
-        rows = np.fromfile(path, dtype=row_dtype(FAMILY))
+        # comma-separated paths are concatenated (avoids writing combined copies)
+        rows = np.concatenate([np.fromfile(p, dtype=row_dtype(FAMILY)) for p in str(path).split(",")])
         keep = np.ones(len(rows), dtype=bool)
         if max_ply is not None:
             keep &= rows["ply"] < max_ply
