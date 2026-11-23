@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>bench</title><body>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const w = new Worker('./worker.js', { type: 'module' });
+w.onmessage = async (e) => { await fetch('/result', { method: 'POST', body: JSON.stringify({ ...e.data, ua: navigator.userAgent }) }); document.body.textContent = 'done'; };
+w.onerror = async (e) => { await fetch('/result', { method: 'POST', body: JSON.stringify({ error: String(e.message) }) }); };
+w.postMessage({ pkg: q.get('pkg'), model: q.get('model'), movetime: +(q.get('mt') || 1000) });
+</script>
