@@ -1,3 +1,9 @@
 d54c50466f9745d16a1858385539cfc64997971969f27b77474e8db9fc04eb01  gen/g2-teacher-kf-ab-long.nnue
 f3408fdb6e6ecf7f85d7fc612e652f2861662731c6cf191c9049e5aa98682e89  gen/g3-teacher-kf-g2.nnue
 545575c3c1bdd690c6f0e5cbe3daacbb93df831ca7cde6288dc0d2aa4b4958f0  runs/kf-abg1g2/best.nnue
+979f354bfef0041e2574fedcb75a7a8a5bb7d5d3f9214103e9bdf298eea829ed  mbp:smallnet/models/kf-all6.nnue (best.pt, 4096 steps)
+0427373ad41bd53ab80f2c74d1d47de180d8b8602992dd40e355d08806ae7846  mbp:smallnet/models/kf-all6-long-last.nnue (last.pt, 12288 steps)
+519534e29d8389121deec06e05b35cee0d374f39764bb3d3f6662f9ec9c1c3ab  mbp:smallnet/models/kf-all6-x2-last.nnue (last.pt, 24576 steps)
+ddf42d5ca2e7a2a380bb13b8c4de8b3b7ee6807766d614cdb22757eead7f142b  step10-u768.nnue (incumbent, 83 MB)
+136463e170c1eb249b3b87c141dcb45531524836392e2303cda1edba1a2be959  mbp:smallnet/models/kf-all4.nnue
+ecebdc340832ec8a29c0ccebb3a89beb393a3d963528597169b0d4edd9c4942a  mbp:smallnet/models/kf-all5.nnue
