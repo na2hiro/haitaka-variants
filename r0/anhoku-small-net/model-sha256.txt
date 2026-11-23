@@ -10,3 +10,6 @@ ecebdc340832ec8a29c0ccebb3a89beb393a3d963528597169b0d4edd9c4942a  mbp:smallnet/m
 c20c466aa590ddc4278d64ab50ee7fa11b0c729621cc494f75d71b1bad60cd0f  mbp:smallnet/models/kf-all7-last.nnue
 1e817e615b70b59a0d794e0e35f906b687478d1e185b002ef10acaaf16072ef3  mbp:smallnet/models/all7-wdl-l10-last.nnue
 71237baf8ddf6dc872d87bec7293a8f29f9f5f1da80cf6aca054f747e20342cb  mbp:smallnet/models/all7-wdl-l07-last.nnue
+ebd17b20503d3e1288c1baa8693b753e857817142f764458ce660f03409a9627  mbp:smallnet/models/all7-l512-last.nnue
+f8fa6378557a208f28dfbcb2f11a7160f5ff5cf6e895a98706c6f5f510141c6a  mbp:smallnet/models/alone-g8d-last.nnue
+af9e80907a043026f2d5895030a8188838a76e62a7dda5423c3285628d6053da  mbp:smallnet/models/alone-g7sub-last.nnue
