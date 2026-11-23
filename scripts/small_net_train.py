@@ -456,6 +456,15 @@ def cmd_train(args):
     print(f"best step {best[1]} val loss {best[0]:.6f}; wrote {out/'best.nnue'} ({size} bytes)")
 
 
+def cmd_export(args):
+    global FAMILY
+    FAMILY = args.family
+    model = SmallNet(args.l1, 0)
+    model.load_state_dict(torch.load(args.checkpoint))
+    size = export_nnue(model, Path(args.output), args.description or f"{FAMILY} L1={args.l1} {args.checkpoint}")
+    print(f"wrote {args.output} ({size} bytes)")
+
+
 def cmd_intref(args):
     global FAMILY
     FAMILY = args.family
@@ -510,6 +519,13 @@ def main():
     t.add_argument("--max-ply", type=int, default=None)
     t.add_argument("--max-abs-score", type=int, default=None)
     t.set_defaults(fn=cmd_train)
+    e = sub.add_parser("export", help="export a saved checkpoint (e.g. last.pt) to .nnue")
+    e.add_argument("--checkpoint", required=True)
+    e.add_argument("--output", required=True)
+    e.add_argument("--l1", type=int, default=256)
+    e.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
+    e.add_argument("--description")
+    e.set_defaults(fn=cmd_export)
     r = sub.add_parser("intref")
     r.add_argument("--nnue", required=True)
     r.add_argument("--feat", required=True)
