@@ -1,8 +1,18 @@
 # 安北NNUE：小型ネットとデータ量拡大への方針転換案
 
 - 作成: 2026-11-23
-- 状態: フェーズ0完了（[監査結果](../docs/nnue-small-net-phase0-audit.md)、2026-11-23）。フェーズ1は未着手。過去の計画（`plans/reboot/`、`plans/anhoku-nnue-strength-first-plan.md`）の記録はそのまま残す。
+- 状態: フェーズ0〜2完了、フェーズ3・4進行中（[フェーズ0](../docs/nnue-small-net-phase0-audit.md)、[フェーズ1〜4の記録](../docs/nnue-small-net-phase1-2.md)、2026-11-23）。過去の計画（`plans/reboot/`、`plans/anhoku-nnue-strength-first-plan.md`）の記録はそのまま残す。
 - 対象ルール: 安北（`anhoku`）
+
+## 進捗（2026-11-23）
+
+- フェーズ1・2は完了した。2.0MBの `KingFreeA+DonorSingleEff` は、同じデータと同じ手順でHalfKA（83MB）と同じ強さになった。学習はCPUで約10分。
+- フェーズ3・4は進行中。新しい生成器（`small-net-generate`）は1局面あたりの費用が旧来の約1/8〜1/11で、分布も実戦に近い。小型NNUEを教師にした第2世代では、同じ規模で+72 Eloになった。
+- 現時点の最良は kf-abg1g2（359万局面）。手書き評価に対して73.8%（+180 Elo）で、現職u768との直接対局の連鎖で見ると約+170 Eloの見込みである。
+- 計画からの変更点:
+  - 学習は既存のGPU用学習器ではなく、CPU学習器 `scripts/small_net_train.py` で行う。GPUの賃借は不要
+  - 選別は検証損失ではなく対局で行う（データを足した効果が検証損失に表れないため）
+  - L1は256のまま（512にしても強くならなかった）
 
 ## 1. 結論
 
