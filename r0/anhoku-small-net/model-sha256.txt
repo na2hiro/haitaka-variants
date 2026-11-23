@@ -13,3 +13,5 @@ c20c466aa590ddc4278d64ab50ee7fa11b0c729621cc494f75d71b1bad60cd0f  mbp:smallnet/m
 ebd17b20503d3e1288c1baa8693b753e857817142f764458ce660f03409a9627  mbp:smallnet/models/all7-l512-last.nnue
 f8fa6378557a208f28dfbcb2f11a7160f5ff5cf6e895a98706c6f5f510141c6a  mbp:smallnet/models/alone-g8d-last.nnue
 af9e80907a043026f2d5895030a8188838a76e62a7dda5423c3285628d6053da  mbp:smallnet/models/alone-g7sub-last.nnue
+c7fcbebc9d87336f0b30fba2777ca84884132e215c2430f1f0b4bab6597f7e27  mbp:smallnet/models/kf-all8-last.nnue
+7550f4e95d4ada24a6165dfa2134945ca3cca19bf1ed2783a4085c55889f4821  mbp:smallnet/models/kf-recent-last.nnue
