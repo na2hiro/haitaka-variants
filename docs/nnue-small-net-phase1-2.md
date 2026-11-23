@@ -403,6 +403,27 @@ web 用の WASM（`wasm-pack --target web`）を、Worker の中で動かした�
 | **kf-all8（2.0MB）** | **52,000〜52,700**（手書きの約88%） | 5.62 | **約110 ms** | **ほぼ0〜+8 MB** |
 | u768（83MB） | 47,300〜47,700（約80%） | 5.19 | 約630 ms | 約+250 MB |
 
+### WASM SIMD（`-C target-feature=+simd128`）
+
+これまでの web 用 WASM は、SIMD なしでビルドしていた。NNUE のコードは変えず、ビルドの指定だけで SIMD を有効にした。
+- `RUSTFLAGS="-C target-feature=+simd128" wasm-pack build haitaka_wasm --target web --release --features anhoku,nnue-l1-256`
+- 比べたのは、同じコミットからビルドした SIMD なし版と SIMD 版
+- コンパイラの自動ベクトル化だけで、手書きの SIMD 命令は使っていない
+
+条件は、上の Chrome の測定と同じ。
+- ヘッドレス Chrome 155、Worker、手元の i7-6700、1秒/手、16局面、2回
+- 記録は [chrome-simd-bench.jsonl](../r0/anhoku-small-net/chromebench/chrome-simd-bench.jsonl)
+
+| ビルド | kf-all8 NPS | 手書き NPS | kf-all8 平均深さ |
+|---|---:|---:|---:|
+| SIMDなし | 52,500〜53,600（手書きの約88%） | 59,800〜60,300 | 5.63 |
+| **simd128** | **74,500〜75,100（+41%、手書きの約124%）** | 60,300〜60,700 | **5.94** |
+
+- 同じ64局面（step11 の封印局面）を深さ6で探索した。SIMD 版と SIMD なし版で、最善手もノード数も全局面で一致した（[wasm-simd-parity-d6.txt](../r0/anhoku-small-net/wasm-simd-parity-d6.txt)）。
+- 手書きの速度はほとんど変わらない。NNUE の差分更新と全結合層だけが速くなる。
+- WASM SIMD は、Chrome 91、Firefox 89、Safari 16.4 以降で使える。これより古いブラウザにも配るなら、SIMD 版とSIMDなし版の2つを用意して、読み込むときに切り替える必要がある。
+- **配布するビルドの設定を変えるかどうかは、まだ決めていない（要判断）。**
+
 ## 自玉の位置を9区画に分ける（KingZone9A、10.5MB）
 
 KingFreeA の行全体（駒・持ち駒 1,863行＋敵玉 81行）を、自玉の区画ごとに9組持たせた。
@@ -429,6 +450,7 @@ KingFreeA の行全体（駒・持ち駒 1,863行＋敵玉 81行）を、自玉�
 - 昇格候補は **kf-all8 最終**。KingFreeA L1=256、**2.0MB**、SHA-256 `c7fcbebc…`。
   - 封印した256局面・1秒/手で、手書きに **+244**、u768 に **+177**（各512局）
   - WASMでは、手書きの約81%のNPSで動く（kf-all6-x2 で測定。同じ構造なので同等とみる）
+  - WASM を simd128 でビルドすると、Chrome では手書きの約124%の NPS になる（SIMD なしの +41%。探索結果は同一）
 - 手書きに対する強さは、kf-all5 から横ばい（+200〜250）。直接対局での伸びは、同じ系統どうしでしか出ない差の部分が大きかった。
 - 効かなかったもの:
   - 対局結果を混ぜる（λ=0.7）
