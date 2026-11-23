@@ -1,0 +1,100 @@
+{
+ "args": {
+  "cmd": "train",
+  "train": "feat/a-train.feat,feat/b-train.feat,feat/g1-train.feat,feat/g2-train.feat,feat/g3-train.feat,feat/g4-train.feat,feat/g5-train.feat,feat/g6-train.feat,feat/g7-train.feat,feat/g8d-train.feat",
+  "val": "feat/b-val.feat",
+  "out": "runs/kf-all8-s2",
+  "l1": 256,
+  "epochs": 40,
+  "batch": 16384,
+  "lr": 0.0015,
+  "lr_floor": 0.0333,
+  "k": 1000.0,
+  "loss": "huber",
+  "wdl_lambda": 1.0,
+  "result_ignore": "",
+  "family": "king-free",
+  "init": "nnue",
+  "optimizer": "ranger",
+  "ranger_dir": "/Users/na2hiro/smallnet",
+  "output_lr_mult": 0.1,
+  "warmup": 64,
+  "horizon": 24576,
+  "max_steps": 24576,
+  "eval_every": 4096,
+  "keep_every": 0,
+  "select_cap": 0,
+  "seed": 2,
+  "threads": 8,
+  "patience": 0,
+  "max_ply": null,
+  "max_abs_score": null
+ },
+ "bestStep": 4096,
+ "bestValLoss": 0.0010357987962042292,
+ "nnueBytes": 2014965,
+ "trainRows": 16275533,
+ "valRows": 60000,
+ "log": [
+  {
+   "epoch": 0,
+   "step": 0,
+   "valLoss": 0.0019686481213817995,
+   "valMae": 568.94
+  },
+  {
+   "epoch": 5,
+   "step": 4096,
+   "trainLoss": 0.0017782099455416756,
+   "valLoss": 0.0010357987962042292,
+   "valMae": 410.6773,
+   "lr": 0.001405328332094039,
+   "elapsedSec": 463.60438895225525
+  },
+  {
+   "epoch": 9,
+   "step": 8192,
+   "trainLoss": 0.001388284600238876,
+   "valLoss": 0.001046492153716584,
+   "valMae": 410.5790666666667,
+   "lr": 0.0011409156133451732,
+   "elapsedSec": 908.7298030853271
+  },
+  {
+   "epoch": 13,
+   "step": 12288,
+   "trainLoss": 0.0013014909836783772,
+   "valLoss": 0.0010681100823606055,
+   "valMae": 414.0357333333333,
+   "lr": 0.0007779485337182644,
+   "elapsedSec": 1360.0415818691254
+  },
+  {
+   "epoch": 17,
+   "step": 16384,
+   "trainLoss": 0.00124591953058939,
+   "valLoss": 0.0010957132533813516,
+   "valMae": 417.90836666666667,
+   "lr": 0.00041418062820741257,
+   "elapsedSec": 1807.7180268764496
+  },
+  {
+   "epoch": 21,
+   "step": 20480,
+   "trainLoss": 0.0012058517114610368,
+   "valLoss": 0.0011204397588968277,
+   "valMae": 423.24623333333335,
+   "lr": 0.00014758110855941513,
+   "elapsedSec": 2256.640424966812
+  },
+  {
+   "epoch": 25,
+   "step": 24576,
+   "trainLoss": 0.0011843444494843425,
+   "valLoss": 0.0011222908737758795,
+   "valMae": 423.0842666666667,
+   "lr": 4.995000000000001e-05,
+   "elapsedSec": 2701.729437828064
+  }
+ ]
+}
