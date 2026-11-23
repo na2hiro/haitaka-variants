@@ -106,16 +106,23 @@ def hashes(l1):
 
 # ---- data -------------------------------------------------------------------
 class FeatureSet:
-    def __init__(self, path, max_ply=None, max_abs_score=None):
+    def __init__(self, path, max_ply=None, max_abs_score=None, result_ignore=()):
         # comma-separated paths are concatenated (avoids writing combined copies)
-        rows = np.concatenate([np.fromfile(p, dtype=row_dtype(FAMILY)) for p in str(path).split(",")])
+        parts = [np.fromfile(p, dtype=row_dtype(FAMILY)) for p in str(path).split(",")]
+        # game results are trusted only for files not matching --result-ignore
+        has = np.concatenate([np.full(len(r), not any(t in p for t in result_ignore))
+                              for p, r in zip(str(path).split(","), parts)])
+        rows = np.concatenate(parts)
         keep = np.ones(len(rows), dtype=bool)
         if max_ply is not None:
             keep &= rows["ply"] < max_ply
         if max_abs_score is not None:
             keep &= np.abs(rows["score"].astype(np.int32)) < max_abs_score
         rows = rows[keep]
+        has = has[keep]
         self.n = len(rows)
+        self.result = torch.from_numpy(rows["result"].astype(np.float32))
+        self.has_result = torch.from_numpy(has)
         self.score = torch.from_numpy(np.clip(rows["score"].astype(np.float32), -SCORE_CLIP, SCORE_CLIP))
         self.stm = torch.from_numpy(rows["stm"].astype(np.int64))
         self.bucket = torch.from_numpy(rows["bucket"].astype(np.int64))
@@ -231,9 +238,19 @@ def material_psqt():
 
 
 LOSS = "sigmoid"
+WDL_LAMBDA = 1.0
 
 
-def loss_fn(pred, target, k):
+def loss_fn(pred, target, k, result=None, has_result=None):
+    if LOSS == "wdl":
+        # MSE in win-probability space; the target blends the search score
+        # (weight lambda) with the game result where the result is trusted.
+        p_score = torch.sigmoid(target / k)
+        if result is not None and WDL_LAMBDA < 1.0:
+            r01 = (result + 1) * 0.5
+            blended = WDL_LAMBDA * p_score + (1 - WDL_LAMBDA) * r01
+            p_score = torch.where(has_result, blended, p_score)
+        return ((torch.sigmoid(pred / k) - p_score) ** 2).mean()
     if LOSS == "huber":
         # F1 arm C / step10 recipe: normalized clipped-score Huber, delta 0.1.
         e = (pred - target) / SCORE_CLIP
@@ -371,14 +388,17 @@ def integer_reference(path, data, l1, limit):
 
 # ---- commands ---------------------------------------------------------------
 def cmd_train(args):
-    global LOSS, FAMILY
+    global LOSS, FAMILY, WDL_LAMBDA
     LOSS = args.loss
+    WDL_LAMBDA = args.wdl_lambda
     FAMILY = args.family
     torch.manual_seed(args.seed)
     torch.set_num_threads(args.threads)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    train = FeatureSet(args.train, args.max_ply, args.max_abs_score)
+    ignore = tuple(t for t in args.result_ignore.split(",") if t)
+    train = FeatureSet(args.train, args.max_ply, args.max_abs_score, ignore)
+    print(f"rows with trusted game results: {int(train.has_result.sum())} / {train.n}", flush=True)
     val = FeatureSet(args.val)
     model = SmallNet(args.l1, args.seed, args.init)
     groups = [
@@ -423,7 +443,7 @@ def cmd_train(args):
         pos += args.batch
         *inp, target = train.batch(idx)
         model.clip_()
-        loss = loss_fn(model(*inp), target, args.k)
+        loss = loss_fn(model(*inp), target, args.k, train.result[idx], train.has_result[idx])
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()
@@ -501,7 +521,9 @@ def main():
     t.add_argument("--lr", type=float, default=1e-3)
     t.add_argument("--lr-floor", type=float, default=0.02)
     t.add_argument("--k", type=float, default=1000.0, help="sigmoid scale of the score loss")
-    t.add_argument("--loss", choices=["sigmoid", "huber"], default="sigmoid")
+    t.add_argument("--loss", choices=["sigmoid", "huber", "wdl"], default="sigmoid")
+    t.add_argument("--wdl-lambda", type=float, default=1.0, help="score weight in the wdl target (1 = score only)")
+    t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
     t.add_argument("--family", choices=["king-free", "halfka"], default="king-free")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
