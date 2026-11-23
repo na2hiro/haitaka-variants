@@ -65,6 +65,8 @@ enum Command {
     SmallNetGenerate {
         #[arg(long)]
         games: u64,
+        #[arg(long, default_value_t = 0)]
+        first_game: u64,
         #[arg(long, default_value_t = 10_000)]
         nodes: u64,
         #[arg(long, default_value_t = 8)]
@@ -1348,6 +1350,7 @@ fn main() -> Result<()> {
         }
         Command::SmallNetGenerate {
             games,
+            first_game,
             nodes,
             random_plies,
             random_move_rate,
@@ -1362,6 +1365,7 @@ fn main() -> Result<()> {
         } => {
             small_net_generate::run(small_net_generate::GenerateArgs {
                 games,
+                first_game,
                 nodes,
                 random_plies,
                 random_move_rate,

@@ -33,6 +33,8 @@ const SCORE_CLIP: i32 = 12_000;
 
 pub struct GenerateArgs {
     pub games: u64,
+    /// Global index of the first game, so shards of one run stay reproducible.
+    pub first_game: u64,
     pub nodes: u64,
     pub random_plies: u16,
     pub random_move_rate: f64,
@@ -207,7 +209,7 @@ pub fn run(args: GenerateArgs) -> Result<()> {
                     let mut done = Vec::new();
                     let mut index = worker as u64;
                     while index < args.games {
-                        done.push((index, play_game(index, args, &model)?));
+                        done.push((index, play_game(args.first_game + index, args, &model)?));
                         let n = finished.fetch_add(1, Ordering::Relaxed) + 1;
                         if n % step == 0 {
                             eprintln!(
@@ -244,6 +246,7 @@ pub fn run(args: GenerateArgs) -> Result<()> {
     let report = json!({
         "schema": "haitaka-small-net-selfplay-generation-v1",
         "games": args.games,
+        "firstGame": args.first_game,
         "nodesPerMove": args.nodes,
         "evaluator": args.nnue.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "handcrafted".into()),
         "randomPlies": args.random_plies,
