@@ -17,9 +17,10 @@ use std::path::Path;
 use anyhow::{Context, Result, bail, ensure};
 use haitaka::Color;
 use haitaka_wasm::{
-    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURES,
+    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURES, KING_FREE_BUILD_FEATURES,
+    KING_FREE_BUILD_SUPPORTED, king_free_active_feature_indices,
     KING_ZONE9_A_DONOR_SINGLE_FEATURES, NnueModel, R1_HALFKAV2_BASE_FEATURES,
-    king_free_donor_single_active_feature_indices, king_zone9_donor_single_active_feature_indices,
+    king_zone9_donor_single_active_feature_indices,
     r1_donor_single_active_feature_indices,
 };
 
@@ -27,6 +28,16 @@ use crate::dataset::{PACKED_SFEN_BYTES, unpack_board_from_training};
 
 const RECORD_BYTES: usize = 72;
 pub const MAX_FEATURES: usize = 96;
+/// Slots per perspective of a KingFreeA row for this build's donor rule: the
+/// left/right pair (Antouzai) and the eight knight slots (Anki) can add more
+/// donor rows per piece than DonorSingleEff.
+pub const KING_FREE_MAX_FEATURES: usize = if cfg!(feature = "anki") {
+    256
+} else if cfg!(feature = "antouzai") {
+    128
+} else {
+    MAX_FEATURES
+};
 pub const HEADER_BYTES: usize = 12;
 pub const ROW_BYTES: usize = HEADER_BYTES + 2 * 2 * MAX_FEATURES;
 /// HalfKA rows (real + factorizer virtual rows) are u32 with a wider slot count.
@@ -89,12 +100,17 @@ fn records(path: &Path) -> Result<Vec<u8>> {
 
 pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> {
     let (max_features, wide) = match family {
-        ExportFamily::KingFree => (MAX_FEATURES, false),
+        ExportFamily::KingFree => (KING_FREE_MAX_FEATURES, false),
         ExportFamily::Halfka => (HALFKA_MAX_FEATURES, true),
         ExportFamily::KingZone9 => (HALFKA_MAX_FEATURES, false),
     };
     ensure!(
+        family != ExportFamily::KingFree || KING_FREE_BUILD_SUPPORTED,
+        "this build's donor rule has no KingFreeA family"
+    );
+    ensure!(
         KING_FREE_A_DONOR_SINGLE_FEATURES < u16::MAX as usize
+            && KING_FREE_BUILD_FEATURES < u16::MAX as usize
             && KING_ZONE9_A_DONOR_SINGLE_FEATURES + KING_FREE_A_BASE_FEATURES < u16::MAX as usize,
         "feature rows must fit u16"
     );
@@ -113,8 +129,8 @@ pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> 
         let result = record[70] as i8;
         let (black, white) = match family {
             ExportFamily::KingFree => (
-                king_free_donor_single_active_feature_indices(&board, Color::Black),
-                king_free_donor_single_active_feature_indices(&board, Color::White),
+                king_free_active_feature_indices(&board, Color::Black),
+                king_free_active_feature_indices(&board, Color::White),
             ),
             ExportFamily::Halfka => (
                 halfka_rows(&board, Color::Black),

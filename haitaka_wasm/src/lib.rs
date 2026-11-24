@@ -25,7 +25,8 @@ use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
 pub use nnue::{
     DonorReceiverPairV2QuantizedRows, DonorReceiverPairV2Row, DonorReceiverPairV2Stats,
-    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURE_NAME,
+    KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURE_NAME, KING_FREE_BUILD_FEATURES,
+    KING_FREE_BUILD_SUPPORTED, king_free_active_feature_indices,
     KING_FREE_A_DONOR_SINGLE_FEATURES, KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME,
     KING_ZONE9_A_DONOR_SINGLE_FEATURES, NNUE_OUTPUT_LAYER_HASH, NNUE_TRANSFORMER_OUTPUT_WIDTH,
     NNUE_TRANSFORMER_WIDTH, NnueModel, NnuePositionState, R1_HALFKAV2_BASE_FEATURES,

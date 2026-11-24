@@ -243,6 +243,16 @@ const HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH: u32 =
 const HALFKAV2_DONOR_PAIR_NETWORK_HASH: u32 = network_hash(HALFKAV2_DONOR_PAIR_FEATURE_SET_HASH);
 const HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH);
+const KING_FREE_A_DONOR_PAIR_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(KING_FREE_A_FEATURE_SET_HASH, DONOR_PAIR_BLOCK_HASH);
+const KING_FREE_A_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(KING_FREE_A_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
+#[cfg_attr(not(feature = "antouzai"), allow(dead_code))]
+const KING_FREE_A_DONOR_PAIR_NETWORK_HASH: u32 =
+    network_hash(KING_FREE_A_DONOR_PAIR_FEATURE_SET_HASH);
+#[cfg_attr(not(feature = "anki"), allow(dead_code))]
+const KING_FREE_A_DONOR_KNIGHT8_NETWORK_HASH: u32 =
+    network_hash(KING_FREE_A_DONOR_KNIGHT8_FEATURE_SET_HASH);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -254,6 +264,8 @@ enum FeatureFamily {
     HalfKAv2DonorKnight8,
     KingFreeADonorSingle,
     KingZone9ADonorSingle,
+    KingFreeADonorPair,
+    KingFreeADonorKnight8,
 }
 
 impl FeatureFamily {
@@ -266,6 +278,8 @@ impl FeatureFamily {
             FeatureFamily::HalfKAv2DonorKnight8 => "HalfKAv2^+DonorKnight8Slots",
             FeatureFamily::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_NAME,
             FeatureFamily::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME,
+            FeatureFamily::KingFreeADonorPair => KING_FREE_A_DONOR_PAIR_FEATURE_NAME,
+            FeatureFamily::KingFreeADonorKnight8 => KING_FREE_A_DONOR_KNIGHT8_FEATURE_NAME,
         }
     }
 
@@ -303,6 +317,10 @@ impl FeatureFamily {
             #[cfg(feature = "anhoku")]
             HALFKAV2_DONOR_RECEIVER_PAIR_V2_NETWORK_HASH => Some(Self::HalfKAv2DonorReceiverPairV2),
             HALFKAV2_DONOR_PAIR_NETWORK_HASH => Some(Self::HalfKAv2DonorPair),
+            #[cfg(feature = "antouzai")]
+            KING_FREE_A_DONOR_PAIR_NETWORK_HASH => Some(Self::KingFreeADonorPair),
+            #[cfg(feature = "anki")]
+            KING_FREE_A_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::KingFreeADonorKnight8),
             #[cfg(feature = "anki")]
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
             _ => None,
@@ -318,6 +336,8 @@ impl FeatureFamily {
             Self::HalfKAv2DonorKnight8 => HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH,
             Self::KingFreeADonorSingle => KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH,
             Self::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_SET_HASH,
+            Self::KingFreeADonorPair => KING_FREE_A_DONOR_PAIR_FEATURE_SET_HASH,
+            Self::KingFreeADonorKnight8 => KING_FREE_A_DONOR_KNIGHT8_FEATURE_SET_HASH,
         }
     }
 
@@ -336,13 +356,17 @@ impl FeatureFamily {
             Self::HalfKAv2DonorKnight8 => HALFKAV2_REAL_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
             Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
             Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
+            Self::KingFreeADonorPair => KING_FREE_BASE_FEATURES + DONOR_PAIR_REAL_FEATURES,
+            Self::KingFreeADonorKnight8 => KING_FREE_BASE_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
         }
     }
 
     /// First row of the donor block (end of the base block).
     const fn base_features(self) -> usize {
         match self {
-            Self::KingFreeADonorSingle => KING_FREE_BASE_FEATURES,
+            Self::KingFreeADonorSingle | Self::KingFreeADonorPair | Self::KingFreeADonorKnight8 => {
+                KING_FREE_BASE_FEATURES
+            }
             Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES,
             _ => HALFKAV2_REAL_FEATURES,
         }
@@ -353,7 +377,10 @@ impl FeatureFamily {
     const fn has_king_free_block(self) -> bool {
         matches!(
             self,
-            Self::KingFreeADonorSingle | Self::KingZone9ADonorSingle
+            Self::KingFreeADonorSingle
+                | Self::KingZone9ADonorSingle
+                | Self::KingFreeADonorPair
+                | Self::KingFreeADonorKnight8
         )
     }
 
@@ -366,6 +393,8 @@ impl FeatureFamily {
             Self::HalfKAv2DonorKnight8 => 512,
             Self::KingFreeADonorSingle => 192,
             Self::KingZone9ADonorSingle => 192,
+            Self::KingFreeADonorPair => 256,
+            Self::KingFreeADonorKnight8 => 512,
         }
     }
 }
@@ -446,6 +475,34 @@ pub const KING_ZONE9_A_DONOR_SINGLE_FEATURES: usize =
     KING_ZONE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES;
 /// Rows of one zone's KingFreeA block (the trainer's shared factorizer width).
 pub const KING_FREE_A_BASE_FEATURES: usize = KING_FREE_BASE_FEATURES;
+pub const KING_FREE_A_DONOR_PAIR_FEATURE_NAME: &str = "KingFreeA+DonorPairSlots";
+pub const KING_FREE_A_DONOR_KNIGHT8_FEATURE_NAME: &str = "KingFreeA+DonorKnight8Slots";
+
+/// The KingFreeA family of this build's donor rule: the single-donor rules use
+/// DonorSingleEff, Antouzai the left/right DonorPair slots and Anki the eight
+/// knight slots.
+#[cfg(feature = "antouzai")]
+const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorPair;
+#[cfg(feature = "anki")]
+const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorKnight8;
+#[cfg(not(any(feature = "antouzai", feature = "anki")))]
+const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorSingle;
+/// Transformer rows of this build's KingFreeA family.
+pub const KING_FREE_BUILD_FEATURES: usize = KING_FREE_BUILD_FAMILY.num_real_features();
+/// Whether this build's donor rule has a KingFreeA family.
+pub const KING_FREE_BUILD_SUPPORTED: bool = family_supported_by_build(KING_FREE_BUILD_FAMILY);
+
+/// All active rows of one perspective for this build's KingFreeA family, in
+/// production enumeration order (empty when the build has no such family).
+pub fn king_free_active_feature_indices(board: &Board, perspective: Color) -> Vec<usize> {
+    if !KING_FREE_BUILD_SUPPORTED {
+        return Vec::new();
+    }
+    active_features(board, perspective, board.king(perspective), KING_FREE_BUILD_FAMILY)
+        .iter()
+        .copied()
+        .collect()
+}
 
 /// Number of real HalfKAv2 rows before the variant donor block.
 pub const R1_HALFKAV2_BASE_FEATURES: usize = HALFKAV2_REAL_FEATURES;
@@ -1947,7 +2004,7 @@ fn for_each_donor_feature(
                     ),
             );
         }
-        FeatureFamily::HalfKAv2DonorPair => {
+        FeatureFamily::HalfKAv2DonorPair | FeatureFamily::KingFreeADonorPair => {
             for (slot, donor_square) in pair_donor_candidate_squares(square).into_iter().enumerate()
             {
                 let Some(donor_square) = donor_square else {
@@ -1957,7 +2014,7 @@ fn for_each_donor_feature(
                     continue;
                 };
                 emit(
-                    HALFKAV2_REAL_FEATURES
+                    family.base_features()
                         + donor_pair_feature_index(
                             perspective,
                             piece_color,
@@ -1968,7 +2025,7 @@ fn for_each_donor_feature(
                 );
             }
         }
-        FeatureFamily::HalfKAv2DonorKnight8 => {
+        FeatureFamily::HalfKAv2DonorKnight8 | FeatureFamily::KingFreeADonorKnight8 => {
             for (slot, donor_square) in knight8_donor_candidate_squares(piece_color, square)
                 .into_iter()
                 .enumerate()
@@ -1980,7 +2037,7 @@ fn for_each_donor_feature(
                     continue;
                 };
                 emit(
-                    HALFKAV2_REAL_FEATURES
+                    family.base_features()
                         + donor_knight8_feature_index(
                             perspective,
                             piece_color,
@@ -2161,11 +2218,11 @@ fn donor_influence_neighborhood(
             neighbors[0] = square.try_offset(0, 1);
             neighbors[1] = square.try_offset(0, -1);
         }
-        FeatureFamily::HalfKAv2DonorPair => {
+        FeatureFamily::HalfKAv2DonorPair | FeatureFamily::KingFreeADonorPair => {
             neighbors[0] = square.try_offset(1, 0);
             neighbors[1] = square.try_offset(-1, 0);
         }
-        FeatureFamily::HalfKAv2DonorKnight8 => {
+        FeatureFamily::HalfKAv2DonorKnight8 | FeatureFamily::KingFreeADonorKnight8 => {
             neighbors = knight8_donor_candidate_squares(Color::Black, square);
         }
     }
@@ -2174,7 +2231,9 @@ fn donor_influence_neighborhood(
 
 fn king_offset(family: FeatureFamily, king_square: Square, perspective: Color) -> usize {
     match family {
-        FeatureFamily::KingFreeADonorSingle => 0,
+        FeatureFamily::KingFreeADonorSingle
+        | FeatureFamily::KingFreeADonorPair
+        | FeatureFamily::KingFreeADonorKnight8 => 0,
         FeatureFamily::KingZone9ADonorSingle => {
             king_zone(orient_square(king_square, perspective)) * KING_FREE_BASE_FEATURES
         }
@@ -2562,6 +2621,8 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
             feature = "tenjiku"
         )),
         FeatureFamily::KingZone9ADonorSingle => cfg!(feature = "anhoku"),
+        FeatureFamily::KingFreeADonorPair => cfg!(feature = "antouzai"),
+        FeatureFamily::KingFreeADonorKnight8 => cfg!(feature = "anki"),
     }
 }
 
@@ -3681,11 +3742,13 @@ mod tests {
         feature = "yokoneko",
         feature = "yokonekoneko",
         feature = "tenkyo",
-        feature = "tenjiku"
+        feature = "tenjiku",
+        feature = "antouzai",
+        feature = "anki"
     ))]
     #[test]
     fn king_free_incremental_matches_full_refresh_random_rollouts() {
-        let model = synthetic_donor_model(FeatureFamily::KingFreeADonorSingle);
+        let model = synthetic_donor_model(KING_FREE_BUILD_FAMILY);
         let mut rng = StdRng::seed_from_u64(0x6b66_2026);
         for _ in 0..16 {
             let mut board = Board::startpos();
@@ -3712,14 +3775,16 @@ mod tests {
         feature = "yokoneko",
         feature = "yokonekoneko",
         feature = "tenkyo",
-        feature = "tenjiku"
+        feature = "tenjiku",
+        feature = "antouzai",
+        feature = "anki"
     ))]
     #[test]
     fn king_free_features_separate_kings_and_place_donor_block() {
         let board = Board::startpos();
         for perspective in [Color::Black, Color::White] {
-            let rows = king_free_donor_single_active_feature_indices(&board, perspective);
-            assert!(rows.iter().all(|&r| r < KING_FREE_A_DONOR_SINGLE_FEATURES));
+            let rows = king_free_active_feature_indices(&board, perspective);
+            assert!(rows.iter().all(|&r| r < KING_FREE_BUILD_FEATURES));
             let base: Vec<_> = rows
                 .iter()
                 .copied()
@@ -3755,15 +3820,17 @@ mod tests {
         feature = "yokoneko",
         feature = "yokonekoneko",
         feature = "tenkyo",
-        feature = "tenjiku"
+        feature = "tenjiku",
+        feature = "antouzai",
+        feature = "anki"
     ))]
     #[test]
     fn king_free_serialized_network_round_trips() {
-        let family = FeatureFamily::KingFreeADonorSingle;
+        let family = KING_FREE_BUILD_FAMILY;
         let rows = family.num_real_features();
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&VERSION.to_le_bytes());
-        bytes.extend_from_slice(&KING_FREE_A_DONOR_SINGLE_NETWORK_HASH.to_le_bytes());
+        bytes.extend_from_slice(&network_hash(family.feature_set_hash()).to_le_bytes());
         let description = b"king-free test";
         bytes.extend_from_slice(&(description.len() as u32).to_le_bytes());
         bytes.extend_from_slice(description);
@@ -3802,10 +3869,7 @@ mod tests {
             }
         }
         let model = NnueModel::from_bytes(&bytes).expect("king-free network must load");
-        assert_eq!(
-            model.feature_family_name(),
-            KING_FREE_A_DONOR_SINGLE_FEATURE_NAME
-        );
+        assert_eq!(model.feature_family_name(), family.name());
         // Equal pawn counts at startpos: psqt cancels.
         assert_eq!(model.evaluate(&Board::startpos()), 0);
         let mut truncated = bytes.clone();

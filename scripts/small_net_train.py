@@ -50,7 +50,26 @@ RULE_BLOCK_MIXERS = {
     "neko": 0x27D4EB2F, "nekoneko": 0x165667B1, "yokoneko": 0xFF51AFD7,
     "yokonekoneko": 0xD72805F1, "tenkyo": 0xA24BAED5, "tenjiku": 0x9FB21C65,
 }
+# Multi-slot donor rules: (donor slots, donor block hash, row slots per perspective).
+MULTI_DONOR_RULES = {
+    "antouzai": (2, 0x467CDF71, 128),  # left/right DonorPair slots
+    "anki": (8, 0x3CC37189 ^ 0x6A09E667, 256),  # eight knight slots
+}
 RULE = "anhoku"
+
+
+def donor_slots():
+    return MULTI_DONOR_RULES[RULE][0] if RULE in MULTI_DONOR_RULES else 1
+
+
+def donor_block_hash():
+    if RULE in MULTI_DONOR_RULES:
+        return MULTI_DONOR_RULES[RULE][1]
+    return DONOR_SINGLE_BLOCK_HASH ^ RULE_BLOCK_MIXERS[RULE]
+
+
+def king_free_rows():
+    return BASE + DONOR * donor_slots()
 M32 = 0xFFFFFFFF
 
 # piece_slot order: B R S +R P L N Gold-like +B K
@@ -71,7 +90,8 @@ KING_ZONE9_A_HASH = 0x4B5A3941
 
 
 def row_dtype(family):
-    width, dtype = {"king-free": (96, "<u2"), "king-zone9": (128, "<u2")}.get(family, (128, "<u4"))
+    king_free_width = MULTI_DONOR_RULES[RULE][2] if RULE in MULTI_DONOR_RULES else 96
+    width, dtype = {"king-free": (king_free_width, "<u2"), "king-zone9": (128, "<u2")}.get(family, (128, "<u4"))
     return np.dtype([
         ("score", "<i2"), ("ply", "<u2"), ("stm", "u1"), ("bucket", "u1"),
         ("nb", "u1"), ("nw", "u1"), ("result", "i1"), ("pad", "u1", 3),
@@ -83,11 +103,11 @@ FAMILY = "king-free"
 
 
 def train_rows():
-    return {"king-free": NUM_FEATURES, "king-zone9": KZ_TRAIN_ROWS}.get(FAMILY, HALFKA_TRAIN_ROWS)
+    return {"king-free": king_free_rows(), "king-zone9": KZ_TRAIN_ROWS}.get(FAMILY, HALFKA_TRAIN_ROWS)
 
 
 def serialized_rows():
-    return {"king-free": NUM_FEATURES, "king-zone9": KZ_ROWS}.get(FAMILY, HALFKA_ROWS)
+    return {"king-free": king_free_rows(), "king-zone9": KZ_ROWS}.get(FAMILY, HALFKA_ROWS)
 
 
 def composite(head, tail):
@@ -112,7 +132,7 @@ def output_layer_hash(l1):
 
 def hashes(l1):
     head = {"king-free": KING_FREE_A_HASH, "king-zone9": KING_ZONE9_A_HASH}.get(FAMILY, HALFKAV2_HASH)
-    fs = composite(head, DONOR_SINGLE_BLOCK_HASH ^ RULE_BLOCK_MIXERS[RULE])
+    fs = composite(head, donor_block_hash())
     ft = fs ^ (2 * l1)
     out = output_layer_hash(l1)
     return ft ^ out, ft, out
@@ -557,7 +577,7 @@ def main():
     t.add_argument("--wdl-lambda", type=float, default=1.0, help="score weight in the wdl target (1 = score only)")
     t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
     t.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    t.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
+    t.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
     t.add_argument("--init-checkpoint", help="start from this .pt checkpoint (fine-tuning)")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
@@ -580,7 +600,7 @@ def main():
     e.add_argument("--output", required=True)
     e.add_argument("--l1", type=int, default=256)
     e.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    e.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
+    e.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     e.add_argument("--description")
     e.set_defaults(fn=cmd_export)
     r = sub.add_parser("intref")
@@ -588,7 +608,7 @@ def main():
     r.add_argument("--feat", required=True)
     r.add_argument("--l1", type=int, default=256)
     r.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    r.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
+    r.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     r.add_argument("--limit", type=int, default=4096)
     r.add_argument("--rust")
     r.add_argument("--checkpoint")
