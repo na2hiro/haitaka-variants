@@ -7,14 +7,16 @@
 //! existing packed 72-byte training record (score from the side to move, result
 //! from the side to move: 1 win, -1 loss, 0 draw/unknown).
 
-use std::fs;
+use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use haitaka::{Board, Color, GameStatus, Move};
 use haitaka_wasm::{
     NnueModel, SearchEvalMode, SearchWorkspace,
@@ -24,7 +26,9 @@ use haitaka_wasm::{
 use rand::rngs::StdRng;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 
 use crate::dataset::pack_board_for_training;
 
@@ -46,6 +50,8 @@ pub struct GenerateArgs {
     pub jobs: usize,
     pub nnue: Option<PathBuf>,
     pub output: PathBuf,
+    /// Games per resumable shard file under `<output>.shards/`.
+    pub shard_games: u64,
 }
 
 #[derive(Default)]
@@ -185,63 +191,352 @@ fn play_game(index: u64, args: &GenerateArgs, model: &Option<Arc<NnueModel>>) ->
     Ok(out)
 }
 
-pub fn run(args: GenerateArgs) -> Result<()> {
-    let model = match &args.nnue {
-        Some(path) => Some(Arc::new(
-            NnueModel::from_bytes(
-                &fs::read(path).with_context(|| format!("read {}", path.display()))?,
-            )
-            .map_err(|e| anyhow!("load {}: {e}", path.display()))?,
-        )),
-        None => None,
+/// Rule features this binary was built with (part of the shard identity).
+fn build_rule() -> String {
+    let rules: &[(&str, bool)] = &[
+        ("annan", cfg!(feature = "annan")),
+        ("anhoku", cfg!(feature = "anhoku")),
+        ("antouzai", cfg!(feature = "antouzai")),
+        ("taimen", cfg!(feature = "taimen")),
+        ("haimen", cfg!(feature = "haimen")),
+        ("neko", cfg!(feature = "neko")),
+        ("nekoneko", cfg!(feature = "nekoneko")),
+        ("yokoneko", cfg!(feature = "yokoneko")),
+        ("yokonekoneko", cfg!(feature = "yokonekoneko")),
+        ("tenkyo", cfg!(feature = "tenkyo")),
+        ("tenjiku", cfg!(feature = "tenjiku")),
+        ("anki", cfg!(feature = "anki")),
+        ("oute", cfg!(feature = "oute")),
+        ("sanmaime", cfg!(feature = "sanmaime")),
+        ("inochinotokin", cfg!(feature = "inochinotokin")),
+        ("shihonkangen", cfg!(feature = "shihonkangen")),
+        ("ningenshogi", cfg!(feature = "ningenshogi")),
+        ("tennouzan", cfg!(feature = "tennouzan")),
+        ("igyoku", cfg!(feature = "igyoku")),
+        ("hitomasuou", cfg!(feature = "hitomasuou")),
+        ("nakamaware", cfg!(feature = "nakamaware")),
+        ("fushiyo", cfg!(feature = "fushiyo")),
+        ("share", cfg!(feature = "share")),
+        ("zoshoku", cfg!(feature = "zoshoku")),
+        ("babanuki", cfg!(feature = "babanuki")),
+        ("tensuu", cfg!(feature = "tensuu")),
+        ("suika", cfg!(feature = "suika")),
+    ];
+    let on: Vec<&str> = rules.iter().filter(|(_, b)| *b).map(|(n, _)| *n).collect();
+    if on.is_empty() {
+        "standard".into()
+    } else {
+        on.join("+")
+    }
+}
+
+/// Everything that decides a game's bytes. A shard is reused only when this matches.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+struct Identity {
+    rule: String,
+    first_game: u64,
+    nodes: u64,
+    random_plies: u16,
+    random_move_rate: f64,
+    adjudicate_score: i32,
+    adjudicate_plies: u16,
+    max_plies: u16,
+    record_from_ply: u16,
+    seed: u64,
+    teacher_sha256: Option<String>,
+    shard_games: u64,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+struct ShardStats {
+    positions: u64,
+    plies: u64,
+    nodes: u64,
+    adjudicated: u64,
+    capped: u64,
+    bytes: u64,
+}
+
+impl ShardStats {
+    fn add(&mut self, o: &ShardStats) {
+        self.positions += o.positions;
+        self.plies += o.plies;
+        self.nodes += o.nodes;
+        self.adjudicated += o.adjudicated;
+        self.capped += o.capped;
+        self.bytes += o.bytes;
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ShardManifest {
+    schema: String,
+    identity: Identity,
+    shard_index: u64,
+    game_start: u64,
+    game_count: u64,
+    stats: ShardStats,
+    sha256: String,
+}
+
+const SHARD_SCHEMA: &str = "haitaka-small-net-selfplay-shard-v1";
+
+#[derive(Clone, Copy)]
+struct ShardPlan {
+    index: u64,
+    start: u64,
+    count: u64,
+}
+
+fn shard_paths(dir: &Path, index: u64) -> (PathBuf, PathBuf) {
+    (
+        dir.join(format!("shard-{index:06}.bin")),
+        dir.join(format!("shard-{index:06}.json")),
+    )
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+/// A finished shard from an earlier run, or None when it has to be (re)generated.
+fn reusable_shard(dir: &Path, plan: ShardPlan, identity: &Identity) -> Result<Option<ShardStats>> {
+    let (bin, json) = shard_paths(dir, plan.index);
+    let Ok(text) = fs::read(&json) else {
+        return Ok(None);
     };
+    let manifest: ShardManifest =
+        serde_json::from_slice(&text).with_context(|| format!("parse {}", json.display()))?;
+    if manifest.schema != SHARD_SCHEMA || manifest.identity != *identity {
+        bail!(
+            "{} was generated with different settings ({:?}, now {:?}); use another --output or delete {}",
+            json.display(),
+            manifest.identity,
+            identity,
+            dir.display()
+        );
+    }
+    if manifest.game_start != plan.start || manifest.game_count != plan.count {
+        return Ok(None);
+    }
+    let Ok(bytes) = fs::read(&bin) else {
+        return Ok(None);
+    };
+    if bytes.len() as u64 != manifest.stats.bytes || sha256_hex(&bytes) != manifest.sha256 {
+        eprintln!(
+            "{} does not match its manifest; regenerating",
+            bin.display()
+        );
+        return Ok(None);
+    }
+    Ok(Some(manifest.stats))
+}
+
+/// Writes one finished shard atomically: bin then manifest, each via a temp file and rename.
+fn write_shard(
+    dir: &Path,
+    plan: ShardPlan,
+    identity: &Identity,
+    games: Vec<GameOut>,
+) -> Result<ShardStats> {
+    let mut bytes = Vec::new();
+    let mut stats = ShardStats::default();
+    for g in &games {
+        bytes.extend_from_slice(&g.records);
+        stats.positions += g.positions;
+        stats.plies += g.plies;
+        stats.nodes += g.nodes;
+        stats.adjudicated += g.adjudicated as u64;
+        stats.capped += g.capped as u64;
+    }
+    stats.bytes = bytes.len() as u64;
+    let manifest = ShardManifest {
+        schema: SHARD_SCHEMA.into(),
+        identity: identity.clone(),
+        shard_index: plan.index,
+        game_start: plan.start,
+        game_count: plan.count,
+        stats,
+        sha256: sha256_hex(&bytes),
+    };
+    let (bin, json) = shard_paths(dir, plan.index);
+    write_atomic(&bin, &bytes)?;
+    write_atomic(&json, serde_json::to_string_pretty(&manifest)?.as_bytes())?;
+    Ok(stats)
+}
+
+/// Games are played in parallel and grouped into shards of `shard_games` consecutive
+/// game indices. Each shard is written to `<output>.shards/` as soon as all of its games
+/// finish, so an interrupted run loses at most the shards still in flight; rerunning the
+/// same command reuses the finished shards. Every game is seeded by its own index, so the
+/// assembled output is the same however the run was split or resumed.
+pub fn run(args: GenerateArgs) -> Result<()> {
+    ensure!(args.shard_games > 0, "--shard-games must be positive");
+    let (model, teacher_sha256) = match &args.nnue {
+        Some(path) => {
+            let bytes = fs::read(path).with_context(|| format!("read {}", path.display()))?;
+            let sha = sha256_hex(&bytes);
+            let model = NnueModel::from_bytes(&bytes)
+                .map_err(|e| anyhow!("load {}: {e}", path.display()))?;
+            (Some(Arc::new(model)), Some(sha))
+        }
+        None => (None, None),
+    };
+    let identity = Identity {
+        rule: build_rule(),
+        first_game: args.first_game,
+        nodes: args.nodes,
+        random_plies: args.random_plies,
+        random_move_rate: args.random_move_rate,
+        adjudicate_score: args.adjudicate_score,
+        adjudicate_plies: args.adjudicate_plies,
+        max_plies: args.max_plies,
+        record_from_ply: args.record_from_ply,
+        seed: args.seed,
+        teacher_sha256,
+        shard_games: args.shard_games,
+    };
+    let shard_dir = PathBuf::from(format!("{}.shards", args.output.display()));
+    fs::create_dir_all(&shard_dir).with_context(|| format!("create {}", shard_dir.display()))?;
+    let plans: Vec<ShardPlan> = (0..args.games.div_ceil(args.shard_games))
+        .map(|index| {
+            let start = index * args.shard_games;
+            ShardPlan {
+                index,
+                start,
+                count: args.shard_games.min(args.games - start),
+            }
+        })
+        .collect();
+
+    let mut stats: Vec<Option<ShardStats>> = Vec::with_capacity(plans.len());
+    for plan in &plans {
+        stats.push(reusable_shard(&shard_dir, *plan, &identity)?);
+    }
+    let resumed_shards = stats.iter().filter(|s| s.is_some()).count();
+    let resumed_games: u64 = plans
+        .iter()
+        .zip(&stats)
+        .filter(|(_, s)| s.is_some())
+        .map(|(p, _)| p.count)
+        .sum();
+    if resumed_shards > 0 {
+        eprintln!(
+            "resuming: {resumed_shards}/{} shards ({resumed_games} games) already in {}",
+            plans.len(),
+            shard_dir.display()
+        );
+    }
+    let pending: Vec<u64> = plans
+        .iter()
+        .zip(&stats)
+        .filter(|(_, s)| s.is_none())
+        .flat_map(|(p, _)| p.start..p.start + p.count)
+        .collect();
+
     let started = Instant::now();
     let jobs = args.jobs.max(1);
-    let finished = AtomicU64::new(0);
+    let next = AtomicUsize::new(0);
+    let failed = AtomicBool::new(false);
+    let finished = AtomicU64::new(resumed_games);
     let step = (args.games / 20).max(1);
-    let results: Vec<Result<Vec<(u64, GameOut)>>> = std::thread::scope(|scope| {
+    // shard index -> (slots for its games, games still missing)
+    let open: Mutex<HashMap<u64, (Vec<Option<GameOut>>, u64)>> = Mutex::new(HashMap::new());
+    let written: Mutex<Vec<(u64, ShardStats)>> = Mutex::new(Vec::new());
+    let results: Vec<Result<()>> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..jobs)
-            .map(|worker| {
-                let args = &args;
-                let model = model.clone();
-                let finished = &finished;
-                scope.spawn(move || -> Result<Vec<(u64, GameOut)>> {
-                    let mut done = Vec::new();
-                    let mut index = worker as u64;
-                    while index < args.games {
-                        done.push((index, play_game(args.first_game + index, args, &model)?));
-                        let n = finished.fetch_add(1, Ordering::Relaxed) + 1;
-                        if n % step == 0 {
-                            eprintln!(
-                                "progress {n}/{} games, {:.0}s",
-                                args.games,
-                                started.elapsed().as_secs_f64()
-                            );
+            .map(|_| {
+                let (args, model, plans, identity, shard_dir) =
+                    (&args, model.clone(), &plans, &identity, &shard_dir);
+                let (next, failed, finished, open, written, pending) =
+                    (&next, &failed, &finished, &open, &written, &pending);
+                scope.spawn(move || -> Result<()> {
+                    let body = || -> Result<()> {
+                        while !failed.load(Ordering::Relaxed) {
+                            let k = next.fetch_add(1, Ordering::Relaxed);
+                            let Some(&index) = pending.get(k) else {
+                                break;
+                            };
+                            let game = play_game(args.first_game + index, args, &model)?;
+                            let plan = plans[(index / args.shard_games) as usize];
+                            let ready = {
+                                let mut open = open.lock().unwrap();
+                                let entry = open.entry(plan.index).or_insert_with(|| {
+                                    ((0..plan.count).map(|_| None).collect(), plan.count)
+                                });
+                                entry.0[(index - plan.start) as usize] = Some(game);
+                                entry.1 -= 1;
+                                if entry.1 == 0 {
+                                    open.remove(&plan.index).map(|(slots, _)| slots)
+                                } else {
+                                    None
+                                }
+                            };
+                            if let Some(slots) = ready {
+                                let games = slots.into_iter().map(Option::unwrap).collect();
+                                let s = write_shard(shard_dir, plan, identity, games)?;
+                                written.lock().unwrap().push((plan.index, s));
+                            }
+                            let n = finished.fetch_add(1, Ordering::Relaxed) + 1;
+                            if n % step == 0 {
+                                eprintln!(
+                                    "progress {n}/{} games, {:.0}s",
+                                    args.games,
+                                    started.elapsed().as_secs_f64()
+                                );
+                            }
                         }
-                        index += jobs as u64;
+                        Ok(())
+                    };
+                    let r = body();
+                    if r.is_err() {
+                        failed.store(true, Ordering::Relaxed);
                     }
-                    Ok(done)
+                    r
                 })
             })
             .collect();
         handles.into_iter().map(|h| h.join().unwrap()).collect()
     });
-    let mut games: Vec<(u64, GameOut)> = Vec::new();
     for r in results {
-        games.extend(r?);
+        r?;
     }
-    games.sort_by_key(|(i, _)| *i);
-    let mut bytes = Vec::new();
-    let (mut positions, mut plies, mut nodes, mut adjudicated, mut capped) = (0, 0, 0, 0, 0);
-    for (_, g) in &games {
-        bytes.extend_from_slice(&g.records);
-        positions += g.positions;
-        plies += g.plies;
-        nodes += g.nodes;
-        adjudicated += g.adjudicated as u64;
-        capped += g.capped as u64;
+    let mut generated = ShardStats::default();
+    for (index, s) in written.into_inner().unwrap() {
+        generated.add(&s);
+        stats[index as usize] = Some(s);
     }
-    write(&args.output, &bytes)?;
+
+    // Assemble the shards in game order, checking each against its manifest.
+    let mut total = ShardStats::default();
+    let tmp = args.output.with_extension("bin.tmp");
+    if let Some(parent) = args.output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    {
+        let mut out = BufWriter::new(
+            File::create(&tmp).with_context(|| format!("create {}", tmp.display()))?,
+        );
+        for (plan, s) in plans.iter().zip(&stats) {
+            let s = s.ok_or_else(|| anyhow!("shard {} was not generated", plan.index))?;
+            let (bin, _) = shard_paths(&shard_dir, plan.index);
+            let bytes = fs::read(&bin).with_context(|| format!("read {}", bin.display()))?;
+            ensure!(
+                bytes.len() as u64 == s.bytes,
+                "{} has an unexpected size",
+                bin.display()
+            );
+            out.write_all(&bytes)?;
+            total.add(&s);
+        }
+        out.flush()?;
+    }
+    fs::rename(&tmp, &args.output)
+        .with_context(|| format!("rename to {}", args.output.display()))?;
+
     let elapsed = started.elapsed().as_secs_f64();
     let report = json!({
         "schema": "haitaka-small-net-selfplay-generation-v1",
@@ -249,6 +544,8 @@ pub fn run(args: GenerateArgs) -> Result<()> {
         "firstGame": args.first_game,
         "nodesPerMove": args.nodes,
         "evaluator": args.nnue.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "handcrafted".into()),
+        "teacherSha256": identity.teacher_sha256,
+        "rule": identity.rule,
         "randomPlies": args.random_plies,
         "randomMoveRate": args.random_move_rate,
         "adjudicateScore": args.adjudicate_score,
@@ -257,16 +554,22 @@ pub fn run(args: GenerateArgs) -> Result<()> {
         "recordFromPly": args.record_from_ply,
         "seed": args.seed,
         "jobs": jobs,
-        "positions": positions,
-        "searchedPlies": plies,
-        "adjudicatedGames": adjudicated,
-        "cappedGames": capped,
-        "totalNodes": nodes,
+        "shardGames": args.shard_games,
+        "shards": plans.len(),
+        "resumedShards": resumed_shards,
+        "resumedGames": resumed_games,
+        "positions": total.positions,
+        "searchedPlies": total.plies,
+        "adjudicatedGames": total.adjudicated,
+        "cappedGames": total.capped,
+        "totalNodes": total.nodes,
         "elapsedSec": elapsed,
-        "positionsPerSec": positions as f64 / elapsed,
-        "positionsPerWorkerSec": positions as f64 / elapsed / jobs as f64,
+        // Rates count only the games generated in this run.
+        "generatedPositions": generated.positions,
+        "positionsPerSec": generated.positions as f64 / elapsed,
+        "positionsPerWorkerSec": generated.positions as f64 / elapsed / jobs as f64,
     });
-    write(
+    write_atomic(
         &args.output.with_extension("json"),
         serde_json::to_string_pretty(&report)?.as_bytes(),
     )?;
@@ -274,10 +577,12 @@ pub fn run(args: GenerateArgs) -> Result<()> {
     Ok(())
 }
 
-fn write(path: &Path, bytes: &[u8]) -> Result<()> {
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(path, bytes)?;
+    let tmp = PathBuf::from(format!("{}.tmp", path.display()));
+    fs::write(&tmp, bytes).with_context(|| format!("write {}", tmp.display()))?;
+    fs::rename(&tmp, path).with_context(|| format!("rename to {}", path.display()))?;
     Ok(())
 }

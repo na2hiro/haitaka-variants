@@ -89,6 +89,9 @@ enum Command {
         nnue: Option<PathBuf>,
         #[arg(long)]
         output: PathBuf,
+        /// Games per shard; finished shards are kept and reused when the command is rerun.
+        #[arg(long, default_value_t = 256)]
+        shard_games: u64,
     },
     /// Export KingFreeA+DonorSingleEff feature rows for the CPU small-net trainer.
     SmallNetExportFeatures {
@@ -1362,6 +1365,7 @@ fn main() -> Result<()> {
             jobs,
             nnue,
             output,
+            shard_games,
         } => {
             small_net_generate::run(small_net_generate::GenerateArgs {
                 games,
@@ -1377,6 +1381,7 @@ fn main() -> Result<()> {
                 jobs,
                 nnue,
                 output,
+                shard_games,
             })?;
         }
         Command::SmallNetExportFeatures {
