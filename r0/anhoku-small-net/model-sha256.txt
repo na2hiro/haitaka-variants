@@ -18,3 +18,5 @@ c7fcbebc9d87336f0b30fba2777ca84884132e215c2430f1f0b4bab6597f7e27  mbp:smallnet/m
 7df7fa086ec12b5ded5cc001fdbaf094b9064232faf41ef3ad51c8bcec73509a  mbp:smallnet/models/kz9-all8-last.nnue (KingZone9A, 10.5 MB)
 46ce07fde8c9e4e4d4bdd21d5900ee8a3ccf3e9832a1abd1a6cfacacfb0cff8f  mbp:smallnet/models/kf-all8-s2-last.nnue (seed 2)
 d32d76c9e6ba38ca6c38bbd607c424b4ab8ea0fdb4d634dc50641f85683e63a5  mbp:smallnet/models/kf-all8-s3-last.nnue (seed 3)
+26e0da47b6e3d4a9fb57293d99a775aeef86782214a36d40bed4a64baad4cd79  mbp:smallnet/models/kf-all9-s1-last.nnue (all9 seed 1)
+28d1edc804d9907692d7a57469632661211bda1569c0d7789ae7f1168af3709b  mbp:smallnet/models/kf-all9-s2-last.nnue (all9 seed 2)
