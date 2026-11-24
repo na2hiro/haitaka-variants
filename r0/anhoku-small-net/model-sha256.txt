@@ -24,3 +24,6 @@ c602d422fbcdab0f24064447cedbbbafd5f479598f58580acb444fc96ca16e3d  mbp:smallnet/m
 7cbad4288e5063c1c8844b458379b02272a54034a4cbc2b83409c21e1c625b3e  mbp:smallnet/models/deep-s2-last.nnue (g8d+g10d only, seed 2)
 635ff26a473e3d2de639e6476b99f3e5fc85c7e90e015e5a98b0124f6ba65b68  mbp:smallnet/models/kf-all10-s1-last.nnue (all10 seed 1)
 1a125a8c986bf633b3a7affc128c525827fcd158b6345040c34271e8625b268e  mbp:smallnet/models/kf-all10-s2-last.nnue (all10 seed 2)
+bc0c80fb9f9c92e9f50e7b81816fa9a4e7b5ebd8ba3ee58c138524d79f454700  mbp:smallnet/models/ft-all8-last.nnue (kf-all8 fine-tuned, lr 3e-4, 8192 steps)
+fc1f2d8bd2d06af76f7475a191bf2f881d27ce04297d5b54dfe6133316db3d7f  mbp:smallnet/models/ft-all8s2-last.nnue (kf-all8-s2 fine-tuned)
+39f46e83549d5ee0c5980da0dfcb2c0aefa7c43e620d6dd74fe05297cdbc6a14  mbp:smallnet/models/l512-all10-last.nnue (L1=512, all10 data, 3.9 MB)
