@@ -43,7 +43,14 @@ SCORE_CLIP = 12000
 
 VERSION = 0x7AF32F20
 KING_FREE_A_HASH = 0x4B464131
-DONOR_SINGLE_ANHOKU_BLOCK_HASH = 0x23627E42 ^ 0x3C6EF362
+DONOR_SINGLE_BLOCK_HASH = 0x23627E42
+# Per-rule mixers of the single-donor block hash (haitaka_wasm/src/nnue.rs).
+RULE_BLOCK_MIXERS = {
+    "annan": 0x9E3779B1, "anhoku": 0x3C6EF362, "taimen": 0x85EBCA77, "haimen": 0xC2B2AE3D,
+    "neko": 0x27D4EB2F, "nekoneko": 0x165667B1, "yokoneko": 0xFF51AFD7,
+    "yokonekoneko": 0xD72805F1, "tenkyo": 0xA24BAED5, "tenjiku": 0x9FB21C65,
+}
+RULE = "anhoku"
 M32 = 0xFFFFFFFF
 
 # piece_slot order: B R S +R P L N Gold-like +B K
@@ -105,7 +112,7 @@ def output_layer_hash(l1):
 
 def hashes(l1):
     head = {"king-free": KING_FREE_A_HASH, "king-zone9": KING_ZONE9_A_HASH}.get(FAMILY, HALFKAV2_HASH)
-    fs = composite(head, DONOR_SINGLE_ANHOKU_BLOCK_HASH)
+    fs = composite(head, DONOR_SINGLE_BLOCK_HASH ^ RULE_BLOCK_MIXERS[RULE])
     ft = fs ^ (2 * l1)
     out = output_layer_hash(l1)
     return ft ^ out, ft, out
@@ -407,7 +414,8 @@ def integer_reference(path, data, l1, limit):
 
 # ---- commands ---------------------------------------------------------------
 def cmd_train(args):
-    global LOSS, FAMILY, WDL_LAMBDA
+    global LOSS, FAMILY, WDL_LAMBDA, RULE
+    RULE = args.rule
     LOSS = args.loss
     WDL_LAMBDA = args.wdl_lambda
     FAMILY = args.family
@@ -499,7 +507,8 @@ def cmd_train(args):
 
 
 def cmd_export(args):
-    global FAMILY
+    global FAMILY, RULE
+    RULE = args.rule
     FAMILY = args.family
     model = SmallNet(args.l1, 0)
     model.load_state_dict(torch.load(args.checkpoint))
@@ -508,7 +517,8 @@ def cmd_export(args):
 
 
 def cmd_intref(args):
-    global FAMILY
+    global FAMILY, RULE
+    RULE = args.rule
     FAMILY = args.family
     data = FeatureSet(args.feat)
     ref = integer_reference(args.nnue, data, args.l1, args.limit)
@@ -547,6 +557,7 @@ def main():
     t.add_argument("--wdl-lambda", type=float, default=1.0, help="score weight in the wdl target (1 = score only)")
     t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
     t.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
+    t.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
     t.add_argument("--init-checkpoint", help="start from this .pt checkpoint (fine-tuning)")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
@@ -569,6 +580,7 @@ def main():
     e.add_argument("--output", required=True)
     e.add_argument("--l1", type=int, default=256)
     e.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
+    e.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
     e.add_argument("--description")
     e.set_defaults(fn=cmd_export)
     r = sub.add_parser("intref")
@@ -576,6 +588,7 @@ def main():
     r.add_argument("--feat", required=True)
     r.add_argument("--l1", type=int, default=256)
     r.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
+    r.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS), default="anhoku", help="single-donor rule (selects the donor block hash)")
     r.add_argument("--limit", type=int, default=4096)
     r.add_argument("--rust")
     r.add_argument("--checkpoint")
