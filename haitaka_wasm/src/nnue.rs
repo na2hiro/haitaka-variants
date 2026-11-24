@@ -221,7 +221,18 @@ const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
-#[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
+#[cfg_attr(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku"
+)), allow(dead_code))]
 const KING_FREE_A_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH);
 #[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
@@ -274,7 +285,18 @@ impl FeatureFamily {
                 feature = "tenjiku"
             ))]
             HALFKAV2_DONOR_SINGLE_NETWORK_HASH => Some(Self::HalfKAv2DonorSingle),
-            #[cfg(feature = "anhoku")]
+            #[cfg(any(
+                feature = "annan",
+                feature = "anhoku",
+                feature = "taimen",
+                feature = "haimen",
+                feature = "neko",
+                feature = "nekoneko",
+                feature = "yokoneko",
+                feature = "yokonekoneko",
+                feature = "tenkyo",
+                feature = "tenjiku"
+            ))]
             KING_FREE_A_DONOR_SINGLE_NETWORK_HASH => Some(Self::KingFreeADonorSingle),
             #[cfg(feature = "anhoku")]
             KING_ZONE9_A_DONOR_SINGLE_NETWORK_HASH => Some(Self::KingZone9ADonorSingle),
@@ -461,7 +483,18 @@ pub fn r1_donor_single_active_feature_indices(
 /// All active rows of one perspective for the king-free small-net family
 /// (`KingFreeA+DonorSingleEff`), in production enumeration order. Used by the
 /// CPU trainer's feature exporter so training and runtime share one geometry.
-#[cfg(feature = "anhoku")]
+#[cfg(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku"
+))]
 pub fn king_free_donor_single_active_feature_indices(
     board: &Board,
     perspective: Color,
@@ -494,7 +527,18 @@ pub fn king_zone9_donor_single_active_feature_indices(
     Vec::new()
 }
 
-#[cfg(not(feature = "anhoku"))]
+#[cfg(not(any(
+    feature = "annan",
+    feature = "anhoku",
+    feature = "taimen",
+    feature = "haimen",
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku"
+)))]
 pub fn king_free_donor_single_active_feature_indices(
     _board: &Board,
     _perspective: Color,
@@ -2505,7 +2549,18 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
         FeatureFamily::HalfKAv2DonorReceiverPairV2 => cfg!(feature = "anhoku"),
         FeatureFamily::HalfKAv2DonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::HalfKAv2DonorKnight8 => cfg!(feature = "anki"),
-        FeatureFamily::KingFreeADonorSingle => cfg!(feature = "anhoku"),
+        FeatureFamily::KingFreeADonorSingle => cfg!(any(
+            feature = "annan",
+            feature = "anhoku",
+            feature = "taimen",
+            feature = "haimen",
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku"
+        )),
         FeatureFamily::KingZone9ADonorSingle => cfg!(feature = "anhoku"),
     }
 }
@@ -3616,7 +3671,18 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "anhoku")]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku"
+    ))]
     #[test]
     fn king_free_incremental_matches_full_refresh_random_rollouts() {
         let model = synthetic_donor_model(FeatureFamily::KingFreeADonorSingle);
@@ -3636,7 +3702,18 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "anhoku")]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku"
+    ))]
     #[test]
     fn king_free_features_separate_kings_and_place_donor_block() {
         let board = Board::startpos();
@@ -3668,7 +3745,18 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "anhoku")]
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku"
+    ))]
     #[test]
     fn king_free_serialized_network_round_trips() {
         let family = FeatureFamily::KingFreeADonorSingle;

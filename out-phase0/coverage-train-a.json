@@ -1,0 +1,527 @@
+{
+  "eval": [
+    {
+      "absScoreQuantiles": {
+        "max": 14436,
+        "p05": 44,
+        "p25": 622,
+        "p50": 1762,
+        "p75": 4132,
+        "p95": 8706
+      },
+      "boardsSeenMoreThanOnce": 225,
+      "decodeFailures": 0,
+      "distinctBoards": 58459,
+      "donorRows": {
+        "countQuantilesAmongObservedRows": {
+          "max": 21166,
+          "p05": 12,
+          "p25": 41,
+          "p50": 108,
+          "p75": 269,
+          "p95": 2817
+        },
+        "observedFraction": 0.8469135802469135,
+        "observedRows": 1372,
+        "observedRowsBelowThreshold": {
+          "observedRowsBelow1": 0,
+          "observedRowsBelow10": 54,
+          "observedRowsBelow100": 666,
+          "observedRowsBelow1000": 1248,
+          "observedRowsBelow10000": 1350
+        },
+        "rows": 1620
+      },
+      "exposureToTrainRows": {
+        "donor": {
+          "activationShareWithTrainCount": {
+            "trainCountBelow1": 0.00009184228560124905,
+            "trainCountBelow10": 0.0004285973328058289,
+            "trainCountBelow100": 0.00435662124005925,
+            "trainCountBelow1000": 0.053602925765529,
+            "trainCountBelow10000": 0.17013430168071383,
+            "trainCountBelow100000": 0.44281169270042225
+          },
+          "activationWeightedMedianTrainCount": 119099,
+          "evalActivations": 849282
+        },
+        "halfka": {
+          "activationShareWithTrainCount": {
+            "trainCountBelow1": 0.010910833333333333,
+            "trainCountBelow10": 0.023582708333333334,
+            "trainCountBelow100": 0.07692375,
+            "trainCountBelow1000": 0.217398125,
+            "trainCountBelow10000": 0.4652235416666667,
+            "trainCountBelow100000": 0.9698658333333333
+          },
+          "activationWeightedMedianTrainCount": 12233,
+          "evalActivations": 4800000
+        },
+        "kingFree": {
+          "activationShareWithTrainCount": {
+            "trainCountBelow1": 0.00017083333333333333,
+            "trainCountBelow10": 0.00017083333333333333,
+            "trainCountBelow100": 0.0007191666666666667,
+            "trainCountBelow1000": 0.004190833333333334,
+            "trainCountBelow10000": 0.07493833333333333,
+            "trainCountBelow100000": 0.24955625
+          },
+          "activationWeightedMedianTrainCount": 252738,
+          "evalActivations": 4800000
+        }
+      },
+      "files": [
+        "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-strength-first/step9-model-b-corpus-20260911-v1/validation.bin"
+      ],
+      "gamePlyQuantiles": {
+        "max": 179,
+        "p05": 13,
+        "p25": 31,
+        "p50": 57,
+        "p75": 94,
+        "p95": 147
+      },
+      "halfkaActivationsPerPerspective": 40.0,
+      "halfkaRows": {
+        "countQuantilesAmongObservedRows": {
+          "max": 14460,
+          "p05": 1,
+          "p25": 2,
+          "p50": 6,
+          "p75": 21,
+          "p95": 166
+        },
+        "observedFraction": 0.5449129573302055,
+        "observedRows": 82229,
+        "observedRowsBelowThreshold": {
+          "observedRowsBelow1": 0,
+          "observedRowsBelow10": 49246,
+          "observedRowsBelow100": 75874,
+          "observedRowsBelow1000": 81376,
+          "observedRowsBelow10000": 82222
+        },
+        "rows": 150903
+      },
+      "kingFreeRows": {
+        "countQuantilesAmongObservedRows": {
+          "max": 95961,
+          "p05": 53,
+          "p25": 222,
+          "p50": 511,
+          "p75": 1265,
+          "p95": 18650
+        },
+        "observedFraction": 0.8368223295759528,
+        "observedRows": 1559,
+        "observedRowsBelowThreshold": {
+          "observedRowsBelow1": 0,
+          "observedRowsBelow10": 0,
+          "observedRowsBelow100": 186,
+          "observedRowsBelow1000": 1092,
+          "observedRowsBelow10000": 1439
+        },
+        "rows": 1863
+      },
+      "maxBoardMultiplicity": 24,
+      "name": "eval",
+      "ownKingSquares": {
+        "histogram": [
+          368,
+          647,
+          1521,
+          8928,
+          14460,
+          9071,
+          1525,
+          653,
+          378,
+          511,
+          1111,
+          3667,
+          11448,
+          12050,
+          11498,
+          3686,
+          1115,
+          526,
+          551,
+          1108,
+          1509,
+          3306,
+          3183,
+          3309,
+          1592,
+          1141,
+          549,
+          557,
+          647,
+          728,
+          1166,
+          1042,
+          1145,
+          741,
+          666,
+          535,
+          369,
+          432,
+          515,
+          503,
+          482,
+          487,
+          556,
+          466,
+          377,
+          387,
+          365,
+          327,
+          254,
+          209,
+          221,
+          323,
+          382,
+          350,
+          343,
+          240,
+          185,
+          146,
+          187,
+          149,
+          172,
+          230,
+          323,
+          227,
+          331,
+          184,
+          162,
+          95,
+          159,
+          187,
+          311,
+          224,
+          402,
+          391,
+          215,
+          171,
+          91,
+          185,
+          241,
+          401,
+          405
+        ],
+        "perspectiveSamples": 120000,
+        "squaresCoveringPercentOfSamples": {
+          "50": 6,
+          "80": 20,
+          "90": 39,
+          "95": 54,
+          "99": 73
+        },
+        "squaresWithAnySample": 81,
+        "squaresWithAtLeast1000Samples": 22,
+        "top12": [
+          {
+            "orientedSquare": 4,
+            "share": 0.1205
+          },
+          {
+            "orientedSquare": 13,
+            "share": 0.10041666666666667
+          },
+          {
+            "orientedSquare": 14,
+            "share": 0.09581666666666666
+          },
+          {
+            "orientedSquare": 12,
+            "share": 0.0954
+          },
+          {
+            "orientedSquare": 5,
+            "share": 0.07559166666666667
+          },
+          {
+            "orientedSquare": 3,
+            "share": 0.0744
+          },
+          {
+            "orientedSquare": 15,
+            "share": 0.030716666666666666
+          },
+          {
+            "orientedSquare": 11,
+            "share": 0.030558333333333333
+          },
+          {
+            "orientedSquare": 23,
+            "share": 0.027575
+          },
+          {
+            "orientedSquare": 21,
+            "share": 0.02755
+          },
+          {
+            "orientedSquare": 22,
+            "share": 0.026525
+          },
+          {
+            "orientedSquare": 24,
+            "share": 0.013266666666666666
+          }
+        ]
+      },
+      "plyResetsInStoredOrder": 30274,
+      "records": 60000,
+      "storedResult": {
+        "drawOrUnknown": 32634,
+        "loss": 13638,
+        "win": 13728
+      }
+    }
+  ],
+  "geometry": {
+    "donorRows": 1620,
+    "halfkaRows": 150903,
+    "kingFreeRows": 1863,
+    "note": "kingFreeRows is the HalfKAv2^ piece/hand row with the oriented-king offset removed, i.e. the input a king-free A+Donor network would use"
+  },
+  "schema": "haitaka-small-net-phase0-coverage-audit-v1",
+  "train": {
+    "absScoreQuantiles": {
+      "max": 12000,
+      "p05": 16,
+      "p25": 460,
+      "p50": 1486,
+      "p75": 3406,
+      "p95": 12000
+    },
+    "boardsSeenMoreThanOnce": 957,
+    "decodeFailures": 0,
+    "distinctBoards": 877988,
+    "donorRows": {
+      "countQuantilesAmongObservedRows": {
+        "max": 335763,
+        "p05": 73,
+        "p25": 344,
+        "p50": 1415,
+        "p75": 4411,
+        "p95": 50062
+      },
+      "observedFraction": 0.854320987654321,
+      "observedRows": 1384,
+      "observedRowsBelowThreshold": {
+        "observedRowsBelow1": 0,
+        "observedRowsBelow10": 8,
+        "observedRowsBelow100": 100,
+        "observedRowsBelow1000": 636,
+        "observedRowsBelow10000": 1162
+      },
+      "rows": 1620
+    },
+    "files": [
+      "/home/na2hiro/proj/haitaka-variants-anhoku/out/anhoku-reboot-r4-replacement/datasets/training.bin"
+    ],
+    "gamePlyQuantiles": {
+      "max": 179,
+      "p05": 23,
+      "p25": 44,
+      "p50": 69,
+      "p75": 103,
+      "p95": 146
+    },
+    "halfkaActivationsPerPerspective": 40.0,
+    "halfkaRows": {
+      "countQuantilesAmongObservedRows": {
+        "max": 243352,
+        "p05": 2,
+        "p25": 11,
+        "p50": 47,
+        "p75": 224,
+        "p95": 2321
+      },
+      "observedFraction": 0.6055479347660417,
+      "observedRows": 91379,
+      "observedRowsBelowThreshold": {
+        "observedRowsBelow1": 0,
+        "observedRowsBelow10": 20740,
+        "observedRowsBelow100": 57536,
+        "observedRowsBelow1000": 82745,
+        "observedRowsBelow10000": 90077
+      },
+      "rows": 150903
+    },
+    "kingFreeRows": {
+      "countQuantilesAmongObservedRows": {
+        "max": 1168875,
+        "p05": 568,
+        "p25": 2737,
+        "p50": 7604,
+        "p75": 28832,
+        "p95": 243272
+      },
+      "observedFraction": 0.8325281803542673,
+      "observedRows": 1551,
+      "observedRowsBelowThreshold": {
+        "observedRowsBelow1": 0,
+        "observedRowsBelow10": 0,
+        "observedRowsBelow100": 8,
+        "observedRowsBelow1000": 134,
+        "observedRowsBelow10000": 914
+      },
+      "rows": 1863
+    },
+    "maxBoardMultiplicity": 11,
+    "name": "train",
+    "ownKingSquares": {
+      "histogram": [
+        2900,
+        9298,
+        31553,
+        106243,
+        228625,
+        106718,
+        33628,
+        9727,
+        2973,
+        4678,
+        13600,
+        41066,
+        174061,
+        243352,
+        174923,
+        41180,
+        13378,
+        5467,
+        3832,
+        12519,
+        31328,
+        75284,
+        88182,
+        73843,
+        32184,
+        12878,
+        4321,
+        3009,
+        6566,
+        13274,
+        20635,
+        24241,
+        21112,
+        12785,
+        6435,
+        3784,
+        1787,
+        3482,
+        5226,
+        7170,
+        7127,
+        6949,
+        5337,
+        3395,
+        1391,
+        1175,
+        1718,
+        2494,
+        2007,
+        2186,
+        2395,
+        2780,
+        1561,
+        1038,
+        643,
+        946,
+        654,
+        396,
+        434,
+        477,
+        697,
+        940,
+        602,
+        649,
+        413,
+        366,
+        235,
+        119,
+        98,
+        321,
+        242,
+        550,
+        477,
+        351,
+        252,
+        155,
+        27,
+        123,
+        293,
+        301,
+        439
+      ],
+      "perspectiveSamples": 1760000,
+      "squaresCoveringPercentOfSamples": {
+        "50": 5,
+        "80": 13,
+        "90": 21,
+        "95": 30,
+        "99": 50
+      },
+      "squaresWithAnySample": 81,
+      "squaresWithAtLeast1000Samples": 54,
+      "top12": [
+        {
+          "orientedSquare": 13,
+          "share": 0.13826818181818182
+        },
+        {
+          "orientedSquare": 4,
+          "share": 0.1299005681818182
+        },
+        {
+          "orientedSquare": 14,
+          "share": 0.09938806818181818
+        },
+        {
+          "orientedSquare": 12,
+          "share": 0.09889829545454545
+        },
+        {
+          "orientedSquare": 5,
+          "share": 0.06063522727272727
+        },
+        {
+          "orientedSquare": 3,
+          "share": 0.06036534090909091
+        },
+        {
+          "orientedSquare": 22,
+          "share": 0.050103409090909094
+        },
+        {
+          "orientedSquare": 21,
+          "share": 0.042775
+        },
+        {
+          "orientedSquare": 23,
+          "share": 0.04195625
+        },
+        {
+          "orientedSquare": 15,
+          "share": 0.02339772727272727
+        },
+        {
+          "orientedSquare": 11,
+          "share": 0.023332954545454546
+        },
+        {
+          "orientedSquare": 6,
+          "share": 0.019106818181818183
+        }
+      ]
+    },
+    "plyResetsInStoredOrder": 444077,
+    "records": 880000,
+    "storedResult": {
+      "drawOrUnknown": 880000,
+      "loss": 0,
+      "win": 0
+    }
+  }
+}
