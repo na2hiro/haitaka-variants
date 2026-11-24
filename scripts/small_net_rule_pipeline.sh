@@ -1,6 +1,6 @@
 #!/bin/bash
 # Small king-free NNUE pipeline for one single-donor rule, following the Anhoku recipe.
-# usage: rule_pipeline.sh <rule> [jobs=8] [threads=8] [generations=4]
+# usage: small_net_rule_pipeline.sh <rule> [jobs=8] [threads=8] [generations=4]
 # g1 is taught by the handcrafted eval, each later generation by the previous net
 # (10k nodes/move). Every net is trained from scratch on all data so far for ~25 epochs
 # and exported from its last checkpoint. Stops early when a generation gains < 15 Elo.
@@ -27,7 +27,7 @@ fi
 gen() { # name games seed [teacher]
   local teacher=""; [ -n "${4:-}" ] && teacher="--nnue $4"
   if [ ! -s gen/$1.bin ]; then
-    caffeinate -i $LEARN small-net-generate --games $2 --nodes 10000 --random-plies 8 --random-move-rate 0.05 \
+    caffeinate -i $LEARN small-net-generate --games $2 --nodes ${NODES:-10000} --random-plies 8 --random-move-rate 0.05 \
       --adjudicate-score 3000 --adjudicate-plies 4 --max-plies 200 --seed $3 --jobs $J $teacher \
       --output gen/$1.bin > gen/$1.log 2>&1 || { log "generate $1 failed"; exit 1; }
   fi
@@ -73,13 +73,24 @@ elo() { python3 -c "import json;print(int(json.load(open('matches/$1/self-play-r
 
 log "start $R jobs=$J threads=$T"
 gen val 1600 9999
-gen g1 64000 101
+# Size the generations from the measured val speed (1600 games, 10k nodes, handcrafted) so
+# that g1 takes about 6.5 h and later generations about 9 h at 8 jobs; rules over 2x that budget drop to
+# 5k nodes/move first. GAMES1 / GAMESN / NODES in the environment override this.
+read AUTO_NODES AUTO_G1 AUTO_GN < <(python3 -c "
+import json; d=json.load(open('gen/val.json')); spg=d['elapsedSec']/d['games']
+nodes=10000
+if spg*64000 > 46800: nodes=5000; spg/=2
+r=lambda b,cap: max(8000, min(cap, int(b/spg)//1600*1600))
+print(nodes, r(23400,64000), r(32400,96000))")
+NODES=${NODES:-$AUTO_NODES}; GAMES1=${GAMES1:-$AUTO_G1}; GAMESN=${GAMESN:-$AUTO_GN}
+log "settings nodes=$NODES games1=$GAMES1 gamesN=$GAMESN"
+gen g1 ${GAMES1:-64000} 101
 LIST=feat/g1.feat
 train kf1 $LIST
 match kf1-vs-hc models/kf1.nnue handcrafted
 for i in $(seq 2 $GENS); do
   p=$((i - 1))
-  gen g$i 96000 $((i * 101)) models/kf$p.nnue
+  gen g$i ${GAMESN:-96000} $((i * 101)) models/kf$p.nnue
   LIST=$LIST,feat/g$i.feat
   train kf$i $LIST
   match kf$i-vs-kf$p models/kf$i.nnue models/kf$p.nnue
