@@ -420,6 +420,9 @@ def cmd_train(args):
     print(f"rows with trusted game results: {int(train.has_result.sum())} / {train.n}", flush=True)
     val = FeatureSet(args.val)
     model = SmallNet(args.l1, args.seed, args.init)
+    if args.init_checkpoint:
+        # fine-tune: start from a trained checkpoint of the same family and width
+        model.load_state_dict(torch.load(args.init_checkpoint))
     groups = [
         {"params": list(model.ft.parameters()) + [model.ft_bias], "lr": args.lr},
         {"params": list(model.h1.parameters()) + list(model.h2.parameters()), "lr": args.lr},
@@ -545,6 +548,7 @@ def main():
     t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
     t.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
+    t.add_argument("--init-checkpoint", help="start from this .pt checkpoint (fine-tuning)")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
     t.add_argument("--ranger-dir", default="/home/na2hiro/proj/engine/variant-nnue-pytorch")
     t.add_argument("--output-lr-mult", type=float, default=1.0)
