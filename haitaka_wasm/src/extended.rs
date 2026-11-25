@@ -65,8 +65,9 @@ pub fn search_json(
 #[wasm_bindgen]
 pub fn load_nnue(bytes: &[u8]) -> Result<String, JsValue> {
     let model = core::MinaseNnue::from_bytes(bytes).map_err(|e| JsValue::from_str(&e))?;
+    let format = model.format();
     *MINASE_NNUE.write().unwrap() = Some(Arc::new(model));
-    Ok(core::MinaseNnue::FORMAT.into())
+    Ok(format.into())
 }
 
 #[cfg(not(feature = "chushogi"))]

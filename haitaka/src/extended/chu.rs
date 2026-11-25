@@ -542,12 +542,7 @@ pub fn search_json_with_nnue(
     model: &MinaseNnue,
 ) -> Result<String, String> {
     let game = ChuGame::parse(json)?;
-    search::search_json(
-        &mut minase_nnue::NnueGame::new(game, model),
-        max_depth,
-        timeout_ms,
-        node_budget,
-    )
+    model.search(game, max_depth, timeout_ms, node_budget)
 }
 #[cfg(test)]
 mod tests;
