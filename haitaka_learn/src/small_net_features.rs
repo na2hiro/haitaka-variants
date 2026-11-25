@@ -18,10 +18,9 @@ use anyhow::{Context, Result, bail, ensure};
 use haitaka::Color;
 use haitaka_wasm::{
     KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURES, KING_FREE_BUILD_FEATURES,
-    KING_FREE_BUILD_SUPPORTED, king_free_active_feature_indices,
-    KING_ZONE9_A_DONOR_SINGLE_FEATURES, NnueModel, R1_HALFKAV2_BASE_FEATURES,
-    king_zone9_donor_single_active_feature_indices,
-    r1_donor_single_active_feature_indices,
+    KING_FREE_BUILD_SUPPORTED, KING_ZONE9_A_DONOR_SINGLE_FEATURES, NnueModel,
+    R1_HALFKAV2_BASE_FEATURES, king_free_active_feature_indices,
+    king_zone9_donor_single_active_feature_indices, r1_donor_single_active_feature_indices,
 };
 
 use crate::dataset::{PACKED_SFEN_BYTES, unpack_board_from_training};
@@ -121,9 +120,20 @@ pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> 
     let mut writer = BufWriter::new(File::create(output)?);
     let mut rows = 0u64;
     let mut max_seen = 0usize;
+    // Some variant positions reached in play fail Board::from_sfen's standard-shogi validity
+    // check (seen in Haimen self-play). Skip those few rows instead of aborting the export.
+    let mut skipped = 0u64;
+    let mut first_skip: Option<String> = None;
     for record in bytes.chunks_exact(RECORD_BYTES) {
         let packed: &[u8; PACKED_SFEN_BYTES] = record[..PACKED_SFEN_BYTES].try_into()?;
-        let board = unpack_board_from_training(packed)?;
+        let board = match unpack_board_from_training(packed) {
+            Ok(board) => board,
+            Err(e) => {
+                skipped += 1;
+                first_skip.get_or_insert_with(|| e.to_string());
+                continue;
+            }
+        };
         let score = i16::from_le_bytes([record[64], record[65]]);
         let ply = u16::from_le_bytes([record[68], record[69]]);
         let result = record[70] as i8;
@@ -174,6 +184,15 @@ pub fn export(input: &Path, output: &Path, family: ExportFamily) -> Result<u64> 
         rows += 1;
     }
     writer.flush()?;
+    if let Some(first) = &first_skip {
+        eprintln!("skipped {skipped} records that do not decode to a valid board; first: {first}");
+    }
+    ensure!(
+        skipped * 1000 <= rows + skipped,
+        "{skipped} of {} records do not decode (over 0.1%); first: {}",
+        rows + skipped,
+        first_skip.unwrap_or_default()
+    );
     eprintln!(
         "exported {rows} {family:?} rows ({} bytes each, max active features {max_seen}) to {}",
         HEADER_BYTES + 2 * if wide { 4 } else { 2 } * max_features,
