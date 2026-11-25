@@ -200,13 +200,62 @@ impl Board {
         }
     }
 
-    #[cfg(feature = "donor-category")]
+    #[cfg(all(
+        feature = "donor-category",
+        not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
         board.play_unchecked(mv);
         let (checkers, _) = board.calculate_checkers_and_pins(color);
         checkers.is_empty()
+    }
+
+    /// Whether `mv` leaves the mover's king unattacked.
+    ///
+    /// Only piece placement affects attacks, so this applies just the square
+    /// changes of `mv` (no hand, pawn-file, move-number, or opponent
+    /// checker bookkeeping) and evaluates our king on the result.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    fn variant_move_resolves_check(&self, mv: Move) -> bool {
+        let color = self.side_to_move();
+        let mut board = self.clone();
+        match mv {
+            Move::Drop { piece, to } => board.inner.xor_square(piece, color, to),
+            Move::BoardMove {
+                from,
+                to,
+                promotion,
+            } => {
+                let piece = self
+                    .piece_on(from)
+                    .expect("Missing piece on move's `from` square");
+                if let Some(capture) = self.piece_on(to) {
+                    board.inner.xor_square(capture, !color, to);
+                }
+                board.inner.xor_square(piece, color, from);
+                let final_piece = if promotion { piece.promote() } else { piece };
+                board.inner.xor_square(final_piece, color, to);
+            }
+        }
+        board.candidate_checkers(color, BitBoard::EMPTY).is_empty()
     }
 
     /// Squares directly above/below an enemy piece.
@@ -1220,17 +1269,41 @@ impl Board {
     ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
         let color = self.side_to_move();
-        let mut board = self.clone();
-        board.play_unchecked(Move::BoardMove {
+        let king_move = Move::BoardMove {
             from: self.king(color),
             to: square,
             promotion: false,
-        });
+        };
+        #[cfg(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))]
+        {
+            self.variant_move_resolves_check(king_move)
+        }
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )))]
+        {
+            let mut board = self.clone();
+            board.play_unchecked(king_move);
 
-        // In influence variants, captures can change the opponent's donor graph,
-        // so king safety must be evaluated on the actual post-move position.
-        let (checkers, _) = board.calculate_checkers_and_pins(color);
-        checkers.is_empty()
+            // In influence variants, captures can change the opponent's donor graph,
+            // so king safety must be evaluated on the actual post-move position.
+            let (checkers, _) = board.calculate_checkers_and_pins(color);
+            checkers.is_empty()
+        }
     }
 
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {

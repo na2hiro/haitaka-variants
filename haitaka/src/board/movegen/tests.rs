@@ -2699,3 +2699,93 @@ fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
         Piece::Rook
     );
 }
+
+// The candidate-based checker detection must agree with the reference
+// computation built from the full movement-influence map, for both colors, on
+// every child of positions reached by random rollouts (including drops).
+#[test]
+#[cfg(any(
+    feature = "neko",
+    feature = "nekoneko",
+    feature = "yokoneko",
+    feature = "yokonekoneko",
+    feature = "tenkyo",
+    feature = "tenjiku",
+    feature = "anki"
+))]
+fn neko_candidate_checkers_match_influence_reference() {
+    fn assert_same(board: &Board) {
+        for color in Color::ALL {
+            let fast = board.candidate_checkers(color, BitBoard::EMPTY);
+            let (reference, pinned) =
+                board.calculate_checkers_and_pins_by_influence(color, BitBoard::EMPTY);
+            assert_eq!(fast, reference, "checkers of {color:?} in {board}");
+            assert!(pinned.is_empty());
+        }
+    }
+
+    let mut rng = rng();
+    let mut checked_positions = 0usize;
+    let mut checks_seen = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            for &mv in &v {
+                let mut child = board.clone();
+                child.play_unchecked(mv);
+                assert_same(&child);
+                checked_positions += 1;
+                checks_seen += usize::from(!child.checkers().is_empty());
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checked_positions > 10_000);
+    assert!(checks_seen > 0);
+}
+
+// The per-square `effective_movements` shortcut must agree with the full
+// movement-influence map on every piece of positions reached by random rollouts.
+#[test]
+#[cfg(feature = "donor-category")]
+fn effective_movements_match_influence_map() {
+    use crate::variant_rules::{MovementInfluence, effective_movements};
+
+    let mut rng = rng();
+    let mut compared = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            for color in Color::ALL {
+                let influence = MovementInfluence::compute(&board, color);
+                for square in board.colors(color) {
+                    let native = board.piece_on(square).unwrap();
+                    assert_eq!(
+                        effective_movements(&board, color, square),
+                        influence.effective_movements(native, square),
+                        "{color:?} {square} in {board}"
+                    );
+                    compared += 1;
+                }
+            }
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(compared > 10_000);
+}
