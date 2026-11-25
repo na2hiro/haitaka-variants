@@ -110,7 +110,7 @@ Haitaka は次の形式を `json search --nnue` と WASM の `load_nnue(Uint8Arr
 - Minase v3.0.1 の A 型と v3.0.0 の P 型（Tatara LayerStack、256×16×32、1 PSQT バケット）。推奨の lishogi 学習済みモデルは両リリースで重みが同じ。 [v3.0.1 リリース](https://github.com/stepney141/minase/releases/tag/v3.0.1) · [モデル配布ページ](https://huggingface.co/stepney141/minase-nets)
 - Minase v2.6.0 同梱の `nnue.bin`（MNUE v5、P 型、幅128、direct-SCReLU）。 [モデル](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/nets/nnue.bin)
 
-探索は Haitaka の中将棋ルールで行う。先獅子の評価特徴は完了手の履歴から捕獲升を取得する。
+探索は Haitaka の中将棋ルールで行う。NNUE には Minase と同じく、完了手の全経路のうち獅子以外が最後に獅子を取った升を渡す。
 先獅子フラグだけの履歴なし局面では、この升の特徴を省略する。
 
 ```bash

@@ -1,5 +1,5 @@
 //! Inference and shared incremental features for Minase Chu shogi networks.
-use super::{Cell, ChuGame, ChuPosition, Outcome, PathMove, SearchGame};
+use super::{Cell, ChuGame, ChuPosition, Outcome, PathMove, SearchGame, lion};
 use sha2::{Digest, Sha256};
 
 const HEADER: usize = 192;
@@ -250,7 +250,7 @@ trait Model<const N: usize> {
                 acc.pieces += 1;
             }
         }
-        self.set_lion_square(&mut acc, lion_square(after, Some(mv)));
+        self.set_lion_square(&mut acc, lion_capture_square(before, mv));
         acc
     }
 }
@@ -297,15 +297,20 @@ fn relative_square(square: usize, side: usize) -> usize {
     rank * 12 + file
 }
 
-fn lion_square(position: &ChuPosition, last_move: Option<PathMove>) -> Option<usize> {
-    // JSON v2 stores a flag. The capture square is available from a completed
-    // path when the request includes that move in its history.
-    if position.state.senjishi {
-        let target = *last_move?.path.last()?;
-        ChuPosition::index(target).ok()
-    } else {
-        None
+fn lion_capture_square(before: &ChuPosition, mv: PathMove) -> Option<usize> {
+    let mover = before.cells[ChuPosition::index(mv.from).unwrap()].unwrap();
+    if lion(mover) {
+        return None;
     }
+    // Minase keeps the last lion captured anywhere in the completed move.
+    // The Shogitter rule flag describes only the final hop.
+    mv.path
+        .iter()
+        .rev()
+        .map(|&at| ChuPosition::index(at).unwrap())
+        .find(|&square| {
+            before.cells[square].is_some_and(|cell| cell.color != mover.color && lion(cell))
+        })
 }
 
 struct NnueGame<'a, M, const N: usize> {
@@ -316,8 +321,12 @@ struct NnueGame<'a, M, const N: usize> {
 
 impl<'a, M: Model<N>, const N: usize> NnueGame<'a, M, N> {
     fn new(game: ChuGame, model: &'a M) -> Self {
-        let pos = game.current();
-        let root = model.refresh(pos, lion_square(pos, game.played.last().copied()));
+        let capture = game
+            .played
+            .last()
+            .zip(game.history.iter().rev().nth(1))
+            .and_then(|(&mv, before)| lion_capture_square(before, mv));
+        let root = model.refresh(game.current(), capture);
         Self {
             game,
             model,
@@ -413,6 +422,21 @@ mod tests {
         };
         // Scores from upstream v3.0.1's Network::evaluate.
         check_positions(model.as_ref(), [35, 3021, -3777, -3120, -664, -859, 970]);
+        let mut falcon = NnueGame::new(
+            game(
+                &kings(&[([5, 5], "cz", 0), ([5, 4], "bl", 1), ([5, 3], "aa", 1)]),
+                0,
+                false,
+            ),
+            model.as_ref(),
+        );
+        // Minase's extended SFEN records the lion square 5d in both cases.
+        check(&mut falcon, two([5, 5], [5, 4], [5, 5]), -1755);
+        let take_twice = two([5, 5], [5, 4], [5, 3]);
+        check(&mut falcon, take_twice, -2038);
+        falcon.push(take_twice);
+        let restored = ChuGame::parse(&falcon.game.to_json()).unwrap();
+        assert_eq!(NnueGame::new(restored, model.as_ref()).evaluate(), -2038);
 
         assert!(MinaseNnue::from_bytes(&bytes[..bytes.len() - 1]).is_err());
         bytes.push(0);
@@ -466,9 +490,8 @@ mod tests {
         let before = game.stack.last().unwrap().clone();
         game.push(mv);
         assert_eq!(game.evaluate(), expected);
-        let pos = game.game.current();
-        let refreshed = game.model.refresh(pos, lion_square(pos, Some(mv)));
-        assert_eq!(game.stack.last().unwrap(), &refreshed);
+        let refreshed = NnueGame::new(game.game.clone(), game.model);
+        assert_eq!(game.stack.last().unwrap(), refreshed.stack.last().unwrap());
         game.pop();
         assert_eq!(game.stack.last().unwrap(), &before);
     }
