@@ -105,23 +105,21 @@ WASMの関数名と引数は小将棋と同じで、v2のJSON文字列を入出�
 
 ### Minase NNUE
 
-対応するモデルは Minase v2.6.0 同梱の `nnue.bin`（MNUE v5、P型、幅128、direct-SCReLU）。
-探索は引き続き Haitaka の中将棋ルールで行う。先獅子の評価特徴は完了手の履歴から捕獲升を取得する。
+Haitaka は次の形式を `json search --nnue` と WASM の `load_nnue(Uint8Array)` で読み込める。
+
+- Minase v3.0.1 の A 型と v3.0.0 の P 型（Tatara LayerStack、256×16×32、1 PSQT バケット）。推奨の lishogi 学習済みモデルは両リリースで重みが同じ。 [v3.0.1 リリース](https://github.com/stepney141/minase/releases/tag/v3.0.1) · [モデル配布ページ](https://huggingface.co/stepney141/minase-nets)
+- Minase v2.6.0 同梱の `nnue.bin`（MNUE v5、P 型、幅128、direct-SCReLU）。 [モデル](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/nets/nnue.bin)
+
+探索は Haitaka の中将棋ルールで行う。先獅子の評価特徴は完了手の履歴から捕獲升を取得する。
 先獅子フラグだけの履歴なし局面では、この升の特徴を省略する。
 
 ```bash
-curl -fL -o minase-v2.6.0.nnue https://raw.githubusercontent.com/stepney141/minase/bac8e2c9367107d47d8cb3c71ae6757044d0ddc8/crates/minase/nets/nnue.bin
-./target/release/haitaka_cli json search --nnue minase-v2.6.0.nnue --depth 4 < /tmp/chushogi.json
+./target/release/haitaka_cli json search --nnue path/to/minase.nnue --depth 4 < /tmp/chushogi.json
+HAITAKA_MINASE_V3_NNUE=path/to/minase-v3.nnue HAITAKA_MINASE_NNUE=path/to/minase-v2.6.bin \
+  cargo test -p haitaka --features chushogi extended::chu::minase_nnue -- --ignored
 ```
 
-WASM は `load_nnue(Uint8Array)` の成功後に `search_json` が Minase NNUE を使う。
-GitHub 上の重みと形式仕様は公開元を参照。 [モデル](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/nets/nnue.bin) · [形式仕様](https://github.com/stepney141/minase/blob/v2.6.0/crates/minase/src/eval/nnue/format.rs)
-
-Minase の `eval` と照合した値と差分更新を、公開モデルを使って再検証できる。
-
-```bash
-HAITAKA_MINASE_NNUE="$PWD/minase-v2.6.0.nnue" cargo test -p haitaka --features chushogi minase_nnue -- --ignored
-```
+WASM の読み込みが成功すると、v3 は `minase-layer-stack`、v2.6 は `minase-mnue-v5` を返す。
 
 ## 参照元の修正
 
