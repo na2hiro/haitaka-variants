@@ -364,8 +364,59 @@ impl Board {
             feature = "anki"
         )))]
         {
-            self.calculate_checkers_and_pins_by_influence(color, excluded_attackers)
+            (
+                self.candidate_checkers(color, excluded_attackers),
+                self.candidate_pins(color, excluded_attackers),
+            )
         }
+    }
+
+    /// Pieces (of either color) that alone block an enemy's effective slider
+    /// movement toward `color`'s king, for the variants that track pins.
+    ///
+    /// A pinner must lie on a rook or bishop ray from the king with exactly
+    /// one occupied square in between; it is a pinner when one of its
+    /// effective movements reaches the king once that blocker is lifted.
+    /// The pinner is at least two squares away, so only slider movement can
+    /// do that.
+    #[cfg(all(
+        feature = "donor-category",
+        not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))
+    ))]
+    fn candidate_pins(&self, color: Color, excluded_attackers: BitBoard) -> BitBoard {
+        use crate::variant_rules::effective_movements;
+
+        let mut pinned = BitBoard::EMPTY;
+        if !self.has(color, Piece::King) {
+            return pinned;
+        }
+        let our_king = self.king(color);
+        let their_color = !color;
+        let occupied = self.occupied();
+        let pinners = (rook_pseudo_attacks(our_king) | bishop_pseudo_attacks(our_king))
+            & self.colors(their_color)
+            & !excluded_attackers;
+        for pinner in pinners {
+            let between = get_between_rays(pinner, our_king) & occupied;
+            if between.len() != 1 {
+                continue;
+            }
+            if effective_movements(self, their_color, pinner)
+                .pseudo_legals(their_color, pinner, occupied ^ between)
+                .has(our_king)
+            {
+                pinned |= between;
+            }
+        }
+        pinned
     }
 
     /// Checkers of `color`'s king in any piece-influence variant, without pins.
@@ -423,18 +474,7 @@ impl Board {
         feature = "tenjiku",
         feature = "anki"
     ))]
-    #[cfg_attr(
-        any(
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        ),
-        allow(dead_code)
-    )]
+    #[allow(dead_code)]
     pub(crate) fn calculate_checkers_and_pins_by_influence(
         &self,
         color: Color,

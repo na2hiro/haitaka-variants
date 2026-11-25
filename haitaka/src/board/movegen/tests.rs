@@ -2700,7 +2700,7 @@ fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
     );
 }
 
-// The candidate-based checker detection must agree with the reference
+// The candidate-based checker and pin detection must agree with the reference
 // computation built from the full movement-influence map, for both colors, on
 // every child of positions reached by random rollouts (including drops).
 #[test]
@@ -2708,10 +2708,14 @@ fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
 fn candidate_checkers_match_influence_reference() {
     fn assert_same(board: &Board) {
         for color in Color::ALL {
-            let fast = board.candidate_checkers(color, BitBoard::EMPTY);
-            let (reference, _) =
-                board.calculate_checkers_and_pins_by_influence(color, BitBoard::EMPTY);
-            assert_eq!(fast, reference, "checkers of {color:?} in {board}");
+            let fast = board.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY);
+            let reference = board.calculate_checkers_and_pins_by_influence(color, BitBoard::EMPTY);
+            assert_eq!(fast, reference, "checkers and pins of {color:?} in {board}");
+            assert_eq!(
+                board.candidate_checkers(color, BitBoard::EMPTY),
+                reference.0,
+                "checkers of {color:?} in {board}"
+            );
         }
     }
 
