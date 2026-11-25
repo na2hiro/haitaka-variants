@@ -200,18 +200,20 @@ impl Board {
         }
     }
 
-    /// Whether `mv` leaves the mover's king unattacked.
+    /// Piece placement after `mv`, plus the square and final piece it moved.
     ///
     /// Only piece placement affects attacks, so this applies just the square
-    /// changes of `mv` (no hand, pawn-file, move-number, or opponent
-    /// checker bookkeeping) and evaluates our king on the result. Pins are
-    /// irrelevant here because the actual post-move placement is examined.
+    /// changes of `mv`; hands, pawn files, the move number, side to move and
+    /// the cached checkers/pins are left as they were.
     #[cfg(feature = "donor-category")]
-    fn variant_move_resolves_check(&self, mv: Move) -> bool {
+    fn variant_placement_after(&self, mv: Move) -> (Board, Square, Piece) {
         let color = self.side_to_move();
         let mut board = self.clone();
         match mv {
-            Move::Drop { piece, to } => board.inner.xor_square(piece, color, to),
+            Move::Drop { piece, to } => {
+                board.inner.xor_square(piece, color, to);
+                (board, to, piece)
+            }
             Move::BoardMove {
                 from,
                 to,
@@ -226,9 +228,38 @@ impl Board {
                 board.inner.xor_square(piece, color, from);
                 let final_piece = if promotion { piece.promote() } else { piece };
                 board.inner.xor_square(final_piece, color, to);
+                (board, to, final_piece)
             }
         }
-        board.candidate_checkers(color, BitBoard::EMPTY).is_empty()
+    }
+
+    /// Whether `mv` leaves the mover's king unattacked. Pins are irrelevant
+    /// here because the actual post-move placement is examined.
+    #[cfg(feature = "donor-category")]
+    fn variant_move_resolves_check(&self, mv: Move) -> bool {
+        let (board, _, _) = self.variant_placement_after(mv);
+        board
+            .candidate_checkers(self.side_to_move(), BitBoard::EMPTY)
+            .is_empty()
+    }
+
+    /// Whether `mv` checks the opponent's king, matching the checkers that
+    /// `play_unchecked` would record (a pawn that has just made nifu is not
+    /// counted as an attacker).
+    #[cfg(feature = "donor-category")]
+    fn variant_move_gives_check(&self, mv: Move) -> bool {
+        let color = self.side_to_move();
+        let (board, to, piece) = self.variant_placement_after(mv);
+        let ignored_nifu_pawn = if piece == Piece::Pawn
+            && (board.colored_pieces(color, Piece::Pawn) & to.file().bitboard()).len() > 1
+        {
+            to.bitboard()
+        } else {
+            BitBoard::EMPTY
+        };
+        !board
+            .candidate_checkers(!color, ignored_nifu_pawn)
+            .is_empty()
     }
 
     /// Squares directly above/below an enemy piece.
@@ -3004,9 +3035,7 @@ impl Board {
                     let mut check_prom_tos = BitBoard::EMPTY;
 
                     for mv in mvs {
-                        let mut board = self.clone();
-                        board.play_unchecked(mv);
-                        if !board.checkers.is_empty() {
+                        if self.variant_move_gives_check(mv) {
                             if let Move::BoardMove { to, promotion, .. } = mv {
                                 if promotion {
                                     check_prom_tos |= to.bitboard();
@@ -3045,9 +3074,7 @@ impl Board {
                 PieceMoves::Drops { color, piece, .. } => {
                     let mut check_tos = BitBoard::EMPTY;
                     for mv in mvs {
-                        let mut board = self.clone();
-                        board.play_unchecked(mv);
-                        if !board.checkers.is_empty() {
+                        if self.variant_move_gives_check(mv) {
                             if let Move::Drop { to, .. } = mv {
                                 check_tos |= to.bitboard();
                             }

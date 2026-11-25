@@ -2784,3 +2784,45 @@ fn effective_movements_match_influence_map() {
     }
     assert!(compared > 10_000);
 }
+
+// `generate_checks` must emit exactly the legal moves after which the
+// opponent's recorded checkers are non-empty.
+#[test]
+#[cfg(feature = "donor-category")]
+fn donor_generate_checks_match_replayed_checkers() {
+    use std::collections::HashSet;
+
+    let mut rng = rng();
+    let mut checks_seen = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            let expected: HashSet<Move> = v
+                .iter()
+                .copied()
+                .filter(|&mv| {
+                    let mut child = board.clone();
+                    child.play_unchecked(mv);
+                    !child.checkers().is_empty()
+                })
+                .collect();
+            let mut generated: HashSet<Move> = HashSet::new();
+            board.generate_checks(|mvs| {
+                generated.extend(mvs);
+                false
+            });
+            assert_eq!(generated, expected, "{board}");
+            checks_seen += expected.len();
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checks_seen > 0);
+}
