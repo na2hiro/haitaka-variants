@@ -544,13 +544,86 @@ impl Board {
         }
     }
 
+    /// Pins that make replaying unnecessary for moves that keep every enemy
+    /// effective movement, for a side that has a king and is not in check.
+    ///
+    /// When not in check and the enemy's effective movements stay the same,
+    /// only lifting a sole blocker off a ray can expose the king, which is
+    /// exactly what a pin describes.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    fn no_pin_rule_pins(&self) -> BitBoard {
+        debug_assert!(self.checkers.is_empty());
+        self.candidate_pins(self.side_to_move(), BitBoard::EMPTY)
+    }
+
+    /// Whether `mv` (not a capture) leaves every enemy effective movement as
+    /// it is.
+    ///
+    /// Anki and Tenjiku donors, and Neko/Yokoneko runs, consist of the
+    /// enemy's own pieces, so only a capture changes them. Nekoneko and
+    /// Yokonekoneko runs also contain our pieces, so neither the run a piece
+    /// leaves nor the run it joins may hold an enemy. A Tenkyo enemy borrows from
+    /// the point-symmetric square, which must not be one we change.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    fn keeps_enemy_movements(&self, mv: Move) -> bool {
+        let enemies = self.colors(!self.side_to_move());
+        let (changed, to) = match mv {
+            Move::BoardMove { from, to, .. } => (from.bitboard() | to.bitboard(), to),
+            Move::Drop { to, .. } => (to.bitboard(), to),
+        };
+        if enemies.has(to) {
+            return false;
+        }
+        #[cfg(any(feature = "nekoneko", feature = "yokonekoneko"))]
+        let affected = {
+            use crate::variant_rules::neko::run_squares;
+            // Only the run the piece leaves and the run it joins change.
+            let occupied = self.occupied();
+            let after = (occupied & !changed) | to.bitboard();
+            match mv {
+                Move::BoardMove { from, .. } => {
+                    run_squares(occupied, from) | run_squares(after, to)
+                }
+                Move::Drop { .. } => run_squares(after, to),
+            }
+        };
+        #[cfg(feature = "tenkyo")]
+        let affected = changed
+            .into_iter()
+            .fold(BitBoard::EMPTY, |bb, sq| bb | sq.flip().bitboard());
+        #[cfg(not(any(feature = "nekoneko", feature = "yokonekoneko", feature = "tenkyo")))]
+        let affected = {
+            let _ = changed;
+            BitBoard::EMPTY
+        };
+        (affected & enemies).is_empty()
+    }
+
     /// Expands `mvs` into individual moves and forwards to `listener` only those
     /// that leave our own king safe on the actual post-move position.
     ///
-    /// The neko run-reflection variants need this because moving (or capturing,
-    /// or dropping next to) any piece can re-segment a run and change another
-    /// piece's effective movement, so neither pins nor evasion target masks can
-    /// capture legality; only replaying the move and recomputing checkers can.
+    /// In these variants a move can change the enemy's effective movements
+    /// (a capture removes a donor; Nekoneko/Yokonekoneko runs and Tenkyo
+    /// mirrors include our own pieces), so evasion masks and pins alone cannot
+    /// decide legality. Moves that keep every enemy movement while we are not
+    /// in check are decided by pins (`pins` caches them for one generation);
+    /// all other moves are replayed and our king is re-examined.
     #[cfg(any(
         feature = "neko",
         feature = "nekoneko",
@@ -563,10 +636,25 @@ impl Board {
     fn neko_emit_if_safe<F: FnMut(PieceMoves) -> bool>(
         &self,
         mvs: PieceMoves,
+        pins: &mut Option<BitBoard>,
         listener: &mut F,
     ) -> bool {
+        let color = self.side_to_move();
+        let fast_path = self.checkers.is_empty() && self.has(color, Piece::King);
         for mv in mvs {
-            if self.variant_move_resolves_check(mv) {
+            let clean = fast_path
+                && !matches!(mv, Move::BoardMove { from, .. } if from == self.king(color))
+                && self.keeps_enemy_movements(mv);
+            let legal = match (clean, mv) {
+                (true, Move::BoardMove { from, to, .. }) => {
+                    // Pins are computed once per generation, on first use.
+                    let pinned = *pins.get_or_insert_with(|| self.no_pin_rule_pins());
+                    !pinned.has(from) || line_ray(self.king(color), from).has(to)
+                }
+                (true, Move::Drop { .. }) => true,
+                _ => self.variant_move_resolves_check(mv),
+            };
+            if legal {
                 let piece = match mv {
                     Move::BoardMove { from, .. } => self.piece_on(from).unwrap(),
                     Move::Drop { piece, .. } => piece,
@@ -2371,7 +2459,9 @@ impl Board {
             feature = "anki"
         ))]
         {
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             return self.add_all_legals::<_, false>(mask, &mut filter);
         }
 
@@ -2512,7 +2602,9 @@ impl Board {
         ))]
         {
             let targets = !self.occupied();
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             self.add_all_drops::<_, false>(&mut filter, targets)
         }
 
@@ -2594,7 +2686,9 @@ impl Board {
         ))]
         {
             let dst = !self.occupied();
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             match piece {
                 Piece::Pawn => self.add_drops::<commoner::Pawn, _, false>(&mut filter, dst),
                 Piece::Lance => self.add_drops::<commoner::Lance, _, false>(&mut filter, dst),

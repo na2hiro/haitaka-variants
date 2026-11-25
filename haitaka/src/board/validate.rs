@@ -379,19 +379,8 @@ impl Board {
     /// effective movements reaches the king once that blocker is lifted.
     /// The pinner is at least two squares away, so only slider movement can
     /// do that.
-    #[cfg(all(
-        feature = "donor-category",
-        not(any(
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        ))
-    ))]
-    fn candidate_pins(&self, color: Color, excluded_attackers: BitBoard) -> BitBoard {
+    #[cfg(feature = "donor-category")]
+    pub(crate) fn candidate_pins(&self, color: Color, excluded_attackers: BitBoard) -> BitBoard {
         use crate::variant_rules::effective_movements;
 
         let mut pinned = BitBoard::EMPTY;

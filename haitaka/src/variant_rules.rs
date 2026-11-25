@@ -553,6 +553,35 @@ pub(crate) mod neko {
         }
     }
 
+    /// The maximal contiguous run of `members` along the line through
+    /// `square`, or empty when `square` is not a member.
+    #[cfg_attr(
+        not(any(feature = "nekoneko", feature = "yokonekoneko")),
+        allow(dead_code)
+    )]
+    pub(crate) fn run_squares(members: BitBoard, square: Square) -> BitBoard {
+        if !members.has(square) {
+            return BitBoard::EMPTY;
+        }
+        let (line, pos) = if HORIZONTAL {
+            (square.rank() as usize, square.file() as usize)
+        } else {
+            (square.file() as usize, square.rank() as usize)
+        };
+        let mut run = square.bitboard();
+        let mut lo = pos;
+        while lo > 0 && members.has(line_square(line, lo - 1)) {
+            lo -= 1;
+            run |= line_square(line, lo).bitboard();
+        }
+        let mut hi = pos;
+        while hi + 1 < LINE_LEN && members.has(line_square(line, hi + 1)) {
+            hi += 1;
+            run |= line_square(line, hi).bitboard();
+        }
+        run
+    }
+
     /// The swap-partner square of `square` within its run for `color`, or `None`
     /// when `square` is unpaired (the middle of an odd-length run) or not a run
     /// member.

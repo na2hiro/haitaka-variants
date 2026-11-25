@@ -2611,6 +2611,11 @@ fn neko_generated_moves_are_legal_and_consistent() {
         let mut board = Board::startpos();
         rollout(&mut board, 24, &mut rng);
     }
+    // Longer games reach captures, drops, checks and pins.
+    for _ in 0..6 {
+        let mut board = Board::startpos();
+        rollout(&mut board, 120, &mut rng);
+    }
 }
 
 #[test]
