@@ -283,16 +283,21 @@ pub fn effective_movements(board: &Board, color: Color, square: Square) -> Movem
         feature = "tenkyo"
     )))]
     {
-        let native_piece = board.piece_on(square).unwrap();
         let donors = influencing_donor_squares(board, color, square);
         if donors.is_empty() {
-            return MovementSet::single(native_piece);
+            return MovementSet::single(board.piece_on(square).unwrap());
         }
         let mut pieces = MovementSet::empty();
         #[cfg(feature = "tenjiku")]
-        pieces.insert(native_piece);
-        for donor in donors {
-            pieces.insert(board.piece_on(donor).unwrap());
+        pieces.insert(board.piece_on(square).unwrap());
+        if donors.len() == 1 {
+            pieces.insert(board.piece_on(donors.next_square().unwrap()).unwrap());
+        } else {
+            for &piece in &Piece::ALL {
+                if !(board.pieces(piece) & donors).is_empty() {
+                    pieces.insert(piece);
+                }
+            }
         }
         pieces
     }
@@ -474,13 +479,25 @@ fn donor_candidate_squares(_color: Color, square: Square) -> BitBoard {
         (2, -1),
         (2, 1),
     ];
-    let mut donors = BitBoard::EMPTY;
-    for &(file, rank) in &OFFSETS {
-        if let Some(sq) = square.try_offset(file, rank) {
-            donors |= sq.bitboard();
+    const TABLE: [BitBoard; Square::NUM] = {
+        let mut table = [BitBoard::EMPTY; Square::NUM];
+        let mut i = 0;
+        while i < Square::NUM {
+            let square = Square::index_const(i);
+            let mut donors = BitBoard::EMPTY;
+            let mut k = 0;
+            while k < OFFSETS.len() {
+                if let Some(sq) = square.try_offset(OFFSETS[k].0, OFFSETS[k].1) {
+                    donors = BitBoard(donors.0 | sq.bitboard().0);
+                }
+                k += 1;
+            }
+            table[i] = donors;
+            i += 1;
         }
-    }
-    donors
+        table
+    };
+    TABLE[square as usize]
 }
 
 /// Shift a bitboard forward (toward the opponent) by one rank for the given color.
