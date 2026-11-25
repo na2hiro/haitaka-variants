@@ -222,7 +222,8 @@ impl Board {
                 let piece = self
                     .piece_on(from)
                     .expect("Missing piece on move's `from` square");
-                if let Some(capture) = self.piece_on(to) {
+                if self.colors(!color).has(to) {
+                    let capture = self.piece_on(to).unwrap();
                     board.inner.xor_square(capture, !color, to);
                 }
                 board.inner.xor_square(piece, color, from);
@@ -1374,6 +1375,13 @@ impl Board {
         if !self.has(them, Piece::King) {
             return false;
         }
+        // Uchi-fuzume needs the dropped pawn to give check. In piece-influence
+        // variants the pawn may borrow any movement, so test that movement on
+        // the post-drop placement before replaying the whole drop.
+        #[cfg(feature = "donor-category")]
+        if !self.dropped_pawn_gives_check(to) {
+            return false;
+        }
         let mut board = self.clone();
         board.play_unchecked(Move::Drop {
             piece: Piece::Pawn,
@@ -1385,12 +1393,69 @@ impl Board {
             return false;
         }
 
+        // Capturing the pawn is the usual evasion; finding one legal capture
+        // settles the question without enumerating every evasion.
+        #[cfg(feature = "donor-category")]
+        if board.has_legal_capture_of(to) {
+            return false;
+        }
+
         // Uchi-fuzume depends on actual evasions, even if an outcome rule
         // such as Oute has already ended play in the checking position.
         let has_legal_moves = board.generate_drops_without_outcome(|_| true)
             || board.generate_board_moves_for_without_outcome(BitBoard::FULL, |_| true);
 
         !has_legal_moves
+    }
+
+    /// Whether a pawn dropped on `to` attacks the opponent's king with its
+    /// effective movement.
+    #[cfg(feature = "donor-category")]
+    fn dropped_pawn_gives_check(&self, to: Square) -> bool {
+        let color = self.side_to_move();
+        let their_king = self.king(!color);
+        let occupied = self.occupied();
+        // Only the first square on a ray from the king, or a knight square,
+        // can attack it.
+        let reachable = get_rook_moves(!color, their_king, occupied)
+            | get_bishop_moves(!color, their_king, occupied)
+            | knight_attacks(!color, their_king);
+        if !reachable.has(to) {
+            return false;
+        }
+        let (board, _, _) = self.variant_placement_after(Move::Drop {
+            piece: Piece::Pawn,
+            to,
+        });
+        crate::variant_rules::effective_movements(&board, color, to)
+            .pseudo_legals(color, to, occupied | to.bitboard())
+            .has(their_king)
+    }
+
+    /// Whether the side to move has a legal move capturing the piece on
+    /// `target`. A `false` answer only means no capture was found.
+    #[cfg(feature = "donor-category")]
+    fn has_legal_capture_of(&self, target: Square) -> bool {
+        let color = self.side_to_move();
+        let occupied = self.occupied();
+        // A capturer sits on the first square of a ray from `target` or on a
+        // knight square, as with checkers.
+        let capturers = (get_rook_moves(color, target, occupied)
+            | get_bishop_moves(color, target, occupied)
+            | knight_attacks(!color, target))
+            & self.colors(color);
+        capturers.into_iter().any(|from| {
+            crate::variant_rules::effective_movements(self, color, from)
+                .pseudo_legals(color, from, occupied)
+                .has(target)
+                && [false, true].into_iter().any(|promotion| {
+                    self.is_legal_board_move(Move::BoardMove {
+                        from,
+                        to: target,
+                        promotion,
+                    })
+                })
+        })
     }
 
     fn filter_illegal_pawn_drop_mates(&self, mut to: BitBoard) -> BitBoard {

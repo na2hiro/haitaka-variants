@@ -2831,3 +2831,64 @@ fn donor_generate_checks_match_replayed_checkers() {
     }
     assert!(checks_seen > 0);
 }
+
+// The uchi-fuzume shortcuts must agree with replaying the pawn drop: the
+// prefilter with the checkers `play_unchecked` records, and a reported legal
+// capture with the generated moves.
+#[test]
+#[cfg(feature = "donor-category")]
+fn donor_pawn_drop_mate_shortcuts_match_replay() {
+    let mut rng = rng();
+    let mut checking_drops = 0usize;
+    for _ in 0..30 {
+        let mut board = Board::startpos();
+        for _ in 0..100 {
+            let color = board.side_to_move();
+            if board.checkers().is_empty() && board.has(!color, Piece::King) {
+                let mut board = board.clone();
+                if !board.has_in_hand(color, Piece::Pawn) {
+                    board.unchecked_set_hand(color, Piece::Pawn, 1);
+                }
+                // Pawn drops are only considered on files without our pawn.
+                let mut pawnless = !board.occupied();
+                for pawn in board.colored_pieces(color, Piece::Pawn) {
+                    pawnless &= !pawn.file().bitboard();
+                }
+                for to in pawnless {
+                    let mut child = board.clone();
+                    child.play_unchecked(Move::Drop {
+                        piece: Piece::Pawn,
+                        to,
+                    });
+                    let gives_check = child.checkers().has(to);
+                    assert_eq!(
+                        board.dropped_pawn_gives_check(to),
+                        gives_check,
+                        "{to} in {board}"
+                    );
+                    if gives_check {
+                        checking_drops += 1;
+                        let mut capture = false;
+                        child.generate_moves(|mvs| {
+                            capture |= mvs.into_iter().any(|mv| {
+                                matches!(mv, Move::BoardMove { to: target, .. } if target == to)
+                            });
+                            capture
+                        });
+                        assert_eq!(child.has_legal_capture_of(to), capture, "{to} in {child}");
+                    }
+                }
+            }
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checking_drops > 0);
+}
