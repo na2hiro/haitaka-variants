@@ -200,40 +200,13 @@ impl Board {
         }
     }
 
-    #[cfg(all(
-        feature = "donor-category",
-        not(any(
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        ))
-    ))]
-    fn variant_move_resolves_check(&self, mv: Move) -> bool {
-        let color = self.side_to_move();
-        let mut board = self.clone();
-        board.play_unchecked(mv);
-        let (checkers, _) = board.calculate_checkers_and_pins(color);
-        checkers.is_empty()
-    }
-
     /// Whether `mv` leaves the mover's king unattacked.
     ///
     /// Only piece placement affects attacks, so this applies just the square
     /// changes of `mv` (no hand, pawn-file, move-number, or opponent
-    /// checker bookkeeping) and evaluates our king on the result.
-    #[cfg(any(
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    ))]
+    /// checker bookkeeping) and evaluates our king on the result. Pins are
+    /// irrelevant here because the actual post-move placement is examined.
+    #[cfg(feature = "donor-category")]
     fn variant_move_resolves_check(&self, mv: Move) -> bool {
         let color = self.side_to_move();
         let mut board = self.clone();
@@ -1268,42 +1241,13 @@ impl Board {
         feature = "anki"
     ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
-        let color = self.side_to_move();
-        let king_move = Move::BoardMove {
-            from: self.king(color),
+        // In influence variants, captures can change the opponent's donor graph,
+        // so king safety must be evaluated on the actual post-move position.
+        self.variant_move_resolves_check(Move::BoardMove {
+            from: self.king(self.side_to_move()),
             to: square,
             promotion: false,
-        };
-        #[cfg(any(
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        ))]
-        {
-            self.variant_move_resolves_check(king_move)
-        }
-        #[cfg(not(any(
-            feature = "neko",
-            feature = "nekoneko",
-            feature = "yokoneko",
-            feature = "yokonekoneko",
-            feature = "tenkyo",
-            feature = "tenjiku",
-            feature = "anki"
-        )))]
-        {
-            let mut board = self.clone();
-            board.play_unchecked(king_move);
-
-            // In influence variants, captures can change the opponent's donor graph,
-            // so king safety must be evaluated on the actual post-move position.
-            let (checkers, _) = board.calculate_checkers_and_pins(color);
-            checkers.is_empty()
-        }
+        })
     }
 
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {

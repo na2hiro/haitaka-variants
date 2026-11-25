@@ -368,24 +368,14 @@ impl Board {
         }
     }
 
-    /// Checkers for the variants that do not track pins (neko run reflection,
-    /// Tenkyo point symmetry, Tenjiku and Anki fixed-offset donors).
+    /// Checkers of `color`'s king in any piece-influence variant, without pins.
     ///
     /// Whatever movements a piece borrows, an attacker must sit on the first
     /// occupied square of one of the eight rays from the king (covering
     /// sliders and adjacent steps) or on a knight square, so only those few
     /// candidates need their effective movements resolved; rebuilding the
-    /// whole influence map is unnecessary. These variants never report pins
-    /// (see `calculate_checkers_and_pins_by_influence`).
-    #[cfg(any(
-        feature = "neko",
-        feature = "nekoneko",
-        feature = "yokoneko",
-        feature = "yokonekoneko",
-        feature = "tenkyo",
-        feature = "tenjiku",
-        feature = "anki"
-    ))]
+    /// whole influence map is unnecessary.
+    #[cfg(feature = "donor-category")]
     pub(crate) fn candidate_checkers(
         &self,
         color: Color,

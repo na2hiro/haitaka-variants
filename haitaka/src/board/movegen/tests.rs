@@ -2704,23 +2704,14 @@ fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
 // computation built from the full movement-influence map, for both colors, on
 // every child of positions reached by random rollouts (including drops).
 #[test]
-#[cfg(any(
-    feature = "neko",
-    feature = "nekoneko",
-    feature = "yokoneko",
-    feature = "yokonekoneko",
-    feature = "tenkyo",
-    feature = "tenjiku",
-    feature = "anki"
-))]
-fn neko_candidate_checkers_match_influence_reference() {
+#[cfg(feature = "donor-category")]
+fn candidate_checkers_match_influence_reference() {
     fn assert_same(board: &Board) {
         for color in Color::ALL {
             let fast = board.candidate_checkers(color, BitBoard::EMPTY);
-            let (reference, pinned) =
+            let (reference, _) =
                 board.calculate_checkers_and_pins_by_influence(color, BitBoard::EMPTY);
             assert_eq!(fast, reference, "checkers of {color:?} in {board}");
-            assert!(pinned.is_empty());
         }
     }
 
