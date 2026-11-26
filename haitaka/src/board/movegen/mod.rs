@@ -200,13 +200,67 @@ impl Board {
         }
     }
 
+    /// Piece placement after `mv`, plus the square and final piece it moved.
+    ///
+    /// Only piece placement affects attacks, so this applies just the square
+    /// changes of `mv`; hands, pawn files, the move number, side to move and
+    /// the cached checkers/pins are left as they were.
     #[cfg(feature = "donor-category")]
-    fn variant_move_resolves_check(&self, mv: Move) -> bool {
+    fn variant_placement_after(&self, mv: Move) -> (Board, Square, Piece) {
         let color = self.side_to_move();
         let mut board = self.clone();
-        board.play_unchecked(mv);
-        let (checkers, _) = board.calculate_checkers_and_pins(color);
-        checkers.is_empty()
+        match mv {
+            Move::Drop { piece, to } => {
+                board.inner.xor_square(piece, color, to);
+                (board, to, piece)
+            }
+            Move::BoardMove {
+                from,
+                to,
+                promotion,
+            } => {
+                let piece = self
+                    .piece_on(from)
+                    .expect("Missing piece on move's `from` square");
+                if self.colors(!color).has(to) {
+                    let capture = self.piece_on(to).unwrap();
+                    board.inner.xor_square(capture, !color, to);
+                }
+                board.inner.xor_square(piece, color, from);
+                let final_piece = if promotion { piece.promote() } else { piece };
+                board.inner.xor_square(final_piece, color, to);
+                (board, to, final_piece)
+            }
+        }
+    }
+
+    /// Whether `mv` leaves the mover's king unattacked. Pins are irrelevant
+    /// here because the actual post-move placement is examined.
+    #[cfg(feature = "donor-category")]
+    fn variant_move_resolves_check(&self, mv: Move) -> bool {
+        let (board, _, _) = self.variant_placement_after(mv);
+        board
+            .candidate_checkers(self.side_to_move(), BitBoard::EMPTY)
+            .is_empty()
+    }
+
+    /// Whether `mv` checks the opponent's king, matching the checkers that
+    /// `play_unchecked` would record (a pawn that has just made nifu is not
+    /// counted as an attacker).
+    #[cfg(feature = "donor-category")]
+    fn variant_move_gives_check(&self, mv: Move) -> bool {
+        let color = self.side_to_move();
+        let (board, to, piece) = self.variant_placement_after(mv);
+        let ignored_nifu_pawn = if piece == Piece::Pawn
+            && (board.colored_pieces(color, Piece::Pawn) & to.file().bitboard()).len() > 1
+        {
+            to.bitboard()
+        } else {
+            BitBoard::EMPTY
+        };
+        !board
+            .candidate_checkers(!color, ignored_nifu_pawn)
+            .is_empty()
     }
 
     /// Squares directly above/below an enemy piece.
@@ -491,13 +545,86 @@ impl Board {
         }
     }
 
+    /// Pins that make replaying unnecessary for moves that keep every enemy
+    /// effective movement, for a side that has a king and is not in check.
+    ///
+    /// When not in check and the enemy's effective movements stay the same,
+    /// only lifting a sole blocker off a ray can expose the king, which is
+    /// exactly what a pin describes.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    fn no_pin_rule_pins(&self) -> BitBoard {
+        debug_assert!(self.checkers.is_empty());
+        self.candidate_pins(self.side_to_move(), BitBoard::EMPTY)
+    }
+
+    /// Whether `mv` (not a capture) leaves every enemy effective movement as
+    /// it is.
+    ///
+    /// Anki and Tenjiku donors, and Neko/Yokoneko runs, consist of the
+    /// enemy's own pieces, so only a capture changes them. Nekoneko and
+    /// Yokonekoneko runs also contain our pieces, so neither the run a piece
+    /// leaves nor the run it joins may hold an enemy. A Tenkyo enemy borrows from
+    /// the point-symmetric square, which must not be one we change.
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    fn keeps_enemy_movements(&self, mv: Move) -> bool {
+        let enemies = self.colors(!self.side_to_move());
+        let (changed, to) = match mv {
+            Move::BoardMove { from, to, .. } => (from.bitboard() | to.bitboard(), to),
+            Move::Drop { to, .. } => (to.bitboard(), to),
+        };
+        if enemies.has(to) {
+            return false;
+        }
+        #[cfg(any(feature = "nekoneko", feature = "yokonekoneko"))]
+        let affected = {
+            use crate::variant_rules::neko::run_squares;
+            // Only the run the piece leaves and the run it joins change.
+            let occupied = self.occupied();
+            let after = (occupied & !changed) | to.bitboard();
+            match mv {
+                Move::BoardMove { from, .. } => {
+                    run_squares(occupied, from) | run_squares(after, to)
+                }
+                Move::Drop { .. } => run_squares(after, to),
+            }
+        };
+        #[cfg(feature = "tenkyo")]
+        let affected = changed
+            .into_iter()
+            .fold(BitBoard::EMPTY, |bb, sq| bb | sq.flip().bitboard());
+        #[cfg(not(any(feature = "nekoneko", feature = "yokonekoneko", feature = "tenkyo")))]
+        let affected = {
+            let _ = changed;
+            BitBoard::EMPTY
+        };
+        (affected & enemies).is_empty()
+    }
+
     /// Expands `mvs` into individual moves and forwards to `listener` only those
     /// that leave our own king safe on the actual post-move position.
     ///
-    /// The neko run-reflection variants need this because moving (or capturing,
-    /// or dropping next to) any piece can re-segment a run and change another
-    /// piece's effective movement, so neither pins nor evasion target masks can
-    /// capture legality; only replaying the move and recomputing checkers can.
+    /// In these variants a move can change the enemy's effective movements
+    /// (a capture removes a donor; Nekoneko/Yokonekoneko runs and Tenkyo
+    /// mirrors include our own pieces), so evasion masks and pins alone cannot
+    /// decide legality. Moves that keep every enemy movement while we are not
+    /// in check are decided by pins (`pins` caches them for one generation);
+    /// all other moves are replayed and our king is re-examined.
     #[cfg(any(
         feature = "neko",
         feature = "nekoneko",
@@ -510,10 +637,25 @@ impl Board {
     fn neko_emit_if_safe<F: FnMut(PieceMoves) -> bool>(
         &self,
         mvs: PieceMoves,
+        pins: &mut Option<BitBoard>,
         listener: &mut F,
     ) -> bool {
+        let color = self.side_to_move();
+        let fast_path = self.checkers.is_empty() && self.has(color, Piece::King);
         for mv in mvs {
-            if self.variant_move_resolves_check(mv) {
+            let clean = fast_path
+                && !matches!(mv, Move::BoardMove { from, .. } if from == self.king(color))
+                && self.keeps_enemy_movements(mv);
+            let legal = match (clean, mv) {
+                (true, Move::BoardMove { from, to, .. }) => {
+                    // Pins are computed once per generation, on first use.
+                    let pinned = *pins.get_or_insert_with(|| self.no_pin_rule_pins());
+                    !pinned.has(from) || line_ray(self.king(color), from).has(to)
+                }
+                (true, Move::Drop { .. }) => true,
+                _ => self.variant_move_resolves_check(mv),
+            };
+            if legal {
                 let piece = match mv {
                     Move::BoardMove { from, .. } => self.piece_on(from).unwrap(),
                     Move::Drop { piece, .. } => piece,
@@ -1219,23 +1361,25 @@ impl Board {
         feature = "anki"
     ))]
     fn variant_king_safe_on(&self, square: Square) -> bool {
-        let color = self.side_to_move();
-        let mut board = self.clone();
-        board.play_unchecked(Move::BoardMove {
-            from: self.king(color),
-            to: square,
-            promotion: false,
-        });
-
         // In influence variants, captures can change the opponent's donor graph,
         // so king safety must be evaluated on the actual post-move position.
-        let (checkers, _) = board.calculate_checkers_and_pins(color);
-        checkers.is_empty()
+        self.variant_move_resolves_check(Move::BoardMove {
+            from: self.king(self.side_to_move()),
+            to: square,
+            promotion: false,
+        })
     }
 
     fn is_illegal_mate_by_pawn_drop(&self, to: Square) -> bool {
         let them = !self.side_to_move();
         if !self.has(them, Piece::King) {
+            return false;
+        }
+        // Uchi-fuzume needs the dropped pawn to give check. In piece-influence
+        // variants the pawn may borrow any movement, so test that movement on
+        // the post-drop placement before replaying the whole drop.
+        #[cfg(feature = "donor-category")]
+        if !self.dropped_pawn_gives_check(to) {
             return false;
         }
         let mut board = self.clone();
@@ -1249,12 +1393,69 @@ impl Board {
             return false;
         }
 
+        // Capturing the pawn is the usual evasion; finding one legal capture
+        // settles the question without enumerating every evasion.
+        #[cfg(feature = "donor-category")]
+        if board.has_legal_capture_of(to) {
+            return false;
+        }
+
         // Uchi-fuzume depends on actual evasions, even if an outcome rule
         // such as Oute has already ended play in the checking position.
         let has_legal_moves = board.generate_drops_without_outcome(|_| true)
             || board.generate_board_moves_for_without_outcome(BitBoard::FULL, |_| true);
 
         !has_legal_moves
+    }
+
+    /// Whether a pawn dropped on `to` attacks the opponent's king with its
+    /// effective movement.
+    #[cfg(feature = "donor-category")]
+    fn dropped_pawn_gives_check(&self, to: Square) -> bool {
+        let color = self.side_to_move();
+        let their_king = self.king(!color);
+        let occupied = self.occupied();
+        // Only the first square on a ray from the king, or a knight square,
+        // can attack it.
+        let reachable = get_rook_moves(!color, their_king, occupied)
+            | get_bishop_moves(!color, their_king, occupied)
+            | knight_attacks(!color, their_king);
+        if !reachable.has(to) {
+            return false;
+        }
+        let (board, _, _) = self.variant_placement_after(Move::Drop {
+            piece: Piece::Pawn,
+            to,
+        });
+        crate::variant_rules::effective_movements(&board, color, to)
+            .pseudo_legals(color, to, occupied | to.bitboard())
+            .has(their_king)
+    }
+
+    /// Whether the side to move has a legal move capturing the piece on
+    /// `target`. A `false` answer only means no capture was found.
+    #[cfg(feature = "donor-category")]
+    fn has_legal_capture_of(&self, target: Square) -> bool {
+        let color = self.side_to_move();
+        let occupied = self.occupied();
+        // A capturer sits on the first square of a ray from `target` or on a
+        // knight square, as with checkers.
+        let capturers = (get_rook_moves(color, target, occupied)
+            | get_bishop_moves(color, target, occupied)
+            | knight_attacks(!color, target))
+            & self.colors(color);
+        capturers.into_iter().any(|from| {
+            crate::variant_rules::effective_movements(self, color, from)
+                .pseudo_legals(color, from, occupied)
+                .has(target)
+                && [false, true].into_iter().any(|promotion| {
+                    self.is_legal_board_move(Move::BoardMove {
+                        from,
+                        to: target,
+                        promotion,
+                    })
+                })
+        })
     }
 
     fn filter_illegal_pawn_drop_mates(&self, mut to: BitBoard) -> BitBoard {
@@ -2323,7 +2524,9 @@ impl Board {
             feature = "anki"
         ))]
         {
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             return self.add_all_legals::<_, false>(mask, &mut filter);
         }
 
@@ -2464,7 +2667,9 @@ impl Board {
         ))]
         {
             let targets = !self.occupied();
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             self.add_all_drops::<_, false>(&mut filter, targets)
         }
 
@@ -2546,7 +2751,9 @@ impl Board {
         ))]
         {
             let dst = !self.occupied();
-            let mut filter = |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut listener);
+            let mut pins = None;
+            let mut filter =
+                |mvs: PieceMoves| self.neko_emit_if_safe(mvs, &mut pins, &mut listener);
             match piece {
                 Piece::Pawn => self.add_drops::<commoner::Pawn, _, false>(&mut filter, dst),
                 Piece::Lance => self.add_drops::<commoner::Lance, _, false>(&mut filter, dst),
@@ -2987,9 +3194,7 @@ impl Board {
                     let mut check_prom_tos = BitBoard::EMPTY;
 
                     for mv in mvs {
-                        let mut board = self.clone();
-                        board.play_unchecked(mv);
-                        if !board.checkers.is_empty() {
+                        if self.variant_move_gives_check(mv) {
                             if let Move::BoardMove { to, promotion, .. } = mv {
                                 if promotion {
                                     check_prom_tos |= to.bitboard();
@@ -3028,9 +3233,7 @@ impl Board {
                 PieceMoves::Drops { color, piece, .. } => {
                     let mut check_tos = BitBoard::EMPTY;
                     for mv in mvs {
-                        let mut board = self.clone();
-                        board.play_unchecked(mv);
-                        if !board.checkers.is_empty() {
+                        if self.variant_move_gives_check(mv) {
                             if let Move::Drop { to, .. } = mv {
                                 check_tos |= to.bitboard();
                             }

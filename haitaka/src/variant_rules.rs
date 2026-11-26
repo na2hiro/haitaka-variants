@@ -201,15 +201,17 @@ impl MovementInfluence {
         let mut influenced_by = [BitBoard::EMPTY; Piece::NUM];
         let mut has_influence = BitBoard::EMPTY;
 
+        let members = neko::run_members(board, color);
+        let own = board.colors(color);
         for line in 0..neko::LINE_COUNT {
             let mut pos = 0;
             while pos < neko::LINE_LEN {
-                if !neko::in_run(board, color, line, pos) {
+                if !members.has(neko::line_square(line, pos)) {
                     pos += 1;
                     continue;
                 }
                 let start = pos;
-                while pos < neko::LINE_LEN && neko::in_run(board, color, line, pos) {
+                while pos < neko::LINE_LEN && members.has(neko::line_square(line, pos)) {
                     pos += 1;
                 }
                 let len = pos - start;
@@ -220,7 +222,7 @@ impl MovementInfluence {
                     }
                     let sq = neko::line_square(line, start + i);
                     // Only `color`'s own pieces have their moves generated here.
-                    if board.color_on(sq) != Some(color) {
+                    if !own.has(sq) {
                         continue;
                     }
                     let partner_sq = neko::line_square(line, start + j);
@@ -258,10 +260,47 @@ impl MovementInfluence {
 }
 
 /// Returns the effective movement types for a piece at `square`.
+///
+/// Equivalent to `MovementInfluence::compute(board, color).effective_movements(..)`
+/// but resolves only the donors of `square` instead of the whole board.
 #[inline(always)]
 pub fn effective_movements(board: &Board, color: Color, square: Square) -> MovementSet {
-    let native_piece = board.piece_on(square).unwrap();
-    MovementInfluence::compute(board, color).effective_movements(native_piece, square)
+    #[cfg(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo"
+    ))]
+    {
+        MovementSet::single(effective_piece(board, color, square))
+    }
+    #[cfg(not(any(
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo"
+    )))]
+    {
+        let donors = influencing_donor_squares(board, color, square);
+        if donors.is_empty() {
+            return MovementSet::single(board.piece_on(square).unwrap());
+        }
+        let mut pieces = MovementSet::empty();
+        #[cfg(feature = "tenjiku")]
+        pieces.insert(board.piece_on(square).unwrap());
+        if donors.len() == 1 {
+            pieces.insert(board.piece_on(donors.next_square().unwrap()).unwrap());
+        } else {
+            for &piece in &Piece::ALL {
+                if !(board.pieces(piece) & donors).is_empty() {
+                    pieces.insert(piece);
+                }
+            }
+        }
+        pieces
+    }
 }
 
 /// Returns the single effective movement piece for fixed-offset single-donor variants.
@@ -440,13 +479,25 @@ fn donor_candidate_squares(_color: Color, square: Square) -> BitBoard {
         (2, -1),
         (2, 1),
     ];
-    let mut donors = BitBoard::EMPTY;
-    for &(file, rank) in &OFFSETS {
-        if let Some(sq) = square.try_offset(file, rank) {
-            donors |= sq.bitboard();
+    const TABLE: [BitBoard; Square::NUM] = {
+        let mut table = [BitBoard::EMPTY; Square::NUM];
+        let mut i = 0;
+        while i < Square::NUM {
+            let square = Square::index_const(i);
+            let mut donors = BitBoard::EMPTY;
+            let mut k = 0;
+            while k < OFFSETS.len() {
+                if let Some(sq) = square.try_offset(OFFSETS[k].0, OFFSETS[k].1) {
+                    donors = BitBoard(donors.0 | sq.bitboard().0);
+                }
+                k += 1;
+            }
+            table[i] = donors;
+            i += 1;
         }
-    }
-    donors
+        table
+    };
+    TABLE[square as usize]
 }
 
 /// Shift a bitboard forward (toward the opponent) by one rank for the given color.
@@ -509,15 +560,43 @@ pub(crate) mod neko {
         }
     }
 
-    /// Whether the square at (`line`, `pos`) is a member of a run for `color`.
+    /// Squares that can belong to a run for `color`.
     #[inline(always)]
-    pub(crate) fn in_run(board: &Board, color: Color, line: usize, pos: usize) -> bool {
-        let sq = line_square(line, pos);
+    pub(crate) fn run_members(board: &Board, color: Color) -> BitBoard {
         if ANY_COLOR {
-            board.piece_on(sq).is_some()
+            board.occupied()
         } else {
-            board.color_on(sq) == Some(color)
+            board.colors(color)
         }
+    }
+
+    /// The maximal contiguous run of `members` along the line through
+    /// `square`, or empty when `square` is not a member.
+    #[cfg_attr(
+        not(any(feature = "nekoneko", feature = "yokonekoneko")),
+        allow(dead_code)
+    )]
+    pub(crate) fn run_squares(members: BitBoard, square: Square) -> BitBoard {
+        if !members.has(square) {
+            return BitBoard::EMPTY;
+        }
+        let (line, pos) = if HORIZONTAL {
+            (square.rank() as usize, square.file() as usize)
+        } else {
+            (square.file() as usize, square.rank() as usize)
+        };
+        let mut run = square.bitboard();
+        let mut lo = pos;
+        while lo > 0 && members.has(line_square(line, lo - 1)) {
+            lo -= 1;
+            run |= line_square(line, lo).bitboard();
+        }
+        let mut hi = pos;
+        while hi + 1 < LINE_LEN && members.has(line_square(line, hi + 1)) {
+            hi += 1;
+            run |= line_square(line, hi).bitboard();
+        }
+        run
     }
 
     /// The swap-partner square of `square` within its run for `color`, or `None`
@@ -535,16 +614,17 @@ pub(crate) mod neko {
             (square.file() as usize, square.rank() as usize)
         };
 
-        if !in_run(board, color, line, pos) {
+        let members = run_members(board, color);
+        if !members.has(square) {
             return None;
         }
 
         let mut lo = pos;
-        while lo > 0 && in_run(board, color, line, lo - 1) {
+        while lo > 0 && members.has(line_square(line, lo - 1)) {
             lo -= 1;
         }
         let mut hi = pos;
-        while hi + 1 < LINE_LEN && in_run(board, color, line, hi + 1) {
+        while hi + 1 < LINE_LEN && members.has(line_square(line, hi + 1)) {
             hi += 1;
         }
 

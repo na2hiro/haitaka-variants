@@ -2611,6 +2611,11 @@ fn neko_generated_moves_are_legal_and_consistent() {
         let mut board = Board::startpos();
         rollout(&mut board, 24, &mut rng);
     }
+    // Longer games reach captures, drops, checks and pins.
+    for _ in 0..6 {
+        let mut board = Board::startpos();
+        rollout(&mut board, 120, &mut rng);
+    }
 }
 
 #[test]
@@ -2698,4 +2703,192 @@ fn yokonekoneko_horizontal_enemy_run_swaps_abilities() {
         effective_piece(&board, Color::Black, Square::E5),
         Piece::Rook
     );
+}
+
+// The candidate-based checker and pin detection must agree with the reference
+// computation built from the full movement-influence map, for both colors, on
+// every child of positions reached by random rollouts (including drops).
+#[test]
+#[cfg(feature = "donor-category")]
+fn candidate_checkers_match_influence_reference() {
+    fn assert_same(board: &Board) {
+        for color in Color::ALL {
+            let fast = board.calculate_checkers_and_pins_excluding(color, BitBoard::EMPTY);
+            let reference = board.calculate_checkers_and_pins_by_influence(color, BitBoard::EMPTY);
+            assert_eq!(fast, reference, "checkers and pins of {color:?} in {board}");
+            assert_eq!(
+                board.candidate_checkers(color, BitBoard::EMPTY),
+                reference.0,
+                "checkers of {color:?} in {board}"
+            );
+        }
+    }
+
+    let mut rng = rng();
+    let mut checked_positions = 0usize;
+    let mut checks_seen = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            for &mv in &v {
+                let mut child = board.clone();
+                child.play_unchecked(mv);
+                assert_same(&child);
+                checked_positions += 1;
+                checks_seen += usize::from(!child.checkers().is_empty());
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checked_positions > 10_000);
+    assert!(checks_seen > 0);
+}
+
+// The per-square `effective_movements` shortcut must agree with the full
+// movement-influence map on every piece of positions reached by random rollouts.
+#[test]
+#[cfg(feature = "donor-category")]
+fn effective_movements_match_influence_map() {
+    use crate::variant_rules::{MovementInfluence, effective_movements};
+
+    let mut rng = rng();
+    let mut compared = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            for color in Color::ALL {
+                let influence = MovementInfluence::compute(&board, color);
+                for square in board.colors(color) {
+                    let native = board.piece_on(square).unwrap();
+                    assert_eq!(
+                        effective_movements(&board, color, square),
+                        influence.effective_movements(native, square),
+                        "{color:?} {square} in {board}"
+                    );
+                    compared += 1;
+                }
+            }
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(compared > 10_000);
+}
+
+// `generate_checks` must emit exactly the legal moves after which the
+// opponent's recorded checkers are non-empty.
+#[test]
+#[cfg(feature = "donor-category")]
+fn donor_generate_checks_match_replayed_checkers() {
+    use std::collections::HashSet;
+
+    let mut rng = rng();
+    let mut checks_seen = 0usize;
+    for _ in 0..40 {
+        let mut board = Board::startpos();
+        for _ in 0..80 {
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            let expected: HashSet<Move> = v
+                .iter()
+                .copied()
+                .filter(|&mv| {
+                    let mut child = board.clone();
+                    child.play_unchecked(mv);
+                    !child.checkers().is_empty()
+                })
+                .collect();
+            let mut generated: HashSet<Move> = HashSet::new();
+            board.generate_checks(|mvs| {
+                generated.extend(mvs);
+                false
+            });
+            assert_eq!(generated, expected, "{board}");
+            checks_seen += expected.len();
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checks_seen > 0);
+}
+
+// The uchi-fuzume shortcuts must agree with replaying the pawn drop: the
+// prefilter with the checkers `play_unchecked` records, and a reported legal
+// capture with the generated moves.
+#[test]
+#[cfg(feature = "donor-category")]
+fn donor_pawn_drop_mate_shortcuts_match_replay() {
+    let mut rng = rng();
+    let mut checking_drops = 0usize;
+    for _ in 0..30 {
+        let mut board = Board::startpos();
+        for _ in 0..100 {
+            let color = board.side_to_move();
+            if board.checkers().is_empty() && board.has(!color, Piece::King) {
+                let mut board = board.clone();
+                if !board.has_in_hand(color, Piece::Pawn) {
+                    board.unchecked_set_hand(color, Piece::Pawn, 1);
+                }
+                // Pawn drops are only considered on files without our pawn.
+                let mut pawnless = !board.occupied();
+                for pawn in board.colored_pieces(color, Piece::Pawn) {
+                    pawnless &= !pawn.file().bitboard();
+                }
+                for to in pawnless {
+                    let mut child = board.clone();
+                    child.play_unchecked(Move::Drop {
+                        piece: Piece::Pawn,
+                        to,
+                    });
+                    let gives_check = child.checkers().has(to);
+                    assert_eq!(
+                        board.dropped_pawn_gives_check(to),
+                        gives_check,
+                        "{to} in {board}"
+                    );
+                    if gives_check {
+                        checking_drops += 1;
+                        let mut capture = false;
+                        child.generate_moves(|mvs| {
+                            capture |= mvs.into_iter().any(|mv| {
+                                matches!(mv, Move::BoardMove { to: target, .. } if target == to)
+                            });
+                            capture
+                        });
+                        assert_eq!(child.has_legal_capture_of(to), capture, "{to} in {child}");
+                    }
+                }
+            }
+            let mut v: Vec<Move> = Vec::new();
+            board.generate_moves(|mvs| {
+                v.extend(mvs);
+                false
+            });
+            if v.is_empty() {
+                break;
+            }
+            board.play_unchecked(*v.choose(&mut rng).unwrap());
+        }
+    }
+    assert!(checking_drops > 0);
 }
