@@ -65,6 +65,8 @@ annan = ["haitaka/annan"]
     for name in NAMES:
         cargo += f'{name} = ["extended", "haitaka/{name}"]\n'
     (out/'Cargo.toml').write_text(cargo)
+    if not (ROOT/'Cargo.lock').exists():
+        subprocess.run(['cargo','generate-lockfile','--offline'],cwd=ROOT,check=True)
     shutil.copy2(ROOT/'Cargo.lock', out/'Cargo.lock')
     definitions = json.loads((ROOT/'plans/next-rule-groups/inputs/phase2-definitions.json').read_text())
     assert len(definitions) == len(NAMES) == 28
