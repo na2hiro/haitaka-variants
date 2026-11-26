@@ -17,8 +17,8 @@ engine of its own rule.
 | Anhoku | `anhoku-kf-all8` | KingFreeA+DonorSingleEff | 2,014,965 | `c7fcbebc9d87336f0b30fba2777ca84884132e215c2430f1f0b4bab6597f7e27` | +244 (1 s/move, sealed openings) |
 | Annan | `annan-kf4` | KingFreeA+DonorSingleEff | 2,014,954 | `eb52ca73d01faf4fa480590e7ca9be00b6e6eba7074e96bbb297bad4e505d404` | +482 |
 | Haimen | `haimen-kf4` | KingFreeA+DonorSingleEff | 2,014,955 | `3a854e9dd5e3d425e46b07246df1e2afeffb6494d7245200dbac4f2788dc71d7` | +476 |
-| Taimen | `taimen-kf4` | KingFreeA+DonorSingleEff | 2,014,955 | `2f48a54cf6a224e5065f79d89c59d40cfa10488321604a856bae3bf4170359d8` | TBD-taimen-hc |
-| Antouzai | `antouzai-kf4` | KingFreeA+DonorPairSlots | 2,896,237 | `b23ac1c5453833610eba54a27751957d040d5f0e70a69048c87a731129409966` | TBD-antouzai-hc |
+| Taimen | `taimen-kf4` | KingFreeA+DonorSingleEff | 2,014,955 | `2f48a54cf6a224e5065f79d89c59d40cfa10488321604a856bae3bf4170359d8` | +454 |
+| Antouzai | `antouzai-kf4` | KingFreeA+DonorPairSlots | 2,896,237 | `b23ac1c5453833610eba54a27751957d040d5f0e70a69048c87a731129409966` | +283 |
 
 The weights are not committed to this repository. They are served by
 [Shogitter](https://shogitter.com) as `/engines/haitaka/<rule>/<model>-<sha256 prefix>/nnue.bin`,

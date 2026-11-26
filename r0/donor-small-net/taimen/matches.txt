@@ -3,3 +3,5 @@ taimen kf2-vs-hc games 512 A score 0.9023 W-L-D 462 50 0 pairedElo 386.3 [337.1,
 taimen kf2-vs-kf1 games 512 A score 0.6201 W-L-D 317 194 1 pairedElo 85.1 [54.6, 115.7] fallbacks A/B 0 0 nps A/B 137475/128067 depth A/B 6 6
 taimen kf3-vs-hc games 512 A score 0.9355 W-L-D 479 33 0 pairedElo 464.7 [399.6, 529.9] fallbacks A/B 0 0 nps A/B 138797/74549 depth A/B 5 5
 taimen kf3-vs-kf2 games 512 A score 0.6045 W-L-D 308 201 3 pairedElo 73.7 [43.3, 104.0] fallbacks A/B 0 0 nps A/B 121331/112642 depth A/B 255 6
+taimen kf4-vs-hc games 512 A score 0.9316 W-L-D 477 35 0 pairedElo 453.8 [394.4, 513.2] fallbacks A/B 10 12 nps A/B 65720/33769 depth A/B 5 5
+taimen kf4-vs-kf3 games 512 A score 0.5557 W-L-D 283 226 3 pairedElo 38.8 [9.0, 68.7] fallbacks A/B 46 48 nps A/B 39837/38855 depth A/B 5 5
