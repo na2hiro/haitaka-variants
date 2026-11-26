@@ -817,7 +817,70 @@ impl<R: ClassicalRule> Position<R> {
             );
             return Some(legal);
         }
-        self.classical_acceptable_checked(mv, safety, scratch, stop)
+        let legal = match self.classical_simple_legal(mv, safety) {
+            Some(legal) => legal,
+            None => self.classical_acceptable_checked(mv, safety, scratch, stop)?,
+        };
+        #[cfg(test)]
+        // Pawn-drop-mate escapes recurse into move generation. Comparing
+        // inside them too would grow exponentially with the recursion.
+        if !IN_ESCAPE.with(|f| f.get()) {
+            assert_eq!(Some(legal), self.classical_acceptable_copy(mv, &mut || false));
+        }
+        Some(legal)
+    }
+    /// When no royal is attacked, an unpinned single-hop move or a drop
+    /// cannot expose a royal. Check rank and file restrictions on the
+    /// original board and leave other candidates to the scratch board.
+    fn classical_simple_legal(&self, mv: ClassicalMove<R>, safety: Safety<R>) -> Option<bool> {
+        let (in_check, pins) = safety?;
+        if in_check {
+            return None;
+        }
+        let (from, to, piece) = match mv {
+            ClassicalMove::Move { from, path, promotion, .. } if path.len() == 1 => {
+                let from = Self::index(from).unwrap();
+                let mover = self.cells[from].unwrap();
+                let def = Self::def(mover);
+                if pins.contains(from) || def.royal {
+                    return None;
+                }
+                let piece = if promotion {
+                    def.promotion.unwrap()
+                } else {
+                    mover.piece
+                };
+                (Some(from), Self::index(path[0]).unwrap(), piece)
+            }
+            ClassicalMove::Drop { piece, to, .. } if Some(piece.id) != R::UCHIFU => {
+                (None, Self::index(to).unwrap(), piece.id)
+            }
+            _ => return None,
+        };
+        let def = &R::PIECES[piece.0 as usize];
+        if def.royal {
+            return None;
+        }
+        if !R::ALLOW_DEAD_BOARD_PIECES && self.relative_rank(to, self.side) < def.dead_ranks {
+            return Some(false);
+        }
+        let limit = R::file_limit(piece);
+        if limit == 0 {
+            return Some(true);
+        }
+        let (file, _) = R::Geometry::coordinates(to).unwrap();
+        let start = file * R::Geometry::HEIGHT;
+        let count = self.cells[start..start + R::Geometry::HEIGHT]
+            .iter()
+            .enumerate()
+            .filter(|(offset, cell)| {
+                from != Some(start + offset)
+                    && cell.is_some_and(|cell| {
+                        cell.color == self.side && Self::def(cell).id == def.id
+                    })
+            })
+            .count();
+        Some(count < limit)
     }
     /// Test oracle: the original copied-position validation with core attacks.
     #[cfg(test)]
@@ -990,14 +1053,7 @@ impl<R: ClassicalRule> Position<R> {
             legal = false;
         }
         #[cfg(test)]
-        {
-            assert!(next.cells == self.cells && next.occupied == self.occupied);
-            // Pawn-drop-mate escapes recurse into move generation; comparing
-            // inside them too would grow exponentially with the recursion.
-            if !IN_ESCAPE.with(|f| f.get()) {
-                assert_eq!(Some(legal), self.classical_acceptable_copy(mv, &mut || false));
-            }
-        }
+        assert!(next.cells == self.cells && next.occupied == self.occupied);
         Some(legal)
     }
     fn classical_has_check_escape(&self, stop: &mut dyn FnMut() -> bool) -> Option<bool> {
@@ -1020,20 +1076,23 @@ impl<R: ClassicalRule> Position<R> {
     }
     // Toruichi deliberately uses core's pseudo-capture test: a pinned non-royal
     // still creates an obligation. In check there is no capture obligation.
-    fn classical_requires_capture(&self) -> bool {
-        if self.classical_attacked(self.side) {
+    fn classical_requires_capture(&self, safety: Safety<R>, targets: &mut Vec<usize>) -> bool {
+        let in_check = match safety {
+            Some((in_check, _)) if R::CAPTURE_SUPPORT == 0 => in_check,
+            _ => self.classical_attacked(self.side),
+        };
+        if in_check {
             return false;
         }
         let mut royal_targets = Vec::new();
-        for (from, c) in self.cells.iter().enumerate() {
-            let Some(c) = *c else {
-                continue;
-            };
-            if c.color != self.side {
-                continue;
-            }
-            for to in self.targets(from, c) {
-                if self.cells[to].is_some_and(|victim| victim.color != self.side) {
+        let mut sources = self.occupied[self.side as usize];
+        while let Some(from) = sources.first() {
+            sources = sources.without(from);
+            let c = self.cells[from].unwrap();
+            targets.clear();
+            self.geometric_targets_into(from, c, false, targets);
+            for &to in targets.iter() {
+                if self.cells[to].is_some() {
                     if !Self::def(c).royal {
                         return true;
                     }
@@ -1042,13 +1101,19 @@ impl<R: ClassicalRule> Position<R> {
             }
         }
         royal_targets.into_iter().any(|target| {
-            !self.cells.iter().enumerate().any(|(from, c)| {
-                c.is_some_and(|c| {
-                    c.color != self.side && self.geometric_targets(from, c, true).contains(&target)
-                })
-            })
+            let mut enemies = self.occupied[(self.side ^ 1) as usize];
+            while let Some(from) = enemies.first() {
+                enemies = enemies.without(from);
+                targets.clear();
+                self.geometric_targets_into(from, self.cells[from].unwrap(), true, targets);
+                if targets.contains(&target) {
+                    return false;
+                }
+            }
+            true
         })
     }
+    #[cfg(test)]
     fn classical_is_capture(&self, mv: ClassicalMove<R>) -> bool {
         matches!(mv, ClassicalMove::Move { path, .. } if self.cells[Self::index(path[0]).unwrap()].is_some())
     }
@@ -1057,15 +1122,11 @@ impl<R: ClassicalRule> Position<R> {
         out: &mut Vec<ClassicalMove<R>>,
         mv: ClassicalMove<R>,
         limit: usize,
-        must_capture: bool,
         keep: Option<&dyn Fn(ClassicalMove<R>) -> bool>,
         safety: Safety<R>,
         scratch: &mut Scratch<R>,
         stop: &mut dyn FnMut() -> bool,
     ) -> Option<bool> {
-        if must_capture && !self.classical_is_capture(mv) {
-            return Some(false);
-        }
         if keep.is_some_and(|keep| !keep(mv)) {
             return Some(false);
         }
@@ -1092,8 +1153,6 @@ impl<R: ClassicalRule> Position<R> {
             return Some(vec![]);
         }
         let mut out = Vec::with_capacity(limit.min(64));
-        // The capture obligation depends only on this position.
-        let must_capture = R::FORCE_CAPTURE && self.classical_requires_capture();
         let safety = R::CHECK.then(|| {
             let in_check = self.classical_attacked_by::<false>(self.side);
             let pins = if in_check {
@@ -1110,6 +1169,7 @@ impl<R: ClassicalRule> Position<R> {
         };
         let mut pieces = self.occupied[self.side as usize];
         let mut targets = Vec::with_capacity(32);
+        let must_capture = R::FORCE_CAPTURE && self.classical_requires_capture(safety, &mut targets);
         while let Some(from) = pieces.first() {
             if stop() {
                 return None;
@@ -1124,7 +1184,9 @@ impl<R: ClassicalRule> Position<R> {
                 if stop() {
                     return None;
                 }
-                if !self.classical_capture_allowed(self, from, to, None) {
+                if (must_capture && self.cells[to].is_none())
+                    || !self.classical_capture_allowed(self, from, to, None)
+                {
                     continue;
                 }
                 let (x, y) = R::Geometry::coordinates(to).unwrap();
@@ -1146,7 +1208,6 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), false),
                         limit,
-                        must_capture,
                         keep,
                         safety,
                         &mut scratch,
@@ -1161,7 +1222,6 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), true),
                         limit,
-                        must_capture,
                         keep,
                         safety,
                         &mut scratch,
@@ -1195,7 +1255,6 @@ impl<R: ClassicalRule> Position<R> {
                                 false,
                             ),
                             limit,
-                            must_capture,
                             keep,
                             safety,
                             &mut scratch,
@@ -1207,7 +1266,7 @@ impl<R: ClassicalRule> Position<R> {
                 }
             }
         }
-        if R::Hands::ENABLED {
+        if R::Hands::ENABLED && !must_capture {
             for id in 0..R::PIECES.len() {
                 let id = PieceId(id as u16);
                 if !R::droppable(id) || self.hands.count(self.side, R::drop_hand(id)) == 0 {
@@ -1227,7 +1286,6 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::drop(id, Self::at(to)),
                         limit,
-                        must_capture,
                         keep,
                         safety,
                         &mut scratch,
