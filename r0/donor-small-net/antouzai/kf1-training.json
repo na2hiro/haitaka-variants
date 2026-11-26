@@ -1,0 +1,57 @@
+{
+ "args": {
+  "cmd": "train",
+  "train": "feat/g1.feat",
+  "val": "feat/val.feat",
+  "out": "runs/kf1",
+  "l1": 256,
+  "epochs": 40,
+  "batch": 16384,
+  "lr": 0.0015,
+  "lr_floor": 0.0333,
+  "k": 1000.0,
+  "loss": "huber",
+  "wdl_lambda": 1.0,
+  "result_ignore": "",
+  "family": "king-free",
+  "rule": "antouzai",
+  "init": "nnue",
+  "init_checkpoint": null,
+  "optimizer": "ranger",
+  "ranger_dir": "/Users/na2hiro/smallnet",
+  "output_lr_mult": 0.1,
+  "warmup": 64,
+  "horizon": 3072,
+  "max_steps": 3072,
+  "eval_every": 3072,
+  "keep_every": 0,
+  "select_cap": 0,
+  "seed": 1,
+  "threads": 8,
+  "patience": 0,
+  "max_ply": null,
+  "max_abs_score": null
+ },
+ "bestStep": 3072,
+ "bestValLoss": 0.0008400951532363536,
+ "nnueBytes": 2896238,
+ "trainRows": 1702839,
+ "valRows": 73569,
+ "log": [
+  {
+   "epoch": 0,
+   "step": 0,
+   "valLoss": 0.0012783332864002037,
+   "valMae": 425.56578178308797
+  },
+  {
+   "epoch": 30,
+   "step": 3072,
+   "trainLoss": 0.0007641609319269568,
+   "valLoss": 0.0008400951532363536,
+   "valMae": 346.49011812040396,
+   "lr": 4.995000000000001e-05,
+   "elapsedSec": 497.384428024292
+  }
+ ]
+}

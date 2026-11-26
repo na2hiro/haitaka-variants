@@ -1,0 +1,7 @@
+kf1-vs-hc games 512 A score 0.8457 W-L-D 433 79 0 pairedElo 295.5 [254.5, 336.6] fallbacks 44
+kf2-vs-kf1 games 512 A score 0.6582 W-L-D 336 174 2 pairedElo 113.8 [82.1, 145.6] fallbacks 1
+kf2-vs-hc games 512 A score 0.9258 W-L-D 474 38 0 pairedElo 438.4 [379.9, 496.9] fallbacks 31
+kf3-vs-kf2 games 512 A score 0.6299 W-L-D 322 189 1 pairedElo 92.4 [61.5, 123.3] fallbacks 2
+kf3-vs-hc games 512 A score 0.9512 W-L-D 487 25 0 pairedElo 515.8 [447.7, 584.0] fallbacks 32
+kf4-vs-kf3 games 512 A score 0.5381 W-L-D 275 236 1 pairedElo 26.5 [-3.3, 56.3] fallbacks 2
+kf4-vs-hc games 512 A score 0.9395 W-L-D 481 31 0 pairedElo 476.3 [410.8, 541.8] fallbacks 28

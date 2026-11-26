@@ -9,7 +9,8 @@ Haitaka Variantsは、変則将棋AIやその機械学習に関するリポジ�
   - WebAssembly (WASM)にコンパイルしてブラウザ上で動かした場合、数十万NPS (ノード毎秒)読め、これだけで５秒以内に絞っても深さ５とか６まで読めるので安南初心者からすると結構強いAIになっています。
   - 現状、手書きの非常にナイーブな（合法手の数と駒得のみを用いた）評価関数となっています。
 - NNUEモデルの学習と評価
-  - CUDAを用いてNNUEモデル(Fairy Stockfish互換)の学習を行うパイプラインを用意してあります。
+  - **現在の方式（成功）: 玉の位置で分けない小型NNUE（KingFreeA+Donor、約2MB）を、CPUだけで自己対局から学習します。** 安北・安南・背面・対面・安東西で、手書き評価に100ms/手で+250〜+520 Elo勝ちました。学習記録は[docs/nnue-small-net-results.md](./docs/nnue-small-net-results.md)、採用したモデルは[docs/models.md](./docs/models.md)にあります。
+  - 以前の方式: CUDAを用いて大きなNNUEモデル(HalfKAv2系、Fairy Stockfish互換)の学習を行うパイプライン。手書き評価にわずかに勝つところまででした（`docs/nnue-training-anhoku-v0.*`）。
   - 上記alphabeta思考の際にNNUEモデルによる評価を行うことができます。
 - [将棋ったー](https://shogitter.com)上でのAI対局
   - 「将棋ったーAI」を対局相手として選択し、対局できるようになっています。
@@ -40,7 +41,11 @@ Supporting docs:
   help.
 - [ROADMAP.md](ROADMAP.md): post-launch direction.
 - [docs/benchmarks.md](docs/benchmarks.md): benchmark commands and reporting.
-- [docs/models.md](docs/models.md): model registry expectations.
+- [docs/models.md](docs/models.md): model registry (the adopted small NNUE per rule).
+- [docs/nnue-small-net-results.md](docs/nnue-small-net-results.md): the current,
+  successful NNUE training record (small king-free nets, CPU-only). The older
+  `docs/nnue-training-anhoku-v0.*` records describe the earlier large-net
+  approach and are kept for reference.
 - [docs/shogitter-package.md](docs/shogitter-package.md): package layout for
   Shogitter.
 
