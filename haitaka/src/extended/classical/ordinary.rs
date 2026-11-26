@@ -14,6 +14,7 @@ macro_rules! ordinary_rule {
             const INVENTORY: &'static [usize] = $inventory;
             const INVENTORY_MULTIPLIER: usize = 1;
             const CONVERTS_INVENTORY: bool = Self::ID == 20;
+            const CACHE_ROYALS: bool = true;
             const CAPTURE_SUPPORT: i8 = match Self::ID {
                 112 => 1,
                 113 => -1,

@@ -289,7 +289,7 @@ struct Cell {
     piece: PieceId,
     color: u8,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Position<R: CaptureRoyalRule> {
     cells: Vec<Option<Cell>>,
     side: u8,
@@ -298,6 +298,28 @@ pub struct Position<R: CaptureRoyalRule> {
     occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
     royal_counts: [u16; 2],
     rule: PhantomData<R>,
+}
+/// `clone_from` reuses the board allocation, e.g. for search history.
+impl<R: CaptureRoyalRule> Clone for Position<R> {
+    fn clone(&self) -> Self {
+        Self {
+            cells: self.cells.clone(),
+            side: self.side,
+            state: self.state.clone(),
+            hands: self.hands.clone(),
+            occupied: self.occupied,
+            royal_counts: self.royal_counts,
+            rule: PhantomData,
+        }
+    }
+    fn clone_from(&mut self, source: &Self) {
+        self.cells.clone_from(&source.cells);
+        self.side = source.side;
+        self.state.clone_from(&source.state);
+        self.hands.clone_from(&source.hands);
+        self.occupied = source.occupied;
+        self.royal_counts = source.royal_counts;
+    }
 }
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -328,7 +350,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             x.checked_sub(1).ok_or("coordinate must be positive")? as usize,
             y.checked_sub(1).ok_or("coordinate must be positive")? as usize,
         )
-        .ok_or("coordinate outside board".into())
+        .ok_or_else(|| "coordinate outside board".into())
     }
     fn at(i: usize) -> [u16; 2] {
         let (x, y) = R::Geometry::coordinates(i).unwrap();
@@ -548,9 +570,20 @@ impl<R: CaptureRoyalRule> Position<R> {
         self.geometric_targets(from, cell, false)
     }
     fn geometric_targets(&self, from: usize, cell: Cell, include_friendly: bool) -> Vec<usize> {
+        let mut out = vec![];
+        self.geometric_targets_into(from, cell, include_friendly, &mut out);
+        out
+    }
+    /// Append the same destinations as `geometric_targets`, reusing `out`.
+    fn geometric_targets_into(
+        &self,
+        from: usize,
+        cell: Cell,
+        include_friendly: bool,
+        out: &mut Vec<usize>,
+    ) {
         let sign = if cell.color == 0 { 1 } else { -1 };
         let def = Self::def(cell);
-        let mut out = vec![];
         for &(x, y) in def.steps {
             if let Some(to) = R::Geometry::offset(from, x * sign, y * sign)
                 && (include_friendly || self.cells[to].is_none_or(|c| c.color != cell.color))
@@ -591,7 +624,6 @@ impl<R: CaptureRoyalRule> Position<R> {
                 ray = ray.without(to);
             }
         }
-        out
     }
     fn capture_allowed_at(&self, from: usize, to: usize) -> bool {
         let Some(victim) = self.cells[to] else { return true; };

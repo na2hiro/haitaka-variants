@@ -315,6 +315,54 @@ pub struct Request<R: ClassicalRule> {
     pub history: Option<History<R>>,
     pub pending: Option<Prefix>,
 }
+#[cfg(test)]
+thread_local! {
+    static IN_ESCAPE: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+}
+/// Reusable validation state of one move generation call.
+struct Scratch<R: CaptureRoyalRule> {
+    /// A copy of the generating position, restored after each candidate.
+    board: Option<Position<R>>,
+    /// The royal source square and `classical_royal_map` result.
+    royal_map: Option<(usize, <R::Geometry as BoardGeometry>::Bits)>,
+    targets: Vec<usize>,
+}
+/// Whether the side to move has a royal attacked, ignoring capture support,
+/// and its pin candidates.
+type Safety<R> = Option<(bool, <<R as CaptureRoyalRule>::Geometry as BoardGeometry>::Bits)>;
+const fn gcd(mut a: usize, mut b: usize) -> usize {
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+/// Static shape of every ray direction in a rule's piece set.
+trait RayShape {
+    /// Every ray is orthogonal or diagonal.
+    const LINE_RAYS: bool;
+    /// Every ray advances one lattice step along its line.
+    const PRIMITIVE_RAYS: bool;
+}
+const fn ray_shape(pieces: &[PieceDef]) -> (bool, bool) {
+    let (mut line, mut primitive) = (true, true);
+    let mut i = 0;
+    while i < pieces.len() {
+        let rays = pieces[i].rays;
+        let mut j = 0;
+        while j < rays.len() {
+            let (x, y) = (rays[j].0.unsigned_abs(), rays[j].1.unsigned_abs());
+            line &= x == 0 || y == 0 || x == y;
+            primitive &= gcd(x, y) == 1;
+            j += 1;
+        }
+        i += 1;
+    }
+    (line, primitive)
+}
+impl<R: CaptureRoyalRule> RayShape for R {
+    const LINE_RAYS: bool = ray_shape(R::PIECES).0;
+    const PRIMITIVE_RAYS: bool = ray_shape(R::PIECES).1;
+}
 fn lion<R: ClassicalRule>(c: Cell) -> bool {
     matches!(R::PIECES[c.piece.0 as usize].id, "bl" | "dh")
 }
@@ -389,6 +437,12 @@ impl<R: ClassicalRule> Position<R> {
     }
     fn classical_apply(&self, mv: ClassicalMove<R>) -> Self {
         let mut next = self.clone();
+        next.classical_play(mv);
+        next
+    }
+    /// Apply `mv` to this position in place.
+    fn classical_play(&mut self, mv: ClassicalMove<R>) {
+        let next = self;
         match mv {
             ClassicalMove::Move {
                 from,
@@ -409,22 +463,22 @@ impl<R: ClassicalRule> Position<R> {
                 }
             }
             ClassicalMove::Drop { piece, to, .. } => {
+                let side = next.side;
                 next.hands.set(
-                    self.side,
+                    side,
                     R::drop_hand(piece.id),
-                    next.hands.count(self.side, R::drop_hand(piece.id)) - 1,
+                    next.hands.count(side, R::drop_hand(piece.id)) - 1,
                 );
                 next.set_cell(
                     Self::index(to).unwrap(),
                     Some(Cell {
                         piece: piece.id,
-                        color: self.side,
+                        color: side,
                     }),
                 );
             }
         }
         next.side ^= 1;
-        next
     }
     fn classical_file_allowed(&self, to: usize) -> bool {
         let c = self.cells[to].unwrap();
@@ -459,7 +513,14 @@ impl<R: ClassicalRule> Position<R> {
             return true;
         }
         for &(dx, dy) in def.rays {
-            let distance = if dx != 0 {
+            let distance = if <R as RayShape>::LINE_RAYS && <R as RayShape>::PRIMITIVE_RAYS {
+                // Unit rays: no division by a runtime direction.
+                let distance = x.abs().max(y.abs());
+                if x != dx * distance || y != dy * distance {
+                    continue;
+                }
+                distance
+            } else if dx != 0 {
                 if x % dx != 0 {
                     continue;
                 }
@@ -491,7 +552,14 @@ impl<R: ClassicalRule> Position<R> {
         }
         false
     }
+    /// Same answer as core `attacked`, including rule capture restrictions,
+    /// without allocating every enemy destination list.
     fn classical_attacked_direct(&self, color: u8) -> bool {
+        self.classical_attacked_by::<true>(color)
+    }
+    /// With `SUPPORT` false, capture-support conditions are ignored: then a
+    /// royal can be attacked only where this reports an attack.
+    fn classical_attacked_by<const SUPPORT: bool>(&self, color: u8) -> bool {
         let mut royals = self.occupied[color as usize];
         while let Some(to) = royals.first() {
             royals = royals.without(to);
@@ -501,24 +569,193 @@ impl<R: ClassicalRule> Position<R> {
             let mut enemies = self.occupied[(color ^ 1) as usize];
             while let Some(from) = enemies.first() {
                 enemies = enemies.without(from);
-                if self.classical_attacks_square(from, self.cells[from].unwrap(), to) {
+                let c = self.cells[from].unwrap();
+                if self.classical_attacks_square(from, c, to)
+                    && if SUPPORT {
+                        self.capture_allowed_at(from, to)
+                    } else {
+                        R::capture_allowed(c.piece, self.cells[to].unwrap().piece, color)
+                    }
+                {
                     return true;
                 }
             }
         }
         false
     }
-    fn classical_checked_for_legality(&self, color: u8) -> bool {
-        // Keep other rules' attack/repetition/drop-mate paths unchanged.
-        if matches!(R::ID, 15 | 50) {
-            self.classical_attacked_direct(color)
-        } else {
-            self.attacked(color)
-        }
+    fn classical_attacked(&self, color: u8) -> bool {
+        let attacked = self.classical_attacked_direct(color);
+        #[cfg(test)]
+        assert_eq!(attacked, self.attacked(color));
+        attacked
     }
+    /// Whether `color`'s royals are attacked in this position, reached from
+    /// `before` by `mv`. If no royal was attacked before, ignoring capture
+    /// support, a non-royal move can only add an attack by vacating a ray
+    /// square of an enemy slider, and a drop can only block. `royal_map`, when
+    /// given, holds every such enemy attack with the moving royal lifted off
+    /// the board. Other royal moves or placements take the full query, as
+    /// do mapped royal destinations under capture-support rules.
+    fn classical_checked_after(
+        &self,
+        before: &Self,
+        mv: ClassicalMove<R>,
+        color: u8,
+        safety: Safety<R>,
+        royal_map: Option<<R::Geometry as BoardGeometry>::Bits>,
+    ) -> bool {
+        let fast = (|| {
+            let (in_check, pins) = safety?;
+            if in_check {
+                return None;
+            }
+            match mv {
+                ClassicalMove::Drop { to, .. } => {
+                    let placed = self.cells[Self::index(to).unwrap()].unwrap();
+                    (!Self::def(placed).royal).then_some(false)
+                }
+                ClassicalMove::Move { from, path, .. } => {
+                    let from = Self::index(from).unwrap();
+                    let to = Self::index(*path.last().unwrap()).unwrap();
+                    if Self::def(before.cells[from].unwrap()).royal
+                        || Self::def(self.cells[to].unwrap()).royal
+                    {
+                        // Other royals can only be uncovered through the source;
+                        // a slider behind the moved royal attacked it unless the
+                        // rule forbids that capture, so this is rarely reached.
+                        return royal_map.and_then(|map| {
+                            if !map.contains(to) {
+                                Some(
+                                    before.royals(color) > 1
+                                        && self.classical_discovered(color, from),
+                                )
+                            } else {
+                                (R::CAPTURE_SUPPORT == 0).then_some(true)
+                            }
+                        });
+                    }
+                    // Squares that lost a piece: the source and any captured
+                    // intermediate square. Own ones matter only if pinned.
+                    let mut attacked = false;
+                    for at in core::iter::once(from)
+                        .chain(path.iter().map(|&at| Self::index(at).unwrap()))
+                    {
+                        let Some(old) = before.cells[at] else {
+                            continue;
+                        };
+                        attacked |= self.cells[at].is_none()
+                            && (old.color != color || pins.contains(at))
+                            && self.classical_discovered(color, at);
+                    }
+                    Some(attacked)
+                }
+            }
+        })();
+        let attacked = fast.unwrap_or_else(|| self.classical_attacked(color));
+        #[cfg(test)]
+        assert_eq!(attacked, self.attacked(color));
+        attacked
+    }
+    /// `color`'s non-royal pieces that are the only piece on an enemy ray
+    /// before one of `color`'s royals. Only these can uncover an attack.
+    fn classical_pin_candidates(&self, color: u8) -> <R::Geometry as BoardGeometry>::Bits {
+        let mut pins = <R::Geometry as BoardGeometry>::Bits::EMPTY;
+        let mut enemies = self.occupied[(color ^ 1) as usize];
+        while let Some(from) = enemies.first() {
+            enemies = enemies.without(from);
+            let c = self.cells[from].unwrap();
+            let sign = if c.color == 0 { 1 } else { -1 };
+            for &(dx, dy) in Self::def(c).rays {
+                let limit = R::ray_limit(c.piece, dx, dy).unwrap_or(usize::MAX);
+                let (mut at, mut first) = (from, None);
+                for _ in 0..limit {
+                    let Some(next) = R::Geometry::offset(at, dx * sign, dy * sign) else {
+                        break;
+                    };
+                    at = next;
+                    let Some(v) = self.cells[at] else {
+                        continue;
+                    };
+                    if v.color != color {
+                        break;
+                    }
+                    let royal = Self::def(v).royal;
+                    match first {
+                        None if !royal => first = Some(at),
+                        Some(pinned) if royal => {
+                            pins.insert(pinned);
+                            break;
+                        }
+                        _ => break,
+                    }
+                }
+            }
+        }
+        pins
+    }
+    /// Whether an enemy slider attacks one of `color`'s royals through the
+    /// now-empty square `vacated`. Every ray square lies on the segment from
+    /// the slider to the royal, so only pieces beyond `vacated` on the
+    /// royal-to-`vacated` line can have gained an attack.
+    fn classical_discovered(&self, color: u8, vacated: usize) -> bool {
+        let (fx, fy) = R::Geometry::coordinates(vacated).unwrap();
+        let mut royals = self.occupied[color as usize];
+        while let Some(king) = royals.first() {
+            royals = royals.without(king);
+            if !Self::def(self.cells[king].unwrap()).royal {
+                continue;
+            }
+            let (kx, ky) = R::Geometry::coordinates(king).unwrap();
+            let (wx, wy) = (fx as isize - kx as isize, fy as isize - ky as isize);
+            if <R as RayShape>::LINE_RAYS && wx != 0 && wy != 0 && wx.abs() != wy.abs() {
+                continue;
+            }
+            let g = gcd(wx.unsigned_abs(), wy.unsigned_abs()) as isize;
+            let (ux, uy) = (wx / g, wy / g);
+            let mut at = vacated;
+            while let Some(next) = R::Geometry::offset(at, ux, uy) {
+                at = next;
+                let Some(c) = self.cells[at] else {
+                    continue;
+                };
+                if c.color != color
+                    && !Self::def(c).rays.is_empty()
+                    && self.classical_attacks_square(at, c, king)
+                    && self.capture_allowed_at(at, king)
+                {
+                    return true;
+                }
+                // With unit-step rays, this piece blocks everything beyond it.
+                if <R as RayShape>::PRIMITIVE_RAYS {
+                    break;
+                }
+            }
+        }
+        false
+    }
+    #[cfg(test)]
     fn classical_acceptable(
         &self,
         mv: ClassicalMove<R>,
+        stop: &mut dyn FnMut() -> bool,
+    ) -> Option<bool> {
+        self.classical_acceptable_known(
+            mv,
+            None,
+            &mut Scratch {
+                board: None,
+                royal_map: None,
+                targets: Vec::new(),
+            },
+            stop,
+        )
+    }
+    /// `safety` is this position's own-royal attack state and pin candidates, when known.
+    fn classical_acceptable_known(
+        &self,
+        mv: ClassicalMove<R>,
+        safety: Safety<R>,
+        scratch: &mut Scratch<R>,
         stop: &mut dyn FnMut() -> bool,
     ) -> Option<bool> {
         if stop() {
@@ -580,8 +817,10 @@ impl<R: ClassicalRule> Position<R> {
             );
             return Some(legal);
         }
-        self.classical_acceptable_copy(mv, stop)
+        self.classical_acceptable_checked(mv, safety, scratch, stop)
     }
+    /// Test oracle: the original copied-position validation with core attacks.
+    #[cfg(test)]
     fn classical_acceptable_copy(
         &self,
         mv: ClassicalMove<R>,
@@ -596,7 +835,7 @@ impl<R: ClassicalRule> Position<R> {
         if (!R::ALLOW_DEAD_BOARD_PIECES
             && next.relative_rank(to, placed.color) < Self::def(placed).dead_ranks)
             || !next.classical_file_allowed(to)
-            || (R::CHECK && next.classical_checked_for_legality(self.side))
+            || (R::CHECK && next.attacked(self.side))
         {
             return Some(false);
         }
@@ -610,18 +849,179 @@ impl<R: ClassicalRule> Position<R> {
         }
         Some(true)
     }
-    fn classical_has_check_escape(&self, stop: &mut dyn FnMut() -> bool) -> Option<bool> {
-        if R::CHECK { return Some(!self.classical_moves(1, stop)?.is_empty()); }
-        for mv in self.classical_moves(usize::MAX, stop)? {
-            if stop() { return None; }
-            if !self.classical_apply(mv).attacked(self.side) { return Some(true); }
+    /// Undo `classical_place`: copy back every square `mv` wrote.
+    fn classical_unplace(&mut self, before: &Self, mv: ClassicalMove<R>) {
+        match mv {
+            ClassicalMove::Move { from, path, .. } => {
+                for at in core::iter::once(from).chain(path.iter().copied()) {
+                    let at = Self::index(at).unwrap();
+                    self.set_cell(at, before.cells[at]);
+                }
+            }
+            ClassicalMove::Drop { to, .. } => {
+                let at = Self::index(to).unwrap();
+                self.set_cell(at, before.cells[at]);
+            }
         }
-        Some(false)
+    }
+    /// Write only `mv`'s board cells into `self`, a cell-for-cell copy of
+    /// `before`; reserves, rule state and side are left as they were.
+    fn classical_place(&mut self, before: &Self, mv: ClassicalMove<R>) {
+        match mv {
+            ClassicalMove::Move {
+                from,
+                path,
+                promotion,
+                ..
+            } => {
+                let mut from = Self::index(from).unwrap();
+                let mut mover = before.cells[from].unwrap();
+                for &to in path.iter() {
+                    let to = Self::index(to).unwrap();
+                    self.set_cell(from, None);
+                    self.set_cell(to, Some(mover));
+                    from = to;
+                }
+                if promotion {
+                    mover.piece = Self::def(mover).promotion.unwrap();
+                    self.set_cell(from, Some(mover));
+                }
+            }
+            ClassicalMove::Drop { piece, to, .. } => self.set_cell(
+                Self::index(to).unwrap(),
+                Some(Cell {
+                    piece: piece.id,
+                    color: before.side,
+                }),
+            ),
+        }
+    }
+    /// Every square `color ^ 1` attacks once `from`'s royal is lifted off
+    /// the board, counting only attackers allowed to capture `royal`.
+    /// `self` is a scratch copy and is restored before returning.
+    fn classical_royal_map(
+        &mut self,
+        from: usize,
+        royal: Cell,
+        targets: &mut Vec<usize>,
+    ) -> <R::Geometry as BoardGeometry>::Bits {
+        let mut map = <R::Geometry as BoardGeometry>::Bits::EMPTY;
+        self.set_cell(from, None);
+        let mut enemies = self.occupied[(royal.color ^ 1) as usize];
+        while let Some(at) = enemies.first() {
+            enemies = enemies.without(at);
+            let c = self.cells[at].unwrap();
+            if !R::capture_allowed(c.piece, royal.piece, royal.color) {
+                continue;
+            }
+            targets.clear();
+            self.geometric_targets_into(at, c, true, targets);
+            for &to in targets.iter() {
+                map.insert(to);
+            }
+        }
+        self.set_cell(from, Some(royal));
+        map
+    }
+    /// Not in check, a royal move whose intermediate squares were empty
+    /// leaves the board as `royal_map` sees it, apart from the destination
+    /// itself, for attacks on the moved royal.
+    fn classical_royal_map_applies(&self, mv: ClassicalMove<R>, safety: Safety<R>) -> Option<usize> {
+        let ClassicalMove::Move {
+            from,
+            path,
+            promotion: false,
+            ..
+        } = mv
+        else {
+            return None;
+        };
+        let from = Self::index(from).unwrap();
+        (R::CACHE_ROYALS
+            && safety.is_some_and(|(in_check, _)| !in_check)
+            && Self::def(self.cells[from].unwrap()).royal
+            && path[..path.len() - 1]
+                .iter()
+                .all(|&at| self.cells[Self::index(at).unwrap()].is_none()))
+        .then_some(from)
+    }
+    fn classical_acceptable_checked(
+        &self,
+        mv: ClassicalMove<R>,
+        safety: Safety<R>,
+        scratch: &mut Scratch<R>,
+        stop: &mut dyn FnMut() -> bool,
+    ) -> Option<bool> {
+        // Validate on a reusable board copy instead of a fresh position.
+        let Scratch {
+            board,
+            royal_map,
+            targets,
+        } = scratch;
+        let next = board.get_or_insert_with(|| self.clone());
+        let map = if R::CHECK
+            && let Some(from) = self.classical_royal_map_applies(mv, safety)
+        {
+            if royal_map.is_none_or(|(at, _)| at != from) {
+                *royal_map = Some((
+                    from,
+                    next.classical_royal_map(from, self.cells[from].unwrap(), targets),
+                ));
+            }
+            royal_map.map(|(_, map)| map)
+        } else {
+            None
+        };
+        next.classical_place(self, mv);
+        let to = match mv {
+            ClassicalMove::Move { path, .. } => Self::index(*path.last().unwrap()).unwrap(),
+            ClassicalMove::Drop { to, .. } => Self::index(to).unwrap(),
+        };
+        let placed = next.cells[to].unwrap();
+        let mut legal = !((!R::ALLOW_DEAD_BOARD_PIECES
+            && next.relative_rank(to, placed.color) < Self::def(placed).dead_ranks)
+            || !next.classical_file_allowed(to)
+            || (R::CHECK && next.classical_checked_after(self, mv, self.side, safety, map)));
+        let uchifu_check = legal
+            && matches!(mv, ClassicalMove::Drop { piece, .. } if Some(piece.id) == R::UCHIFU)
+            && next.classical_attacked(self.side ^ 1);
+        next.classical_unplace(self, mv);
+        if uchifu_check && !self.classical_apply(mv).classical_has_check_escape(stop)? {
+            legal = false;
+        }
+        #[cfg(test)]
+        {
+            assert!(next.cells == self.cells && next.occupied == self.occupied);
+            // Pawn-drop-mate escapes recurse into move generation; comparing
+            // inside them too would grow exponentially with the recursion.
+            if !IN_ESCAPE.with(|f| f.get()) {
+                assert_eq!(Some(legal), self.classical_acceptable_copy(mv, &mut || false));
+            }
+        }
+        Some(legal)
+    }
+    fn classical_has_check_escape(&self, stop: &mut dyn FnMut() -> bool) -> Option<bool> {
+        #[cfg(test)]
+        {
+            let outer = IN_ESCAPE.with(|f| f.replace(true));
+            let escape = self.classical_has_check_escape_inner(stop);
+            IN_ESCAPE.with(|f| f.set(outer));
+            escape
+        }
+        #[cfg(not(test))]
+        self.classical_has_check_escape_inner(stop)
+    }
+    fn classical_has_check_escape_inner(&self, stop: &mut dyn FnMut() -> bool) -> Option<bool> {
+        if R::CHECK { return Some(!self.classical_moves(1, stop)?.is_empty()); }
+        // Test the escape before legality: validating a pawn drop can itself
+        // search escapes, so validating every move first grows exponentially.
+        let escapes = |mv| !self.classical_apply(mv).classical_attacked(self.side);
+        Some(!self.classical_moves_where(1, Some(&escapes), stop)?.is_empty())
     }
     // Toruichi deliberately uses core's pseudo-capture test: a pinned non-royal
     // still creates an obligation. In check there is no capture obligation.
     fn classical_requires_capture(&self) -> bool {
-        if self.attacked(self.side) {
+        if self.classical_attacked(self.side) {
             return false;
         }
         let mut royal_targets = Vec::new();
@@ -657,12 +1057,19 @@ impl<R: ClassicalRule> Position<R> {
         out: &mut Vec<ClassicalMove<R>>,
         mv: ClassicalMove<R>,
         limit: usize,
+        must_capture: bool,
+        keep: Option<&dyn Fn(ClassicalMove<R>) -> bool>,
+        safety: Safety<R>,
+        scratch: &mut Scratch<R>,
         stop: &mut dyn FnMut() -> bool,
     ) -> Option<bool> {
-        if R::FORCE_CAPTURE && self.classical_requires_capture() && !self.classical_is_capture(mv) {
+        if must_capture && !self.classical_is_capture(mv) {
             return Some(false);
         }
-        if self.classical_acceptable(mv, stop)? {
+        if keep.is_some_and(|keep| !keep(mv)) {
+            return Some(false);
+        }
+        if self.classical_acceptable_known(mv, safety, scratch, stop)? {
             out.push(mv);
         }
         Some(out.len() >= limit)
@@ -672,11 +1079,37 @@ impl<R: ClassicalRule> Position<R> {
         limit: usize,
         stop: &mut dyn FnMut() -> bool,
     ) -> Option<Vec<ClassicalMove<R>>> {
-        let mut out = vec![];
+        self.classical_moves_where(limit, None, stop)
+    }
+    /// Legal moves that also satisfy `keep`, which is tested first.
+    fn classical_moves_where(
+        &self,
+        limit: usize,
+        keep: Option<&dyn Fn(ClassicalMove<R>) -> bool>,
+        stop: &mut dyn FnMut() -> bool,
+    ) -> Option<Vec<ClassicalMove<R>>> {
         if self.capture_outcome() != Outcome::ONGOING || limit == 0 {
-            return Some(out);
+            return Some(vec![]);
         }
+        let mut out = Vec::with_capacity(limit.min(64));
+        // The capture obligation depends only on this position.
+        let must_capture = R::FORCE_CAPTURE && self.classical_requires_capture();
+        let safety = R::CHECK.then(|| {
+            let in_check = self.classical_attacked_by::<false>(self.side);
+            let pins = if in_check {
+                <R::Geometry as BoardGeometry>::Bits::EMPTY
+            } else {
+                self.classical_pin_candidates(self.side)
+            };
+            (in_check, pins)
+        });
+        let mut scratch = Scratch {
+            board: None,
+            royal_map: None,
+            targets: Vec::new(),
+        };
         let mut pieces = self.occupied[self.side as usize];
+        let mut targets = Vec::with_capacity(32);
         while let Some(from) = pieces.first() {
             if stop() {
                 return None;
@@ -685,7 +1118,9 @@ impl<R: ClassicalRule> Position<R> {
             let c = self.cells[from].unwrap();
             let sign = if c.color == 0 { 1 } else { -1 };
             let (a, b) = R::Geometry::coordinates(from).unwrap();
-            for to in self.targets(from, c) {
+            targets.clear();
+            self.geometric_targets_into(from, c, false, &mut targets);
+            for &to in &targets {
                 if stop() {
                     return None;
                 }
@@ -711,6 +1146,10 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), false),
                         limit,
+                        must_capture,
+                        keep,
+                        safety,
+                        &mut scratch,
                         stop,
                     )?
                 {
@@ -722,6 +1161,10 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::board(Self::at(from), Path::one(Self::at(to)), true),
                         limit,
+                        must_capture,
+                        keep,
+                        safety,
+                        &mut scratch,
                         stop,
                     )?
                 {
@@ -752,6 +1195,10 @@ impl<R: ClassicalRule> Position<R> {
                                 false,
                             ),
                             limit,
+                            must_capture,
+                            keep,
+                            safety,
+                            &mut scratch,
                             stop,
                         )? {
                             return Some(out);
@@ -780,6 +1227,10 @@ impl<R: ClassicalRule> Position<R> {
                         &mut out,
                         ClassicalMove::drop(id, Self::at(to)),
                         limit,
+                        must_capture,
+                        keep,
+                        safety,
+                        &mut scratch,
                         stop,
                     )? {
                         return Some(out);
@@ -787,7 +1238,8 @@ impl<R: ClassicalRule> Position<R> {
                 }
             }
         }
-        out.sort();
+        // Equal moves are identical, so an unstable sort gives the same list.
+        out.sort_unstable();
         out.dedup();
         Some(out)
     }
@@ -798,6 +1250,14 @@ pub struct ClassicalGame<R: ClassicalRule> {
     pub played: Vec<ClassicalMove<R>>,
     pending: Option<Prefix>,
     pending_ply: usize,
+    spare: Spare<Position<R>>,
+}
+/// Popped positions whose allocations later pushes reuse; never cloned.
+struct Spare<T>(Vec<T>);
+impl<T> Clone for Spare<T> {
+    fn clone(&self) -> Self {
+        Self(Vec::new())
+    }
 }
 impl<R: ClassicalRule> ClassicalGame<R> {
     pub fn parse(json: &str) -> Result<Self, String> {
@@ -859,6 +1319,7 @@ impl<R: ClassicalRule> ClassicalGame<R> {
             played: vec![],
             pending: None,
             pending_ply: 0,
+            spare: Spare(Vec::new()),
         }
     }
     pub fn current(&self) -> &Position<R> {
@@ -916,7 +1377,7 @@ impl<R: ClassicalRule> ClassicalGame<R> {
                     c.color == previous
                         && Position::<R>::def(c).royal
                         && p.relative_rank(to, previous) == 0
-                }) && !p.attacked(previous)
+                }) && !p.classical_attacked(previous)
                 {
                     return Outcome::win(previous);
                 }
@@ -930,21 +1391,21 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         {
             return Outcome::DRAW;
         }
-        let matches: Vec<_> = self
+        let mut matches = self
             .history
             .iter()
             .enumerate()
             .filter(|(_, q)| *q == p)
-            .map(|(i, _)| i)
-            .collect();
-        if matches.len() < 4 {
+            .map(|(i, _)| i);
+        let first = matches.next().unwrap();
+        if matches.count() < 3 {
             return Outcome::ONGOING;
         }
         for victim in [p.side, p.side ^ 1] {
-            if self.history[matches[0] + 1..]
+            if self.history[first + 1..]
                 .iter()
                 .filter(|q| q.side == victim)
-                .all(|q| q.attacked(victim))
+                .all(|q| q.classical_attacked(victim))
             {
                 return Outcome::win(victim);
             }
@@ -959,7 +1420,7 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         if outcome != Outcome::ONGOING {
             return Some(outcome);
         }
-        if (R::STALEMATE || (R::CHECKMATE && self.current().attacked(self.current().side)))
+        if (R::STALEMATE || (R::CHECKMATE && self.current().classical_attacked(self.current().side)))
             && (if R::CHECK {
                 self.paths(1, stop)?.is_empty()
             } else {
@@ -988,8 +1449,22 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         Ok(())
     }
     fn push(&mut self, mv: ClassicalMove<R>) {
-        self.history.push(self.current().classical_apply(mv));
+        let next = match self.spare.0.pop() {
+            Some(mut next) => {
+                next.clone_from(self.current());
+                next.classical_play(mv);
+                next
+            }
+            None => self.current().classical_apply(mv),
+        };
+        self.history.push(next);
         self.played.push(mv);
+    }
+    fn pop(&mut self) {
+        if let Some(p) = self.history.pop() {
+            self.spare.0.push(p);
+        }
+        self.played.pop();
     }
     pub fn position_hash(&self) -> u64 {
         let mut h = self.current().hash();
@@ -1013,8 +1488,7 @@ impl<R: ClassicalRule> ClassicalGame<R> {
         for mv in self.moves() {
             self.push(mv);
             nodes += self.perft(depth - 1);
-            self.history.pop();
-            self.played.pop();
+            self.pop();
         }
         nodes
     }
@@ -1038,8 +1512,7 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
         ClassicalGame::push(self, mv);
     }
     fn pop(&mut self) {
-        self.history.pop();
-        self.played.pop();
+        ClassicalGame::pop(self);
     }
     fn key(&self) -> u64 {
         self.context_key()
@@ -1248,3 +1721,37 @@ mod attack_tests;
 #[cfg(test)]
 #[path = "classical/memory_tests.rs"]
 mod memory_tests;
+
+#[cfg(test)]
+#[cfg(any(
+    feature = "narazu",
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi",
+    feature = "dobutsu",
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
+))]
+#[path = "classical/selected_tests.rs"]
+mod selected_tests;
