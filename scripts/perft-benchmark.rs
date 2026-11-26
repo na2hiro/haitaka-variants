@@ -30,6 +30,9 @@ fn measure(
         let seconds = start.elapsed().as_secs_f64();
         results.push(serde_json::json!({"repetitions":repetitions,"nodesPerPerft":expected.unwrap(),"totalLeafNodes":nodes,"seconds":seconds,"nps":nodes as f64/seconds}));
     }
+    if samples == 0 {
+        return serde_json::json!({"depth":depth,"nodesPerPerft":expected.unwrap(),"samples":[],"medianNps":null});
+    }
     let mut nps: Vec<f64> = results.iter().map(|v| v["nps"].as_f64().unwrap()).collect();
     nps.sort_by(|a, b| a.total_cmp(b));
     serde_json::json!({"depth":depth,"nodesPerPerft":expected.unwrap(),"samples":results,"medianNps":nps[nps.len()/2]})
