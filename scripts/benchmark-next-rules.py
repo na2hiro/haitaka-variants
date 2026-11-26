@@ -96,6 +96,19 @@ annan = ["haitaka/annan"]
 def summarize(out):
     conditions=json.loads((out/'conditions.json').read_text())
     trials=json.loads((out/'trials.json').read_text())
+    expected={r['name']:r['perft']['3'] for r in conditions['rules']}
+    for t in trials:
+        assert t['result']['nodesPerPerft']==expected[t['name']]
+        assert len(t['result']['samples'])==3
+        for sample in t['result']['samples']:
+            assert sample['nodesPerPerft']==expected[t['name']] and sample['seconds']>=3
+            assert sample['totalLeafNodes']==sample['repetitions']*expected[t['name']]
+            assert abs(sample['nps']-sample['totalLeafNodes']/sample['seconds'])<1e-6
+    if (out/'core-perft-reference.json').exists():
+        reference={r['name']:r['perft'] for r in json.loads((out/'core-perft-reference.json').read_text())}
+        assert len(reference)==28
+        for rule in conditions['rules'][1:]:
+            assert all(rule['perft'][k]==v for k,v in reference[rule['name']].items()),rule['name']
     anchors=[t for t in trials if t['name']=='annan' and not t['contaminated']]
     assert len(anchors)>=3, 'need beginning/middle/end reference measurements'
     reference=statistics.median(s['nps'] for t in anchors for s in t['result']['samples'])
@@ -115,7 +128,7 @@ def summarize(out):
             'rows':rows,'conditions':conditions,'timing':json.loads((out/'timing.json').read_text())}
     save(out/'summary.json',result)
     with (out/'summary.csv').open('w') as f:
-        writer=csv.writer(f);writer.writerow(['rule','name','perft1','perft2','perft3','nps','annanRatio','annanTimesFaster','spreadPercent'])
+        writer=csv.writer(f,lineterminator="\n");writer.writerow(['rule','name','perft1','perft2','perft3','nps','annanRatio','annanTimesFaster','spreadPercent'])
         for r in rows:writer.writerow([r['name'],r['label'],*[r['perft'][str(d)] for d in range(1,4)],round(r['nps']),r['annanRatio'],r['annanTimesFaster'],r['spreadPercent']])
     for r in rows:print(r['name'],round(r['nps']),f'{100*r["annanRatio"]:.2f}%',f'{r["annanTimesFaster"]:.1f}x','UNSTABLE' if r['unstable'] else '',flush=True)
 

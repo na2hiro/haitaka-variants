@@ -1,0 +1,50 @@
+warning: unused import: `super::*`
+ --> haitaka/src/extended/classical/ordinary_defs.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka` (lib test) generated 1 warning (run `cargo fix --lib -p haitaka --tests` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/haitaka-3eb73e08f68045e3)
+
+running 35 tests
+test extended::classical::attack_tests::benchmark_old_and_direct_attack_queries ... ignored, run explicitly on an idle, pinned CPU
+test extended::classical::attack_tests::capture_opens_ray_and_royal_destination_is_checked_after_move ... ok
+test extended::classical::attack_tests::fixed_seed_legal_walks_and_candidate_positions_match ... ok
+test extended::classical::attack_tests::friendly_enemy_blockers_and_finite_rays_match ... ok
+test extended::classical::attack_tests::pinned_attacker_still_attacks_and_multiple_royals_are_any_royal ... ok
+test extended::classical::memory_tests::check_free_candidates_match_copy_oracle_through_fixed_seed_game ... ok
+test extended::classical::memory_tests::copy_free_validation_keeps_preexisting_file_excess_and_promotion_rules ... ok
+test extended::classical::memory_tests::copy_free_validation_preserves_returning_lion_paths_and_cancellation ... ok
+test extended::classical::tests::ambiguous_origins_survive_json_and_hash ... ok
+test extended::classical::tests::board_boundaries_and_padding_do_not_wrap ... ok
+test extended::classical::tests::captured_material_can_change_owner ... ok
+test extended::classical::tests::captured_promoted_swallow_returns_to_reserve ... ok
+test extended::classical::tests::check_safety_filters_unrelated_moves ... ok
+test extended::classical::tests::dai_gold_requires_a_real_origin ... ok
+test extended::classical::tests::dai_lion_double_capture_and_pending ... ok
+test extended::classical::tests::dai_normal_promotion_within_five_ranks ... ok
+test extended::classical::tests::finite_ray_is_blocked_and_never_a_second_hop ... ok
+test extended::classical::tests::forced_promotion_and_drop_do_not_share_conditions ... ok
+test extended::classical::tests::heian_kings_only_draw ... ok
+test extended::classical::tests::initial_inventory_and_roundtrip_all_sizes ... ok
+test extended::classical::tests::reserve_storage_is_rule_specific ... ok
+test extended::classical::tests::schema_and_reserved_fields_are_strict ... ok
+test extended::classical::tests::swallow_drop_mate_is_rejected ... ok
+test extended::classical::tests::third_swallow_is_forbidden_but_second_is_legal ... ok
+test extended::classical::tests::wa_cloud_eagle_is_not_royal ... ok
+test extended::tests::elephant_and_prince_have_distinct_rule_local_movement_for_both_sides ... ok
+test extended::tests::exposure_adjacent_kings_and_pins_are_legal_but_friendly_capture_and_edges_are_not ... ok
+test extended::tests::fourfold_repetition_and_continuous_check_use_the_same_royal_set ... ok
+test extended::tests::histories_are_validated_and_context_is_part_of_tt_identity ... ok
+test extended::tests::king_or_prince_capture_only_ends_game_when_it_was_the_last_royal ... ok
+test extended::tests::promotion_creates_a_second_royal_without_changing_king_identity ... ok
+test extended::tests::promotion_zones_forced_promotion_and_slider_blockers ... ok
+test extended::tests::search_captures_last_royal_and_returns_legal_fallback_on_interruption ... ok
+test extended::tests::strict_wire_validation_and_canonicalization ... ok
+test extended::classical::attack_tests::every_piece_side_origin_and_edge_matches_geometric_targets ... ok
+
+test result: ok. 34 passed; 0 failed; 1 ignored; 0 measured; 63 filtered out; finished in 0.83s
