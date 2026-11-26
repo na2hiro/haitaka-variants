@@ -1,0 +1,894 @@
+{
+  "referenceNps": 9384146.691758614,
+  "metric": "leaf nodes/sec; perft depth 3, initial position; all moves applied; no bulk counting, TT, evaluation or pruning; parsing and warmup excluded",
+  "rows": [
+    {
+      "name": "annan",
+      "ruleId": 26,
+      "label": "安南将棋",
+      "binarySha256": "a860bdaf725b20ac8514371129d58878193cd6a3f61197c9ec515e0f11d46562",
+      "perft": {
+        "1": 28,
+        "2": 784,
+        "3": 21718
+      },
+      "nps": 9384146.691758614,
+      "annanRatio": 1.0,
+      "annanTimesFaster": 1.0,
+      "spreadPercent": 3.0683372519100027,
+      "unstable": false
+    },
+    {
+      "name": "narazu",
+      "ruleId": 111,
+      "label": "不成将棋",
+      "binarySha256": "0223f2442666b460b996c732d1c651d9cb68c092297d2e21096bc7982bd3c2ca",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25440
+      },
+      "nps": 4394398.617904362,
+      "annanRatio": 0.46827897754024134,
+      "annanTimesFaster": 2.1354791651181166,
+      "spreadPercent": 2.3243514383326946,
+      "unstable": false
+    },
+    {
+      "name": "nifu-ari",
+      "ruleId": 138,
+      "label": "二歩あり将棋",
+      "binarySha256": "68a245e5fcd9fa468b4f39916d74a6fea88007b209e5ea8a55a2658d643b44b8",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25470
+      },
+      "nps": 4194633.741788527,
+      "annanRatio": 0.44699149316073206,
+      "annanTimesFaster": 2.2371790409899672,
+      "spreadPercent": 0.9635039830124592,
+      "unstable": false
+    },
+    {
+      "name": "sho-kyo-left",
+      "ruleId": 46,
+      "label": "小京将棋(左京配置)",
+      "binarySha256": "322f47925d38d5e2eb098e9aafa361cc12e54adb4346c033d8f2636f5b29c025",
+      "perft": {
+        "1": 32,
+        "2": 1024,
+        "3": 30912
+      },
+      "nps": 4391211.9610695485,
+      "annanRatio": 0.4679393987868943,
+      "annanTimesFaster": 2.1370288601311236,
+      "spreadPercent": 0.8797048380170036,
+      "unstable": false
+    },
+    {
+      "name": "sho-kyo-right",
+      "ruleId": 47,
+      "label": "小京将棋(右京配置)",
+      "binarySha256": "785f798a7334b34cd88f6543815f671039225e5b4d9dbccfef2842dd31a338e7",
+      "perft": {
+        "1": 32,
+        "2": 1024,
+        "3": 30976
+      },
+      "nps": 4428481.805601292,
+      "annanRatio": 0.47191097401434406,
+      "annanTimesFaster": 2.1190437499120423,
+      "spreadPercent": 0.8653710394688652,
+      "unstable": false
+    },
+    {
+      "name": "nakodo",
+      "ruleId": 65,
+      "label": "仲人将棋",
+      "binarySha256": "44198822479c8193b3cd41b79cdb8e9a7cee54cf6d112e88227204ee71fb85b4",
+      "perft": {
+        "1": 37,
+        "2": 1369,
+        "3": 47290
+      },
+      "nps": 4462674.806805494,
+      "annanRatio": 0.4755546725121767,
+      "annanTimesFaster": 2.102807642951704,
+      "spreadPercent": 2.7069375563431697,
+      "unstable": false
+    },
+    {
+      "name": "queen-king",
+      "ruleId": 147,
+      "label": "クイーン王",
+      "binarySha256": "93d45380ab7ce5291b1cbcb9419299afdbf4488961cc80bafed2a4b128352996",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25855
+      },
+      "nps": 4123152.9181853742,
+      "annanRatio": 0.43937430366539637,
+      "annanTimesFaster": 2.2759637777122843,
+      "spreadPercent": 0.9297602660633286,
+      "unstable": false
+    },
+    {
+      "name": "torazu-gin",
+      "ruleId": 30,
+      "label": "取らず銀",
+      "binarySha256": "438482e57d7ecd0efc3342e3de445759c7fc25d1aa4dd747cb32657645b5d95a",
+      "perft": {
+        "1": 20,
+        "2": 600,
+        "3": 11580
+      },
+      "nps": 3871298.2030420695,
+      "annanRatio": 0.41253598544467956,
+      "annanTimesFaster": 2.4240309579831756,
+      "spreadPercent": 0.7468848717741894,
+      "unstable": false
+    },
+    {
+      "name": "ai-torazu-gin",
+      "ruleId": 31,
+      "label": "相取らず銀",
+      "binarySha256": "dec4afd6a64f4c4eafd5df964a3dcdd9e318794713a00b5e77cfcc978b7d3481",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25470
+      },
+      "nps": 4083000.710542047,
+      "annanRatio": 0.4350955760450588,
+      "annanTimesFaster": 2.298345593604563,
+      "spreadPercent": 1.5179961297641098,
+      "unstable": false
+    },
+    {
+      "name": "zarikani",
+      "ruleId": 153,
+      "label": "ざりかに将棋",
+      "binarySha256": "8a190e007c86906152210f69ca93513ec4e129887fd121690493022b9b70bc10",
+      "perft": {
+        "1": 9,
+        "2": 81,
+        "3": 909
+      },
+      "nps": 11232681.028104765,
+      "annanRatio": 1.1969848082159222,
+      "annanTimesFaster": 0.8354324909858101,
+      "spreadPercent": 0.48337574309198494,
+      "unstable": false
+    },
+    {
+      "name": "zarikani-tonbo",
+      "ruleId": 165,
+      "label": "ざりかにとんぼ",
+      "binarySha256": "064e1958c16b966bcbb66530b8cae6ade898197045c0e562e0c8ded1d0f1ce92",
+      "perft": {
+        "1": 9,
+        "2": 81,
+        "3": 882
+      },
+      "nps": 11305041.470797824,
+      "annanRatio": 1.204695732295637,
+      "annanTimesFaster": 0.8300851187497991,
+      "spreadPercent": 0.9373248120236211,
+      "unstable": false
+    },
+    {
+      "name": "semai",
+      "ruleId": 79,
+      "label": "狭い将棋",
+      "binarySha256": "aa69b392b7d04614a17ab71419b1e57f5c50c7faf84b87e23ecad9e3f66d8835",
+      "perft": {
+        "1": 28,
+        "2": 784,
+        "3": 21209
+      },
+      "nps": 4571502.086254461,
+      "annanRatio": 0.4871516011433693,
+      "annanTimesFaster": 2.0527490778085298,
+      "spreadPercent": 2.727641918722723,
+      "unstable": false
+    },
+    {
+      "name": "semmai",
+      "ruleId": 90,
+      "label": "せっまい将棋",
+      "binarySha256": "83d0baade381b8cc525352203087d134999faa325676c686205f78248f1d55d7",
+      "perft": {
+        "1": 23,
+        "2": 529,
+        "3": 11764
+      },
+      "nps": 4519455.423249647,
+      "annanRatio": 0.4816053682556713,
+      "annanTimesFaster": 2.0763888152283365,
+      "spreadPercent": 0.4052003319103381,
+      "unstable": false
+    },
+    {
+      "name": "hiroi",
+      "ruleId": 91,
+      "label": "広い将棋",
+      "binarySha256": "6b08010b18672776303b88de14593e4e50daaa12113571585750ffa58c04ffdb",
+      "perft": {
+        "1": 40,
+        "2": 1600,
+        "3": 59520
+      },
+      "nps": 4168571.11254617,
+      "annanRatio": 0.4442141890436464,
+      "annanTimesFaster": 2.2511662721825947,
+      "spreadPercent": 1.3460448014403603,
+      "unstable": false
+    },
+    {
+      "name": "dobutsu",
+      "ruleId": 17,
+      "label": "どうぶつしょうぎ",
+      "binarySha256": "c5639485dc75ab6f67b29dc4c67d737a1a5050f1662c59a294586c279cc1acdf",
+      "perft": {
+        "1": 4,
+        "2": 17,
+        "3": 118
+      },
+      "nps": 10383264.840840265,
+      "annanRatio": 1.1064687266620736,
+      "annanTimesFaster": 0.9037761085365134,
+      "spreadPercent": 2.2460526716686857,
+      "unstable": false
+    },
+    {
+      "name": "toruichi",
+      "ruleId": 28,
+      "label": "取る一手将棋",
+      "binarySha256": "d824bd50362064ba0cf0653183b7b7f7e651d90c698eccf50fe2ff93e952a0df",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 24419
+      },
+      "nps": 3541366.188429946,
+      "annanRatio": 0.37737753945599123,
+      "annanTimesFaster": 2.6498662359226532,
+      "spreadPercent": 0.47841874671308293,
+      "unstable": false
+    },
+    {
+      "name": "hisha",
+      "ruleId": 92,
+      "label": "飛車将棋",
+      "binarySha256": "7da82430c9fd2338d747b68c844c7717a918bc0f0ea8e7a60cb70bf0fe089fb6",
+      "perft": {
+        "1": 73,
+        "2": 5066,
+        "3": 425056
+      },
+      "nps": 4277572.494983329,
+      "annanRatio": 0.45582967055917806,
+      "annanTimesFaster": 2.193801905815552,
+      "spreadPercent": 0.682241830017416,
+      "unstable": false
+    },
+    {
+      "name": "kaku",
+      "ruleId": 103,
+      "label": "角将棋",
+      "binarySha256": "96d980de78128d8ecd8921908241a96fe461ef8a04ad4670098a1361703a1b89",
+      "perft": {
+        "1": 77,
+        "2": 5651,
+        "3": 414597
+      },
+      "nps": 4318353.565169505,
+      "annanRatio": 0.4601754114694294,
+      "annanTimesFaster": 2.1730843827722257,
+      "spreadPercent": 2.5198246356931575,
+      "unstable": false
+    },
+    {
+      "name": "seireigi",
+      "ruleId": 159,
+      "label": "精霊棋",
+      "binarySha256": "01b7e8763150d3a6766e376eb7b70e0e1cea387c015b054f70c498b101dc0a10",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25470
+      },
+      "nps": 4085568.414517292,
+      "annanRatio": 0.4353691975110894,
+      "annanTimesFaster": 2.2969011260254093,
+      "spreadPercent": 1.149403862774112,
+      "unstable": false
+    },
+    {
+      "name": "kyo-left",
+      "ruleId": 44,
+      "label": "京将棋(左京配置)",
+      "binarySha256": "182dacc6da8e006d73e2633d5a2aa09369d54c0a2f004b4fccd69afa8694ab54",
+      "perft": {
+        "1": 28,
+        "2": 784,
+        "3": 21726
+      },
+      "nps": 4025164.450677449,
+      "annanRatio": 0.4289323880894196,
+      "annanTimesFaster": 2.3313697630861343,
+      "spreadPercent": 1.8595605775793667,
+      "unstable": false
+    },
+    {
+      "name": "kyo-right",
+      "ruleId": 45,
+      "label": "京将棋(右京配置)",
+      "binarySha256": "7d54186f3d18a8c520e26e48f0fa5d0f722df20be09c83456e8ae7179410a986",
+      "perft": {
+        "1": 29,
+        "2": 841,
+        "3": 23954
+      },
+      "nps": 4069783.42256617,
+      "annanRatio": 0.43368710616388306,
+      "annanTimesFaster": 2.3058098472084083,
+      "spreadPercent": 0.8736451771835352,
+      "unstable": false
+    },
+    {
+      "name": "totsugeki",
+      "ruleId": 88,
+      "label": "突撃将棋",
+      "binarySha256": "a4fa50246050b5e0fa35e28b8d65db8c4e8957cc1a5f1ba51a7a730d6e432737",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25170
+      },
+      "nps": 4171359.3708046502,
+      "annanRatio": 0.4445113133693913,
+      "annanTimesFaster": 2.24966152699244,
+      "spreadPercent": 0.5704733592591715,
+      "unstable": false
+    },
+    {
+      "name": "ai-happokei",
+      "ruleId": 21,
+      "label": "相八方桂",
+      "binarySha256": "56a1a4f7181c71e7c4b99d36c993d25e1f49a004383ec5ae3dd02a372e6750d7",
+      "perft": {
+        "1": 32,
+        "2": 1024,
+        "3": 30656
+      },
+      "nps": 8462407.868534122,
+      "annanRatio": 0.9017770231539554,
+      "annanTimesFaster": 1.1089215785322526,
+      "spreadPercent": 0.9886114584015893,
+      "unstable": false
+    },
+    {
+      "name": "happokei",
+      "ruleId": 20,
+      "label": "八方桂",
+      "binarySha256": "02f8b828d116dd222159ed4a6aa435b6fd9d048ff0086ca3eeaac2b91cf15fdf",
+      "perft": {
+        "1": 26,
+        "2": 780,
+        "3": 19560
+      },
+      "nps": 8514333.147902137,
+      "annanRatio": 0.9073103210736925,
+      "annanTimesFaster": 1.1021587397094972,
+      "spreadPercent": 1.91815344612698,
+      "unstable": false
+    },
+    {
+      "name": "patrol",
+      "ruleId": 112,
+      "label": "Patrol将棋",
+      "binarySha256": "fe8b4327f6c5e1050ce33a44b5584d269c6d156d0978db4ec5c8ea1f07884d6e",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25470
+      },
+      "nps": 4028422.720682938,
+      "annanRatio": 0.4292795981355233,
+      "annanTimesFaster": 2.3294841039342864,
+      "spreadPercent": 0.5893721787646689,
+      "unstable": false
+    },
+    {
+      "name": "lortap",
+      "ruleId": 113,
+      "label": "Lortap将棋",
+      "binarySha256": "26ab5619a27044ca568b01ab26714b971f01e5df01bb02dd707ddc6247357a37",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25411
+      },
+      "nps": 3993301.7243103664,
+      "annanRatio": 0.42553700996781957,
+      "annanTimesFaster": 2.3499718627896153,
+      "spreadPercent": 1.8044918423013367,
+      "unstable": false
+    },
+    {
+      "name": "shishio",
+      "ruleId": 22,
+      "label": "獅子王",
+      "binarySha256": "bbd3b89eb76a74e84552c3f2fd34f67e59bbda60bb72c122a65fef8f3787190d",
+      "perft": {
+        "1": 48,
+        "2": 1440,
+        "3": 98659
+      },
+      "nps": 4316879.150263969,
+      "annanRatio": 0.46001829383753745,
+      "annanTimesFaster": 2.1738265921075857,
+      "spreadPercent": 1.210449748779574,
+      "unstable": false
+    },
+    {
+      "name": "hono-shishi",
+      "ruleId": 117,
+      "label": "奔王vs獅子",
+      "binarySha256": "5b07dbc6a256a705dd6b8c5e54609cf5ed896c1c11096b98c56ae5c169e2edcd",
+      "perft": {
+        "1": 28,
+        "2": 1036,
+        "3": 28673
+      },
+      "nps": 3754846.6208651946,
+      "annanRatio": 0.4001265905362277,
+      "annanTimesFaster": 2.499209059462544,
+      "spreadPercent": 1.0350347688252493,
+      "unstable": false
+    },
+    {
+      "name": "nigyoku",
+      "ruleId": 163,
+      "label": "二玉将棋",
+      "binarySha256": "5b5c12cdaf6ddc0f38eb82b47d9a6ac9a96ba7b7b13e9173e30273acf27117e9",
+      "perft": {
+        "1": 30,
+        "2": 900,
+        "3": 25530
+      },
+      "nps": 3462007.224550785,
+      "annanRatio": 0.3689208340691439,
+      "annanTimesFaster": 2.710608639176442,
+      "spreadPercent": 0.34365174004356014,
+      "unstable": false
+    }
+  ],
+  "conditions": {
+    "sourceCommit": "07117686edeec10ad4372b921a01d25f6d494afa",
+    "mainCommit": "1bba17d7259a76a3a87798098c17e3ad55911334",
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "build": "native release; opt-level=3, codegen-units=1, lto=fat; cargo -j2",
+    "harnessSha256": "5c2804232a0cb873ec7c6c2e2c6ec40e83fcac63c65ebda6cc9d2a271ea13466",
+    "lockSha256": "fc801c48fcd35ec694bbf0a4b6f854ba0ef9722df1c1dc143caee5bc750cd27f",
+    "buildStarted": {
+      "utc": "2026-11-26T16:30:02.992260+00:00",
+      "loadavg": "0.70 2.46 3.07 1/1676 3527658",
+      "top": [
+        "top - 01:30:03 up 72 days, 16:23,  4 users,  load average: 0.70, 2.46, 3.07",
+        "Tasks: 424 total,   1 running, 422 sleeping,   1 stopped,   0 zombie",
+        "%Cpu(s):  2.7 us,  2.7 sy,  0.0 ni, 94.6 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  13048.5 free,   5326.8 used,  14370.3 buff/cache     ",
+        "MiB Swap:   8192.0 total,      0.5 free,   8191.5 used.  26110.4 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3527659 na2hiro   20   0   14440   5868   3788 R  23.1   0.0   0:00.06 top",
+        "3463161 root      20   0       0      0      0 I   7.7   0.0   0:00.42 kworker/6:2-events",
+        "      1 root      20   0   26980  11068   5904 S   0.0   0.0   5:47.65 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.04 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:09.13 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:23.16 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "rules": [
+      {
+        "name": "annan",
+        "ruleId": 26,
+        "label": "安南将棋",
+        "binarySha256": "a860bdaf725b20ac8514371129d58878193cd6a3f61197c9ec515e0f11d46562",
+        "perft": {
+          "1": 28,
+          "2": 784,
+          "3": 21718
+        }
+      },
+      {
+        "name": "narazu",
+        "ruleId": 111,
+        "label": "不成将棋",
+        "binarySha256": "0223f2442666b460b996c732d1c651d9cb68c092297d2e21096bc7982bd3c2ca",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25440
+        }
+      },
+      {
+        "name": "nifu-ari",
+        "ruleId": 138,
+        "label": "二歩あり将棋",
+        "binarySha256": "68a245e5fcd9fa468b4f39916d74a6fea88007b209e5ea8a55a2658d643b44b8",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25470
+        }
+      },
+      {
+        "name": "sho-kyo-left",
+        "ruleId": 46,
+        "label": "小京将棋(左京配置)",
+        "binarySha256": "322f47925d38d5e2eb098e9aafa361cc12e54adb4346c033d8f2636f5b29c025",
+        "perft": {
+          "1": 32,
+          "2": 1024,
+          "3": 30912
+        }
+      },
+      {
+        "name": "sho-kyo-right",
+        "ruleId": 47,
+        "label": "小京将棋(右京配置)",
+        "binarySha256": "785f798a7334b34cd88f6543815f671039225e5b4d9dbccfef2842dd31a338e7",
+        "perft": {
+          "1": 32,
+          "2": 1024,
+          "3": 30976
+        }
+      },
+      {
+        "name": "nakodo",
+        "ruleId": 65,
+        "label": "仲人将棋",
+        "binarySha256": "44198822479c8193b3cd41b79cdb8e9a7cee54cf6d112e88227204ee71fb85b4",
+        "perft": {
+          "1": 37,
+          "2": 1369,
+          "3": 47290
+        }
+      },
+      {
+        "name": "queen-king",
+        "ruleId": 147,
+        "label": "クイーン王",
+        "binarySha256": "93d45380ab7ce5291b1cbcb9419299afdbf4488961cc80bafed2a4b128352996",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25855
+        }
+      },
+      {
+        "name": "torazu-gin",
+        "ruleId": 30,
+        "label": "取らず銀",
+        "binarySha256": "438482e57d7ecd0efc3342e3de445759c7fc25d1aa4dd747cb32657645b5d95a",
+        "perft": {
+          "1": 20,
+          "2": 600,
+          "3": 11580
+        }
+      },
+      {
+        "name": "ai-torazu-gin",
+        "ruleId": 31,
+        "label": "相取らず銀",
+        "binarySha256": "dec4afd6a64f4c4eafd5df964a3dcdd9e318794713a00b5e77cfcc978b7d3481",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25470
+        }
+      },
+      {
+        "name": "zarikani",
+        "ruleId": 153,
+        "label": "ざりかに将棋",
+        "binarySha256": "8a190e007c86906152210f69ca93513ec4e129887fd121690493022b9b70bc10",
+        "perft": {
+          "1": 9,
+          "2": 81,
+          "3": 909
+        }
+      },
+      {
+        "name": "zarikani-tonbo",
+        "ruleId": 165,
+        "label": "ざりかにとんぼ",
+        "binarySha256": "064e1958c16b966bcbb66530b8cae6ade898197045c0e562e0c8ded1d0f1ce92",
+        "perft": {
+          "1": 9,
+          "2": 81,
+          "3": 882
+        }
+      },
+      {
+        "name": "semai",
+        "ruleId": 79,
+        "label": "狭い将棋",
+        "binarySha256": "aa69b392b7d04614a17ab71419b1e57f5c50c7faf84b87e23ecad9e3f66d8835",
+        "perft": {
+          "1": 28,
+          "2": 784,
+          "3": 21209
+        }
+      },
+      {
+        "name": "semmai",
+        "ruleId": 90,
+        "label": "せっまい将棋",
+        "binarySha256": "83d0baade381b8cc525352203087d134999faa325676c686205f78248f1d55d7",
+        "perft": {
+          "1": 23,
+          "2": 529,
+          "3": 11764
+        }
+      },
+      {
+        "name": "hiroi",
+        "ruleId": 91,
+        "label": "広い将棋",
+        "binarySha256": "6b08010b18672776303b88de14593e4e50daaa12113571585750ffa58c04ffdb",
+        "perft": {
+          "1": 40,
+          "2": 1600,
+          "3": 59520
+        }
+      },
+      {
+        "name": "dobutsu",
+        "ruleId": 17,
+        "label": "どうぶつしょうぎ",
+        "binarySha256": "c5639485dc75ab6f67b29dc4c67d737a1a5050f1662c59a294586c279cc1acdf",
+        "perft": {
+          "1": 4,
+          "2": 17,
+          "3": 118
+        }
+      },
+      {
+        "name": "toruichi",
+        "ruleId": 28,
+        "label": "取る一手将棋",
+        "binarySha256": "d824bd50362064ba0cf0653183b7b7f7e651d90c698eccf50fe2ff93e952a0df",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 24419
+        }
+      },
+      {
+        "name": "hisha",
+        "ruleId": 92,
+        "label": "飛車将棋",
+        "binarySha256": "7da82430c9fd2338d747b68c844c7717a918bc0f0ea8e7a60cb70bf0fe089fb6",
+        "perft": {
+          "1": 73,
+          "2": 5066,
+          "3": 425056
+        }
+      },
+      {
+        "name": "kaku",
+        "ruleId": 103,
+        "label": "角将棋",
+        "binarySha256": "96d980de78128d8ecd8921908241a96fe461ef8a04ad4670098a1361703a1b89",
+        "perft": {
+          "1": 77,
+          "2": 5651,
+          "3": 414597
+        }
+      },
+      {
+        "name": "seireigi",
+        "ruleId": 159,
+        "label": "精霊棋",
+        "binarySha256": "01b7e8763150d3a6766e376eb7b70e0e1cea387c015b054f70c498b101dc0a10",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25470
+        }
+      },
+      {
+        "name": "kyo-left",
+        "ruleId": 44,
+        "label": "京将棋(左京配置)",
+        "binarySha256": "182dacc6da8e006d73e2633d5a2aa09369d54c0a2f004b4fccd69afa8694ab54",
+        "perft": {
+          "1": 28,
+          "2": 784,
+          "3": 21726
+        }
+      },
+      {
+        "name": "kyo-right",
+        "ruleId": 45,
+        "label": "京将棋(右京配置)",
+        "binarySha256": "7d54186f3d18a8c520e26e48f0fa5d0f722df20be09c83456e8ae7179410a986",
+        "perft": {
+          "1": 29,
+          "2": 841,
+          "3": 23954
+        }
+      },
+      {
+        "name": "totsugeki",
+        "ruleId": 88,
+        "label": "突撃将棋",
+        "binarySha256": "a4fa50246050b5e0fa35e28b8d65db8c4e8957cc1a5f1ba51a7a730d6e432737",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25170
+        }
+      },
+      {
+        "name": "ai-happokei",
+        "ruleId": 21,
+        "label": "相八方桂",
+        "binarySha256": "56a1a4f7181c71e7c4b99d36c993d25e1f49a004383ec5ae3dd02a372e6750d7",
+        "perft": {
+          "1": 32,
+          "2": 1024,
+          "3": 30656
+        }
+      },
+      {
+        "name": "happokei",
+        "ruleId": 20,
+        "label": "八方桂",
+        "binarySha256": "02f8b828d116dd222159ed4a6aa435b6fd9d048ff0086ca3eeaac2b91cf15fdf",
+        "perft": {
+          "1": 26,
+          "2": 780,
+          "3": 19560
+        }
+      },
+      {
+        "name": "patrol",
+        "ruleId": 112,
+        "label": "Patrol将棋",
+        "binarySha256": "fe8b4327f6c5e1050ce33a44b5584d269c6d156d0978db4ec5c8ea1f07884d6e",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25470
+        }
+      },
+      {
+        "name": "lortap",
+        "ruleId": 113,
+        "label": "Lortap将棋",
+        "binarySha256": "26ab5619a27044ca568b01ab26714b971f01e5df01bb02dd707ddc6247357a37",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25411
+        }
+      },
+      {
+        "name": "shishio",
+        "ruleId": 22,
+        "label": "獅子王",
+        "binarySha256": "bbd3b89eb76a74e84552c3f2fd34f67e59bbda60bb72c122a65fef8f3787190d",
+        "perft": {
+          "1": 48,
+          "2": 1440,
+          "3": 98659
+        }
+      },
+      {
+        "name": "hono-shishi",
+        "ruleId": 117,
+        "label": "奔王vs獅子",
+        "binarySha256": "5b07dbc6a256a705dd6b8c5e54609cf5ed896c1c11096b98c56ae5c169e2edcd",
+        "perft": {
+          "1": 28,
+          "2": 1036,
+          "3": 28673
+        }
+      },
+      {
+        "name": "nigyoku",
+        "ruleId": 163,
+        "label": "二玉将棋",
+        "binarySha256": "5b5c12cdaf6ddc0f38eb82b47d9a6ac9a96ba7b7b13e9173e30273acf27117e9",
+        "perft": {
+          "1": 30,
+          "2": 900,
+          "3": 25530
+        }
+      }
+    ],
+    "effectiveLockSha256": "a3311af58d43d58430e2be56391f718761b11f670f2badf6e9b6a06fba2f9f76",
+    "preparedUtc": "2026-11-26T16:39:22.094834+00:00"
+  },
+  "timing": {
+    "cpu": 2,
+    "siblings": "2,6",
+    "cpuModel": "Intel(R) Core(TM) i7-6700 CPU @ 3.40GHz",
+    "threads": 1,
+    "depth": 3,
+    "minimumBatchSeconds": 3,
+    "samplesPerTrial": 3,
+    "before": {
+      "utc": "2026-11-26T16:39:40.914968+00:00",
+      "loadavg": "0.76 1.20 2.11 1/1657 3534179",
+      "top": [
+        "top - 01:39:41 up 72 days, 16:33,  4 users,  load average: 0.76, 1.20, 2.11",
+        "Tasks: 424 total,   1 running, 422 sleeping,   1 stopped,   0 zombie",
+        "%Cpu(s):  1.8 us,  2.7 sy,  0.0 ni, 95.5 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  11281.5 free,   5347.1 used,  16116.9 buff/cache     ",
+        "MiB Swap:   8192.0 total,      0.6 free,   8191.4 used.  26090.0 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3534180 na2hiro   20   0   14440   5864   3784 R  28.6   0.0   0:00.07 top",
+        "3228022 na2hiro   20   0   35.7g 515912  50944 S   7.1   1.6   2:58.08 node-MainThread",
+        "      1 root      20   0   26980  11068   5904 S   0.0   0.0   5:47.65 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.04 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:09.14 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:23.26 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "after": {
+      "utc": "2026-11-26T16:44:29.513825+00:00",
+      "loadavg": "1.07 1.12 1.82 2/1655 3536250",
+      "top": [
+        "top - 01:44:29 up 72 days, 16:37,  4 users,  load average: 1.07, 1.12, 1.82",
+        "Tasks: 426 total,   1 running, 424 sleeping,   1 stopped,   0 zombie",
+        "%Cpu(s):  1.9 us,  2.8 sy,  0.0 ni, 95.3 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  11301.6 free,   5326.3 used,  16117.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,      0.7 free,   8191.3 used.  26110.8 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3536251 na2hiro   20   0   14440   5852   3776 R  30.8   0.0   0:00.06 top",
+        "3334497 na2hiro   20   0 5767740 415924 126396 S   7.7   1.3   6:03.97 claude",
+        "      1 root      20   0   26980  11068   5904 S   0.0   0.0   5:47.67 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.04 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:09.14 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:23.30 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    }
+  }
+}
