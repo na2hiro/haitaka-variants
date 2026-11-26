@@ -15,9 +15,11 @@ use haitaka::{
     Board, Color, GameStatus, HISTORY_RULES_VERSION, HistoryAdjudication, Move, Piece,
     PositionHistory, RuleSpec, SFEN_STARTPOS, SelectedRule,
 };
+#[cfg(not(feature = "chushogi"))]
+use haitaka_wasm::UsiSession;
 use haitaka_wasm::{
     NnueModel, SEARCH_NODE_BUDGET_MAX_DEPTH, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
-    SearchWorkspace, UsiSession,
+    SearchWorkspace,
 };
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -872,6 +874,11 @@ struct SelfPlayReportOutput {
 
 fn main() -> Result<()> {
     let command = Cli::parse().command;
+    #[cfg(feature = "chushogi")]
+    let command = match command {
+        Command::Usi(args) => return chu_usi::run(args),
+        other => other,
+    };
     #[cfg(feature = "extended-json")]
     if !matches!(command, Command::Json(_) | Command::Package(_)) {
         bail!("extended rules support only json and package; SFEN/USI commands are unavailable");
@@ -880,7 +887,10 @@ fn main() -> Result<()> {
         #[cfg(feature = "extended-json")]
         Command::Json(args) => extended::run(args),
         Command::Play(args) => play(args),
+        #[cfg(not(feature = "chushogi"))]
         Command::Usi(args) => usi(args),
+        #[cfg(feature = "chushogi")]
+        Command::Usi(_) => unreachable!("Chu USI is dispatched before the JSON feature gate"),
         Command::SelfPlay(args) => self_play(args),
         Command::Package(args) => package(args),
         Command::ArchiveEngine(args) => archive_engine(args),
@@ -3143,6 +3153,7 @@ fn read_human_move(board: &Board) -> Result<Move> {
     }
 }
 
+#[cfg(not(feature = "chushogi"))]
 fn usi(args: UsiArgs) -> Result<()> {
     let mut session = UsiSession::new(ENGINE_NAME, args.movetime_max_depth);
     if args.eval == EngineEvalKind::Nnue {
@@ -6127,3 +6138,6 @@ mod hand_rule_tests {
         );
     }
 }
+
+#[cfg(feature = "chushogi")]
+mod chu_usi;
