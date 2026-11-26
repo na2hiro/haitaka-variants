@@ -339,6 +339,136 @@ impl Board {
         color: Color,
         excluded_attackers: BitBoard,
     ) -> (BitBoard, BitBoard) {
+        #[cfg(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        ))]
+        {
+            (
+                self.candidate_checkers(color, excluded_attackers),
+                BitBoard::EMPTY,
+            )
+        }
+        #[cfg(not(any(
+            feature = "neko",
+            feature = "nekoneko",
+            feature = "yokoneko",
+            feature = "yokonekoneko",
+            feature = "tenkyo",
+            feature = "tenjiku",
+            feature = "anki"
+        )))]
+        {
+            (
+                self.candidate_checkers(color, excluded_attackers),
+                self.candidate_pins(color, excluded_attackers),
+            )
+        }
+    }
+
+    /// Pieces (of either color) that alone block an enemy's effective slider
+    /// movement toward `color`'s king, for the variants that track pins.
+    ///
+    /// A pinner must lie on a rook or bishop ray from the king with exactly
+    /// one occupied square in between; it is a pinner when one of its
+    /// effective movements reaches the king once that blocker is lifted.
+    /// The pinner is at least two squares away, so only slider movement can
+    /// do that.
+    #[cfg(feature = "donor-category")]
+    pub(crate) fn candidate_pins(&self, color: Color, excluded_attackers: BitBoard) -> BitBoard {
+        use crate::variant_rules::effective_movements;
+
+        let mut pinned = BitBoard::EMPTY;
+        if !self.has(color, Piece::King) {
+            return pinned;
+        }
+        let our_king = self.king(color);
+        let their_color = !color;
+        let occupied = self.occupied();
+        let pinners = (rook_pseudo_attacks(our_king) | bishop_pseudo_attacks(our_king))
+            & self.colors(their_color)
+            & !excluded_attackers;
+        for pinner in pinners {
+            let between = get_between_rays(pinner, our_king) & occupied;
+            if between.len() != 1 {
+                continue;
+            }
+            if effective_movements(self, their_color, pinner)
+                .pseudo_legals(their_color, pinner, occupied ^ between)
+                .has(our_king)
+            {
+                pinned |= between;
+            }
+        }
+        pinned
+    }
+
+    /// Checkers of `color`'s king in any piece-influence variant, without pins.
+    ///
+    /// Whatever movements a piece borrows, an attacker must sit on the first
+    /// occupied square of one of the eight rays from the king (covering
+    /// sliders and adjacent steps) or on a knight square, so only those few
+    /// candidates need their effective movements resolved; rebuilding the
+    /// whole influence map is unnecessary.
+    #[cfg(feature = "donor-category")]
+    pub(crate) fn candidate_checkers(
+        &self,
+        color: Color,
+        excluded_attackers: BitBoard,
+    ) -> BitBoard {
+        use crate::variant_rules::effective_movements;
+
+        let mut checkers = BitBoard::EMPTY;
+        if !self.has(color, Piece::King) {
+            return checkers;
+        }
+        let our_king = self.king(color);
+        let their_color = !color;
+        let occupied = self.occupied();
+        let candidates = (get_rook_moves(color, our_king, occupied)
+            | get_bishop_moves(color, our_king, occupied)
+            | knight_attacks(color, our_king))
+            & self.colors(their_color)
+            & !excluded_attackers;
+        for attacker in candidates {
+            let movements = effective_movements(self, their_color, attacker);
+            if movements
+                .pseudo_legals(their_color, attacker, occupied)
+                .has(our_king)
+            {
+                checkers |= attacker.bitboard();
+            }
+        }
+        checkers
+    }
+
+    /// Reference checkers and pins computed from the full movement-influence
+    /// map of the opponent.
+    #[cfg(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "antouzai",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku",
+        feature = "anki"
+    ))]
+    #[allow(dead_code)]
+    pub(crate) fn calculate_checkers_and_pins_by_influence(
+        &self,
+        color: Color,
+        excluded_attackers: BitBoard,
+    ) -> (BitBoard, BitBoard) {
         use crate::variant_rules::{
             MovementInfluence, is_slider_movement, pseudo_legals_for, slider_pseudo_attacks,
         };
