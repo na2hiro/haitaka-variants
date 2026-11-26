@@ -1,0 +1,1166 @@
+{
+  "method": "1,200 samples per binary, instruction pointer from ptrace on own x86_64 child; 1–4 ms jitter; CPU 2; perft(3)",
+  "rows": [
+    {
+      "version": "baseline",
+      "rule": "hisha",
+      "binarySha256": "aed2cb0ed8481b4d88943739fc9b5141643bd943cfbf89ece38a89d03894166b",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::geometric_targets",
+          601
+        ],
+        [
+          "libc.so.6",
+          362
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::attacked",
+          83
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          47
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          38
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::moves",
+          15
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_apply",
+          12
+        ],
+        [
+          "core::slice::sort::stable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          12
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::index",
+          8
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>)>>::call_mut",
+          8
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::set_cell",
+          7
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_append",
+          3
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::perft",
+          2
+        ]
+      ]
+    },
+    {
+      "version": "baseline",
+      "rule": "kaku",
+      "binarySha256": "3c7b52a4cf0a80a7f0b86f7e645c9e2e1c9a14174ddf559d5ac73c0d156a6e4d",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::geometric_targets",
+          587
+        ],
+        [
+          "libc.so.6",
+          338
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::attacked",
+          114
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          55
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          30
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::moves",
+          19
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::set_cell",
+          13
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::index",
+          11
+        ],
+        [
+          "core::slice::sort::stable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          11
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_apply",
+          10
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>)>>::call_mut",
+          6
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "core::slice::sort::stable::drift::sort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::perft",
+          2
+        ]
+      ]
+    },
+    {
+      "version": "baseline",
+      "rule": "nigyoku",
+      "binarySha256": "57eb22a574b0c9f8ec9c8e8c9c431e3fc0984c906a7e10c854cc1ee074312c9b",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::geometric_targets",
+          470
+        ],
+        [
+          "libc.so.6",
+          269
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::attacked",
+          181
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          64
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          62
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_moves",
+          31
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::set_cell",
+          27
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_apply",
+          26
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::index",
+          16
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_acceptable",
+          12
+        ],
+        [
+          "<core::iter::adapters::map::Map<core::iter::adapters::filter::Filter<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>>, <haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::basic_outcome::{closure#2}>, <haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::basic_outcome::{closure#3}> as core::iter::traits::iterator::Iterator>::next",
+          11
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::moves",
+          11
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::push",
+          5
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::perft",
+          5
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>)>>::call_mut",
+          4
+        ],
+        [
+          "core::slice::sort::stable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          4
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          2
+        ]
+      ]
+    },
+    {
+      "version": "baseline",
+      "rule": "toruichi",
+      "binarySha256": "32f9283ee5ba6cfd7f302c58e4d0e4ae1ca89dbc226df4a067f67742a4189e89",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::geometric_targets",
+          558
+        ],
+        [
+          "libc.so.6",
+          238
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::attacked",
+          148
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          82
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_requires_capture",
+          59
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          46
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_moves",
+          14
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_apply",
+          11
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_acceptable",
+          10
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::set_cell",
+          8
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::moves",
+          5
+        ],
+        [
+          "<core::iter::adapters::map::Map<core::iter::adapters::filter::Filter<core::iter::adapters::enumerate::Enumerate<core::slice::iter::Iter<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>>, <haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::basic_outcome::{closure#2}>, <haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::basic_outcome::{closure#3}> as core::iter::traits::iterator::Iterator>::next",
+          4
+        ],
+        [
+          "core::slice::sort::stable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          3
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::index",
+          3
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::perft",
+          3
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::push",
+          3
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>)>>::call_mut",
+          3
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          1
+        ],
+        [
+          "core::slice::sort::stable::drift::sort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "followup",
+      "rule": "hisha",
+      "binarySha256": "826bdf1030fff5ff241bd37add56e163a20cd9b3eb98355f78abe8b53892d068",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::geometric_targets_into",
+          190
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::moves",
+          159
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_append",
+          138
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::push",
+          92
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::set_cell",
+          90
+        ],
+        [
+          "libc.so.6",
+          76
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>)>>::call_mut",
+          73
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_play",
+          70
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::index",
+          63
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          62
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::perft",
+          52
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_discovered",
+          50
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_attacks_square",
+          42
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_attacked_by::<true>",
+          24
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          16
+        ],
+        [
+          "core::slice::sort::shared::pivot::median3_rec::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "followup",
+      "rule": "kaku",
+      "binarySha256": "af911d25bc91adbad7a747f45e4675b9fcf3ecb96d58cae34414b8f9ba23fd0a",
+      "symbols": [
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::moves",
+          314
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::geometric_targets_into",
+          245
+        ],
+        [
+          "libc.so.6",
+          96
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::set_cell",
+          90
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          88
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::index",
+          78
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>)>>::call_mut",
+          61
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::push",
+          53
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::perft",
+          50
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_play",
+          45
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_attacks_square",
+          36
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_attacked_by::<true>",
+          19
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          11
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          3
+        ],
+        [
+          "core::slice::sort::shared::pivot::median3_rec::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          3
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_discovered",
+          2
+        ],
+        [
+          "core::slice::sort::shared::smallsort::insertion_sort_shift_left::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<alloc::raw_vec::RawVec<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>>>::grow_one",
+          2
+        ]
+      ]
+    },
+    {
+      "version": "followup",
+      "rule": "nigyoku",
+      "binarySha256": "f023b0196910e906d57ed460d8338d28a55f801c979daf5f3f707257278667df",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::geometric_targets_into",
+          218
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_acceptable_known",
+          170
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_moves_where",
+          166
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_discovered",
+          128
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::set_cell",
+          85
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::push",
+          84
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::perft",
+          63
+        ],
+        [
+          "libc.so.6",
+          61
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_attacks_square",
+          57
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::index",
+          37
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_play",
+          34
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>)>>::call_mut",
+          32
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::moves",
+          31
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          18
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_unplace",
+          8
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          6
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          1
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "followup",
+      "rule": "toruichi",
+      "binarySha256": "88554be72bcb7b483dbcdc31eca6fc50c4c6a2129c1d3f834a10d0fdeb49cfcd",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::geometric_targets_into",
+          276
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_moves_where",
+          189
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::push",
+          102
+        ],
+        [
+          "libc.so.6",
+          83
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::set_cell",
+          79
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_simple_legal",
+          71
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::perft",
+          61
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_acceptable_checked",
+          61
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>)>>::call_mut",
+          57
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_play",
+          44
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::index",
+          43
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::moves",
+          38
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          35
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_attacks_square",
+          35
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          15
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_unplace",
+          5
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          3
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "hisha",
+      "binarySha256": "7da82430c9fd2338d747b68c844c7717a918bc0f0ea8e7a60cb70bf0fe089fb6",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_append",
+          203
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::geometric_targets_into",
+          170
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::set_cell",
+          161
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::moves",
+          123
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::index",
+          90
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::perft",
+          65
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Hisha>>::push",
+          64
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>)>>::call_mut",
+          60
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          59
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_play",
+          50
+        ],
+        [
+          "libc.so.6",
+          48
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_discovered",
+          43
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_attacks_square",
+          35
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          14
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Hisha>>::classical_attacked_by::<true>",
+          11
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          1
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          1
+        ],
+        [
+          "<alloc::raw_vec::RawVec<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>>>::grow_one",
+          1
+        ],
+        [
+          "core::slice::sort::shared::smallsort::insertion_sort_shift_left::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Hisha> as core::cmp::PartialOrd>::lt>",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "hono-shishi",
+      "binarySha256": "5b07dbc6a256a705dd6b8c5e54609cf5ed896c1c11096b98c56ae5c169e2edcd",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_acceptable_known",
+          204
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::geometric_targets_into",
+          171
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_moves_where",
+          149
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::set_cell",
+          142
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::index",
+          90
+        ],
+        [
+          "libc.so.6",
+          76
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::HonoShishi>>::push",
+          75
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_unplace",
+          58
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::HonoShishi>>::perft",
+          48
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::HonoShishi>>::moves",
+          38
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi>)>>::call_mut",
+          34
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_attacks_square",
+          32
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi> as core::cmp::PartialOrd>::lt>",
+          27
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_play",
+          26
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_hop",
+          14
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::HonoShishi> as core::cmp::PartialOrd>::lt>",
+          6
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::HonoShishi>>::classical_capture_allowed",
+          6
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          3
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "kaku",
+      "binarySha256": "96d980de78128d8ecd8921908241a96fe461ef8a04ad4670098a1361703a1b89",
+      "symbols": [
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::moves",
+          363
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::geometric_targets_into",
+          200
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::set_cell",
+          122
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::index",
+          83
+        ],
+        [
+          "libc.so.6",
+          82
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          80
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::push",
+          66
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>)>>::call_mut",
+          59
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_attacks_square",
+          40
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Kaku>>::perft",
+          34
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_play",
+          32
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_attacked_by::<true>",
+          21
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          7
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          4
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Kaku>>::classical_discovered",
+          4
+        ],
+        [
+          "core::slice::sort::shared::pivot::median3_rec::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Kaku> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "narazu",
+      "binarySha256": "0223f2442666b460b996c732d1c651d9cb68c092297d2e21096bc7982bd3c2ca",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::classical_acceptable_known",
+          218
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::set_cell",
+          169
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::geometric_targets_into",
+          154
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::classical_moves_where",
+          140
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::index",
+          86
+        ],
+        [
+          "libc.so.6",
+          80
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Narazu>>::push",
+          69
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Narazu>>::perft",
+          60
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::classical_attacks_square",
+          44
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::classical_play",
+          42
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Narazu>>::classical_unplace",
+          41
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu>)>>::call_mut",
+          30
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Narazu>>::moves",
+          25
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu> as core::cmp::PartialOrd>::lt>",
+          21
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu> as core::cmp::PartialOrd>::lt>",
+          16
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          2
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Narazu> as core::cmp::PartialOrd>::lt>",
+          2
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "nigyoku",
+      "binarySha256": "5b5c12cdaf6ddc0f38eb82b47d9a6ac9a96ba7b7b13e9173e30273acf27117e9",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_acceptable_known",
+          217
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::geometric_targets_into",
+          184
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::set_cell",
+          142
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_moves_where",
+          128
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_discovered",
+          90
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::push",
+          83
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::index",
+          76
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_attacks_square",
+          49
+        ],
+        [
+          "libc.so.6",
+          49
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::perft",
+          42
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_unplace",
+          32
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>)>>::call_mut",
+          31
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Nigyoku>>::moves",
+          30
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Nigyoku>>::classical_play",
+          20
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          15
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          8
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Nigyoku> as core::cmp::PartialOrd>::lt>",
+          4
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "patrol",
+      "binarySha256": "fe8b4327f6c5e1050ce33a44b5584d269c6d156d0978db4ec5c8ea1f07884d6e",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::classical_acceptable_known",
+          240
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::geometric_targets_into",
+          151
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::set_cell",
+          146
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::classical_moves_where",
+          146
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Patrol>>::push",
+          95
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::index",
+          84
+        ],
+        [
+          "libc.so.6",
+          80
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Patrol>>::perft",
+          52
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::classical_unplace",
+          43
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::classical_play",
+          37
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol>)>>::call_mut",
+          28
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Patrol>>::moves",
+          27
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::classical_attacks_square",
+          26
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol> as core::cmp::PartialOrd>::lt>",
+          25
+        ],
+        [
+          "core::slice::sort::shared::smallsort::sort8_stable::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol> as core::cmp::PartialOrd>::lt>",
+          13
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Patrol> as core::cmp::PartialOrd>::lt>",
+          3
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          3
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Patrol>>::capture_allowed_at",
+          1
+        ]
+      ]
+    },
+    {
+      "version": "stage1",
+      "rule": "toruichi",
+      "binarySha256": "d824bd50362064ba0cf0653183b7b7f7e651d90c698eccf50fe2ff93e952a0df",
+      "symbols": [
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_acceptable_known",
+          209
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::geometric_targets_into",
+          193
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_moves_where",
+          155
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::set_cell",
+          122
+        ],
+        [
+          "libc.so.6",
+          100
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::index",
+          77
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::push",
+          76
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_attacks_square",
+          50
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_unplace",
+          44
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_play",
+          31
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::perft",
+          28
+        ],
+        [
+          "<haitaka::extended::classical::ClassicalGame<haitaka::extended::classical::ordinary::Toruichi>>::moves",
+          28
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_attacked_by::<true>",
+          26
+        ],
+        [
+          "core::slice::sort::unstable::quicksort::quicksort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          26
+        ],
+        [
+          "<<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt as core::ops::function::FnMut<(&haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, &haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>)>>::call_mut",
+          24
+        ],
+        [
+          "<alloc::raw_vec::RawVec<usize>>::grow_one",
+          6
+        ],
+        [
+          "<alloc::raw_vec::RawVecInner>::finish_grow",
+          3
+        ],
+        [
+          "core::slice::sort::unstable::ipnsort::<haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi>, <haitaka::extended::classical::ClassicalMove<haitaka::extended::classical::ordinary::Toruichi> as core::cmp::PartialOrd>::lt>",
+          1
+        ],
+        [
+          "<haitaka::extended::Position<haitaka::extended::classical::ordinary::Toruichi>>::classical_is_capture",
+          1
+        ]
+      ]
+    }
+  ]
+}
