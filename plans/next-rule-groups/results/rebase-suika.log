@@ -1,0 +1,33 @@
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 11.69s
+     Running tests/hand_rules.rs (target/next-rule-groups/release/deps/hand_rules-30125cbc4938e84b)
+
+running 6 tests
+test hand_rules_capture_and_sfen_roundtrip ... ok
+test hand_rules_capture_commutes_with_color_swap ... ok
+test hand_rules_geometric_checks_survive_ignored_evasions ... ok
+test hand_rules_ignored_check_and_king_capture ... ok
+test hand_rules_suika_chain_and_king_fusion ... ok
+test hand_rules_generation_agrees_with_legality ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hand_rules.rs (target/next-rule-groups/release/deps/hand_rules-94f265e1e350ddea)
+
+running 4 tests
+test hand_rules_native_wasm_fixtures ... ok
+test hand_rules_sfnn_rejects_incompatible_rules ... ok
+test hand_rules_search_selects_king_capture ... ok
+test hand_rules_search_selects_king_fusion ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

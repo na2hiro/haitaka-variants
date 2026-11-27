@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesReference.test.ts (28 tests | 26 skipped) 21092ms
+   ✓ matches core's legal moves and every transition for shishio  11336ms
+   ✓ matches core's legal moves and every transition for hono-shishi  9753ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 26 skipped (28)
+   Start at  13:58:25
+   Duration  23.03s (transform 1.18s, setup 0ms, collect 1.57s, tests 21.09s, environment 0ms, prepare 84ms)

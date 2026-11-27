@@ -1,0 +1,272 @@
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling crossbeam-utils v0.8.21
+   Compiling libc v0.2.184
+   Compiling autocfg v1.5.0
+   Compiling memchr v2.8.0
+   Compiling rayon-core v1.13.0
+   Compiling itoa v1.0.18
+   Compiling proc-macro2 v1.0.106
+   Compiling either v1.15.0
+   Compiling typenum v1.20.0
+   Compiling wasm-bindgen-shared v0.2.118
+   Compiling num-traits v0.2.19
+   Compiling quote v1.0.45
+   Compiling crossbeam-epoch v0.9.18
+   Compiling syn v2.0.117
+   Compiling zerocopy v0.8.48
+   Compiling zmij v1.0.21
+   Compiling haitaka-types v0.1.3 (/home/na2hiro/proj/haitaka-variants/haitaka_types)
+   Compiling generic-array v0.14.7
+   Compiling crossbeam-deque v0.8.6
+   Compiling getrandom v0.3.4
+   Compiling unicode-width v0.1.14
+   Compiling regex-syntax v0.8.10
+   Compiling plotters-backend v0.3.7
+   Compiling textwrap v0.11.0
+   Compiling plotters-svg v0.3.7
+   Compiling rand_core v0.9.5
+   Compiling csv-core v0.1.13
+   Compiling itertools v0.10.5
+   Compiling regex-automata v0.4.14
+   Compiling serde_json v1.0.149
+   Compiling ryu v1.0.23
+   Compiling cast v0.3.0
+   Compiling bitflags v1.3.2
+   Compiling same-file v1.0.6
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-variants/haitaka)
+   Compiling half v1.8.3
+   Compiling criterion-plot v0.4.5
+   Compiling walkdir v2.5.0
+   Compiling clap v2.34.0
+   Compiling csv v1.4.0
+   Compiling plotters v0.3.7
+   Compiling rayon v1.11.0
+   Compiling regex v1.12.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling wasm-bindgen-macro-support v0.2.118
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling atty v0.2.14
+   Compiling instant v0.1.13
+   Compiling rand_chacha v0.9.0
+   Compiling lazy_static v1.5.0
+   Compiling once_cell v1.21.4
+   Compiling oorandom v11.1.5
+   Compiling rand v0.9.2
+   Compiling digest v0.10.7
+   Compiling cpufeatures v0.2.17
+   Compiling sha2 v0.10.9
+   Compiling serde_derive v1.0.228
+   Compiling wasm-bindgen-macro v0.2.118
+   Compiling wasm-bindgen v0.2.118
+   Compiling serde v1.0.228
+   Compiling js-sys v0.3.95
+   Compiling tinytemplate v1.2.1
+   Compiling serde_cbor v0.11.2
+   Compiling criterion v0.3.6
+   Compiling haitaka_wasm v0.1.0 (/home/na2hiro/proj/haitaka-variants/haitaka_wasm)
+warning: function `r1_sentinel_mix` is never used
+   --> haitaka_wasm/src/nnue.rs:464:4
+    |
+464 | fn r1_sentinel_mix(mut value: u64) -> u64 {
+    |    ^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka_wasm` (lib test) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 28.71s
+     Running unittests src/lib.rs (target/next-rule-groups/debug/deps/haitaka-49347346f856896e)
+
+running 63 tests
+test attacks::tests::test_gold_attacks ... ok
+test attacks::tests::test_king_attacks ... ok
+test attacks::tests::test_knight_attacks ... ok
+test attacks::tests::test_pawn_attacks ... ok
+test attacks::tests::test_silver_attacks ... ok
+test board::movegen::piece_moves::tests::has_handles_promotions ... ok
+test board::movegen::piece_moves::tests::iter_cannot_promote ... ok
+test board::movegen::piece_moves::tests::iter_must_promote ... ok
+test board::movegen::piece_moves::tests::iter_undecided ... ok
+test board::movegen::piece_moves::tests::len_handles_promotions_rook ... ok
+test board::movegen::piece_moves::tests::len_handles_promotions_white_lance ... ok
+test board::movegen::piece_moves::tests::len_works_with_non_promotions ... ok
+test board::movegen::piece_moves::tests::len_for_lance_handles_edge_cases ... ok
+test board::movegen::piece_moves::tests::len_handles_promotions_pawn ... ok
+test board::movegen::piece_moves::tests::has_works ... ok
+test board::movegen::piece_moves::tests::has_works_with_drops ... ok
+test board::movegen::tests::board_hash_trait_works ... ok
+test board::movegen::piece_moves::tests::len_handles_promotions_black_lance ... ok
+test board::movegen::tests::discovered_checks2 ... ok
+test board::movegen::tests::discount_pawn_drop_mate_in_perft ... ok
+test board::movegen::tests::discovered_checks3 ... ok
+test board::movegen::tests::color_swapped_board_preserves_position_and_legal_moves ... ok
+test board::movegen::tests::discovered_checks1 ... ok
+test board::movegen::tests::checkers_are_updated ... ok
+test board::movegen::tests::donot_move_into_check ... ok
+test board::movegen::tests::non_check ... ok
+test board::movegen::tests::legality_drops ... ok
+test board::movegen::tests::generate_checks ... ok
+test board::movegen::tests::invalid_tsume ... ok
+test board::movegen::tests::pawn_push_mate_is_valid ... ok
+test board::movegen::tests::pinners ... ok
+test board::movegen::tests::no_drop_on_top ... ok
+test board::movegen::tests::play_tsume ... ok
+test board::movegen::tests::undiscovered_checks ... ok
+test board::parse::tests::handles_invalid_sfens ... ok
+test board::movegen::tests::tsume ... ok
+test board::parse::tests::handles_valid_sfens ... ok
+test board::zobrist::tests::zobrist_transpositions ... ok
+test dfpn::tests::generated_checks_are_legal_on_sample_positions ... ok
+test board::movegen::tests::legality_simple ... ok
+test dfpn::tests::returns_no_mate_when_no_checks_exist ... ok
+test dfpn::tests::reports_statistics ... ok
+test dfpn::tests::finds_one_ply_mate ... ok
+test dfpn::tests::returns_unknown_when_budget_is_too_small ... ok
+test board::movegen::tests::fuzzing_checks ... ok
+test dfpn::tests::solves_white_to_move_mate ... ok
+test history::tests::black_perpetual_checker_loses ... ok
+test history::tests::ordinary_fourfold_is_draw ... ok
+test history::tests::same_board_different_history_has_different_tt_key ... ok
+test history::tests::white_perpetual_checker_loses ... ok
+test slider_moves::tests::test_bishop_fast_and_slow_a1 ... ok
+test slider_moves::tests::test_bishop_fast_and_slow_e5 ... ok
+test slider_moves::tests::test_bishop_fast_and_slow_g3 ... ok
+test slider_moves::tests::test_bishop_moves ... ok
+test slider_moves::tests::test_relevant_blockers ... ok
+test slider_moves::tests::test_rook ... ok
+test dfpn::tests::solves_best_selection_swapped_7_regression ... ok
+test board::movegen::tests::fuzzing_generate_moves ... ok
+test board::movegen::tests::subset_movegen_habu_position ... ok
+test dfpn::tests::solves_best_selection_lightning_7_regression ... ok
+test dfpn::tests::solves_existing_tsume_position ... ok
+test dfpn::tests::solves_best_selection_live_shape_13_regression ... ok
+test dfpn::tests::solves_best_selection_congrats_37_regression has been running for over 60 seconds
+test dfpn::tests::solves_best_selection_congrats_37_regression ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 205.38s
+
+     Running unittests src/lib.rs (target/next-rule-groups/debug/deps/haitaka_types-4a84af0ea9fe6140)
+
+running 5 tests
+test packed_coordinates::tests::wide_moves_preserve_large_coordinates_and_validate_bounds ... ok
+test geometry::tests::storage_and_index_sizes_follow_geometry ... ok
+test fixed_bitboard::mutation_tests::mutable_operations_match_values_and_preserve_padding ... ok
+test geometry::tests::native_word_boundaries_and_large_padding_are_masked ... ok
+test geometry::tests::every_shogitter_rectangle_roundtrips_and_matches_reference_sets ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (target/next-rule-groups/debug/deps/haitaka_wasm-43656481cc4c93a4)
+
+running 106 tests
+test movepick::tests::equal_material_gain_uses_higher_victim_value_first ... ok
+test movepick::tests::equal_victim_value_uses_lower_attacker_value_first ... ok
+test movepick::tests::higher_material_gain_capture_sorts_first ... ok
+test movepick::tests::killer_insertion_avoids_duplicates_and_keeps_two_slots ... ok
+test movepick::tests::quiet_drops_and_board_moves_use_distinct_history_keys ... ok
+test movepick::tests::promotion_only_tactical_ordering_remains_stable ... ok
+test nnue::tests::computes_expected_piece_constants ... ok
+test nnue::tests::diagnostic_multiplier_matches_full_incremental_and_trace ... ignored, requires HAITAKA_NNUE_TEST_MODEL
+test nnue::tests::deterministic_sequence_matches_full_from_handicap_position ... ok
+test nnue::tests::active_donor_family_matches_build ... ok
+test movepick::tests::non_capture_major_promotion_is_winning_tactical ... ok
+test nnue::tests::deterministic_sequence_matches_full_from_start_position ... ok
+test movepick::tests::tt_move_is_first_only_when_legal ... ok
+test nnue::tests::hand_rules_nnue_rejects_growth_before_reading_model ... ok
+test nnue::tests::incremental_matches_full_for_capture ... ok
+test nnue::tests::incremental_matches_full_for_drop ... ok
+test nnue::tests::incremental_matches_full_for_king_move ... ok
+test nnue::tests::incremental_matches_full_for_promotion ... ok
+test nnue::tests::incremental_matches_full_for_quiet_move ... ok
+test nnue::tests::knight8_donor_family_uses_clockwise_slot_order ... ok
+test nnue::tests::knight8_donor_family_uses_slot_major_stride ... ok
+test nnue::tests::knight8_donor_hash_is_accepted_only_by_anki_builds ... ok
+test nnue::tests::maps_shogi_squares_to_variant_indices ... ok
+test nnue::tests::orients_white_perspective_by_rank_flip ... ok
+test nnue::tests::pair_donor_family_uses_slot_major_stride ... ok
+test nnue::tests::phase6_100ms_nps_diagnostic ... ok
+test movepick::tests::tactical_capture_precedes_killer_and_quiet ... ok
+test nnue::tests::random_rollouts_match_full_refresh ... ok
+test nnue::tests::real_donor_model_affine_layers_and_evaluation_match_scalar ... ok
+test nnue::tests::single_donor_hash_is_accepted_only_by_single_donor_builds ... ok
+test nnue::tests::rejects_the_other_transformer_width_profile ... ok
+test nnue::tests::transformer_activation_preserves_serializer_scale ... ok
+test sfnn::search_range_test::sfnn_score_stays_outside_search_mate_range ... ignored, requires micro; explicit P2 score-range verification
+test sfnn::tests::leb128_checks ... ok
+test sfnn::tests::rejects_arch_and_build_before_parsing ... ok
+test sfnn_runtime_tests::sfnn_profile_switches_clear_tt_and_return_the_selected_arch ... ignored, requires both micro and mini; explicit P6 profile-switch verification
+test sfnn_runtime_tests::sfnn_runtime_contract ... ignored, requires micro; explicit P2 runtime verification
+test sfnn_kernels::tests::kernels_match_scalar_at_wrap_clamp_and_tail_boundaries ... ok
+test tests::board_native_nnue_search_handles_live_check_positions ... ok
+test nnue_kernels::tests::affine_rows_and_padding_match_scalar ... ok
+test tests::board_native_handcrafted_search_handles_live_check_positions ... ok
+test nnue_kernels::tests::detected_kernel_matches_scalar_for_random_and_boundary_inputs ... ok
+test tests::dfpn_rejects_invalid_sfen ... ok
+test sfnn::tests::progress_boundaries_and_rounding ... ok
+test tests::dfpn_matches_core_mate_result ... ok
+test tests::dfpn_matches_core_no_mate_result ... ok
+test tests::fixed_node_search_reports_a_marked_emergency_move_before_any_child_finishes ... ok
+test tests::fixed_node_search_respects_depth_cap_without_spending_the_budget ... ok
+test tests::iterative_search_can_disable_dfpn_short_circuiting ... ok
+test tests::iterative_search_preserves_parse_error_when_dfpn_cannot_help ... ok
+test tests::fixed_node_search_scores_root_no_legal_move_as_completed_terminal ... ok
+test tests::iterative_search_reuses_tt_between_depths ... ok
+test tests::iterative_search_times_out_before_any_completed_iteration ... ok
+test tests::iterative_search_uses_dfpn_for_standard_mate ... ok
+test tests::iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen ... ok
+test tests::loads_test_nnue_when_available ... ok
+test tests::nnue_search_modes_match_on_handicap_position ... ok
+test tests::nnue_search_modes_match_on_start_position ... ok
+test tests::nnue_search_modes_match_on_tactical_position ... ok
+test tests::prefers_capturing_a_hanging_rook_in_a_simple_tactical_position ... ok
+test tests::qsearch_caps_are_reported ... ok
+test tests::qsearch_check_budget_controls_quiet_check_search ... ok
+test tests::qsearch_delta_pruning_is_reported_for_narrow_windows ... ok
+test tests::qsearch_expands_tactical_captures ... ok
+test tests::qsearch_in_check_searches_evasions_without_stand_pat ... ok
+test tests::qsearch_limits_match_variant_family ... ok
+test tests::qsearch_quiet_leaf_matches_static_eval ... ok
+test tests::qsearch_root_qply_never_delta_prunes ... ok
+test tests::iterative_search_reaches_requested_depth_when_time_allows ... ok
+test tests::qsearch_tactical_fixture_suite_pins_best_moves_and_scores ... ok
+test tests::qsearch_training_trace_follows_promotions_and_check_evasions ... ok
+test tests::qsearch_training_trace_is_deterministic ... ok
+test tests::reports_search_statistics ... ok
+test tests::returns_legal_move_for_handicap_position ... ok
+test tests::returns_legal_move_for_start_position ... ok
+test tests::returns_none_when_side_to_move_has_no_legal_move ... ok
+test tests::tiny_hash_search_returns_legal_move ... ok
+test tests::fixed_node_search_is_exact_and_deterministic ... ok
+test tests::tt_score_conversion_round_trips ... ok
+test tests::usi_go_movetime_depth_uses_depth_as_cap ... ok
+test tests::usi_go_nodes_parses_and_rejects_mixed_budgets ... ok
+test tests::usi_session_accepts_hash_option ... ok
+test tests::usi_session_applies_startpos_moves ... ok
+test tests::usi_session_marks_terminal_resign_as_no_legal_move ... ok
+test tests::usi_session_node_budget_returns_legal_deterministic_fallback ... ok
+test tests::usi_session_rejects_bad_position_without_corrupting_board ... ok
+test tests::usi_session_reports_id_and_ready ... ok
+test tests::usi_session_reports_unsupported_setoption ... ok
+test tests::usi_session_returns_legal_bestmove_for_depth_search ... ok
+test tests::usi_session_tiny_movetime_falls_back_to_legal_move ... ok
+test tests::usi_timed_mate_reports_dfpn_selection_evidence ... ok
+test tests::workspace_handcrafted_search_matches_global_search ... ok
+test tt::tests::different_key_replaces_and_reports_collision ... ok
+test tt::tests::exact_bound_overwrites_shallower_entry ... ok
+test tt::tests::generation_aging_affects_replacement_choice ... ok
+test tt::tests::invalid_packed_moves_decode_to_none ... ok
+test tt::tests::packed_board_moves_round_trip ... ok
+test tt::tests::packed_drops_round_trip ... ok
+test tt::tests::same_key_empty_move_preserves_previous_best_move ... ok
+test tests::training_trace_does_not_change_fixed_node_search ... ok
+test tests::qsearch_soft_cap_training_trace_matches_selected_score ... ok
+test nnue::tests::hand_rules_incremental_matches_full_inventory_updates ... ok
+test nnue::tests::donor_incremental_matches_full_refresh_deterministic ... ok
+test tests::dfpn_parses_tsume_sfens ... ok
+test nnue::tests::donor_incremental_matches_full_refresh_random_rollouts ... ok
+test tests::fixed_depth_ordering_matches_reference_scores_on_representative_openings has been running for over 60 seconds
+test tests::fixed_depth_ordering_matches_reference_scores_on_representative_openings ... ok
+
+test result: ok. 102 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 95.80s

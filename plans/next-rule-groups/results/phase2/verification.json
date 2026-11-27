@@ -1,0 +1,296 @@
+{
+  "date": "2026-11-12",
+  "branch": "feat/next-shogi-rule-groups",
+  "rules": [
+    {
+      "name": "nakamaware",
+      "ruleId": 24,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 17919914,
+      "wasmSha256": "263cfc25a04f3b38884e6dcfbbf431bcf665d14b64fe64f6a58a4aad12500246",
+      "coreWasm": {
+        "ruleId": 24,
+        "name": "nakamaware",
+        "positions": 22,
+        "transitions": 2275
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "share",
+      "ruleId": 57,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 18512995,
+      "wasmSha256": "acc4186046a77f2e624a58c71052da1228d6571d620963ea8857bf2209453120",
+      "coreWasm": {
+        "ruleId": 57,
+        "name": "share",
+        "positions": 112,
+        "transitions": 5415
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "zoshoku",
+      "ruleId": 93,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 18501599,
+      "wasmSha256": "575ce3ec3617f06b1b1868b7bde0306189c9111b05a54f08e4b1a5ac39f7ca8f",
+      "coreWasm": {
+        "ruleId": 93,
+        "name": "zoshoku",
+        "positions": 114,
+        "transitions": 5579
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "babanuki",
+      "ruleId": 143,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 18521389,
+      "wasmSha256": "47166e62805461a54e75fabde88d7ab807f1eaa69d4293684b3cec86afe5a2e9",
+      "coreWasm": {
+        "ruleId": 143,
+        "name": "babanuki",
+        "positions": 112,
+        "transitions": 6033
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "tensuu",
+      "ruleId": 146,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 18523101,
+      "wasmSha256": "9a75a931345a31a5ae231e2cfdc3a4034dba2a8a8231120dc148720a8268e678",
+      "coreWasm": {
+        "ruleId": 146,
+        "name": "tensuu",
+        "positions": 114,
+        "transitions": 5943
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "suika",
+      "ruleId": 155,
+      "engineSourceCommit": "a86a9a9",
+      "wasmBytes": 17911510,
+      "wasmSha256": "3642f42a468ad1e574267037c4369de25e53bd03c0f63e8eda946fe84a690ee2",
+      "coreWasm": {
+        "ruleId": 155,
+        "name": "suika",
+        "positions": 114,
+        "transitions": 7286
+      },
+      "nativeCore": false,
+      "browser": true
+    },
+    {
+      "name": "hisha",
+      "ruleId": 92,
+      "engineSourceCommit": "f181686",
+      "wasmBytes": 335639,
+      "wasmSha256": "0714d30967baf207521663ce0436d5d523ff7908a3333e7d3d9f029a81c21d61",
+      "coreWasm": {
+        "ruleId": 92,
+        "positions": 66,
+        "transitions": 7406
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "kaku",
+      "ruleId": 103,
+      "engineSourceCommit": "f181686",
+      "wasmBytes": 318931,
+      "wasmSha256": "26b427fc78695da53a1ad7e794c4aa06b3ddcdc8578671c3e9f25f7c4bd10d1c",
+      "coreWasm": {
+        "ruleId": 103,
+        "positions": 65,
+        "transitions": 4199
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "seireigi",
+      "ruleId": 159,
+      "engineSourceCommit": "f181686",
+      "wasmBytes": 340493,
+      "wasmSha256": "76d05e2ef5ea41577e7013d1ad559d0a9c71247f2b8c39d6e4dc0c96b103d377",
+      "coreWasm": {
+        "ruleId": 159,
+        "positions": 78,
+        "transitions": 2626
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "kyo-left",
+      "ruleId": 44,
+      "engineSourceCommit": "f181686",
+      "wasmBytes": 340180,
+      "wasmSha256": "bfd81f8a16174d9bf6b8d1e17b73f85ecc97319513ac7723c63a819bf7c1d8a1",
+      "coreWasm": {
+        "ruleId": 44,
+        "positions": 82,
+        "transitions": 3002
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "kyo-right",
+      "ruleId": 45,
+      "engineSourceCommit": "f181686",
+      "wasmBytes": 340513,
+      "wasmSha256": "90912cd36ec2cd2f34977cfb3299768798025e9a33278e909823e13f549bd675",
+      "coreWasm": {
+        "ruleId": 45,
+        "positions": 82,
+        "transitions": 3293
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "totsugeki",
+      "ruleId": 88,
+      "engineSourceCommit": "b4bcc0c",
+      "wasmBytes": 340233,
+      "wasmSha256": "63a5f5d89dc243e881186341105ba1606df9214a3ae213b592f5c183dc920fc1",
+      "coreWasm": {
+        "ruleId": 88,
+        "positions": 85,
+        "transitions": 2514
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "ai-happokei",
+      "ruleId": 21,
+      "engineSourceCommit": "4e29258",
+      "wasmBytes": 342217,
+      "wasmSha256": "40dce97a907acb9111d07bccb7734722e7fca70a4c3ccf6ea8e69426d889420b",
+      "coreWasm": {
+        "ruleId": 21,
+        "positions": 85,
+        "transitions": 3002
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "happokei",
+      "ruleId": 20,
+      "engineSourceCommit": "4e29258",
+      "wasmBytes": 342612,
+      "wasmSha256": "4ebe7c20d73fde7d221e3d70b5047a772cd26d52b75481664648382165b6cbc4",
+      "coreWasm": {
+        "ruleId": 20,
+        "positions": 89,
+        "transitions": 2697
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "patrol",
+      "ruleId": 112,
+      "engineSourceCommit": "4e29258",
+      "wasmBytes": 340829,
+      "wasmSha256": "e40fe3cb71a300a6ec94a41245e62ae7ba462133bff6c200fe2140df3928d7c4",
+      "coreWasm": {
+        "ruleId": 112,
+        "positions": 84,
+        "transitions": 2664
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "lortap",
+      "ruleId": 113,
+      "engineSourceCommit": "4e29258",
+      "wasmBytes": 340829,
+      "wasmSha256": "185d4485a336f5c008bcbe75b54db432683d4bff8045208e665de8bd0f38f2eb",
+      "coreWasm": {
+        "ruleId": 113,
+        "positions": 84,
+        "transitions": 2504
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "shishio",
+      "ruleId": 22,
+      "engineSourceCommit": "3113bd5",
+      "wasmBytes": 343511,
+      "wasmSha256": "fb130a1e4774cee1aedd46d59bf115bddab265a3be321e1e77ad339e4ae9d09e",
+      "coreWasm": {
+        "ruleId": 22,
+        "positions": 80,
+        "transitions": 4035
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "hono-shishi",
+      "ruleId": 117,
+      "engineSourceCommit": "3113bd5",
+      "wasmBytes": 343499,
+      "wasmSha256": "b9f5f06097eb5068d5bd0fcd841d38fc7642c7262311da0d66d173bc1dbde216",
+      "coreWasm": {
+        "ruleId": 117,
+        "positions": 84,
+        "transitions": 4210
+      },
+      "nativeCore": true,
+      "browser": true
+    },
+    {
+      "name": "nigyoku",
+      "ruleId": 163,
+      "engineSourceCommit": "3113bd5",
+      "wasmBytes": 340154,
+      "wasmSha256": "4502d0ce02ac5ea0e159eaae360da041fb85d9975dd2a57f051d1e2b7a67a843",
+      "coreWasm": {
+        "ruleId": 163,
+        "positions": 80,
+        "transitions": 2631
+      },
+      "nativeCore": true,
+      "browser": true
+    }
+  ],
+  "summary": {
+    "rules": 19,
+    "positions": 1632,
+    "transitions": 77314,
+    "jsonNativeRules": 13,
+    "jsonNativePositions": 1044,
+    "jsonNativeTransitions": 44783,
+    "frontendRegressionTests": 73,
+    "defaultWorkspacePassed": {
+      "haitaka": 63,
+      "types": 5,
+      "wasm": 102
+    },
+    "defaultWorkspaceIgnored": 4,
+    "classicalPassed": 105,
+    "classicalIgnored": 1
+  },
+  "frontendCommit": "6c600791"
+}

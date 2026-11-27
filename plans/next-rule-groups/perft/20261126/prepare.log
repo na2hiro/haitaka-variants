@@ -1,0 +1,37 @@
+     Locking 132 packages to latest compatible versions
+      Adding js-sys v0.3.95 (available: v0.3.106)
+      Adding toml v0.8.23 (available: v1.1.2+spec-1.1.0)
+      Adding wasm-bindgen v0.2.118 (available: v0.2.129)
+      Adding wasm-bindgen-macro v0.2.118 (available: v0.2.129)
+      Adding wasm-bindgen-macro-support v0.2.118 (available: v0.2.129)
+      Adding wasm-bindgen-shared v0.2.118 (available: v0.2.129)
+      Adding web-sys v0.3.95 (available: v0.3.106)
+BUILT annan {'1': 28, '2': 784, '3': 21718}
+BUILT narazu {'1': 30, '2': 900, '3': 25440}
+BUILT nifu-ari {'1': 30, '2': 900, '3': 25470}
+BUILT sho-kyo-left {'1': 32, '2': 1024, '3': 30912}
+BUILT sho-kyo-right {'1': 32, '2': 1024, '3': 30976}
+BUILT nakodo {'1': 37, '2': 1369, '3': 47290}
+BUILT queen-king {'1': 30, '2': 900, '3': 25855}
+BUILT torazu-gin {'1': 20, '2': 600, '3': 11580}
+BUILT ai-torazu-gin {'1': 30, '2': 900, '3': 25470}
+BUILT zarikani {'1': 9, '2': 81, '3': 909}
+BUILT zarikani-tonbo {'1': 9, '2': 81, '3': 882}
+BUILT semai {'1': 28, '2': 784, '3': 21209}
+BUILT semmai {'1': 23, '2': 529, '3': 11764}
+BUILT hiroi {'1': 40, '2': 1600, '3': 59520}
+BUILT dobutsu {'1': 4, '2': 17, '3': 118}
+BUILT toruichi {'1': 30, '2': 900, '3': 24419}
+BUILT hisha {'1': 73, '2': 5066, '3': 425056}
+BUILT kaku {'1': 77, '2': 5651, '3': 414597}
+BUILT seireigi {'1': 30, '2': 900, '3': 25470}
+BUILT kyo-left {'1': 28, '2': 784, '3': 21726}
+BUILT kyo-right {'1': 29, '2': 841, '3': 23954}
+BUILT totsugeki {'1': 30, '2': 900, '3': 25170}
+BUILT ai-happokei {'1': 32, '2': 1024, '3': 30656}
+BUILT happokei {'1': 26, '2': 780, '3': 19560}
+BUILT patrol {'1': 30, '2': 900, '3': 25470}
+BUILT lortap {'1': 30, '2': 900, '3': 25411}
+BUILT shishio {'1': 48, '2': 1440, '3': 98659}
+BUILT hono-shishi {'1': 28, '2': 1036, '3': 28673}
+BUILT nigyoku {'1': 30, '2': 900, '3': 25530}

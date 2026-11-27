@@ -1,0 +1,117 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/haitaka-next-rules-perft/target/core-perft-reference
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): narazu
+narazu 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): nifu-ari
+nifu-ari 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): sho-kyo-left
+sho-kyo-left 32 1024
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): sho-kyo-right
+sho-kyo-right 32 1024
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): nakodo
+nakodo 37 1369
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): queen-king
+queen-king 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): torazu-gin
+torazu-gin 20 600
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): ai-torazu-gin
+ai-torazu-gin 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): zarikani
+zarikani 9 81
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): zarikani-tonbo
+zarikani-tonbo 9 81
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): semai
+semai 28 784
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): semmai
+semmai 23 529
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): hiroi
+hiroi 40 1600
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): dobutsu
+dobutsu 4 17
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): toruichi
+toruichi 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): hisha
+hisha 73 5066
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): kaku
+kaku 77 5651
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): seireigi
+seireigi 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): kyo-left
+kyo-left 28 784
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): kyo-right
+kyo-right 29 841
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): totsugeki
+totsugeki 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): ai-happokei
+ai-happokei 32 1024
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): happokei
+happokei 26 780
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): patrol
+patrol 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): lortap
+lortap 30 900
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): shishio
+shishio 48 1440
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): hono-shishi
+hono-shishi 28 1036
+
+stdout | app/nextPerftReference.test.ts > initial completed-turn perft(1..2): nigyoku
+nigyoku 30 900
+
+ ✓ app/nextPerftReference.test.ts (28 tests) 22061ms
+   ✓ initial completed-turn perft(1..2): narazu  821ms
+   ✓ initial completed-turn perft(1..2): nifu-ari  598ms
+   ✓ initial completed-turn perft(1..2): sho-kyo-left  691ms
+   ✓ initial completed-turn perft(1..2): sho-kyo-right  621ms
+   ✓ initial completed-turn perft(1..2): nakodo  899ms
+   ✓ initial completed-turn perft(1..2): queen-king  589ms
+   ✓ initial completed-turn perft(1..2): torazu-gin  444ms
+   ✓ initial completed-turn perft(1..2): ai-torazu-gin  553ms
+   ✓ initial completed-turn perft(1..2): semai  580ms
+   ✓ initial completed-turn perft(1..2): hiroi  1148ms
+   ✓ initial completed-turn perft(1..2): toruichi  856ms
+   ✓ initial completed-turn perft(1..2): hisha  3515ms
+   ✓ initial completed-turn perft(1..2): kaku  3710ms
+   ✓ initial completed-turn perft(1..2): seireigi  531ms
+   ✓ initial completed-turn perft(1..2): kyo-left  516ms
+   ✓ initial completed-turn perft(1..2): kyo-right  554ms
+   ✓ initial completed-turn perft(1..2): totsugeki  600ms
+   ✓ initial completed-turn perft(1..2): ai-happokei  676ms
+   ✓ initial completed-turn perft(1..2): happokei  470ms
+   ✓ initial completed-turn perft(1..2): patrol  613ms
+   ✓ initial completed-turn perft(1..2): lortap  551ms
+   ✓ initial completed-turn perft(1..2): shishio  759ms
+   ✓ initial completed-turn perft(1..2): hono-shishi  702ms
+   ✓ initial completed-turn perft(1..2): nigyoku  686ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  21:06:28
+   Duration  24.13s (transform 1.40s, setup 0ms, collect 1.81s, tests 22.06s, environment 0ms, prepare 75ms)

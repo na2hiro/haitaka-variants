@@ -18,8 +18,8 @@ use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
-    HistoryAdjudication, Move, Piece, PositionHistory, RuleSpec, SelectedRule,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus, HistoryAdjudication, Move,
+    Piece, PositionHistory, RuleSpec, SelectedRule,
 };
 use instant::Instant;
 use movepick::{MovePicker, MoveSource, QsearchMovePicker, SearchOrdering, SearchOrderingStats};
@@ -3670,6 +3670,24 @@ impl UsiEngine {
             .terminal_notifications()
             .into_iter()
             .map(JsValue::from)
+            .collect()
+    }
+
+    /// Current normalized SFEN, including rule-specific hand inventory.
+    pub fn board_sfen(&self) -> String {
+        self.session.board_sfen()
+    }
+
+    /// Complete legal move set for the current position, in USI notation.
+    pub fn legal_moves(&self) -> js_sys::Array {
+        let mut moves = Vec::new();
+        self.session.board.generate_moves(|group| {
+            moves.extend(group);
+            false
+        });
+        moves
+            .into_iter()
+            .map(|mv| JsValue::from_str(&mv.to_string()))
             .collect()
     }
 

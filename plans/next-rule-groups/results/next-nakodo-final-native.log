@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/bot/ordinaryRulesReference.test.ts (15 tests | 14 skipped) 5249ms
+   ✓ matches core's legal moves and every transition for nakodo  5247ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 14 skipped (15)
+   Start at  13:43:39
+   Duration  6.99s (transform 1.06s, setup 0ms, collect 1.42s, tests 5.25s, environment 0ms, prepare 80ms)

@@ -1,0 +1,60 @@
+MEASURED annan 9438278 spread=0.40% busyCores=1.04
+MEASURED narazu 1009635 spread=2.92% busyCores=1.04
+MEASURED nifu-ari 976494 spread=0.42% busyCores=1.04
+MEASURED sho-kyo-left 974764 spread=0.48% busyCores=1.05
+MEASURED sho-kyo-right 949832 spread=3.09% busyCores=1.04
+MEASURED nakodo 943832 spread=1.24% busyCores=1.04
+MEASURED queen-king 923863 spread=0.77% busyCores=1.04
+MEASURED torazu-gin 974077 spread=0.55% busyCores=1.03
+MEASURED ai-torazu-gin 979951 spread=3.56% busyCores=1.02
+MEASURED zarikani 6196291 spread=1.67% busyCores=1.05
+MEASURED zarikani-tonbo 6018930 spread=2.98% busyCores=1.04
+MEASURED semai 1075983 spread=1.37% busyCores=1.04
+MEASURED semmai 1266105 spread=1.20% busyCores=1.04
+MEASURED hiroi 821551 spread=0.15% busyCores=1.03
+MEASURED dobutsu 6395566 spread=2.73% busyCores=1.03
+MEASURED annan 9381797 spread=0.26% busyCores=1.05
+MEASURED toruichi 362635 spread=0.69% busyCores=1.03
+MEASURED hisha 416396 spread=0.68% busyCores=1.03
+MEASURED kaku 410737 spread=0.38% busyCores=1.10
+MEASURED seireigi 955978 spread=0.31% busyCores=1.04
+MEASURED kyo-left 908856 spread=2.28% busyCores=1.07
+MEASURED kyo-right 903665 spread=0.52% busyCores=1.04
+MEASURED totsugeki 990687 spread=0.70% busyCores=1.03
+MEASURED ai-happokei 5930977 spread=3.75% busyCores=1.05
+MEASURED happokei 5743485 spread=1.36% busyCores=1.05
+MEASURED patrol 1001239 spread=0.80% busyCores=1.04
+MEASURED lortap 995531 spread=0.84% busyCores=1.05
+MEASURED shishio 966266 spread=2.86% busyCores=1.02
+MEASURED hono-shishi 835714 spread=0.72% busyCores=1.07
+MEASURED nigyoku 888683 spread=2.72% busyCores=1.04
+MEASURED annan 9435226 spread=1.07% busyCores=1.03
+annan 9413464 100.00% 1.0x
+narazu 1009635 10.73% 9.3x
+nifu-ari 976494 10.37% 9.6x
+sho-kyo-left 974764 10.35% 9.7x
+sho-kyo-right 949832 10.09% 9.9x
+nakodo 943832 10.03% 10.0x
+queen-king 923863 9.81% 10.2x
+torazu-gin 974077 10.35% 9.7x
+ai-torazu-gin 979951 10.41% 9.6x
+zarikani 6196291 65.82% 1.5x
+zarikani-tonbo 6018930 63.94% 1.6x
+semai 1075983 11.43% 8.7x
+semmai 1266105 13.45% 7.4x
+hiroi 821551 8.73% 11.5x
+dobutsu 6395566 67.94% 1.5x
+toruichi 362635 3.85% 26.0x
+hisha 416396 4.42% 22.6x
+kaku 410737 4.36% 22.9x
+seireigi 955978 10.16% 9.8x
+kyo-left 908856 9.65% 10.4x
+kyo-right 903665 9.60% 10.4x
+totsugeki 990687 10.52% 9.5x
+ai-happokei 5930977 63.01% 1.6x
+happokei 5743485 61.01% 1.6x
+patrol 1001239 10.64% 9.4x
+lortap 995531 10.58% 9.5x
+shishio 966266 10.26% 9.7x
+hono-shishi 835714 8.88% 11.3x
+nigyoku 888683 9.44% 10.6x

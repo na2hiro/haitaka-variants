@@ -1,0 +1,1955 @@
+[
+  {
+    "name": "annan",
+    "index": 0,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:09.309159+00:00",
+      "loadavg": "0.68 1.32 1.64 1/1641 3250509",
+      "top": [
+        "top - 21:13:09 up 72 days, 12:06,  4 users,  load average: 0.68, 1.32, 1.64",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.1 us,  2.1 sy,  0.0 ni, 95.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18319.5 free,   5310.1 used,   9446.7 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.2 used.  26127.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250510 na2hiro   20   0   14884   5708   3620 R  33.3   0.0   0:00.05 top",
+        "3285088 na2hiro   20   0 2050500  78720  41124 S  33.3   0.2 132:52.49 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 9438278.00762219,
+      "nodesPerPerft": 21718,
+      "samples": [
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9451551.46240294,
+          "repetitions": 1306,
+          "seconds": 3.000957897,
+          "totalLeafNodes": 28363708
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9413464.163256342,
+          "repetitions": 1301,
+          "seconds": 3.001564303,
+          "totalLeafNodes": 28255118
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9438278.00762219,
+          "repetitions": 1304,
+          "seconds": 3.000576162,
+          "totalLeafNodes": 28320272
+        }
+      ]
+    },
+    "systemBusyCores": 1.0354008347620802,
+    "contaminated": false
+  },
+  {
+    "name": "narazu",
+    "index": 1,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:18.580306+00:00",
+      "loadavg": "0.73 1.31 1.63 2/1639 3250580",
+      "top": [
+        "top - 21:13:18 up 72 days, 12:06,  4 users,  load average: 0.73, 1.31, 1.63",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.0 us,  2.9 sy,  0.0 ni, 96.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18336.5 free,   5293.2 used,   9446.7 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.2 used.  26144.0 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250581 na2hiro   20   0   14884   5708   3624 R  23.1   0.0   0:00.05 top",
+        "  42201 na2hiro   20   0  732024 137836  44964 S   7.7   0.4  97:38.48 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 1009635.4249871412,
+      "nodesPerPerft": 25440,
+      "samples": [
+        {
+          "nodesPerPerft": 25440,
+          "nps": 1013513.113437589,
+          "repetitions": 120,
+          "seconds": 3.012097189,
+          "totalLeafNodes": 3052800
+        },
+        {
+          "nodesPerPerft": 25440,
+          "nps": 1009635.4249871412,
+          "repetitions": 120,
+          "seconds": 3.023665696,
+          "totalLeafNodes": 3052800
+        },
+        {
+          "nodesPerPerft": 25440,
+          "nps": 984731.1520818854,
+          "repetitions": 117,
+          "seconds": 3.02263211,
+          "totalLeafNodes": 2976480
+        }
+      ]
+    },
+    "systemBusyCores": 1.0378471689987276,
+    "contaminated": false
+  },
+  {
+    "name": "nifu-ari",
+    "index": 2,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:27.940795+00:00",
+      "loadavg": "0.77 1.30 1.62 2/1636 3250647",
+      "top": [
+        "top - 21:13:28 up 72 days, 12:06,  4 users,  load average: 0.77, 1.30, 1.62",
+        "Tasks: 424 total,   1 running, 423 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18335.0 free,   5292.6 used,   9448.7 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.2 used.  26144.5 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250648 na2hiro   20   0   14884   5704   3620 R  25.0   0.0   0:00.03 top",
+        "1226652 root      20   0 2380600  23764   8648 S   8.3   0.1  70:08.60 containerd",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 976494.4400691654,
+      "nodesPerPerft": 25470,
+      "samples": [
+        {
+          "nodesPerPerft": 25470,
+          "nps": 976827.0857872422,
+          "repetitions": 116,
+          "seconds": 3.024609005,
+          "totalLeafNodes": 2954520
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 972760.0068213458,
+          "repetitions": 115,
+          "seconds": 3.011071569,
+          "totalLeafNodes": 2929050
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 976494.4400691654,
+          "repetitions": 116,
+          "seconds": 3.025639347,
+          "totalLeafNodes": 2954520
+        }
+      ]
+    },
+    "systemBusyCores": 1.0404589306362848,
+    "contaminated": false
+  },
+  {
+    "name": "sho-kyo-left",
+    "index": 3,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:37.305227+00:00",
+      "loadavg": "0.81 1.29 1.62 2/1638 3250715",
+      "top": [
+        "top - 21:13:37 up 72 days, 12:06,  4 users,  load average: 0.81, 1.29, 1.62",
+        "Tasks: 424 total,   1 running, 423 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  4.5 us,  4.5 sy,  0.0 ni, 90.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18336.0 free,   5291.6 used,   9448.7 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.2 used.  26145.6 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "2546393 na2hiro   20   0  808184 349604 155232 S   9.1   1.1   4:42.58 codex",
+        "3250716 na2hiro   20   0   14884   5692   3608 R   9.1   0.0   0:00.01 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 974763.7073811211,
+      "nodesPerPerft": 30912,
+      "samples": [
+        {
+          "nodesPerPerft": 30912,
+          "nps": 977757.194806777,
+          "repetitions": 95,
+          "seconds": 3.003445043,
+          "totalLeafNodes": 2936640
+        },
+        {
+          "nodesPerPerft": 30912,
+          "nps": 974763.7073811211,
+          "repetitions": 95,
+          "seconds": 3.012668586,
+          "totalLeafNodes": 2936640
+        },
+        {
+          "nodesPerPerft": 30912,
+          "nps": 973090.3069672429,
+          "repetitions": 95,
+          "seconds": 3.017849401,
+          "totalLeafNodes": 2936640
+        }
+      ]
+    },
+    "systemBusyCores": 1.0518223544047556,
+    "contaminated": false
+  },
+  {
+    "name": "sho-kyo-right",
+    "index": 4,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:46.601796+00:00",
+      "loadavg": "0.82 1.28 1.61 2/1645 3250838",
+      "top": [
+        "top - 21:13:46 up 72 days, 12:07,  4 users,  load average: 0.76, 1.26, 1.60",
+        "Tasks: 424 total,   1 running, 423 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18333.2 free,   5294.4 used,   9448.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.1 used.  26142.8 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250839 na2hiro   20   0   14884   5708   3624 R  16.7   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 949831.8996630227,
+      "nodesPerPerft": 30976,
+      "samples": [
+        {
+          "nodesPerPerft": 30976,
+          "nps": 925101.4395277774,
+          "repetitions": 90,
+          "seconds": 3.013550602,
+          "totalLeafNodes": 2787840
+        },
+        {
+          "nodesPerPerft": 30976,
+          "nps": 953675.5048660698,
+          "repetitions": 93,
+          "seconds": 3.020700422,
+          "totalLeafNodes": 2880768
+        },
+        {
+          "nodesPerPerft": 30976,
+          "nps": 949831.8996630227,
+          "repetitions": 92,
+          "seconds": 3.000311951,
+          "totalLeafNodes": 2849792
+        }
+      ]
+    },
+    "systemBusyCores": 1.035565498627635,
+    "contaminated": false
+  },
+  {
+    "name": "nakodo",
+    "index": 5,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:13:55.950459+00:00",
+      "loadavg": "0.78 1.26 1.60 3/1637 3250902",
+      "top": [
+        "top - 21:13:56 up 72 days, 12:07,  4 users,  load average: 0.78, 1.26, 1.60",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.9 us,  2.0 sy,  0.0 ni, 95.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18329.4 free,   5298.1 used,   9448.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.8 free,   7712.1 used.  26139.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250903 na2hiro   20   0   14884   5720   3636 R  23.1   0.0   0:00.05 top",
+        "3285088 na2hiro   20   0 2050496  78724  41124 S   7.7   0.2 132:52.67 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.31 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 943832.4908794535,
+      "nodesPerPerft": 47290,
+      "samples": [
+        {
+          "nodesPerPerft": 47290,
+          "nps": 945556.7492225508,
+          "repetitions": 60,
+          "seconds": 3.00077177,
+          "totalLeafNodes": 2837400
+        },
+        {
+          "nodesPerPerft": 47290,
+          "nps": 943832.4908794535,
+          "repetitions": 60,
+          "seconds": 3.006253787,
+          "totalLeafNodes": 2837400
+        },
+        {
+          "nodesPerPerft": 47290,
+          "nps": 933990.0860806956,
+          "repetitions": 60,
+          "seconds": 3.037933745,
+          "totalLeafNodes": 2837400
+        }
+      ]
+    },
+    "systemBusyCores": 1.0433795234868122,
+    "contaminated": false
+  },
+  {
+    "name": "queen-king",
+    "index": 6,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:05.340922+00:00",
+      "loadavg": "0.81 1.25 1.59 2/1640 3250971",
+      "top": [
+        "top - 21:14:05 up 72 days, 12:07,  4 users,  load average: 0.81, 1.25, 1.59",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  0.0 us,  1.1 sy,  0.0 ni, 98.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18331.3 free,   5296.2 used,   9448.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26140.9 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3250972 na2hiro   20   0   14884   5724   3640 R  16.7   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 923863.169486352,
+      "nodesPerPerft": 25855,
+      "samples": [
+        {
+          "nodesPerPerft": 25855,
+          "nps": 923863.169486352,
+          "repetitions": 108,
+          "seconds": 3.022460568,
+          "totalLeafNodes": 2792340
+        },
+        {
+          "nodesPerPerft": 25855,
+          "nps": 925585.321150102,
+          "repetitions": 108,
+          "seconds": 3.016836953,
+          "totalLeafNodes": 2792340
+        },
+        {
+          "nodesPerPerft": 25855,
+          "nps": 918556.4812837779,
+          "repetitions": 107,
+          "seconds": 3.011774514,
+          "totalLeafNodes": 2766485
+        }
+      ]
+    },
+    "systemBusyCores": 1.0369211962761247,
+    "contaminated": false
+  },
+  {
+    "name": "torazu-gin",
+    "index": 7,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:14.704397+00:00",
+      "loadavg": "0.84 1.24 1.59 2/1632 3251034",
+      "top": [
+        "top - 21:14:14 up 72 days, 12:07,  4 users,  load average: 0.84, 1.24, 1.59",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.2 us,  1.1 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18335.5 free,   5292.0 used,   9448.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26145.2 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251035 na2hiro   20   0   14884   5724   3640 R  18.2   0.0   0:00.03 top",
+        "3228022 na2hiro   20   0   35.6g 470568  78536 S   9.1   1.5   0:37.32 node-MainThread",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 974076.7409637012,
+      "nodesPerPerft": 11580,
+      "samples": [
+        {
+          "nodesPerPerft": 11580,
+          "nps": 974076.7409637012,
+          "repetitions": 253,
+          "seconds": 3.007709636,
+          "totalLeafNodes": 2929740
+        },
+        {
+          "nodesPerPerft": 11580,
+          "nps": 977650.6983585206,
+          "repetitions": 254,
+          "seconds": 3.008559197,
+          "totalLeafNodes": 2941320
+        },
+        {
+          "nodesPerPerft": 11580,
+          "nps": 972326.031966042,
+          "repetitions": 252,
+          "seconds": 3.001215543,
+          "totalLeafNodes": 2918160
+        }
+      ]
+    },
+    "systemBusyCores": 1.0344943774488002,
+    "contaminated": false
+  },
+  {
+    "name": "ai-torazu-gin",
+    "index": 8,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:24.000650+00:00",
+      "loadavg": "0.87 1.23 1.58 2/1640 3251107",
+      "top": [
+        "top - 21:14:24 up 72 days, 12:07,  4 users,  load average: 0.87, 1.23, 1.58",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.0 us,  1.9 sy,  0.0 ni, 97.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18330.8 free,   5293.4 used,   9452.1 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26143.8 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251108 na2hiro   20   0   14884   5704   3620 R  21.4   0.0   0:00.06 top",
+        "3462610 root      20   0 1357376  45176  17188 S   7.1   0.1  50:56.26 tailscaled",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 979950.946007642,
+      "nodesPerPerft": 25470,
+      "samples": [
+        {
+          "nodesPerPerft": 25470,
+          "nps": 947716.793968265,
+          "repetitions": 112,
+          "seconds": 3.010013137,
+          "totalLeafNodes": 2852640
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 981410.7503035095,
+          "repetitions": 116,
+          "seconds": 3.010482613,
+          "totalLeafNodes": 2954520
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 979950.946007642,
+          "repetitions": 116,
+          "seconds": 3.014967241,
+          "totalLeafNodes": 2954520
+        }
+      ]
+    },
+    "systemBusyCores": 1.0218616429461118,
+    "contaminated": false
+  },
+  {
+    "name": "zarikani",
+    "index": 9,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:33.343589+00:00",
+      "loadavg": "0.89 1.22 1.57 2/1639 3251131",
+      "top": [
+        "top - 21:14:33 up 72 days, 12:07,  4 users,  load average: 0.89, 1.22, 1.57",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18330.4 free,   5293.9 used,   9452.0 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26143.2 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "  42776 na2hiro   20   0  120584  15864   3424 S  27.3   0.0 140:26.01 tmux: server",
+        "2546393 na2hiro   20   0  824536 348432 155232 S   9.1   1.1   4:42.84 codex",
+        "3285088 na2hiro   20   0 2050624  79032  41124 S   9.1   0.2 132:52.82 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 6196291.4367842,
+      "nodesPerPerft": 909,
+      "samples": [
+        {
+          "nodesPerPerft": 909,
+          "nps": 6125715.385090752,
+          "repetitions": 20217,
+          "seconds": 3.000017442,
+          "totalLeafNodes": 18377253
+        },
+        {
+          "nodesPerPerft": 909,
+          "nps": 6196291.4367842,
+          "repetitions": 20450,
+          "seconds": 3.000028354,
+          "totalLeafNodes": 18589050
+        },
+        {
+          "nodesPerPerft": 909,
+          "nps": 6228207.480309306,
+          "repetitions": 20556,
+          "seconds": 3.000125487,
+          "totalLeafNodes": 18685404
+        }
+      ]
+    },
+    "systemBusyCores": 1.0485994060817756,
+    "contaminated": false
+  },
+  {
+    "name": "zarikani-tonbo",
+    "index": 10,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:42.575369+00:00",
+      "loadavg": "0.90 1.22 1.57 2/1638 3251261",
+      "top": [
+        "top - 21:14:42 up 72 days, 12:08,  4 users,  load average: 0.90, 1.22, 1.57",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18325.9 free,   5298.5 used,   9452.0 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26138.7 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3285088 na2hiro   20   0 2050628  79080  41124 S  18.2   0.2 132:52.86 codex",
+        "3251262 na2hiro   20   0   14884   5712   3628 R   9.1   0.0   0:00.01 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 6018929.7099439055,
+      "nodesPerPerft": 882,
+      "samples": [
+        {
+          "nodesPerPerft": 882,
+          "nps": 6018929.7099439055,
+          "repetitions": 20473,
+          "seconds": 3.000065937,
+          "totalLeafNodes": 18057186
+        },
+        {
+          "nodesPerPerft": 882,
+          "nps": 6093927.068669804,
+          "repetitions": 20728,
+          "seconds": 3.000051657,
+          "totalLeafNodes": 18282096
+        },
+        {
+          "nodesPerPerft": 882,
+          "nps": 5917842.459790609,
+          "repetitions": 20129,
+          "seconds": 3.00004235,
+          "totalLeafNodes": 17753778
+        }
+      ]
+    },
+    "systemBusyCores": 1.0373431514376956,
+    "contaminated": false
+  },
+  {
+    "name": "semai",
+    "index": 11,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:14:51.811297+00:00",
+      "loadavg": "0.92 1.21 1.56 2/1643 3251334",
+      "top": [
+        "top - 21:14:52 up 72 days, 12:08,  4 users,  load average: 0.92, 1.21, 1.56",
+        "Tasks: 422 total,   1 running, 421 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18328.4 free,   5295.9 used,   9452.0 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26141.3 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251335 na2hiro   20   0   14884   5696   3612 R  16.7   0.0   0:00.03 top",
+        "3235098 na2hiro   20   0  543500 123808  93244 S   8.3   0.4   0:03.61 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 1075983.0202800278,
+      "nodesPerPerft": 21209,
+      "samples": [
+        {
+          "nodesPerPerft": 21209,
+          "nps": 1065401.1239894216,
+          "repetitions": 151,
+          "seconds": 3.005965479,
+          "totalLeafNodes": 3202559
+        },
+        {
+          "nodesPerPerft": 21209,
+          "nps": 1080015.7693271632,
+          "repetitions": 153,
+          "seconds": 3.004564463,
+          "totalLeafNodes": 3244977
+        },
+        {
+          "nodesPerPerft": 21209,
+          "nps": 1075983.0202800278,
+          "repetitions": 153,
+          "seconds": 3.015825472,
+          "totalLeafNodes": 3244977
+        }
+      ]
+    },
+    "systemBusyCores": 1.0373410313584155,
+    "contaminated": false
+  },
+  {
+    "name": "semmai",
+    "index": 12,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:01.134300+00:00",
+      "loadavg": "0.93 1.20 1.56 2/1641 3251402",
+      "top": [
+        "top - 21:15:01 up 72 days, 12:08,  4 users,  load average: 0.93, 1.20, 1.56",
+        "Tasks: 421 total,   1 running, 420 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.9 us,  1.9 sy,  0.0 ni, 95.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18325.2 free,   5299.0 used,   9452.0 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26138.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251403 na2hiro   20   0   14884   5712   3624 R  23.1   0.0   0:00.05 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 1266105.3693226755,
+      "nodesPerPerft": 11764,
+      "samples": [
+        {
+          "nodesPerPerft": 11764,
+          "nps": 1251878.6039715095,
+          "repetitions": 320,
+          "seconds": 3.007064733,
+          "totalLeafNodes": 3764480
+        },
+        {
+          "nodesPerPerft": 11764,
+          "nps": 1266886.8013065832,
+          "repetitions": 324,
+          "seconds": 3.008584505,
+          "totalLeafNodes": 3811536
+        },
+        {
+          "nodesPerPerft": 11764,
+          "nps": 1266105.3693226755,
+          "repetitions": 323,
+          "seconds": 3.001149898,
+          "totalLeafNodes": 3799772
+        }
+      ]
+    },
+    "systemBusyCores": 1.044241239519376,
+    "contaminated": false
+  },
+  {
+    "name": "hiroi",
+    "index": 13,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:10.440782+00:00",
+      "loadavg": "0.94 1.20 1.55 2/1639 3251466",
+      "top": [
+        "top - 21:15:10 up 72 days, 12:08,  4 users,  load average: 0.94, 1.20, 1.55",
+        "Tasks: 421 total,   1 running, 420 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18336.8 free,   5287.5 used,   9452.1 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26149.7 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251467 na2hiro   20   0   14884   5704   3620 R  33.3   0.0   0:00.04 top",
+        "2546393 na2hiro   20   0  841076 348132 155232 S   8.3   1.1   4:43.04 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 821550.838083405,
+      "nodesPerPerft": 59520,
+      "samples": [
+        {
+          "nodesPerPerft": 59520,
+          "nps": 821967.565348081,
+          "repetitions": 42,
+          "seconds": 3.041287887,
+          "totalLeafNodes": 2499840
+        },
+        {
+          "nodesPerPerft": 59520,
+          "nps": 820726.5734134483,
+          "repetitions": 42,
+          "seconds": 3.045886512,
+          "totalLeafNodes": 2499840
+        },
+        {
+          "nodesPerPerft": 59520,
+          "nps": 821550.838083405,
+          "repetitions": 42,
+          "seconds": 3.042830564,
+          "totalLeafNodes": 2499840
+        }
+      ]
+    },
+    "systemBusyCores": 1.034583488526053,
+    "contaminated": false
+  },
+  {
+    "name": "dobutsu",
+    "index": 14,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:19.923610+00:00",
+      "loadavg": "0.95 1.19 1.54 3/1639 3251537",
+      "top": [
+        "top - 21:15:20 up 72 days, 12:08,  4 users,  load average: 0.95, 1.19, 1.54",
+        "Tasks: 421 total,   1 running, 420 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18333.9 free,   5290.0 used,   9452.4 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26147.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251538 na2hiro   20   0   14884   5704   3624 R  27.3   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 6395566.406221524,
+      "nodesPerPerft": 118,
+      "samples": [
+        {
+          "nodesPerPerft": 118,
+          "nps": 6395566.406221524,
+          "repetitions": 162600,
+          "seconds": 3.000015758,
+          "totalLeafNodes": 19186800
+        },
+        {
+          "nodesPerPerft": 118,
+          "nps": 6417274.105996405,
+          "repetitions": 163152,
+          "seconds": 3.000017715,
+          "totalLeafNodes": 19251936
+        },
+        {
+          "nodesPerPerft": 118,
+          "nps": 6246976.702296581,
+          "repetitions": 158822,
+          "seconds": 3.000010548,
+          "totalLeafNodes": 18740996
+        }
+      ]
+    },
+    "systemBusyCores": 1.0338828081730975,
+    "contaminated": false
+  },
+  {
+    "name": "annan",
+    "index": 15,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:29.176679+00:00",
+      "loadavg": "0.96 1.18 1.54 2/1634 3251603",
+      "top": [
+        "top - 21:15:29 up 72 days, 12:08,  4 users,  load average: 0.96, 1.18, 1.54",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.0 us,  2.9 sy,  0.0 ni, 96.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18336.0 free,   5287.9 used,   9452.4 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26149.2 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251604 na2hiro   20   0   14884   5720   3636 R  30.8   0.0   0:00.05 top",
+        "2546393 na2hiro   20   0  791840 347764 155232 S  15.4   1.1   4:43.08 codex",
+        "  42201 na2hiro   20   0  732036 135144  44964 S   7.7   0.4  97:38.63 codex",
+        "3235098 na2hiro   20   0  543500 123644  93244 S   7.7   0.4   0:03.64 codex",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 9381796.540729849,
+      "nodesPerPerft": 21718,
+      "samples": [
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9389831.123338493,
+          "repetitions": 1298,
+          "seconds": 3.002180085,
+          "totalLeafNodes": 28189964
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9365043.514127517,
+          "repetitions": 1294,
+          "seconds": 3.000850125,
+          "totalLeafNodes": 28103092
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9381796.540729849,
+          "repetitions": 1296,
+          "seconds": 3.000121339,
+          "totalLeafNodes": 28146528
+        }
+      ]
+    },
+    "systemBusyCores": 1.0530877865741781,
+    "contaminated": false
+  },
+  {
+    "name": "toruichi",
+    "index": 16,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:38.451831+00:00",
+      "loadavg": "0.96 1.18 1.53 2/1637 3251669",
+      "top": [
+        "top - 21:15:38 up 72 days, 12:08,  4 users,  load average: 0.96, 1.18, 1.53",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  2.2 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18334.2 free,   5289.7 used,   9452.4 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26147.4 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251670 na2hiro   20   0   14884   5704   3620 R  25.0   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.32 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 362635.4723859412,
+      "nodesPerPerft": 24419,
+      "samples": [
+        {
+          "nodesPerPerft": 24419,
+          "nps": 363748.73009080323,
+          "repetitions": 45,
+          "seconds": 3.020917763,
+          "totalLeafNodes": 1098855
+        },
+        {
+          "nodesPerPerft": 24419,
+          "nps": 361269.9858933433,
+          "repetitions": 45,
+          "seconds": 3.041644872,
+          "totalLeafNodes": 1098855
+        },
+        {
+          "nodesPerPerft": 24419,
+          "nps": 362635.4723859412,
+          "repetitions": 45,
+          "seconds": 3.030191704,
+          "totalLeafNodes": 1098855
+        }
+      ]
+    },
+    "systemBusyCores": 1.0333908721411285,
+    "contaminated": false
+  },
+  {
+    "name": "hisha",
+    "index": 17,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:47.894101+00:00",
+      "loadavg": "0.97 1.17 1.52 2/1637 3251738",
+      "top": [
+        "top - 21:15:48 up 72 days, 12:09,  4 users,  load average: 0.97, 1.17, 1.52",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18334.8 free,   5289.1 used,   9452.4 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26148.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251739 na2hiro   20   0   14884   5760   3672 R  27.3   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 416395.56491936464,
+      "nodesPerPerft": 425056,
+      "samples": [
+        {
+          "nodesPerPerft": 425056,
+          "nps": 418068.21964613564,
+          "repetitions": 3,
+          "seconds": 3.05014335,
+          "totalLeafNodes": 1275168
+        },
+        {
+          "nodesPerPerft": 425056,
+          "nps": 415245.46531055897,
+          "repetitions": 3,
+          "seconds": 3.070877605,
+          "totalLeafNodes": 1275168
+        },
+        {
+          "nodesPerPerft": 425056,
+          "nps": 416395.56491936464,
+          "repetitions": 3,
+          "seconds": 3.06239573,
+          "totalLeafNodes": 1275168
+        }
+      ]
+    },
+    "systemBusyCores": 1.0295582923314335,
+    "contaminated": false
+  },
+  {
+    "name": "kaku",
+    "index": 18,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:15:58.447732+00:00",
+      "loadavg": "0.97 1.16 1.52 2/1634 3251805",
+      "top": [
+        "top - 21:15:58 up 72 days, 12:09,  4 users,  load average: 0.97, 1.16, 1.52",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18337.8 free,   5285.8 used,   9452.7 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26151.3 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251806 na2hiro   20   0   14884   5756   3672 R  18.2   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10508   5440 S   0.0   0.0   5:46.86 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 410737.1930668328,
+      "nodesPerPerft": 414597,
+      "samples": [
+        {
+          "nodesPerPerft": 414597,
+          "nps": 410022.96395091905,
+          "repetitions": 3,
+          "seconds": 3.033466682,
+          "totalLeafNodes": 1243791
+        },
+        {
+          "nodesPerPerft": 414597,
+          "nps": 410737.1930668328,
+          "repetitions": 3,
+          "seconds": 3.0281918,
+          "totalLeafNodes": 1243791
+        },
+        {
+          "nodesPerPerft": 414597,
+          "nps": 411589.7353760812,
+          "repetitions": 3,
+          "seconds": 3.021919385,
+          "totalLeafNodes": 1243791
+        }
+      ]
+    },
+    "systemBusyCores": 1.0980261267770355,
+    "contaminated": false
+  },
+  {
+    "name": "seireigi",
+    "index": 19,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:08.827356+00:00",
+      "loadavg": "0.98 1.16 1.51 2/1639 3251971",
+      "top": [
+        "top - 21:16:09 up 72 days, 12:09,  4 users,  load average: 0.98, 1.16, 1.51",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.9 us,  1.9 sy,  0.0 ni, 96.1 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18263.8 free,   5299.1 used,   9513.5 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26138.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3251972 na2hiro   20   0   14884   5744   3656 R  23.1   0.0   0:00.05 top",
+        "   1056 root      20   0       0      0      0 S   7.7   0.0   2:16.29 arc_evict",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 955977.9709215557,
+      "nodesPerPerft": 25470,
+      "samples": [
+        {
+          "nodesPerPerft": 25470,
+          "nps": 957082.8718223112,
+          "repetitions": 113,
+          "seconds": 3.00716906,
+          "totalLeafNodes": 2878110
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 954100.6816243505,
+          "repetitions": 113,
+          "seconds": 3.016568435,
+          "totalLeafNodes": 2878110
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 955977.9709215557,
+          "repetitions": 113,
+          "seconds": 3.010644688,
+          "totalLeafNodes": 2878110
+        }
+      ]
+    },
+    "systemBusyCores": 1.042446678493975,
+    "contaminated": false
+  },
+  {
+    "name": "kyo-left",
+    "index": 20,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:18.168794+00:00",
+      "loadavg": "0.98 1.15 1.51 2/1644 3252047",
+      "top": [
+        "top - 21:16:18 up 72 days, 12:09,  4 users,  load average: 0.98, 1.15, 1.51",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18271.7 free,   5291.1 used,   9513.5 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26146.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252048 na2hiro   20   0   14884   5704   3616 R  25.0   0.0   0:00.03 top",
+        "2737772 na2hiro   20   0  511836  23780  10076 S   8.3   0.1   4:01.74 codex",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 908855.5154859585,
+      "nodesPerPerft": 21726,
+      "samples": [
+        {
+          "nodesPerPerft": 21726,
+          "nps": 908855.5154859585,
+          "repetitions": 126,
+          "seconds": 3.012003507,
+          "totalLeafNodes": 2737476
+        },
+        {
+          "nodesPerPerft": 21726,
+          "nps": 909132.4093679375,
+          "repetitions": 126,
+          "seconds": 3.011086143,
+          "totalLeafNodes": 2737476
+        },
+        {
+          "nodesPerPerft": 21726,
+          "nps": 888880.8691563274,
+          "repetitions": 123,
+          "seconds": 3.006362374,
+          "totalLeafNodes": 2672298
+        }
+      ]
+    },
+    "systemBusyCores": 1.0703411117736106,
+    "contaminated": false
+  },
+  {
+    "name": "kyo-right",
+    "index": 21,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:27.502478+00:00",
+      "loadavg": "0.99 1.15 1.50 1/1635 3252198",
+      "top": [
+        "top - 21:16:27 up 72 days, 12:09,  4 users,  load average: 0.99, 1.15, 1.50",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.9 us,  1.9 sy,  0.0 ni, 96.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18277.4 free,   5285.3 used,   9513.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26151.8 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252199 na2hiro   20   0   14884   5688   3604 R  23.1   0.0   0:00.05 top",
+        "1369156 homebot+  20   0   58204  14560   8488 S   7.7   0.0  71:32.68 x11vnc",
+        "3285088 na2hiro   20   0 2050496  79216  41124 S   7.7   0.2 132:53.24 codex",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 903664.7326181426,
+      "nodesPerPerft": 23954,
+      "samples": [
+        {
+          "nodesPerPerft": 23954,
+          "nps": 900189.4221892729,
+          "repetitions": 113,
+          "seconds": 3.006924913,
+          "totalLeafNodes": 2706802
+        },
+        {
+          "nodesPerPerft": 23954,
+          "nps": 903664.7326181426,
+          "repetitions": 114,
+          "seconds": 3.021868511,
+          "totalLeafNodes": 2730756
+        },
+        {
+          "nodesPerPerft": 23954,
+          "nps": 904911.6494223475,
+          "repetitions": 114,
+          "seconds": 3.017704548,
+          "totalLeafNodes": 2730756
+        }
+      ]
+    },
+    "systemBusyCores": 1.0435016385457792,
+    "contaminated": false
+  },
+  {
+    "name": "totsugeki",
+    "index": 22,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:36.856867+00:00",
+      "loadavg": "0.99 1.14 1.50 2/1637 3252250",
+      "top": [
+        "top - 21:16:37 up 72 days, 12:09,  4 users,  load average: 0.99, 1.14, 1.50",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  2.2 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18276.7 free,   5286.1 used,   9513.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26151.1 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252251 na2hiro   20   0   14884   5720   3636 R  18.2   0.0   0:00.03 top",
+        "    477 systemd+  20   0   17008   3320   2440 S   9.1   0.0  42:19.43 systemd-oomd",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 990686.9594602087,
+      "nodesPerPerft": 25170,
+      "samples": [
+        {
+          "nodesPerPerft": 25170,
+          "nps": 990686.9594602087,
+          "repetitions": 119,
+          "seconds": 3.023386925,
+          "totalLeafNodes": 2995230
+        },
+        {
+          "nodesPerPerft": 25170,
+          "nps": 996108.9309272763,
+          "repetitions": 119,
+          "seconds": 3.006930173,
+          "totalLeafNodes": 2995230
+        },
+        {
+          "nodesPerPerft": 25170,
+          "nps": 989172.0734555334,
+          "repetitions": 118,
+          "seconds": 3.002571625,
+          "totalLeafNodes": 2970060
+        }
+      ]
+    },
+    "systemBusyCores": 1.033393238985063,
+    "contaminated": false
+  },
+  {
+    "name": "ai-happokei",
+    "index": 23,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:46.193884+00:00",
+      "loadavg": "0.99 1.14 1.49 2/1635 3252319",
+      "top": [
+        "top - 21:16:46 up 72 days, 12:10,  4 users,  load average: 0.99, 1.14, 1.49",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.1 us,  2.1 sy,  0.0 ni, 95.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18274.2 free,   5288.5 used,   9513.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26148.7 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252320 na2hiro   20   0   14884   5748   3664 R  27.3   0.0   0:00.03 top",
+        "3228060 na2hiro   20   0 1272284  16708  10864 S   9.1   0.1   0:01.37 esbuild",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 5930977.184508502,
+      "nodesPerPerft": 30656,
+      "samples": [
+        {
+          "nodesPerPerft": 30656,
+          "nps": 5726710.109177865,
+          "repetitions": 561,
+          "seconds": 3.003123202,
+          "totalLeafNodes": 17198016
+        },
+        {
+          "nodesPerPerft": 30656,
+          "nps": 5941261.844182756,
+          "repetitions": 582,
+          "seconds": 3.003030748,
+          "totalLeafNodes": 17841792
+        },
+        {
+          "nodesPerPerft": 30656,
+          "nps": 5930977.184508502,
+          "repetitions": 581,
+          "seconds": 3.003069384,
+          "totalLeafNodes": 17811136
+        }
+      ]
+    },
+    "systemBusyCores": 1.0461403565409657,
+    "contaminated": false
+  },
+  {
+    "name": "happokei",
+    "index": 24,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:16:55.472065+00:00",
+      "loadavg": "0.99 1.13 1.49 2/1633 3252388",
+      "top": [
+        "top - 21:16:55 up 72 days, 12:10,  4 users,  load average: 0.99, 1.13, 1.49",
+        "Tasks: 420 total,   1 running, 419 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  2.2 sy,  0.0 ni, 96.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18272.4 free,   5289.9 used,   9514.1 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26147.3 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252389 na2hiro   20   0   14884   5712   3624 R  25.0   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.33 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 5743485.004126934,
+      "nodesPerPerft": 19560,
+      "samples": [
+        {
+          "nodesPerPerft": 19560,
+          "nps": 5709947.09229438,
+          "repetitions": 876,
+          "seconds": 3.000826404,
+          "totalLeafNodes": 17134560
+        },
+        {
+          "nodesPerPerft": 19560,
+          "nps": 5787348.88242507,
+          "repetitions": 888,
+          "seconds": 3.001249856,
+          "totalLeafNodes": 17369280
+        },
+        {
+          "nodesPerPerft": 19560,
+          "nps": 5743485.004126934,
+          "repetitions": 881,
+          "seconds": 3.000331678,
+          "totalLeafNodes": 17232360
+        }
+      ]
+    },
+    "systemBusyCores": 1.046078319773575,
+    "contaminated": false
+  },
+  {
+    "name": "patrol",
+    "index": 25,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:04.736871+00:00",
+      "loadavg": "0.99 1.13 1.48 2/1635 3252460",
+      "top": [
+        "top - 21:17:04 up 72 days, 12:10,  4 users,  load average: 0.99, 1.13, 1.48",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.9 us,  1.9 sy,  0.0 ni, 96.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18266.6 free,   5294.1 used,   9515.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26143.0 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252461 na2hiro   20   0   14884   5704   3620 R  23.1   0.0   0:00.05 top",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 1001238.8726146772,
+      "nodesPerPerft": 25470,
+      "samples": [
+        {
+          "nodesPerPerft": 25470,
+          "nps": 1002961.1760867431,
+          "repetitions": 119,
+          "seconds": 3.021981381,
+          "totalLeafNodes": 3030930
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 1001238.8726146772,
+          "repetitions": 118,
+          "seconds": 3.001741225,
+          "totalLeafNodes": 3005460
+        },
+        {
+          "nodesPerPerft": 25470,
+          "nps": 994987.0415787922,
+          "repetitions": 118,
+          "seconds": 3.020602153,
+          "totalLeafNodes": 3005460
+        }
+      ]
+    },
+    "systemBusyCores": 1.0361643848597968,
+    "contaminated": false
+  },
+  {
+    "name": "lortap",
+    "index": 26,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:14.089143+00:00",
+      "loadavg": "1.00 1.12 1.47 2/1628 3252524",
+      "top": [
+        "top - 21:17:14 up 72 days, 12:10,  4 users,  load average: 1.00, 1.12, 1.47",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.0 us,  1.0 sy,  0.0 ni, 97.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18269.9 free,   5290.8 used,   9515.6 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26146.3 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252525 na2hiro   20   0   14884   5720   3632 R  25.0   0.0   0:00.04 top",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 995531.4367172892,
+      "nodesPerPerft": 25411,
+      "samples": [
+        {
+          "nodesPerPerft": 25411,
+          "nps": 995531.4367172892,
+          "repetitions": 118,
+          "seconds": 3.011957121,
+          "totalLeafNodes": 2998498
+        },
+        {
+          "nodesPerPerft": 25411,
+          "nps": 1001458.9152032199,
+          "repetitions": 119,
+          "seconds": 3.0195038,
+          "totalLeafNodes": 3023909
+        },
+        {
+          "nodesPerPerft": 25411,
+          "nps": 993116.1093340717,
+          "repetitions": 118,
+          "seconds": 3.01928241,
+          "totalLeafNodes": 2998498
+        }
+      ]
+    },
+    "systemBusyCores": 1.04840400824984,
+    "contaminated": false
+  },
+  {
+    "name": "shishio",
+    "index": 27,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:23.438240+00:00",
+      "loadavg": "1.00 1.12 1.47 2/1640 3252622",
+      "top": [
+        "top - 21:17:23 up 72 days, 12:10,  4 users,  load average: 1.00, 1.12, 1.47",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  2.1 us,  2.1 sy,  0.0 ni, 95.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18266.7 free,   5293.8 used,   9515.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26143.3 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252623 na2hiro   20   0   14884   5704   3616 R  16.7   0.0   0:00.02 top",
+        "  42776 na2hiro   20   0  120584  14948   3424 S   8.3   0.0 140:26.41 tmux: server",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 966265.8797758266,
+      "nodesPerPerft": 98659,
+      "samples": [
+        {
+          "nodesPerPerft": 98659,
+          "nps": 940723.7225474374,
+          "repetitions": 29,
+          "seconds": 3.041393484,
+          "totalLeafNodes": 2861111
+        },
+        {
+          "nodesPerPerft": 98659,
+          "nps": 966265.8797758266,
+          "repetitions": 30,
+          "seconds": 3.063101018,
+          "totalLeafNodes": 2959770
+        },
+        {
+          "nodesPerPerft": 98659,
+          "nps": 967670.016173759,
+          "repetitions": 30,
+          "seconds": 3.058656309,
+          "totalLeafNodes": 2959770
+        }
+      ]
+    },
+    "systemBusyCores": 1.0165715253851693,
+    "contaminated": false
+  },
+  {
+    "name": "hono-shishi",
+    "index": 28,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:32.947217+00:00",
+      "loadavg": "1.00 1.12 1.46 2/1628 3252687",
+      "top": [
+        "top - 21:17:33 up 72 days, 12:10,  4 users,  load average: 1.00, 1.12, 1.46",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  1.1 sy,  0.0 ni, 97.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18268.0 free,   5292.5 used,   9515.8 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26144.6 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252688 na2hiro   20   0   14884   5704   3620 R  27.3   0.0   0:00.03 top",
+        "1369156 homebot+  20   0   58204  14560   8488 S   9.1   0.0  71:32.70 x11vnc",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 835714.1376733896,
+      "nodesPerPerft": 28673,
+      "samples": [
+        {
+          "nodesPerPerft": 28673,
+          "nps": 835714.1376733896,
+          "repetitions": 88,
+          "seconds": 3.019242928,
+          "totalLeafNodes": 2523224
+        },
+        {
+          "nodesPerPerft": 28673,
+          "nps": 834878.4835337349,
+          "repetitions": 88,
+          "seconds": 3.022264976,
+          "totalLeafNodes": 2523224
+        },
+        {
+          "nodesPerPerft": 28673,
+          "nps": 840914.358397344,
+          "repetitions": 88,
+          "seconds": 3.000571907,
+          "totalLeafNodes": 2523224
+        }
+      ]
+    },
+    "systemBusyCores": 1.066675386828598,
+    "contaminated": false
+  },
+  {
+    "name": "nigyoku",
+    "index": 29,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:42.302184+00:00",
+      "loadavg": "1.00 1.11 1.46 3/1627 3252753",
+      "top": [
+        "top - 21:17:42 up 72 days, 12:11,  4 users,  load average: 1.00, 1.11, 1.46",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.9 us,  1.9 sy,  0.0 ni, 96.2 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18272.0 free,   5292.4 used,   9511.9 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26144.7 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252754 na2hiro   20   0   14884   5692   3604 R  21.4   0.0   0:00.05 top",
+        "1226912 root      20   0 2712556  26376   8612 S   7.1   0.1  15:03.24 dockerd",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 888683.2774036836,
+      "nodesPerPerft": 25530,
+      "samples": [
+        {
+          "nodesPerPerft": 25530,
+          "nps": 888683.2774036836,
+          "repetitions": 105,
+          "seconds": 3.016428989,
+          "totalLeafNodes": 2680650
+        },
+        {
+          "nodesPerPerft": 25530,
+          "nps": 892861.6816200578,
+          "repetitions": 105,
+          "seconds": 3.002312738,
+          "totalLeafNodes": 2680650
+        },
+        {
+          "nodesPerPerft": 25530,
+          "nps": 869221.9515405174,
+          "repetitions": 103,
+          "seconds": 3.025222724,
+          "totalLeafNodes": 2629590
+        }
+      ]
+    },
+    "systemBusyCores": 1.039238144420371,
+    "contaminated": false
+  },
+  {
+    "name": "annan",
+    "index": 30,
+    "attempt": 1,
+    "before": {
+      "utc": "2026-11-26T12:17:51.655636+00:00",
+      "loadavg": "1.00 1.11 1.45 2/1635 3252826",
+      "top": [
+        "top - 21:17:51 up 72 days, 12:11,  4 users,  load average: 0.92, 1.09, 1.45",
+        "Tasks: 419 total,   1 running, 418 sleeping,   0 stopped,   0 zombie",
+        "%Cpu(s):  1.1 us,  2.2 sy,  0.0 ni, 96.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st ",
+        "MiB Mem :  31437.2 total,  18274.9 free,   5289.2 used,   9512.2 buff/cache     ",
+        "MiB Swap:   8192.0 total,    479.9 free,   7712.1 used.  26147.9 avail Mem ",
+        "",
+        "    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND",
+        "3252827 na2hiro   20   0   14884   5688   3604 R  18.2   0.0   0:00.03 top",
+        "      1 root      20   0   26820  10552   5440 S   0.0   0.0   5:46.88 systemd",
+        "      2 root      20   0       0      0      0 S   0.0   0.0   0:04.02 kthreadd",
+        "      3 root      20   0       0      0      0 S   0.0   0.0   0:00.00 pool_workqueue_release",
+        "      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-rcu_gp",
+        "      5 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-sync_wq",
+        "      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-kvfree_rcu_reclaim",
+        "      7 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-slub_flushwq",
+        "      8 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-netns",
+        "     10 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd",
+        "     13 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/R-mm_percpu_wq",
+        "     14 root      20   0       0      0      0 S   0.0   0.0   1:08.83 ksoftirqd/0",
+        "     15 root      20   0       0      0      0 I   0.0   0.0  15:18.34 rcu_preempt",
+        "     16 root      20   0       0      0      0 S   0.0   0.0   0:00.00 rcu_exp_par_gp_kthread_worker/0",
+        "     17 root      20   0       0      0      0 S   0.0   0.0   0:02.73 rcu_exp_gp_kthread_worker"
+      ]
+    },
+    "result": {
+      "depth": 3,
+      "medianNps": 9435226.087396355,
+      "nodesPerPerft": 21718,
+      "samples": [
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9338295.475346018,
+          "repetitions": 1290,
+          "seconds": 3.000142807,
+          "totalLeafNodes": 28016220
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9435226.087396355,
+          "repetitions": 1304,
+          "seconds": 3.001546729,
+          "totalLeafNodes": 28320272
+        },
+        {
+          "nodesPerPerft": 21718,
+          "nps": 9437889.275847113,
+          "repetitions": 1304,
+          "seconds": 3.000699751,
+          "totalLeafNodes": 28320272
+        }
+      ]
+    },
+    "systemBusyCores": 1.0329798535852897,
+    "contaminated": false
+  }
+]

@@ -1,0 +1,70 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ❯ app/bot/ordinaryRulesWasm.test.ts (28 tests | 1 failed | 23 skipped) 52942ms
+   ↓ narazu: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ nifu-ari: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ sho-kyo-left: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ sho-kyo-right: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ nakodo: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ queen-king: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ torazu-gin: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ ai-torazu-gin: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ zarikani: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ zarikani-tonbo: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ semai: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ semmai: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ hiroi: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ dobutsu: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ toruichi: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ hisha: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ kaku: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ seireigi: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ kyo-left: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ kyo-right: bundled WASM matches core's legal moves, every transition and searches legally
+   × totsugeki: bundled WASM matches core's legal moves, every transition and searches legally 5285ms
+     → expected [ …(29) ] to deeply equal [ …(30) ]
+   ✓ ai-happokei: bundled WASM matches core's legal moves, every transition and searches legally  9218ms
+   ✓ happokei: bundled WASM matches core's legal moves, every transition and searches legally  8532ms
+   ✓ patrol: bundled WASM matches core's legal moves, every transition and searches legally  15166ms
+   ✓ lortap: bundled WASM matches core's legal moves, every transition and searches legally  14736ms
+   ↓ shishio: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ hono-shishi: bundled WASM matches core's legal moves, every transition and searches legally
+   ↓ nigyoku: bundled WASM matches core's legal moves, every transition and searches legally
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  app/bot/ordinaryRulesWasm.test.ts > totsugeki: bundled WASM matches core's legal moves, every transition and searches legally
+AssertionError: expected [ …(29) ] to deeply equal [ …(30) ]
+
+- Expected
++ Received
+
+@@ -15,11 +15,10 @@
+    "[\"move\",[6,4],[[5,3]],true]",
+    "[\"move\",[6,4],[[7,3]],false]",
+    "[\"move\",[6,4],[[7,3]],true]",
+    "[\"move\",[6,4],[[8,2]],false]",
+    "[\"move\",[6,4],[[8,2]],true]",
+-   "[\"move\",[6,4],[[9,1]],false]",
+    "[\"move\",[6,4],[[9,1]],true]",
+    "[\"move\",[6,7],[[6,6]],false]",
+    "[\"move\",[6,8],[[5,8]],false]",
+    "[\"move\",[6,8],[[7,8]],false]",
+    "[\"move\",[7,6],[[7,5]],false]",
+
+ ❯ app/bot/ordinaryRulesWasm.test.ts:37:49
+     35|       );
+     36|       const legal = JSON.parse(mod.legal_moves_json(position));
+     37|       expect(legal.map(ordinaryMoveKey).sort()).toEqual(
+       |                                                 ^
+     38|         [...expected.keys()].sort()
+     39|       );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed | 23 skipped (28)
+   Start at  13:52:35
+   Duration  55.17s (transform 1.32s, setup 0ms, collect 1.72s, tests 52.94s, environment 0ms, prepare 103ms)

@@ -178,6 +178,15 @@ pub trait CaptureRoyalRule: Clone + PartialEq + Eq + core::fmt::Debug {
     fn ray_limit(_piece: PieceId, _dx: isize, _dy: isize) -> Option<usize> {
         None
     }
+    /// Physical-piece capture restrictions also determine whether a royal is attacked.
+    fn capture_allowed(_mover: PieceId, _victim: PieceId, _victim_color: u8) -> bool {
+        true
+    }
+    /// 1 requires friendly geometric support for capture; -1 forbids it.
+    const CAPTURE_SUPPORT: i8 = 0;
+    fn captured_reserve(piece: PieceId, _victim_color: u8) -> Option<PieceId> {
+        Self::capture_return(piece)
+    }
     const ALLOW_NO_ROYALS: bool = false;
     const CACHE_ROYALS: bool = false;
     /// Conversion rules conserve piece counts, but not each base species.
@@ -280,7 +289,7 @@ struct Cell {
     piece: PieceId,
     color: u8,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Position<R: CaptureRoyalRule> {
     cells: Vec<Option<Cell>>,
     side: u8,
@@ -289,6 +298,28 @@ pub struct Position<R: CaptureRoyalRule> {
     occupied: [<R::Geometry as BoardGeometry>::Bits; 2],
     royal_counts: [u16; 2],
     rule: PhantomData<R>,
+}
+/// `clone_from` reuses the board allocation, e.g. for search history.
+impl<R: CaptureRoyalRule> Clone for Position<R> {
+    fn clone(&self) -> Self {
+        Self {
+            cells: self.cells.clone(),
+            side: self.side,
+            state: self.state.clone(),
+            hands: self.hands.clone(),
+            occupied: self.occupied,
+            royal_counts: self.royal_counts,
+            rule: PhantomData,
+        }
+    }
+    fn clone_from(&mut self, source: &Self) {
+        self.cells.clone_from(&source.cells);
+        self.side = source.side;
+        self.state.clone_from(&source.state);
+        self.hands.clone_from(&source.hands);
+        self.occupied = source.occupied;
+        self.royal_counts = source.royal_counts;
+    }
 }
 #[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -319,7 +350,7 @@ impl<R: CaptureRoyalRule> Position<R> {
             x.checked_sub(1).ok_or("coordinate must be positive")? as usize,
             y.checked_sub(1).ok_or("coordinate must be positive")? as usize,
         )
-        .ok_or("coordinate outside board".into())
+        .ok_or_else(|| "coordinate outside board".into())
     }
     fn at(i: usize) -> [u16; 2] {
         let (x, y) = R::Geometry::coordinates(i).unwrap();
@@ -539,9 +570,20 @@ impl<R: CaptureRoyalRule> Position<R> {
         self.geometric_targets(from, cell, false)
     }
     fn geometric_targets(&self, from: usize, cell: Cell, include_friendly: bool) -> Vec<usize> {
+        let mut out = vec![];
+        self.geometric_targets_into(from, cell, include_friendly, &mut out);
+        out
+    }
+    /// Append the same destinations as `geometric_targets`, reusing `out`.
+    fn geometric_targets_into(
+        &self,
+        from: usize,
+        cell: Cell,
+        include_friendly: bool,
+        out: &mut Vec<usize>,
+    ) {
         let sign = if cell.color == 0 { 1 } else { -1 };
         let def = Self::def(cell);
-        let mut out = vec![];
         for &(x, y) in def.steps {
             if let Some(to) = R::Geometry::offset(from, x * sign, y * sign)
                 && (include_friendly || self.cells[to].is_none_or(|c| c.color != cell.color))
@@ -582,7 +624,15 @@ impl<R: CaptureRoyalRule> Position<R> {
                 ray = ray.without(to);
             }
         }
-        out
+    }
+    fn capture_allowed_at(&self, from: usize, to: usize) -> bool {
+        let Some(victim) = self.cells[to] else { return true; };
+        let mover = self.cells[from].unwrap();
+        if !R::capture_allowed(mover.piece, victim.piece, victim.color) { return false; }
+        if R::CAPTURE_SUPPORT == 0 { return true; }
+        let supported = self.cells.iter().enumerate().any(|(i, c)| i != from && c.is_some_and(|c|
+            c.color == mover.color && self.geometric_targets(i, c, true).contains(&from)));
+        supported == (R::CAPTURE_SUPPORT > 0)
     }
     /// Any royal attacked, as in Shogitter's checkOuteByDirection. This is used
     /// only for continuous-check repetition, never to restrict Sho legal moves.
@@ -591,7 +641,11 @@ impl<R: CaptureRoyalRule> Position<R> {
             c.is_some_and(|c| {
                 c.color != color
                     && self.targets(i, c).iter().any(|&j| {
-                        self.cells[j].is_some_and(|v| v.color == color && Self::def(v).royal)
+                        self.cells[j].is_some_and(|v| {
+                            v.color == color
+                                && Self::def(v).royal
+                                && self.capture_allowed_at(i, j)
+                        })
                     })
             })
         })
@@ -917,7 +971,35 @@ pub mod classical;
     feature = "kyoto",
     feature = "kinkei-mai",
     feature = "microshogi",
-    feature = "kyoto-minishogi"
+    feature = "kyoto-minishogi",
+    feature = "narazu",
+    feature = "nifu-ari",
+    feature = "sho-kyo-left",
+    feature = "sho-kyo-right",
+    feature = "nakodo",
+    feature = "queen-king",
+    feature = "torazu-gin",
+    feature = "ai-torazu-gin",
+    feature = "zarikani",
+    feature = "zarikani-tonbo",
+    feature = "semai",
+    feature = "semmai",
+    feature = "hiroi",
+    feature = "dobutsu",
+    feature = "toruichi",
+    feature = "hisha",
+    feature = "kaku",
+    feature = "seireigi",
+    feature = "kyo-left",
+    feature = "kyo-right",
+    feature = "totsugeki",
+    feature = "ai-happokei",
+    feature = "happokei",
+    feature = "patrol",
+    feature = "lortap",
+    feature = "shishio",
+    feature = "hono-shishi",
+    feature = "nigyoku"
 ))]
 pub use classical::compiled;
 

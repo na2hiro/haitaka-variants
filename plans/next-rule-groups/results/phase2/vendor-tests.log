@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/engines/haitakaModelSync.test.ts (9 tests) 486ms
+ ✓ app/bot/vendors/haitaka/index.test.ts (10 tests) 2395ms
+   ✓ haitaka vendor runtime > keeps the selected evaluator for subsequent searches  1582ms
+
+ Test Files  2 passed (2)
+      Tests  19 passed (19)
+   Start at  13:59:33
+   Duration  2.87s (transform 1.26s, setup 0ms, collect 158ms, tests 2.88s, environment 0ms, prepare 163ms)

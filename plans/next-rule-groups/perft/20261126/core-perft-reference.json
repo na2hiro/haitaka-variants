@@ -1,0 +1,226 @@
+[
+  {
+    "name": "narazu",
+    "ruleId": 111,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "nifu-ari",
+    "ruleId": 138,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "sho-kyo-left",
+    "ruleId": 46,
+    "perft": {
+      "1": 32,
+      "2": 1024
+    }
+  },
+  {
+    "name": "sho-kyo-right",
+    "ruleId": 47,
+    "perft": {
+      "1": 32,
+      "2": 1024
+    }
+  },
+  {
+    "name": "nakodo",
+    "ruleId": 65,
+    "perft": {
+      "1": 37,
+      "2": 1369
+    }
+  },
+  {
+    "name": "queen-king",
+    "ruleId": 147,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "torazu-gin",
+    "ruleId": 30,
+    "perft": {
+      "1": 20,
+      "2": 600
+    }
+  },
+  {
+    "name": "ai-torazu-gin",
+    "ruleId": 31,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "zarikani",
+    "ruleId": 153,
+    "perft": {
+      "1": 9,
+      "2": 81
+    }
+  },
+  {
+    "name": "zarikani-tonbo",
+    "ruleId": 165,
+    "perft": {
+      "1": 9,
+      "2": 81
+    }
+  },
+  {
+    "name": "semai",
+    "ruleId": 79,
+    "perft": {
+      "1": 28,
+      "2": 784
+    }
+  },
+  {
+    "name": "semmai",
+    "ruleId": 90,
+    "perft": {
+      "1": 23,
+      "2": 529
+    }
+  },
+  {
+    "name": "hiroi",
+    "ruleId": 91,
+    "perft": {
+      "1": 40,
+      "2": 1600
+    }
+  },
+  {
+    "name": "dobutsu",
+    "ruleId": 17,
+    "perft": {
+      "1": 4,
+      "2": 17
+    }
+  },
+  {
+    "name": "toruichi",
+    "ruleId": 28,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "hisha",
+    "ruleId": 92,
+    "perft": {
+      "1": 73,
+      "2": 5066
+    }
+  },
+  {
+    "name": "kaku",
+    "ruleId": 103,
+    "perft": {
+      "1": 77,
+      "2": 5651
+    }
+  },
+  {
+    "name": "seireigi",
+    "ruleId": 159,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "kyo-left",
+    "ruleId": 44,
+    "perft": {
+      "1": 28,
+      "2": 784
+    }
+  },
+  {
+    "name": "kyo-right",
+    "ruleId": 45,
+    "perft": {
+      "1": 29,
+      "2": 841
+    }
+  },
+  {
+    "name": "totsugeki",
+    "ruleId": 88,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "ai-happokei",
+    "ruleId": 21,
+    "perft": {
+      "1": 32,
+      "2": 1024
+    }
+  },
+  {
+    "name": "happokei",
+    "ruleId": 20,
+    "perft": {
+      "1": 26,
+      "2": 780
+    }
+  },
+  {
+    "name": "patrol",
+    "ruleId": 112,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "lortap",
+    "ruleId": 113,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  },
+  {
+    "name": "shishio",
+    "ruleId": 22,
+    "perft": {
+      "1": 48,
+      "2": 1440
+    }
+  },
+  {
+    "name": "hono-shishi",
+    "ruleId": 117,
+    "perft": {
+      "1": 28,
+      "2": 1036
+    }
+  },
+  {
+    "name": "nigyoku",
+    "ruleId": 163,
+    "perft": {
+      "1": 30,
+      "2": 900
+    }
+  }
+]

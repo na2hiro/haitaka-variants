@@ -1,0 +1,9 @@
+
+ RUN  v3.2.7 /home/na2hiro/proj/shogitter-3
+
+ ✓ app/engines/classicalJsonProtocol.test.ts (11 tests) 99ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  14:00:44
+   Duration  2.13s (transform 1.23s, setup 0ms, collect 1.64s, tests 99ms, environment 0ms, prepare 98ms)

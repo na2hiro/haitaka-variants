@@ -1,0 +1,12 @@
+   Compiling haitaka v0.3.2 (/home/na2hiro/proj/haitaka-next-rules-perft/haitaka)
+warning: unused import: `super::*`
+ --> /home/na2hiro/proj/haitaka-next-rules-perft/haitaka/src/extended/classical/ordinary_defs.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `haitaka` (lib) generated 1 warning (run `cargo fix --lib -p haitaka` to apply 1 suggestion)
+   Compiling haitaka-next-rules-perft v0.0.0 (/home/na2hiro/proj/haitaka-next-rules-perft/target/next-rules-perft-20261126)
+    Finished `release` profile [optimized] target(s) in 19.86s

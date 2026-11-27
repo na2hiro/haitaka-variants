@@ -1,0 +1,25 @@
+(node:468973) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 13 tests using 1 worker
+
+(node:468992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:468992) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:468992) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール24: bundled WASM prepares and replies with a legal move (9.2s)
+  ✓   2 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール57: bundled WASM prepares and replies with a legal move (8.1s)
+  ✓   3 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール93: bundled WASM prepares and replies with a legal move (9.8s)
+  ✓   4 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール143: bundled WASM prepares and replies with a legal move (7.2s)
+  ✓   5 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール146: bundled WASM prepares and replies with a legal move (8.0s)
+  ✓   6 tests/haitaka-ordinary.spec.ts:105:3 › 持ち駒ルール155: bundled WASM prepares and replies with a legal move (7.7s)
+  ✓   7 tests/haitaka-ordinary.spec.ts:105:3 › 飛車将棋: bundled WASM prepares and replies with a legal move (10.2s)
+  ✓   8 tests/haitaka-ordinary.spec.ts:105:3 › 角将棋: bundled WASM prepares and replies with a legal move (9.2s)
+  ✓   9 tests/haitaka-ordinary.spec.ts:105:3 › 精霊棋: bundled WASM prepares and replies with a legal move (9.7s)
+  ✓  10 tests/haitaka-ordinary.spec.ts:105:3 › 京将棋左京: bundled WASM prepares and replies with a legal move (12.4s)
+  ✓  11 tests/haitaka-ordinary.spec.ts:105:3 › 京将棋右京: bundled WASM prepares and replies with a legal move (10.1s)
+  ✓  12 tests/haitaka-ordinary.spec.ts:105:3 › 小京将棋左京: bundled WASM prepares and replies with a legal move (10.0s)
+  ✓  13 tests/haitaka-ordinary.spec.ts:105:3 › 小京将棋右京: bundled WASM prepares and replies with a legal move (11.2s)
+
+  13 passed (2.1m)
