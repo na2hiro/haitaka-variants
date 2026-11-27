@@ -1,0 +1,93 @@
+{
+ "args": {
+  "cmd": "train",
+  "train": "feat/g1.feat,feat/g2.feat,feat/g3.feat,feat/g4.feat",
+  "val": "feat/val.feat",
+  "out": "runs/kf4",
+  "l1": 256,
+  "epochs": 40,
+  "batch": 16384,
+  "lr": 0.0015,
+  "lr_floor": 0.0333,
+  "k": 1000.0,
+  "loss": "huber",
+  "wdl_lambda": 1.0,
+  "result_ignore": "",
+  "family": "king-free",
+  "rule": "neko",
+  "init": "nnue",
+  "init_checkpoint": null,
+  "optimizer": "ranger",
+  "ranger_dir": "/Users/na2hiro/smallnet",
+  "output_lr_mult": 0.1,
+  "warmup": 64,
+  "horizon": 20480,
+  "max_steps": 20480,
+  "eval_every": 4096,
+  "keep_every": 0,
+  "select_cap": 0,
+  "seed": 1,
+  "threads": 8,
+  "patience": 0,
+  "max_ply": null,
+  "max_abs_score": null
+ },
+ "bestStep": 12288,
+ "bestValLoss": 0.0007164918584029774,
+ "nnueBytes": 2014959,
+ "trainRows": 13318078,
+ "valRows": 59233,
+ "log": [
+  {
+   "epoch": 0,
+   "step": 0,
+   "valLoss": 0.0012881161788570756,
+   "valMae": 434.2355106106393
+  },
+  {
+   "epoch": 6,
+   "step": 4096,
+   "trainLoss": 0.000861366699226096,
+   "valLoss": 0.0007395020327640155,
+   "valMae": 340.44456637347423,
+   "lr": 0.00136487184447946,
+   "elapsedSec": 511.1363790035248
+  },
+  {
+   "epoch": 11,
+   "step": 8192,
+   "trainLoss": 0.0005445842513296384,
+   "valLoss": 0.0007251607533150832,
+   "valMae": 334.1022740701974,
+   "lr": 0.001003090568383697,
+   "elapsedSec": 1022.9575791358948
+  },
+  {
+   "epoch": 16,
+   "step": 12288,
+   "trainLoss": 0.0004920167735846803,
+   "valLoss": 0.0007164918584029774,
+   "valMae": 329.2075532220215,
+   "lr": 0.0005536479897230351,
+   "elapsedSec": 1534.8334929943085
+  },
+  {
+   "epoch": 21,
+   "step": 16384,
+   "trainLoss": 0.00046343313189822766,
+   "valLoss": 0.0007243120656300731,
+   "valMae": 330.746830314183,
+   "lr": 0.00018925797521283537,
+   "elapsedSec": 2046.5706760883331
+  },
+  {
+   "epoch": 26,
+   "step": 20480,
+   "trainLoss": 0.00044845507268576057,
+   "valLoss": 0.0007246766502285974,
+   "valMae": 330.1733830803775,
+   "lr": 4.995000000000001e-05,
+   "elapsedSec": 2558.239618062973
+  }
+ ]
+}

@@ -1,0 +1,75 @@
+{
+ "args": {
+  "cmd": "train",
+  "train": "feat/g1.feat,feat/g2.feat",
+  "val": "feat/val.feat",
+  "out": "runs/kf2",
+  "l1": 256,
+  "epochs": 40,
+  "batch": 16384,
+  "lr": 0.0015,
+  "lr_floor": 0.0333,
+  "k": 1000.0,
+  "loss": "huber",
+  "wdl_lambda": 1.0,
+  "result_ignore": "",
+  "family": "king-free",
+  "rule": "neko",
+  "init": "nnue",
+  "init_checkpoint": null,
+  "optimizer": "ranger",
+  "ranger_dir": "/Users/na2hiro/smallnet",
+  "output_lr_mult": 0.1,
+  "warmup": 64,
+  "horizon": 9216,
+  "max_steps": 9216,
+  "eval_every": 4096,
+  "keep_every": 0,
+  "select_cap": 0,
+  "seed": 1,
+  "threads": 8,
+  "patience": 0,
+  "max_ply": null,
+  "max_abs_score": null
+ },
+ "bestStep": 4096,
+ "bestValLoss": 0.0007110312455651454,
+ "nnueBytes": 2014958,
+ "trainRows": 5963587,
+ "valRows": 59233,
+ "log": [
+  {
+   "epoch": 0,
+   "step": 0,
+   "valLoss": 0.0012881161788570756,
+   "valMae": 434.2355106106393
+  },
+  {
+   "epoch": 12,
+   "step": 4096,
+   "trainLoss": 0.0007239770467180051,
+   "valLoss": 0.0007110312455651454,
+   "valMae": 326.82119764320566,
+   "lr": 0.0009095792426669227,
+   "elapsedSec": 507.0589179992676
+  },
+  {
+   "epoch": 23,
+   "step": 8192,
+   "trainLoss": 0.0004341712043824941,
+   "valLoss": 0.0007235940981398156,
+   "valMae": 327.3241436361488,
+   "lr": 9.428169421691675e-05,
+   "elapsedSec": 1013.5432229042053
+  },
+  {
+   "epoch": 26,
+   "step": 9216,
+   "trainLoss": 0.000403082166741342,
+   "valLoss": 0.0007237129092719849,
+   "valMae": 327.17392331977106,
+   "lr": 4.995000000000001e-05,
+   "elapsedSec": 1140.2179989814758
+  }
+ ]
+}

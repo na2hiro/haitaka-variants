@@ -19,6 +19,8 @@ engine of its own rule.
 | Haimen | `haimen-kf4` | KingFreeA+DonorSingleEff | 2,014,955 | `3a854e9dd5e3d425e46b07246df1e2afeffb6494d7245200dbac4f2788dc71d7` | +476 |
 | Taimen | `taimen-kf4` | KingFreeA+DonorSingleEff | 2,014,955 | `2f48a54cf6a224e5065f79d89c59d40cfa10488321604a856bae3bf4170359d8` | +454 |
 | Antouzai | `antouzai-kf4` | KingFreeA+DonorPairSlots | 2,896,237 | `b23ac1c5453833610eba54a27751957d040d5f0e70a69048c87a731129409966` | +283 |
+| Neko | `neko-kf4` | KingFreeA+DonorSingleEff | 2,014,953 | `7e459348583b930016e6e86a6e9dc3ee774c666cce1813891d0c070317f2099e` | +270 |
+| Yokoneko | `yokoneko-kf4` | KingFreeA+DonorSingleEff | 2,014,957 | `590eff3ee18cd26923213890b1e04b1a387231ceab66e7ad3c52be4123915642` | +332 |
 
 The weights are not committed to this repository. They are served by
 [Shogitter](https://shogitter.com) as `/engines/haitaka/<rule>/<model>-<sha256 prefix>/nnue.bin`,
