@@ -21,6 +21,7 @@ engine of its own rule.
 | Antouzai | v1.4 | `antouzai-v1.4` | kf4 | KingFreeA+DonorPairSlots | 2,896,237 | `b23ac1c5453833610eba54a27751957d040d5f0e70a69048c87a731129409966` | +283 |
 | Neko | v1.4 | `neko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,953 | `7e459348583b930016e6e86a6e9dc3ee774c666cce1813891d0c070317f2099e` | +270 |
 | Yokoneko | v1.4 | `yokoneko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,957 | `590eff3ee18cd26923213890b1e04b1a387231ceab66e7ad3c52be4123915642` | +332 |
+| Tenjiku | v1.4 | `tenjiku-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,956 | `e80faf92282bb79694d3a1480e04c0945aecc6c5476b8674e35e6eb73b35a59a` | +446 |
 
 ### Versions
 
