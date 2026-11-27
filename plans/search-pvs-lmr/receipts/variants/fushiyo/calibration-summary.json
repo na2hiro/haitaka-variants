@@ -1,0 +1,66 @@
+{
+  "pvs-vs-baseline-100ms-calibration": {
+    "games": 32,
+    "pairCount": 16,
+    "aWins": 2,
+    "bWins": 2,
+    "draws": 28,
+    "scoreRate": 0.5,
+    "pairedElo": 0.0,
+    "pairedElo95Ci": [
+      -31.082056886888207,
+      31.082056886888207
+    ],
+    "terminationReasons": {
+      "maximum-ply-capped": 26,
+      "no-legal-move": 4,
+      "repetition-draw": 2
+    },
+    "stages": {
+      "progressed": {
+        "wins": 1,
+        "losses": 0,
+        "draws": 15,
+        "capped": 15
+      },
+      "sparse": {
+        "wins": 1,
+        "losses": 2,
+        "draws": 13,
+        "capped": 11
+      }
+    }
+  },
+  "lmr-vs-pvs-100ms-calibration": {
+    "games": 32,
+    "pairCount": 16,
+    "aWins": 2,
+    "bWins": 2,
+    "draws": 28,
+    "scoreRate": 0.5,
+    "pairedElo": 0.0,
+    "pairedElo95Ci": [
+      0.0,
+      0.0
+    ],
+    "terminationReasons": {
+      "maximum-ply-capped": 24,
+      "no-legal-move": 4,
+      "repetition-draw": 4
+    },
+    "stages": {
+      "progressed": {
+        "wins": 0,
+        "losses": 0,
+        "draws": 16,
+        "capped": 16
+      },
+      "sparse": {
+        "wins": 2,
+        "losses": 2,
+        "draws": 12,
+        "capped": 8
+      }
+    }
+  }
+}

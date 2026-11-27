@@ -1,0 +1,4386 @@
+[
+  {
+    "position": 0,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 14.085375,
+        "nodeLimitReached": false,
+        "nps": 535874,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 10,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 7548,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.474208,
+        "nodeLimitReached": false,
+        "nps": 569538,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 10,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 105,
+          "pvsResearches": 0
+        },
+        "states": 6535,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.93025,
+        "nodeLimitReached": false,
+        "nps": 547767,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 10,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 105,
+          "pvsResearches": 0
+        },
+        "states": 6535,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 0,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 14.281,
+        "nodeLimitReached": false,
+        "nps": 659547,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 36,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 9419,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.726167,
+        "nodeLimitReached": false,
+        "nps": 775125,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 36,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 105,
+          "pvsResearches": 0
+        },
+        "states": 7539,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.132875,
+        "nodeLimitReached": false,
+        "nps": 825479,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 36,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 105,
+          "pvsResearches": 0
+        },
+        "states": 7539,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 0,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 81.826125,
+        "nodeLimitReached": false,
+        "nps": 364345,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 29813,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 57.124208,
+        "nodeLimitReached": false,
+        "nps": 461065,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 253,
+          "pvsResearches": 0
+        },
+        "states": 26338,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 53.842542,
+        "nodeLimitReached": false,
+        "nps": 453024,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 12,
+          "lmrResearches": 1,
+          "pvsProbes": 253,
+          "pvsResearches": 0
+        },
+        "states": 24392,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 0,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 72.84549999999999,
+        "nodeLimitReached": false,
+        "nps": 380654,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 27729,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 51.844209,
+        "nodeLimitReached": false,
+        "nps": 461941,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 219,
+          "pvsResearches": 2
+        },
+        "states": 23949,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 57.891667,
+        "nodeLimitReached": false,
+        "nps": 413686,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 27,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 219,
+          "pvsResearches": 2
+        },
+        "states": 23949,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 1,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 13.217542,
+        "nodeLimitReached": false,
+        "nps": 663890,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 101,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 8775,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 12.206417,
+        "nodeLimitReached": false,
+        "nps": 667108,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 101,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 122,
+          "pvsResearches": 1
+        },
+        "states": 8143,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.650125,
+        "nodeLimitReached": false,
+        "nps": 698962,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 101,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 122,
+          "pvsResearches": 1
+        },
+        "states": 8143,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 1,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 13.506291,
+        "nodeLimitReached": false,
+        "nps": 590983,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -8,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 7982,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.788417,
+        "nodeLimitReached": false,
+        "nps": 734848,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -8,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 122,
+          "pvsResearches": 0
+        },
+        "states": 7193,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 10.426417,
+        "nodeLimitReached": false,
+        "nps": 689882,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -8,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 122,
+          "pvsResearches": 0
+        },
+        "states": 7193,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 1,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 121.28975,
+        "nodeLimitReached": false,
+        "nps": 288045,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 117,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 34937,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 126.24725,
+        "nodeLimitReached": false,
+        "nps": 261486,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 117,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 354,
+          "pvsResearches": 2
+        },
+        "states": 33012,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 125.0065,
+        "nodeLimitReached": false,
+        "nps": 254346,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 117,
+        "searchStats": {
+          "lmrReductions": 16,
+          "lmrResearches": 2,
+          "pvsProbes": 354,
+          "pvsResearches": 2
+        },
+        "states": 31795,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 1,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 151.393417,
+        "nodeLimitReached": false,
+        "nps": 312497,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 47310,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 94.364459,
+        "nodeLimitReached": false,
+        "nps": 401803,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 304,
+          "pvsResearches": 1
+        },
+        "states": 37916,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 105.501417,
+        "nodeLimitReached": false,
+        "nps": 359388,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 304,
+          "pvsResearches": 1
+        },
+        "states": 37916,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 2,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 80.773542,
+        "nodeLimitReached": false,
+        "nps": 299578,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 24198,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 56.094667,
+        "nodeLimitReached": false,
+        "nps": 288030,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 193,
+          "pvsResearches": 0
+        },
+        "states": 16157,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 58.963125,
+        "nodeLimitReached": false,
+        "nps": 274018,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -20,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 193,
+          "pvsResearches": 0
+        },
+        "states": 16157,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 2,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 30.013625,
+        "nodeLimitReached": false,
+        "nps": 287269,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 83,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 8622,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 31.236832999999997,
+        "nodeLimitReached": false,
+        "nps": 263406,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 83,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 196,
+          "pvsResearches": 1
+        },
+        "states": 8228,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 31.292125,
+        "nodeLimitReached": false,
+        "nps": 262941,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 83,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 196,
+          "pvsResearches": 1
+        },
+        "states": 8228,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 2,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 559.982083,
+        "nodeLimitReached": false,
+        "nps": 207308,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 17,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 116089,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 452.923458,
+        "nodeLimitReached": false,
+        "nps": 217681,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 17,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 424,
+          "pvsResearches": 1
+        },
+        "states": 98593,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 415.202666,
+        "nodeLimitReached": false,
+        "nps": 237457,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 17,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 424,
+          "pvsResearches": 1
+        },
+        "states": 98593,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 2,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 1639.7134580000002,
+        "nodeLimitReached": false,
+        "nps": 248188,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 62,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 406958,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 1149.754417,
+        "nodeLimitReached": false,
+        "nps": 246740,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 62,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 449,
+          "pvsResearches": 3
+        },
+        "states": 283691,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 518.0947500000001,
+        "nodeLimitReached": false,
+        "nps": 257317,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 62,
+        "searchStats": {
+          "lmrReductions": 167,
+          "lmrResearches": 46,
+          "pvsProbes": 449,
+          "pvsResearches": 3
+        },
+        "states": 133315,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 3,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 26.301542,
+        "nodeLimitReached": false,
+        "nps": 433054,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 175,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 11390,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 25.182291,
+        "nodeLimitReached": false,
+        "nps": 440627,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 175,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 225,
+          "pvsResearches": 2
+        },
+        "states": 11096,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 23.923542,
+        "nodeLimitReached": false,
+        "nps": 463810,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 175,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 225,
+          "pvsResearches": 2
+        },
+        "states": 11096,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 3,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 20.421167,
+        "nodeLimitReached": false,
+        "nps": 472940,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 193,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 9658,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 18.265,
+        "nodeLimitReached": false,
+        "nps": 513660,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 193,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 225,
+          "pvsResearches": 0
+        },
+        "states": 9382,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 20.028208,
+        "nodeLimitReached": false,
+        "nps": 468439,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 193,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 225,
+          "pvsResearches": 0
+        },
+        "states": 9382,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 3,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 939.5845,
+        "nodeLimitReached": false,
+        "nps": 183863,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 225,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 172755,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 841.339167,
+        "nodeLimitReached": false,
+        "nps": 182150,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 225,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 512,
+          "pvsResearches": 4
+        },
+        "states": 153250,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 863.5012909999999,
+        "nodeLimitReached": false,
+        "nps": 179198,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 225,
+        "searchStats": {
+          "lmrReductions": 10,
+          "lmrResearches": 10,
+          "pvsProbes": 512,
+          "pvsResearches": 4
+        },
+        "states": 154738,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 3,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 813.378625,
+        "nodeLimitReached": false,
+        "nps": 199795,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 232,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 162509,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 757.1505,
+        "nodeLimitReached": false,
+        "nps": 192881,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 232,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 638,
+          "pvsResearches": 4
+        },
+        "states": 146040,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            4,
+            5
+          ],
+          "path": [
+            [
+              5,
+              6
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 749.9825420000001,
+        "nodeLimitReached": false,
+        "nps": 196501,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 232,
+        "searchStats": {
+          "lmrReductions": 9,
+          "lmrResearches": 9,
+          "pvsProbes": 638,
+          "pvsResearches": 4
+        },
+        "states": 147373,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 4,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.937958,
+        "nodeLimitReached": false,
+        "nps": 582265,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 797,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 4622,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.374458000000001,
+        "nodeLimitReached": false,
+        "nps": 644250,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 797,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 117,
+          "pvsResearches": 1
+        },
+        "states": 4751,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.072667,
+        "nodeLimitReached": false,
+        "nps": 671740,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 797,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 117,
+          "pvsResearches": 1
+        },
+        "states": 4751,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 4,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 6.481875,
+        "nodeLimitReached": false,
+        "nps": 740989,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1354,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 4803,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 5.827666,
+        "nodeLimitReached": false,
+        "nps": 804953,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1354,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 117,
+          "pvsResearches": 0
+        },
+        "states": 4691,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 5.855333,
+        "nodeLimitReached": false,
+        "nps": 801149,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1354,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 117,
+          "pvsResearches": 0
+        },
+        "states": 4691,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 4,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 101.409042,
+        "nodeLimitReached": false,
+        "nps": 342937,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 807,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 34777,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 65.489167,
+        "nodeLimitReached": false,
+        "nps": 398707,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 807,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 369,
+          "pvsResearches": 2
+        },
+        "states": 26111,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              7,
+              9
+            ],
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 61.514291,
+        "nodeLimitReached": false,
+        "nps": 379440,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 807,
+        "searchStats": {
+          "lmrReductions": 25,
+          "lmrResearches": 3,
+          "pvsProbes": 369,
+          "pvsResearches": 2
+        },
+        "states": 23341,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 4,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 51.719666,
+        "nodeLimitReached": false,
+        "nps": 377960,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1347,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 19548,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 45.106042,
+        "nodeLimitReached": false,
+        "nps": 382188,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1347,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 239,
+          "pvsResearches": 0
+        },
+        "states": 17239,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            11
+          ],
+          "path": [
+            [
+              7,
+              9
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 44.538792,
+        "nodeLimitReached": false,
+        "nps": 387055,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1347,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 239,
+          "pvsResearches": 0
+        },
+        "states": 17239,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 5,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 12.756458,
+        "nodeLimitReached": false,
+        "nps": 724730,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 19,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 9245,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.522125,
+        "nodeLimitReached": false,
+        "nps": 737335,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 19,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 102,
+          "pvsResearches": 0
+        },
+        "states": 7021,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.3825,
+        "nodeLimitReached": false,
+        "nps": 748308,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 19,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 102,
+          "pvsResearches": 0
+        },
+        "states": 7021,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 5,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 12.882333,
+        "nodeLimitReached": false,
+        "nps": 707092,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 9109,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 10.100625,
+        "nodeLimitReached": false,
+        "nps": 645306,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 102,
+          "pvsResearches": 0
+        },
+        "states": 6518,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 9.99775,
+        "nodeLimitReached": false,
+        "nps": 651946,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 102,
+          "pvsResearches": 0
+        },
+        "states": 6518,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 5,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 102.207625,
+        "nodeLimitReached": false,
+        "nps": 331863,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 33919,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 66.70187499999999,
+        "nodeLimitReached": false,
+        "nps": 444770,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 245,
+          "pvsResearches": 1
+        },
+        "states": 29667,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              6,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 61.669957999999994,
+        "nodeLimitReached": false,
+        "nps": 425847,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 38,
+          "lmrResearches": 1,
+          "pvsProbes": 245,
+          "pvsResearches": 1
+        },
+        "states": 26262,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 5,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 71.0905,
+        "nodeLimitReached": false,
+        "nps": 358936,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 25517,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 51.046709,
+        "nodeLimitReached": false,
+        "nps": 400750,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 213,
+          "pvsResearches": 0
+        },
+        "states": 20457,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 50.342042,
+        "nodeLimitReached": false,
+        "nps": 406360,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 38,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 213,
+          "pvsResearches": 0
+        },
+        "states": 20457,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 6,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 23.521375,
+        "nodeLimitReached": false,
+        "nps": 441045,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 65,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 10374,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 17.323375,
+        "nodeLimitReached": false,
+        "nps": 515892,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 65,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 125,
+          "pvsResearches": 1
+        },
+        "states": 8937,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 17.230999999999998,
+        "nodeLimitReached": false,
+        "nps": 518658,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 65,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 125,
+          "pvsResearches": 1
+        },
+        "states": 8937,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 6,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            11
+          ],
+          "path": [
+            [
+              4,
+              10
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 20.321083,
+        "nodeLimitReached": false,
+        "nps": 546722,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 141,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 11110,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            11
+          ],
+          "path": [
+            [
+              4,
+              10
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 18.557582999999997,
+        "nodeLimitReached": false,
+        "nps": 561926,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 141,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 162,
+          "pvsResearches": 3
+        },
+        "states": 10428,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            11
+          ],
+          "path": [
+            [
+              4,
+              10
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 18.551459,
+        "nodeLimitReached": false,
+        "nps": 562112,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 141,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 162,
+          "pvsResearches": 3
+        },
+        "states": 10428,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 6,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 195.125334,
+        "nodeLimitReached": false,
+        "nps": 209511,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 90,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 40881,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 150.81633399999998,
+        "nodeLimitReached": false,
+        "nps": 224504,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 90,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 289,
+          "pvsResearches": 2
+        },
+        "states": 33859,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              5,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 135.213542,
+        "nodeLimitReached": false,
+        "nps": 250411,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 90,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 289,
+          "pvsResearches": 2
+        },
+        "states": 33859,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 6,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 228.034417,
+        "nodeLimitReached": false,
+        "nps": 270362,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 132,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 61652,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 205.592917,
+        "nodeLimitReached": false,
+        "nps": 289873,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 132,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 633,
+          "pvsResearches": 14
+        },
+        "states": 59596,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 196.360167,
+        "nodeLimitReached": false,
+        "nps": 293318,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 132,
+        "searchStats": {
+          "lmrReductions": 110,
+          "lmrResearches": 2,
+          "pvsProbes": 586,
+          "pvsResearches": 8
+        },
+        "states": 57596,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 7,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.168959,
+        "nodeLimitReached": false,
+        "nps": 560302,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 26,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 6258,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 10.609666,
+        "nodeLimitReached": false,
+        "nps": 552609,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 26,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 126,
+          "pvsResearches": 4
+        },
+        "states": 5863,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 10.43175,
+        "nodeLimitReached": false,
+        "nps": 562034,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 26,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 126,
+          "pvsResearches": 4
+        },
+        "states": 5863,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 7,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 6.0312090000000005,
+        "nodeLimitReached": false,
+        "nps": 548646,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -64,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 3309,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 4.596666,
+        "nodeLimitReached": false,
+        "nps": 675272,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -64,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 91,
+          "pvsResearches": 0
+        },
+        "states": 3104,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 4.825875,
+        "nodeLimitReached": false,
+        "nps": 643199,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -64,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 91,
+          "pvsResearches": 0
+        },
+        "states": 3104,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 7,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 85.61795799999999,
+        "nodeLimitReached": false,
+        "nps": 241070,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 43,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 20640,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 56.224375,
+        "nodeLimitReached": false,
+        "nps": 322884,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 43,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 321,
+          "pvsResearches": 5
+        },
+        "states": 18154,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            6,
+            3
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 61.464833000000006,
+        "nodeLimitReached": false,
+        "nps": 295355,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 43,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 321,
+          "pvsResearches": 5
+        },
+        "states": 18154,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 7,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 160.464583,
+        "nodeLimitReached": false,
+        "nps": 290076,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -87,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 46547,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 82.177458,
+        "nodeLimitReached": false,
+        "nps": 393575,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -87,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 228,
+          "pvsResearches": 1
+        },
+        "states": 32343,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 84.87675,
+        "nodeLimitReached": false,
+        "nps": 377217,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": -87,
+        "searchStats": {
+          "lmrReductions": 82,
+          "lmrResearches": 6,
+          "pvsProbes": 361,
+          "pvsResearches": 5
+        },
+        "states": 32017,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 8,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 14.153667,
+        "nodeLimitReached": false,
+        "nps": 593273,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 52,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 8397,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.386875,
+        "nodeLimitReached": false,
+        "nps": 601394,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 52,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 1
+        },
+        "states": 6848,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 11.004083,
+        "nodeLimitReached": false,
+        "nps": 622314,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 52,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 1
+        },
+        "states": 6848,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 8,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.852415999999999,
+        "nodeLimitReached": false,
+        "nps": 715321,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 5617,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.433625,
+        "nodeLimitReached": false,
+        "nps": 711093,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 0
+        },
+        "states": 5286,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.0018329999999995,
+        "nodeLimitReached": false,
+        "nps": 754945,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 53,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 0
+        },
+        "states": 5286,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 8,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 92.705625,
+        "nodeLimitReached": false,
+        "nps": 291136,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 64,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 26990,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 59.761375,
+        "nodeLimitReached": false,
+        "nps": 372280,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 64,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 227,
+          "pvsResearches": 2
+        },
+        "states": 22248,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            7,
+            10
+          ],
+          "path": [
+            [
+              6,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 64.513792,
+        "nodeLimitReached": false,
+        "nps": 345151,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 64,
+        "searchStats": {
+          "lmrReductions": 2,
+          "lmrResearches": 2,
+          "pvsProbes": 227,
+          "pvsResearches": 2
+        },
+        "states": 22267,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 8,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 65.994333,
+        "nodeLimitReached": false,
+        "nps": 328997,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 35,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 21712,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 49.566125,
+        "nodeLimitReached": false,
+        "nps": 368316,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 35,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 193,
+          "pvsResearches": 0
+        },
+        "states": 18256,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            8,
+            9
+          ],
+          "path": [
+            [
+              8,
+              8
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 48.735042,
+        "nodeLimitReached": false,
+        "nps": 376895,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 35,
+        "searchStats": {
+          "lmrReductions": 5,
+          "lmrResearches": 1,
+          "pvsProbes": 193,
+          "pvsResearches": 0
+        },
+        "states": 18368,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 9,
+    "depth": 3,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 4.905375,
+        "nodeLimitReached": false,
+        "nps": 464388,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1400,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 2278,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 3.625416,
+        "nodeLimitReached": false,
+        "nps": 641857,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1400,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 1
+        },
+        "states": 2327,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 3.725625,
+        "nodeLimitReached": false,
+        "nps": 624593,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1400,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 92,
+          "pvsResearches": 1
+        },
+        "states": 2327,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 9,
+    "depth": 3,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 6.531209,
+        "nodeLimitReached": false,
+        "nps": 463007,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1982,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 3024,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.132958,
+        "nodeLimitReached": false,
+        "nps": 478623,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1982,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 138,
+          "pvsResearches": 3
+        },
+        "states": 3414,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            5,
+            4
+          ],
+          "path": [
+            [
+              5,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 3,
+        "elapsedMs": 7.152458,
+        "nodeLimitReached": false,
+        "nps": 477318,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1982,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 138,
+          "pvsResearches": 3
+        },
+        "states": 3414,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 9,
+    "depth": 4,
+    "model": "v3",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 41.145167,
+        "nodeLimitReached": false,
+        "nps": 379534,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1428,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 15616,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 38.38625,
+        "nodeLimitReached": false,
+        "nps": 360649,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1428,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 251,
+          "pvsResearches": 9
+        },
+        "states": 13844,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            12,
+            4
+          ],
+          "path": [
+            [
+              12,
+              5
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 35.835916000000005,
+        "nodeLimitReached": false,
+        "nps": 386316,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1428,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 251,
+          "pvsResearches": 9
+        },
+        "states": 13844,
+        "timedOut": false
+      }
+    }
+  },
+  {
+    "position": 9,
+    "depth": 4,
+    "model": "v2.6",
+    "builds": {
+      "baseline": {
+        "bestMove": {
+          "from": [
+            11,
+            3
+          ],
+          "path": [
+            [
+              11,
+              2
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 50.962208,
+        "nodeLimitReached": false,
+        "nps": 468739,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1972,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 0,
+          "pvsResearches": 0
+        },
+        "states": 23888,
+        "timedOut": false
+      },
+      "pvs": {
+        "bestMove": {
+          "from": [
+            11,
+            3
+          ],
+          "path": [
+            [
+              11,
+              2
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 40.398667,
+        "nodeLimitReached": false,
+        "nps": 572593,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1972,
+        "searchStats": {
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "pvsProbes": 290,
+          "pvsResearches": 7
+        },
+        "states": 23132,
+        "timedOut": false
+      },
+      "lmr": {
+        "bestMove": {
+          "from": [
+            11,
+            3
+          ],
+          "path": [
+            [
+              11,
+              2
+            ]
+          ],
+          "promotion": false,
+          "schemaVersion": 2
+        },
+        "completedDepth": 4,
+        "elapsedMs": 43.837374999999994,
+        "nodeLimitReached": false,
+        "nps": 555963,
+        "outcome": {
+          "kind": "ongoing",
+          "winner": null
+        },
+        "schemaVersion": 2,
+        "score": 1972,
+        "searchStats": {
+          "lmrReductions": 46,
+          "lmrResearches": 1,
+          "pvsProbes": 344,
+          "pvsResearches": 10
+        },
+        "states": 24372,
+        "timedOut": false
+      }
+    }
+  }
+]

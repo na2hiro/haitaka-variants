@@ -1,0 +1,36 @@
+{
+  "pvs-vs-baseline-1000ms": {
+    "games": 200,
+    "pairCount": 100,
+    "aWins": 101,
+    "bWins": 93,
+    "draws": 6,
+    "scoreRate": 0.52,
+    "pairedElo": 13.904842503684801,
+    "pairedElo95Ci": [
+      -31.22383986320968,
+      59.033524870579285
+    ],
+    "terminationReasons": {
+      "no-legal-move": 194,
+      "maximum-ply-capped": 6
+    }
+  },
+  "lmr-vs-pvs-1000ms": {
+    "games": 200,
+    "pairCount": 100,
+    "aWins": 114,
+    "bWins": 79,
+    "draws": 7,
+    "scoreRate": 0.5875,
+    "pairedElo": 61.433567223132,
+    "pairedElo95Ci": [
+      14.236611511359769,
+      108.63052293490423
+    ],
+    "terminationReasons": {
+      "no-legal-move": 193,
+      "maximum-ply-capped": 7
+    }
+  }
+}

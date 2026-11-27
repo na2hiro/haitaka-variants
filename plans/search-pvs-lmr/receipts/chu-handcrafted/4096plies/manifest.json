@@ -1,0 +1,52 @@
+{
+  "movetimeMs": 1000,
+  "depthLimit": 64,
+  "maxPlies": 4096,
+  "workers": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gamesPerComparison": 32,
+  "comparisons": [
+    [
+      "pvs",
+      "baseline"
+    ],
+    [
+      "lmr",
+      "pvs"
+    ]
+  ],
+  "fixtureSource": "/home/na2hiro/proj/haitaka-variants/target/handcrafted-eval-phase0/inputs/chushogi/fixtures.json",
+  "fixtureSha256": "84102096adf60375b1cff1cfebde915222c9748d4fec5862e18f547fe6bf53f4",
+  "openingSha256": "560b2dd134fca3df1c240a7868c7318aaec37799610377d46734b45346ad0454",
+  "engines": {
+    "baseline": {
+      "path": "/home/na2hiro/proj/haitaka-variants/target/chu-search-trials/baseline",
+      "sha256": "ad878d7d716c95e693290f9db4c64e27e519dd1ab2bb13125e2654c31e909433"
+    },
+    "pvs": {
+      "path": "/home/na2hiro/proj/haitaka-variants/target/chu-search-trials/pvs",
+      "sha256": "e47debb4afe8b8c59ccc01595f71ea074bfde0aaa534323221ec667701f855db"
+    },
+    "lmr": {
+      "path": "/home/na2hiro/proj/haitaka-variants/target/chu-search-trials/lmr",
+      "sha256": "72638f492795ce5685ba73bd402e932f3151e80968116831ee8960311ab45fe2"
+    }
+  },
+  "resumedFromMaxPlies": 200,
+  "previousGamesSha256": {
+    "pvs-vs-baseline/worker-0.jsonl": "d038fc30329e9f0195a102848e95ee603755ebccb2f187cde73a6892b57564d2",
+    "pvs-vs-baseline/worker-1.jsonl": "47904b4718bd6f57ab10a9d7a87e88ddbbffc60a3af6af2ebd80825b8793c23b",
+    "pvs-vs-baseline/worker-2.jsonl": "d01f363044a88589a82d11a82e0d5c249a2f080a6ae87b4167c8fcc7748d6898",
+    "pvs-vs-baseline/worker-3.jsonl": "1d04a903615465eb929f25ed12f83148b2c248fdf8038b911086c3295204343f",
+    "lmr-vs-pvs/worker-0.jsonl": "342336c0386cf9c03994ff8911b4aa0d633337345f6c12380da4aadfd7e95641",
+    "lmr-vs-pvs/worker-1.jsonl": "bf4cfd5d98a028061b72c8d668f79f765fe7c1237d2d97ec5a24d56822859681",
+    "lmr-vs-pvs/worker-2.jsonl": "2b403b9d3b57a83ab01c89b881b09002ab63f32b8527e15a0e41a51f1f2ec049",
+    "lmr-vs-pvs/worker-3.jsonl": "365050da33ce3c4dfb0fe7cfa2fc48c8fec256ac28aa6885de515679f34e79d5"
+  },
+  "capPolicy": "exclude-entire-pair",
+  "capCountsFrom": "paired-opening"
+}

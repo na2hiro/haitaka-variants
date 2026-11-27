@@ -1,0 +1,43 @@
+{
+  "pvs-vs-baseline": {
+    "games": 16,
+    "pairs": 8,
+    "wins": 0,
+    "losses": 0,
+    "draws": 16,
+    "score": 0.5,
+    "elo": 0.0,
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "termination": {
+      "maximum-ply-capped": 16
+    },
+    "meanDepth": {
+      "A": 1.5416666666666667,
+      "B": 1.4197916666666666
+    }
+  },
+  "lmr-vs-pvs": {
+    "games": 16,
+    "pairs": 8,
+    "wins": 5,
+    "losses": 1,
+    "draws": 10,
+    "score": 0.625,
+    "elo": 88.73949984654254,
+    "ci95": [
+      -8.326041220032366,
+      185.80504091311747
+    ],
+    "termination": {
+      "maximum-ply-capped": 10,
+      "rule-win": 6
+    },
+    "meanDepth": {
+      "A": 1.2440944881889764,
+      "B": 1.2105855855855856
+    }
+  }
+}
