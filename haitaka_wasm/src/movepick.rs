@@ -20,6 +20,10 @@ pub struct SearchOrderingStats {
     pub killer_move_cutoffs: u64,
     pub history_move_tries: u64,
     pub history_move_cutoffs: u64,
+    pub pvs_probes: u64,
+    pub pvs_researches: u64,
+    pub lmr_reductions: u64,
+    pub lmr_researches: u64,
 }
 
 impl SearchOrderingStats {
@@ -32,6 +36,10 @@ impl SearchOrderingStats {
         self.killer_move_cutoffs += iteration.killer_move_cutoffs;
         self.history_move_tries += iteration.history_move_tries;
         self.history_move_cutoffs += iteration.history_move_cutoffs;
+        self.pvs_probes += iteration.pvs_probes;
+        self.pvs_researches += iteration.pvs_researches;
+        self.lmr_reductions += iteration.lmr_reductions;
+        self.lmr_researches += iteration.lmr_researches;
     }
 }
 

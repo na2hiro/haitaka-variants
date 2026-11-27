@@ -1,4 +1,5 @@
 use haitaka::packed_coordinates::{CoordinateCode, MoveCoordinates};
+pub use haitaka::search::Bound;
 use haitaka::{BoardGeometry, Color, Move, Piece, SelectedGeometry, Square};
 type SelectedMoveCode = <SelectedGeometry as BoardGeometry>::MoveCode;
 type PackedMoveRaw = <SelectedMoveCode as CoordinateCode>::Raw;
@@ -31,26 +32,6 @@ impl SearchTtStats {
         self.tt_stores += iteration.tt_stores;
         self.tt_collisions += iteration.tt_collisions;
         self.tt_hashfull = iteration.tt_hashfull;
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Bound {
-    None = 0,
-    Upper = 1,
-    Lower = 2,
-    Exact = 3,
-}
-
-impl Bound {
-    const fn from_bits(bits: u8) -> Self {
-        match bits & 0x3 {
-            1 => Self::Upper,
-            2 => Self::Lower,
-            3 => Self::Exact,
-            _ => Self::None,
-        }
     }
 }
 

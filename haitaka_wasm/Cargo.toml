@@ -27,6 +27,9 @@ name = "nnue"
 harness = false
 
 [features]
+search-pvs = ["haitaka/search-pvs"]
+search-lmr = ["search-pvs", "haitaka/search-lmr"]
+search-variant-experiments = ["haitaka/search-variant-experiments"]
 # Test-only static/delta trace export; omit from production packages.
 sfnn-diagnostics = []
 # Verification oracle: disable SFNN's detected/compiled optimized kernels.

@@ -338,6 +338,7 @@ impl<'a, M: Model<N>, const N: usize> NnueGame<'a, M, N> {
 impl<M: Model<N>, const N: usize> SearchGame for NnueGame<'_, M, N> {
     type Move = PathMove;
     const SCHEMA: u8 = ChuGame::SCHEMA;
+    const REDUCE_QUIET_MOVES: bool = ChuGame::REDUCE_QUIET_MOVES;
 
     fn moves(&self, limit: usize, stop: &mut dyn FnMut() -> bool) -> Option<Vec<PathMove>> {
         SearchGame::moves(&self.game, limit, stop)
@@ -382,6 +383,14 @@ impl<M: Model<N>, const N: usize> SearchGame for NnueGame<'_, M, N> {
 
     fn promotion(mv: PathMove) -> bool {
         ChuGame::promotion(mv)
+    }
+
+    fn quiet_for_reduction(&self, mv: PathMove) -> bool {
+        self.game.quiet_for_reduction(mv)
+    }
+
+    fn royal_threatened(&self, side: u8) -> bool {
+        self.game.royal_threatened(side)
     }
 }
 
