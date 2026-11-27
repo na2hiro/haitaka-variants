@@ -633,6 +633,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn tactical_capture_precedes_killer_and_quiet() {
         let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b P 1").unwrap();
         let mut ordering = SearchOrdering::new();

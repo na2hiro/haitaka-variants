@@ -4665,6 +4665,7 @@ mod tests {
         (score, ctx.qsearch_stats)
     }
 
+    #[cfg(not(feature = "oute"))]
     fn qsearch_handcrafted_trace(board: &Board) -> (i32, SearchTrainingTrace) {
         let mut tt = TranspositionTable::default();
         let mut ordering = SearchOrdering::default();
@@ -4698,6 +4699,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn qsearch_limits_without_delta_pruning() -> QsearchLimits {
         QsearchLimits {
             delta_min_qply: u8::MAX,
@@ -4714,6 +4716,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn search_board_impl_handcrafted_with_qsearch_limits(
         board: &Board,
         depth: u8,
@@ -4793,6 +4796,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn usi_timed_mate_reports_dfpn_selection_evidence() {
         let mut session = UsiSession::default();
         assert!(
@@ -4817,6 +4821,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn usi_session_marks_terminal_resign_as_no_legal_move() {
         // Avoid an adjacent rook: in NekoNeko it would give the king rook moves.
         let mut session = UsiSession::default();
@@ -5177,12 +5182,14 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn returns_none_when_side_to_move_has_no_legal_move() {
         let sfen = "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26";
         assert_eq!(best_move_impl(sfen, 2).unwrap(), None);
     }
 
     #[test]
+    #[cfg(not(feature = "oute"))]
     fn prefers_capturing_a_hanging_rook_in_a_simple_tactical_position() {
         let sfen = "9/9/k8/9/4Rr3/9/9/9/4K4 b - 1";
         assert_eq!(best_move_impl(sfen, 1).unwrap().as_deref(), Some("5e4e"));
@@ -5241,6 +5248,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn fixed_node_search_scores_root_no_legal_move_as_completed_terminal() {
         let board = Board::from_sfen(
             "lns4+Rl/1r1g5/p1p1pSp1p/1p1p1p3/8k/7NG/PPPPPPP1P/1B7/LNSGKGSNL w B2p 26",
@@ -5415,6 +5423,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "oute"))]
     fn qsearch_training_trace_is_deterministic() {
         let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1").unwrap();
         let first = qsearch_handcrafted_trace(&board);
@@ -5432,6 +5441,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "oute"))]
     fn qsearch_training_trace_follows_promotions_and_check_evasions() {
         let promotion = Board::from_sfen("4k4/9/4S4/9/9/9/9/9/4K4 b - 1").unwrap();
         let (_, promotion_trace) = qsearch_handcrafted_trace(&promotion);
@@ -5455,6 +5465,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(any(feature = "fushiyo", feature = "oute")))]
     fn qsearch_soft_cap_training_trace_matches_selected_score() {
         let fixtures = [
             ("evasion", "9/9/9/9/9/9/9/8k/3rK4 b - 1", true),
@@ -5587,6 +5598,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "oute"))]
     fn qsearch_in_check_searches_evasions_without_stand_pat() {
         let board = Board::from_sfen("9/9/9/9/9/9/9/8k/3rK4 b - 1").unwrap();
         assert!(!board.checkers().is_empty());
@@ -5597,6 +5609,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn qsearch_check_budget_controls_quiet_check_search() {
         let board = Board::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b R 1").unwrap();
 
@@ -5632,6 +5645,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn qsearch_delta_pruning_is_reported_for_narrow_windows() {
         let board = Board::from_sfen("9/9/k8/9/4Rr3/9/9/9/4K4 b - 1").unwrap();
         let limits = qsearch_limits();
@@ -5689,6 +5703,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(any(feature = "fushiyo", feature = "oute")))]
     fn qsearch_tactical_fixture_suite_pins_best_moves_and_scores() {
         struct TacticalFixture {
             name: &'static str,
@@ -5846,6 +5861,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_fixed_depth_score(
         board: &Board,
         depth: u8,
@@ -5893,6 +5909,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_negamax(
         board: &Board,
         depth: u8,
@@ -5940,6 +5957,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_quiescence(
         board: &Board,
         mut alpha: i32,
@@ -6047,6 +6065,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_handcrafted_eval(board: &Board, ply: i32) -> i32 {
         if let Some(terminal) = terminal_score_for_side_to_move(board, ply) {
             return terminal;
@@ -6072,6 +6091,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_ordered_moves(board: &Board) -> Vec<Move> {
         let mut moves = Vec::new();
         board.generate_moves(|piece_moves| {
@@ -6091,6 +6111,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_move_order_key(
         board: &Board,
         mv: Move,
@@ -6113,6 +6134,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn reference_capture_value(board: &Board, mv: Move) -> i32 {
         match mv {
             Move::BoardMove { to, .. } => board
@@ -6134,6 +6156,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     const fn reference_from_or_piece_index(mv: Move) -> u8 {
         match mv {
             Move::BoardMove { from, .. } => from as u8,
@@ -6151,6 +6174,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn fixed_depth_ordering_matches_reference_scores_on_representative_openings() {
         let openings = [
             "lnsg1gsnl/1r2k2b1/1ppppp+Bpp/p8/9/2P6/PP1PPPPPP/7R1/LNSGKGSNL b P 5",
@@ -6191,6 +6215,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn board_native_handcrafted_search_handles_live_check_positions() {
         let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
         let checking_child = first_checking_child(&board);
@@ -6277,6 +6302,7 @@ mod tests {
         feature = "anki"
     )))]
     #[cfg(not(feature = "ningenshogi"))]
+    #[cfg(not(feature = "fushiyo"))]
     fn iterative_search_uses_dfpn_for_standard_mate() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 4, 0, true).unwrap();
@@ -6350,6 +6376,7 @@ mod tests {
         feature = "tenjiku",
         feature = "anki"
     )))]
+    #[cfg(not(feature = "fushiyo"))]
     fn iterative_search_can_disable_dfpn_short_circuiting() {
         let summary =
             search_iterative_deepening_impl_with_dfpn_mode(DFPN_MATE_SFEN, 1, 5_000, false)
@@ -6376,6 +6403,7 @@ mod tests {
         feature = "anki"
     )))]
     #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
+    #[cfg(not(feature = "fushiyo"))]
     fn iterative_search_uses_dfpn_tsume_fallback_for_invalid_strict_sfen() {
         let summary =
             search_iterative_deepening_impl("8k/6G2/7B1/9/9/9/9/9/9 b R 1", 4, 5_000).unwrap();
@@ -6396,6 +6424,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(feature = "fushiyo"))]
     fn dfpn_matches_core_mate_result() {
         let board = Board::from_sfen(DFPN_MATE_SFEN).unwrap();
         let expected = board.dfpn(&DfpnOptions::default());
@@ -6429,6 +6458,7 @@ mod tests {
         feature = "anki"
     )))]
     #[cfg(not(any(feature = "shihonkangen", feature = "ningenshogi")))]
+    #[cfg(not(feature = "fushiyo"))]
     fn dfpn_parses_tsume_sfens() {
         let result = dfpn_impl(
             "lpg6/3s2R2/1kpppp3/p8/9/P8/2N6/9/9 b BGN 1",
