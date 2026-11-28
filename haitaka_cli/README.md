@@ -7,6 +7,19 @@ engine-vs-engine comparisons, and creating Shogitter Engine Package v1 archives.
 
 ## Commands
 
+### Native USI
+
+Build and run an engine that accepts USI over stdin/stdout:
+
+```bash
+cargo run -p haitaka_cli --release --bin haitaka-usi
+cargo run -p haitaka_cli --release --bin haitaka-usi --features minishogi
+```
+
+The `haitaka_cli usi` subcommand uses the same engine. See the
+[native USI guide](../docs/native-usi.md) for Windows, Android, variant builds,
+and the `MaxDepth` option.
+
 ### Play Or Debug
 
 Ask the engine for one move and exit:

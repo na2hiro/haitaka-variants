@@ -15,8 +15,10 @@ use haitaka::{
     Board, Color, GameStatus, HISTORY_RULES_VERSION, HistoryAdjudication, Move, Piece,
     PositionHistory, RuleSpec, SFEN_STARTPOS, SelectedRule,
 };
-#[cfg(not(feature = "chushogi"))]
-use haitaka_wasm::UsiSession;
+use haitaka_cli::ENGINE_NAME;
+use haitaka_cli::usi::{
+    self, EngineEvalKind, UsiArgs, default_ruleset, rule_profile as active_rule_profile,
+};
 use haitaka_wasm::{
     NnueModel, SEARCH_NODE_BUDGET_MAX_DEPTH, SEARCH_NODE_COUNTING_VERSION, SearchEvalMode,
     SearchWorkspace,
@@ -27,7 +29,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 const ENGINE_ID: &str = "haitaka-variants";
-const ENGINE_NAME: &str = "Haitaka Variants";
 const MANIFEST_FILE: &str = "shogitter-engine.json";
 const ENGINE_DIR: &str = "engine";
 const WASM_BINDGEN_MODULE: &str = "engine/haitaka_wasm.js";
@@ -67,7 +68,7 @@ enum Command {
     Json(extended::JsonArgs),
     /// Play or debug one side against the built-in search.
     Play(PlayArgs),
-    /// Run the engine as a minimal USI subprocess.
+    /// Run the engine as a USI subprocess.
     Usi(UsiArgs),
     /// Run engine-vs-engine games and report a small-sample rating estimate.
     SelfPlay(SelfPlayArgs),
@@ -93,33 +94,11 @@ struct PlayArgs {
     max_plies: u16,
 }
 
-#[derive(Debug, Parser)]
-struct UsiArgs {
-    /// Diagnostic NNUE score multiplier (1 or 2).
-    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(i32).range(1..=2))]
-    nnue_multiplier: i32,
-    /// Evaluator used by the USI engine.
-    #[arg(long = "eval", value_enum, default_value = "handcrafted")]
-    eval: EngineEvalKind,
-    /// NNUE file used when --eval nnue is selected.
-    #[arg(long)]
-    nnue: Option<PathBuf>,
-    /// Maximum depth used for `go movetime`.
-    #[arg(long, default_value_t = 64)]
-    movetime_max_depth: u8,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum HumanSide {
     Black,
     White,
     None,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum EngineEvalKind {
-    Handcrafted,
-    Nnue,
 }
 
 #[derive(Debug, Parser)]
@@ -874,66 +853,22 @@ struct SelfPlayReportOutput {
 
 fn main() -> Result<()> {
     let command = Cli::parse().command;
-    #[cfg(feature = "chushogi")]
-    let command = match command {
-        Command::Usi(args) => return chu_usi::run(args),
-        other => other,
-    };
     #[cfg(feature = "extended-json")]
-    if !matches!(command, Command::Json(_) | Command::Package(_)) {
-        bail!("extended rules support only json and package; SFEN/USI commands are unavailable");
+    match &command {
+        Command::Json(_) | Command::Package(_) => {}
+        #[cfg(feature = "chushogi")]
+        Command::Usi(_) => {}
+        _ => bail!("this command is unavailable for the compiled ruleset"),
     }
     match command {
         #[cfg(feature = "extended-json")]
         Command::Json(args) => extended::run(args),
         Command::Play(args) => play(args),
-        #[cfg(not(feature = "chushogi"))]
-        Command::Usi(args) => usi(args),
-        #[cfg(feature = "chushogi")]
-        Command::Usi(_) => unreachable!("Chu USI is dispatched before the JSON feature gate"),
+        Command::Usi(args) => usi::run(args),
         Command::SelfPlay(args) => self_play(args),
         Command::Package(args) => package(args),
         Command::ArchiveEngine(args) => archive_engine(args),
     }
-}
-
-fn default_ruleset() -> &'static str {
-    #[cfg(feature = "extended-json")]
-    {
-        haitaka::extended::compiled::NAME
-    }
-    #[cfg(not(feature = "extended-json"))]
-    {
-        SelectedRule::NAME
-    }
-}
-
-fn active_rule_profile() -> String {
-    let mut profile = default_ruleset().to_string();
-    for (enabled, name) in [
-        (cfg!(feature = "oute"), "oute"),
-        (cfg!(feature = "sanmaime"), "sanmaime"),
-        (cfg!(feature = "inochinotokin"), "inochinotokin"),
-        (cfg!(feature = "shihonkangen"), "shihonkangen"),
-        (cfg!(feature = "ningenshogi"), "ningenshogi"),
-        (cfg!(feature = "tennouzan"), "tennouzan"),
-        (cfg!(feature = "tesushogi"), "tesushogi"),
-        (cfg!(feature = "tensuu"), "tensuu"),
-        (cfg!(feature = "suika"), "suika"),
-        (cfg!(feature = "igyoku"), "igyoku"),
-        (cfg!(feature = "hitomasuou"), "hitomasuou"),
-        (cfg!(feature = "nakamaware"), "nakamaware"),
-        (cfg!(feature = "fushiyo"), "fushiyo"),
-        (cfg!(feature = "share"), "share"),
-        (cfg!(feature = "zoshoku"), "zoshoku"),
-        (cfg!(feature = "babanuki"), "babanuki"),
-    ] {
-        if enabled {
-            profile.push('+');
-            profile.push_str(name);
-        }
-    }
-    profile
 }
 
 fn has_auxiliary_rules() -> bool {
@@ -3151,38 +3086,6 @@ fn read_human_move(board: &Board) -> Result<Move> {
         }
         println!("illegal move: {mv}");
     }
-}
-
-#[cfg(not(feature = "chushogi"))]
-fn usi(args: UsiArgs) -> Result<()> {
-    let mut session = UsiSession::new(ENGINE_NAME, args.movetime_max_depth);
-    if args.eval == EngineEvalKind::Nnue {
-        let path = args
-            .nnue
-            .as_ref()
-            .ok_or_else(|| anyhow!("USI engine uses NNUE but no NNUE path was provided"))?;
-        let bytes =
-            fs::read(path).with_context(|| format!("failed to read NNUE {}", path.display()))?;
-        session
-            .load_nnue_with_multiplier(&bytes, args.nnue_multiplier)
-            .map_err(|err| anyhow!("failed to load NNUE {}: {err}", path.display()))?;
-    }
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
-
-    for line in stdin.lock().lines() {
-        let line = line.context("failed to read USI command")?;
-        let command = line.trim();
-        if command == "quit" {
-            break;
-        }
-        for output in session.handle_line(command) {
-            writeln!(stdout, "{output}")?;
-        }
-        stdout.flush()?;
-    }
-
-    Ok(())
 }
 
 /// Number of lines in the live status block, used to move the cursor back up.
@@ -6138,6 +6041,3 @@ mod hand_rule_tests {
         );
     }
 }
-
-#[cfg(feature = "chushogi")]
-mod chu_usi;

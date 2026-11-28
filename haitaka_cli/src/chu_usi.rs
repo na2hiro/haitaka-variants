@@ -1,5 +1,6 @@
 //! Lishogi's Chu notation at the native CLI boundary.
-use super::{ENGINE_NAME, EngineEvalKind, UsiArgs};
+use crate::ENGINE_NAME;
+use crate::usi::{EngineEvalKind, UsiArgs};
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use haitaka::extended::chu::{ChuGame, ChuPosition, ChuState, Path, PathMove};
 use haitaka::extended::{PlacedPiece, WirePosition, chu};

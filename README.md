@@ -40,6 +40,8 @@ Supporting docs:
   help.
 - [ROADMAP.md](ROADMAP.md): post-launch direction.
 - [docs/benchmarks.md](docs/benchmarks.md): benchmark commands and reporting.
+- [docs/native-usi.md](docs/native-usi.md): native USI engines for Windows,
+  Android, and Linux, including variant builds and depth settings.
 - [docs/models.md](docs/models.md): model registry expectations.
 - [docs/shogitter-package.md](docs/shogitter-package.md): package layout for
   Shogitter.

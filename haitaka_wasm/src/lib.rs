@@ -1,4 +1,7 @@
 mod movepick;
+#[cfg(not(target_arch = "wasm32"))]
+#[doc(hidden)]
+pub mod native_usi;
 mod nnue;
 #[doc(hidden)]
 pub mod nnue_kernels;
@@ -14,7 +17,7 @@ mod tt;
 
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 
 use haitaka::search::{
@@ -22,8 +25,8 @@ use haitaka::search::{
     search_ordered_moves, select_root_move,
 };
 use haitaka::{
-    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus, HistoryAdjudication, Move,
-    Piece, PositionHistory, RuleSpec, SelectedRule,
+    Board, Color, DfpnOptions, DfpnResult as CoreDfpnResult, DfpnStatus, GameStatus,
+    HistoryAdjudication, Move, Piece, PositionHistory, RuleSpec, SelectedRule,
 };
 use instant::Instant;
 use movepick::{
@@ -194,6 +197,7 @@ pub const SEARCH_ROOT_RESULT_SCHEMA: &str = "haitaka-search-root-result-v1";
 pub enum SearchInterruptionReason {
     None,
     Deadline,
+    Cancelled,
     NodeBudget,
     ForcedBeforeRootChild,
     ForcedAfterRootChild,
@@ -207,6 +211,7 @@ impl SearchInterruptionReason {
         match self {
             Self::None => "none",
             Self::Deadline => "deadline",
+            Self::Cancelled => "cancelled",
             Self::NodeBudget => "node-budget",
             Self::ForcedBeforeRootChild => "forced-before-root-child",
             Self::ForcedAfterRootChild => "forced-after-root-child",
@@ -355,6 +360,48 @@ impl SearchInterrupted {
     }
 }
 
+type IterationObserver<'a> = &'a dyn Fn(u8, &SearchSummary);
+
+#[derive(Clone, Copy, Default)]
+struct SearchControl<'a> {
+    deadline: Option<Instant>,
+    stop: Option<&'a AtomicBool>,
+    on_iteration: Option<IterationObserver<'a>>,
+}
+
+impl SearchControl<'_> {
+    fn with_deadline(deadline: Option<Instant>) -> Self {
+        Self {
+            deadline,
+            ..Self::default()
+        }
+    }
+
+    fn has_limit(self) -> bool {
+        self.deadline.is_some() || self.stop.is_some()
+    }
+
+    fn check(self) -> Result<(), SearchInterrupted> {
+        if self
+            .stop
+            .is_some_and(|flag| flag.load(AtomicOrdering::Relaxed))
+        {
+            return Err(SearchInterrupted::Stopped(
+                SearchInterruptionReason::Cancelled,
+            ));
+        }
+        if self
+            .deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+        {
+            return Err(SearchInterrupted::Stopped(
+                SearchInterruptionReason::Deadline,
+            ));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ForcedInterruption {
     BeforeFirstRootChild,
@@ -419,7 +466,7 @@ impl EvaluationState {
 struct SearchContext<'a> {
     states: u64,
     evaluation: EvaluationStrategy,
-    deadline: Option<Instant>,
+    control: SearchControl<'a>,
     tt: &'a mut TranspositionTable,
     tt_stats: SearchTtStats,
     ordering: &'a mut SearchOrdering,
@@ -619,20 +666,8 @@ impl SearchContext<'_> {
                 SearchInterruptionReason::ForcedDuringRootChild,
             ));
         }
-        if self.deadline.is_some() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
-            self.check_deadline()?;
-        }
-        Ok(())
-    }
-
-    fn check_deadline(&self) -> Result<(), SearchInterrupted> {
-        if self
-            .deadline
-            .is_some_and(|deadline| Instant::now() >= deadline)
-        {
-            return Err(SearchInterrupted::Stopped(
-                SearchInterruptionReason::Deadline,
-            ));
+        if self.control.has_limit() && self.states % DEADLINE_CHECK_INTERVAL == 0 {
+            self.control.check()?;
         }
         Ok(())
     }
@@ -652,8 +687,8 @@ impl SearchContext<'_> {
                 SearchInterruptionReason::ForcedInsideQsearch,
             ));
         }
-        if self.deadline.is_some() && self.qsearch_stats.qnodes % DEADLINE_CHECK_INTERVAL == 0 {
-            self.check_deadline()?;
+        if self.control.has_limit() && self.qsearch_stats.qnodes % DEADLINE_CHECK_INTERVAL == 0 {
+            self.control.check()?;
         }
         if self.qsearch_stats.qnodes > self.qsearch_limits.node_limit {
             self.qsearch_stats.qsearch_cap_hits += 1;
@@ -1414,16 +1449,16 @@ fn search_board_with_strategy_and_tt_and_history(
     history: &PositionHistory,
     depth: u8,
     evaluation: EvaluationStrategy,
-    deadline: Option<Instant>,
+    control: SearchControl<'_>,
     tt: &mut TranspositionTable,
-) -> Result<SearchSummary, SearchInterrupted> {
+) -> SearchExecutionSummary {
     let mut ordering = SearchOrdering::default();
-    let execution = search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
+    search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history(
         board,
         history,
         depth,
         evaluation,
-        deadline,
+        control,
         tt,
         &mut ordering,
         qsearch_limits(),
@@ -1431,12 +1466,7 @@ fn search_board_with_strategy_and_tt_and_history(
         false,
         None,
         0,
-    );
-    if execution.iteration_completed {
-        Ok(execution.summary)
-    } else {
-        Err(SearchInterrupted::Stopped(execution.interruption_reason))
-    }
+    )
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1486,7 +1516,7 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
     ordering: &mut SearchOrdering,
     qsearch_limits: QsearchLimits,
 ) -> Result<SearchSummary, SearchInterrupted> {
-    let execution = search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
+    search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
         board,
         depth,
         evaluation,
@@ -1498,12 +1528,8 @@ fn search_board_with_strategy_tt_ordering_and_qsearch_limits(
         false,
         None,
         0,
-    );
-    if execution.iteration_completed {
-        Ok(execution.summary)
-    } else {
-        Err(SearchInterrupted::Stopped(execution.interruption_reason))
-    }
+    )
+    .into_completed()
 }
 
 struct SearchExecutionSummary {
@@ -1514,6 +1540,16 @@ struct SearchExecutionSummary {
     partial_play_move: Option<String>,
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     training_trace: Option<SearchTrainingTrace>,
+}
+
+impl SearchExecutionSummary {
+    fn into_completed(self) -> Result<SearchSummary, SearchInterrupted> {
+        if self.iteration_completed {
+            Ok(self.summary)
+        } else {
+            Err(SearchInterrupted::Stopped(self.interruption_reason))
+        }
+    }
 }
 
 fn legal_root_seed(board: &Board) -> Option<String> {
@@ -1568,7 +1604,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_and_node_budget(
         &history,
         depth,
         evaluation,
-        deadline,
+        SearchControl::with_deadline(deadline),
         tt,
         ordering,
         qsearch_limits,
@@ -1585,7 +1621,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
     history: &PositionHistory,
     depth: u8,
     evaluation: EvaluationStrategy,
-    deadline: Option<Instant>,
+    control: SearchControl<'_>,
     tt: &mut TranspositionTable,
     ordering: &mut SearchOrdering,
     qsearch_limits: QsearchLimits,
@@ -1618,7 +1654,7 @@ fn search_board_with_strategy_tt_ordering_qsearch_limits_node_budget_and_history
     let mut ctx = SearchContext {
         states: 0,
         evaluation,
-        deadline,
+        control,
         tt,
         tt_stats: SearchTtStats::default(),
         ordering,
@@ -1714,6 +1750,7 @@ fn search_board_with_node_budget_in_tt(
         max_nodes,
         max_depth,
         evaluation,
+        SearchControl::default(),
         tt,
         ordering,
         collect_training_trace,
@@ -1727,6 +1764,7 @@ fn search_board_with_node_budget_in_tt_and_history(
     max_nodes: u64,
     max_depth: u8,
     evaluation: EvaluationStrategy,
+    control: SearchControl<'_>,
     tt: &mut TranspositionTable,
     ordering: &mut SearchOrdering,
     collect_training_trace: bool,
@@ -1793,6 +1831,10 @@ fn search_board_with_node_budget_in_tt_and_history(
     }
 
     for depth in 1..=max_depth {
+        if let Err(err) = control.check() {
+            interruption_reason = err.reason();
+            break;
+        }
         if budget.counts().2 == max_nodes {
             interruption_reason = SearchInterruptionReason::NodeBudget;
             break;
@@ -1803,7 +1845,7 @@ fn search_board_with_node_budget_in_tt_and_history(
                 history,
                 depth,
                 evaluation.clone(),
-                None,
+                control,
                 tt,
                 ordering,
                 node_budget_qsearch_limits(max_nodes, depth),
@@ -1827,6 +1869,9 @@ fn search_board_with_node_budget_in_tt_and_history(
         }
     }
 
+    if interruption_reason == SearchInterruptionReason::Cancelled && best_move.is_some() {
+        partial_play_move = None;
+    }
     let (alpha_beta_nodes, qsearch_nodes, total_nodes, cap_hits) = budget.counts();
     debug_assert_eq!(qsearch_nodes, qsearch_stats.qnodes);
     let (play_move, play_move_was_searched) =
@@ -2057,7 +2102,7 @@ impl UsiSession {
             }
             command if command.starts_with("go") => {
                 match parse_usi_go(command, self.movetime_max_depth) {
-                    Ok(budget) => self.search_outputs_for_budget(budget),
+                    Ok(budget) => self.search_outputs_for_budget(budget, SearchControl::default()),
                     Err(err) => vec![format!("info string invalid go command: {err}")],
                 }
             }
@@ -2175,32 +2220,36 @@ impl UsiSession {
         Vec::new()
     }
 
-    fn search_outputs_for_budget(&mut self, budget: UsiSearchBudget) -> Vec<String> {
+    fn search_outputs_for_budget(
+        &mut self,
+        budget: UsiSearchBudget,
+        mut control: SearchControl<'_>,
+    ) -> Vec<String> {
         let terminal = self.terminal_notifications();
         if !terminal.is_empty() {
             return terminal;
         }
 
         match budget {
-            UsiSearchBudget::Depth(depth) => search_board_with_strategy_and_tt_and_history(
-                &self.board,
-                &self.history,
-                depth,
-                self.evaluation_strategy(),
-                None,
-                &mut self.tt,
-            )
-            .map_err(|_| "search timed out unexpectedly".to_string())
-            .map(|summary| {
+            UsiSearchBudget::Depth(depth) => {
+                let summary = search_board_with_strategy_and_tt_and_history(
+                    &self.board,
+                    &self.history,
+                    depth,
+                    self.evaluation_strategy(),
+                    control,
+                    &mut self.tt,
+                )
+                .summary;
                 let best_move = summary
                     .best_move
                     .clone()
                     .unwrap_or_else(|| "resign".to_string());
-                vec![
+                Ok(vec![
                     format!(
                         "{}{} {}",
                         usi_info_line(
-                            depth,
+                            summary.root_result.completed_iteration_depth,
                             summary.elapsed_ms,
                             summary.states,
                             summary.nps,
@@ -2211,20 +2260,20 @@ impl UsiSession {
                         usi_root_result_fields(&summary.root_result),
                     ),
                     format!("bestmove {best_move}"),
-                ]
-            }),
+                ])
+            }
             UsiSearchBudget::Movetime { max_depth, millis } => {
+                if millis > 0 {
+                    control.deadline =
+                        Some(Instant::now() + std::time::Duration::from_millis(u64::from(millis)));
+                }
                 search_board_iterative_deepening_with_history(
                     &self.board,
                     &self.history,
                     max_depth,
                     millis,
                     self.evaluation_strategy(),
-                    if millis == 0 {
-                        None
-                    } else {
-                        Some(Instant::now() + std::time::Duration::from_millis(u64::from(millis)))
-                    },
+                    control,
                     &mut self.tt,
                 )
                 .map(|summary| {
@@ -2251,7 +2300,7 @@ impl UsiSession {
                     ]
                 })
             }
-            UsiSearchBudget::Nodes(nodes) => Ok(self.search_outputs_for_nodes(nodes)),
+            UsiSearchBudget::Nodes(nodes) => Ok(self.search_outputs_for_nodes(nodes, control)),
         }
         .unwrap_or_else(|err| {
             vec![
@@ -2261,7 +2310,7 @@ impl UsiSession {
         })
     }
 
-    fn search_outputs_for_nodes(&mut self, nodes: u64) -> Vec<String> {
+    fn search_outputs_for_nodes(&mut self, nodes: u64, control: SearchControl<'_>) -> Vec<String> {
         let evaluation = self.evaluation_strategy();
         let mut ordering = SearchOrdering::default();
         let result = search_board_with_node_budget_in_tt_and_history(
@@ -2270,6 +2319,7 @@ impl UsiSession {
             nodes,
             SEARCH_NODE_BUDGET_MAX_DEPTH,
             evaluation,
+            control,
             &mut self.tt,
             &mut ordering,
             false,
@@ -2686,7 +2736,7 @@ fn search_board_iterative_deepening_with_strategy_and_deadline_and_tt(
         &history,
         max_depth,
         evaluation,
-        deadline,
+        SearchControl::with_deadline(deadline),
         tt,
         started_at,
         dfpn,
@@ -2702,17 +2752,18 @@ fn search_board_iterative_deepening_with_history(
     max_depth: u8,
     timeout_ms: u32,
     evaluation: EvaluationStrategy,
-    deadline: Option<Instant>,
+    control: SearchControl<'_>,
     tt: &mut TranspositionTable,
 ) -> Result<IterativeSearchSummary, String> {
     let started_at = Instant::now();
     let mut dfpn = None;
-    if history.adjudication() == HistoryAdjudication::Ongoing
+    if control.check().is_ok()
+        && history.adjudication() == HistoryAdjudication::Ongoing
         && dfpn_budget_allows(timeout_ms)
         && has_checking_move(board)
     {
         let core = board
-            .dfpn_with_history(&root_dfpn_options(timeout_ms), history)
+            .dfpn_with_history_and_stop(&root_dfpn_options(timeout_ms), history, control.stop)
             .map_err(str::to_string)?;
         let summary = to_dfpn_summary(core, dfpn_reserved_alpha_beta_ms(timeout_ms));
         if summary.selected {
@@ -2749,7 +2800,7 @@ fn search_board_iterative_deepening_with_history(
         history,
         max_depth.max(1),
         evaluation,
-        deadline,
+        control,
         tt,
         started_at,
         dfpn,
@@ -2765,7 +2816,7 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
     history: &PositionHistory,
     max_depth: u8,
     evaluation: EvaluationStrategy,
-    deadline: Option<Instant>,
+    control: SearchControl<'_>,
     tt: &mut TranspositionTable,
     started_at: Instant,
     dfpn: Option<DfpnSummary>,
@@ -2788,9 +2839,10 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
     let mut partial_play_move = None;
 
     for depth in 1..=max_depth {
-        if deadline.is_some_and(|limit| Instant::now() >= limit) {
-            timed_out = true;
-            interruption_reason = SearchInterruptionReason::Deadline;
+        if let Err(err) = control.check() {
+            let reason = err.reason();
+            timed_out = reason == SearchInterruptionReason::Deadline;
+            interruption_reason = reason;
             break;
         }
 
@@ -2800,7 +2852,7 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
                 history,
                 depth,
                 evaluation.clone(),
-                deadline,
+                control,
                 tt,
                 &mut ordering,
                 deadline_qsearch_limits(depth),
@@ -2815,6 +2867,9 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
         ordering_stats.add_iteration(summary.ordering_stats);
         qsearch_stats.add_iteration(summary.qsearch_stats);
         if execution.iteration_completed {
+            if let Some(observe) = control.on_iteration {
+                observe(depth, &summary);
+            }
             completed_depth = depth;
             latest_best_move = summary.best_move.clone();
             latest_best_score = summary.best_score;
@@ -2848,6 +2903,9 @@ fn search_board_iterative_deepening_with_strategy_deadline_tt_and_history(
         0.0
     };
 
+    if interruption_reason == SearchInterruptionReason::Cancelled && latest_best_move.is_some() {
+        partial_play_move = None;
+    }
     let (play_move, play_move_was_searched) =
         select_root_move(partial_play_move, latest_best_move.clone(), || {
             (history.adjudication() == HistoryAdjudication::Ongoing)
@@ -2972,7 +3030,7 @@ pub fn search_board_iterative_deepening_impl_with_history(
         max_depth,
         timeout_ms,
         EvaluationStrategy::Handcrafted,
-        deadline,
+        SearchControl::with_deadline(deadline),
         &mut tt,
     )
 }
@@ -3075,7 +3133,7 @@ pub fn search_board_iterative_deepening_impl_with_eval_mode_and_history(
         max_depth,
         timeout_ms,
         EvaluationStrategy::Nnue { model, mode },
-        deadline,
+        SearchControl::with_deadline(deadline),
         &mut tt,
     )
 }
@@ -3112,9 +3170,10 @@ pub fn search_board_impl_with_eval_mode_and_history(
         history,
         depth.max(1),
         EvaluationStrategy::Nnue { model, mode },
-        None,
+        SearchControl::default(),
         &mut tt,
     )
+    .into_completed()
     .map_err(|_| "search timed out unexpectedly".to_string())
 }
 
@@ -3172,6 +3231,7 @@ pub fn search_board_impl_handcrafted_with_node_budget_and_history_in_workspace(
         max_nodes,
         max_depth,
         EvaluationStrategy::Handcrafted,
+        SearchControl::default(),
         &mut workspace.tt,
         &mut workspace.ordering,
         false,
@@ -3220,6 +3280,7 @@ pub fn search_board_impl_with_eval_mode_and_node_budget_and_history_in_workspace
         max_nodes,
         max_depth,
         EvaluationStrategy::Nnue { model, mode },
+        SearchControl::default(),
         &mut workspace.tt,
         &mut workspace.ordering,
         false,
@@ -3440,7 +3501,7 @@ pub fn r1d2_qsearch_handcrafted_with_history(
     let mut ctx = SearchContext {
         states: 0,
         evaluation: EvaluationStrategy::Handcrafted,
-        deadline: None,
+        control: SearchControl::default(),
         tt: &mut tt,
         tt_stats: SearchTtStats::default(),
         ordering: &mut ordering,
@@ -3491,7 +3552,7 @@ pub fn r1d2_tt_context_probe_counts(
         fresh,
         1,
         EvaluationStrategy::Handcrafted,
-        None,
+        SearchControl::default(),
         &mut tt,
         &mut ordering,
         qsearch_limits(),
@@ -3505,7 +3566,7 @@ pub fn r1d2_tt_context_probe_counts(
         contextual,
         1,
         EvaluationStrategy::Handcrafted,
-        None,
+        SearchControl::default(),
         &mut tt,
         &mut ordering,
         qsearch_limits(),
@@ -3549,9 +3610,10 @@ pub fn search_board_impl_handcrafted_with_history(
         history,
         depth.max(1),
         EvaluationStrategy::Handcrafted,
-        None,
+        SearchControl::default(),
         &mut tt,
     )
+    .into_completed()
     .map_err(|_| "search timed out unexpectedly".to_string())
 }
 
@@ -3887,7 +3949,7 @@ fn search_best_move(
 ) -> Result<(), SearchInterrupted> {
     ctx.clear_training_trace(0);
     ctx.record_state()?;
-    ctx.check_deadline()?;
+    ctx.control.check()?;
     if let Some(terminal) = search_terminal_score(board, 0, ctx) {
         ctx.set_training_leaf(board, 0, terminal, true);
         progress.best_score = Some(terminal);
@@ -3921,7 +3983,7 @@ fn search_best_move(
                 ));
             }
             record_move_try(ctx, picked.source);
-            ctx.check_deadline()?;
+            ctx.control.check()?;
             let mv = picked.mv;
             let mut child = board.clone();
             child.play_unchecked(mv);
@@ -3998,7 +4060,7 @@ fn negamax(
 ) -> Result<i32, SearchInterrupted> {
     ctx.clear_training_trace(ply);
     ctx.record_state()?;
-    ctx.check_deadline()?;
+    ctx.control.check()?;
     if let Some(terminal) = search_terminal_score(board, ply, ctx) {
         ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
@@ -4055,7 +4117,7 @@ fn negamax(
         -INF_SCORE,
         |ctx, picked, node| {
             record_move_try(ctx, picked.source);
-            ctx.check_deadline()?;
+            ctx.control.check()?;
             let mv = picked.mv;
             let mut child = board.clone();
             child.play_unchecked(mv);
@@ -4205,7 +4267,7 @@ fn quiescence(
     eval_state: Option<&EvaluationState>,
 ) -> Result<i32, SearchInterrupted> {
     ctx.clear_training_trace(ply);
-    ctx.check_deadline()?;
+    ctx.control.check()?;
     if let Some(terminal) = search_terminal_score(board, ply, ctx) {
         ctx.set_training_leaf(board, ply, terminal, true);
         return Ok(terminal);
@@ -4251,7 +4313,7 @@ fn quiescence(
             }
         }
         searched_move = true;
-        ctx.check_deadline()?;
+        ctx.control.check()?;
         let mut child = board.clone();
         child.play_unchecked(mv);
         ctx.history.push(child.clone());
@@ -4299,7 +4361,7 @@ fn quiescence(
         while let Some(picked) = check_picker.next() {
             let mv = picked.mv;
             ctx.qsearch_stats.qsearch_check_move_tries += 1;
-            ctx.check_deadline()?;
+            ctx.control.check()?;
             let mut child = board.clone();
             child.play_unchecked(mv);
             ctx.history.push(child.clone());
@@ -4744,7 +4806,7 @@ mod tests {
         SearchContext {
             states: 0,
             evaluation: EvaluationStrategy::Handcrafted,
-            deadline: None,
+            control: SearchControl::default(),
             tt,
             tt_stats: SearchTtStats::default(),
             ordering,

@@ -45,8 +45,14 @@ fn json_and_usi_share_the_chu_search() {
             .unwrap()
             .contains(&result["bestMove"])
     );
-    let mut usi = cli()
-        .arg("usi")
+    let mut subcommand = cli();
+    subcommand.arg("usi");
+    assert_usi_matches_json(subcommand, &result);
+    assert_usi_matches_json(Command::new(env!("CARGO_BIN_EXE_haitaka-usi")), &result);
+}
+
+fn assert_usi_matches_json(mut command: Command, result: &serde_json::Value) {
+    let mut usi = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()

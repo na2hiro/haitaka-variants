@@ -3,6 +3,7 @@ name = "haitaka_cli"
 version = "0.1.0"
 edition = "2024"
 publish = false
+default-run = "haitaka_cli"
 
 [dependencies]
 anyhow = "1.0"

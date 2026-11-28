@@ -1,4 +1,5 @@
 use core::mem::size_of;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use instant::Instant;
 
@@ -66,6 +67,7 @@ pub enum DfpnInterruptionReason {
     UnsupportedRuleset,
     NodeBudget,
     Deadline,
+    Cancelled,
 }
 
 impl DfpnInterruptionReason {
@@ -74,6 +76,7 @@ impl DfpnInterruptionReason {
             Self::UnsupportedRuleset => "unsupported-ruleset",
             Self::NodeBudget => "node-budget",
             Self::Deadline => "deadline",
+            Self::Cancelled => "cancelled",
         }
     }
 }
@@ -143,9 +146,10 @@ impl TtEntry {
     }
 }
 
-struct DfpnSolver {
+struct DfpnSolver<'a> {
     attacker: Color,
     options: DfpnOptions,
+    stop: Option<&'a AtomicBool>,
     started_at: Instant,
     stats: DfpnStats,
     interruption_reason: Option<DfpnInterruptionReason>,
@@ -153,12 +157,13 @@ struct DfpnSolver {
     tt: Vec<TtEntry>,
 }
 
-impl DfpnSolver {
-    fn new(attacker: Color, options: DfpnOptions) -> Self {
+impl<'a> DfpnSolver<'a> {
+    fn new(attacker: Color, options: DfpnOptions, stop: Option<&'a AtomicBool>) -> Self {
         let tt_size = tt_capacity(options.tt_megabytes.max(1));
         Self {
             attacker,
             options,
+            stop,
             started_at: Instant::now(),
             stats: DfpnStats {
                 nodes: 0,
@@ -321,6 +326,11 @@ impl DfpnSolver {
     }
 
     fn over_budget(&mut self) -> bool {
+        if self.stop.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+            self.interruption_reason = Some(DfpnInterruptionReason::Cancelled);
+            return true;
+        }
+
         if self
             .options
             .max_nodes
@@ -441,6 +451,16 @@ impl Board {
         options: &DfpnOptions,
         history: &PositionHistory,
     ) -> Result<DfpnResult, &'static str> {
+        self.dfpn_with_history_and_stop(options, history, None)
+    }
+
+    #[doc(hidden)]
+    pub fn dfpn_with_history_and_stop(
+        &self,
+        options: &DfpnOptions,
+        history: &PositionHistory,
+        stop: Option<&AtomicBool>,
+    ) -> Result<DfpnResult, &'static str> {
         if !SelectedRule::ALLOW_DFPN {
             return Err("DFPN_UNSUPPORTED_RULESET");
         }
@@ -467,7 +487,7 @@ impl Board {
         if crate::hand_rules::allows_ignored_check() {
             return Ok(disabled_capture_king_dfpn());
         }
-        Ok(DfpnSolver::new(self.side_to_move(), *options).solve(self, history))
+        Ok(DfpnSolver::new(self.side_to_move(), *options, stop).solve(self, history))
     }
 }
 
@@ -1085,6 +1105,28 @@ mod tests {
         let result = board.dfpn(&DfpnOptions::default());
         assert_eq!(result.status, DfpnStatus::Mate);
         assert_mating_line(&board, &result.pv);
+    }
+
+    #[test]
+    fn cancellation_interrupts_the_mate_search_before_the_first_node() {
+        if !SelectedRule::ALLOW_DFPN
+            || cfg!(feature = "tesushogi")
+            || crate::hand_rules::allows_ignored_check()
+        {
+            return;
+        }
+        let board = Board::startpos();
+        let history = PositionHistory::new(board.clone());
+        let stop = AtomicBool::new(true);
+        let result = board
+            .dfpn_with_history_and_stop(&DfpnOptions::default(), &history, Some(&stop))
+            .unwrap();
+        assert_eq!(result.status, DfpnStatus::Unknown);
+        assert_eq!(result.stats.nodes, 0);
+        assert_eq!(
+            result.interruption_reason,
+            Some(DfpnInterruptionReason::Cancelled)
+        );
     }
 
     #[test]
