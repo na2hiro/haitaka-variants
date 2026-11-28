@@ -43,6 +43,9 @@ name = "dfpn"
 harness = false
 
 [features]
+search-pvs = []
+search-lmr = ["search-pvs"]
+search-variant-experiments = []
 std = ["haitaka-types/std"]
 qugiy = ["haitaka-types/qugiy"]
 donor-category = []

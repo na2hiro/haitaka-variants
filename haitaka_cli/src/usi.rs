@@ -5,6 +5,7 @@ use haitaka_wasm::native_usi::MAX_DEPTH;
 
 #[cfg(not(feature = "extended-json"))]
 use {
+    crate::ENGINE_NAME,
     anyhow::{Context, Result, anyhow},
     haitaka_wasm::native_usi::{NativeGo, NativeUsiSession},
     std::fs,
@@ -37,15 +38,20 @@ pub enum EngineEvalKind {
     Nnue,
 }
 
-#[cfg(feature = "extended-json")]
+#[cfg(all(feature = "extended-json", not(feature = "chushogi")))]
 pub fn run(_args: UsiArgs) -> anyhow::Result<()> {
     anyhow::bail!("this ruleset uses the extended JSON protocol; run haitaka_cli json")
+}
+
+#[cfg(feature = "chushogi")]
+pub fn run(args: UsiArgs) -> anyhow::Result<()> {
+    crate::chu_usi::run(args)
 }
 
 #[cfg(not(feature = "extended-json"))]
 pub fn run(args: UsiArgs) -> anyhow::Result<()> {
     let name = format!(
-        "Haitaka Variants {} ({})",
+        "{ENGINE_NAME} {} ({})",
         env!("CARGO_PKG_VERSION"),
         rule_profile()
     );

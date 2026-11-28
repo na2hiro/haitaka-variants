@@ -65,7 +65,7 @@ fn history_is_used_by_usi_and_search() {
     let sfen = "4k/5/5/5/K4 b - 1";
     let cycle = "5e5d 1a1b 5d5e 1b1a ".repeat(3);
     let command = format!("position sfen {sfen} moves {}", cycle.trim());
-    let (board, history) = parse_usi_position_with_history(&command).unwrap();
+    let (board, history) = parse_usi_position_with_limit(&command, 49).unwrap();
     assert_eq!(history.adjudication(), HistoryAdjudication::RepetitionDraw);
     let result = search_board_impl_handcrafted_with_history(&board, &history, 2).unwrap();
     assert!(result.best_move.is_none());

@@ -1,0 +1,137 @@
+{
+  "schema": "haitaka-self-play-report",
+  "schemaVersion": 3,
+  "generatedAtUnixSeconds": 1795276716,
+  "package": {
+    "name": "haitaka_cli",
+    "version": "0.1.0"
+  },
+  "git": {
+    "commit": "7f29506d661d4d02efdd318c5d999359b9ca9cd1",
+    "dirty": true,
+    "executableSha256": "e6a646e8679577c1bb816b39714c91dce21ed01418fa02f84faecb9bd698cee8"
+  },
+  "ruleset": "standard",
+  "command": {
+    "games": 200,
+    "threads": 4,
+    "aDepth": null,
+    "bDepth": null,
+    "movetimeMs": 1000,
+    "nodesPerMove": null,
+    "sfen": null,
+    "openings": null,
+    "openingOrder": "sequential",
+    "openingUnit": "pair",
+    "openingRandomPlies": 4,
+    "seed": 1,
+    "maxPlies": 200
+  },
+  "engines": [
+    {
+      "label": "A",
+      "kind": "external-usi",
+      "budget": "movetime_ms=1000 max_depth=unlimited",
+      "command": "/home/na2hiro/proj/haitaka-variants/target/search-pvs-lmr/pvs",
+      "args": [
+        "usi",
+        "--eval",
+        "handcrafted"
+      ],
+      "nnue": null
+    },
+    {
+      "label": "B",
+      "kind": "external-usi",
+      "budget": "movetime_ms=1000 max_depth=unlimited",
+      "command": "/home/na2hiro/proj/haitaka-variants/target/search-pvs-lmr/baseline",
+      "args": [
+        "usi",
+        "--eval",
+        "handcrafted"
+      ],
+      "nnue": null
+    }
+  ],
+  "summary": {
+    "games": 200,
+    "aWins": 101,
+    "bWins": 93,
+    "draws": 6,
+    "decidedGames": 194,
+    "aScore": 104.0,
+    "scoreRate": 0.52,
+    "approxElo": 13.904842503684801,
+    "approxElo95Ci": [
+      -34.32742062233244,
+      62.68235172379456
+    ],
+    "pairCount": 100,
+    "pairScoreBins": [
+      19,
+      3,
+      52,
+      3,
+      23
+    ],
+    "pairedElo": 13.904842503684801,
+    "pairedElo95Ci": [
+      -31.22383986320968,
+      59.033524870579285
+    ],
+    "avgPlies": 108.22,
+    "totalNodes": 2385902447,
+    "requestedBudgetNodes": 0,
+    "consumedBudgetNodes": 0,
+    "alphaBetaNodes": 2385902447,
+    "completedDepth": 8,
+    "incompleteIterations": 0,
+    "nodeBudgetCapHits": 0,
+    "fallbacks": 0,
+    "totalElapsedMs": 20863706.17506201,
+    "aggregateNps": 114356.59738401722,
+    "qnodes": 5484157545,
+    "aggregateQnps": 262856.3448403577,
+    "qsearchMaxPly": 8,
+    "qsearchCapHits": 167119995,
+    "qsearchCheckMoveTries": 303409719,
+    "qsearchDeltaPrunes": 3144072320,
+    "aBreakdown": {
+      "totalNodes": 1322180959,
+      "requestedBudgetNodes": 0,
+      "consumedBudgetNodes": 0,
+      "alphaBetaNodes": 1322180959,
+      "completedDepth": 8,
+      "incompleteIterations": 0,
+      "nodeBudgetCapHits": 0,
+      "fallbacks": 0,
+      "totalElapsedMs": 10418501.244621992,
+      "aggregateNps": 126907.0212649355,
+      "qnodes": 2788006566,
+      "aggregateQnps": 267601.500497892,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 56726574,
+      "qsearchCheckMoveTries": 163958614,
+      "qsearchDeltaPrunes": 1628019132
+    },
+    "bBreakdown": {
+      "totalNodes": 1063721488,
+      "requestedBudgetNodes": 0,
+      "consumedBudgetNodes": 0,
+      "alphaBetaNodes": 1063721488,
+      "completedDepth": 7,
+      "incompleteIterations": 0,
+      "nodeBudgetCapHits": 0,
+      "fallbacks": 0,
+      "totalElapsedMs": 10445204.930439996,
+      "aggregateNps": 101838.25928585124,
+      "qnodes": 2696150979,
+      "aggregateQnps": 258123.32040922696,
+      "qsearchMaxPly": 8,
+      "qsearchCapHits": 110393421,
+      "qsearchCheckMoveTries": 139451105,
+      "qsearchDeltaPrunes": 1516053188
+    },
+    "warnings": []
+  }
+}

@@ -17,6 +17,9 @@ serde_json = "1.0"
 sha2 = "0.10"
 
 [features]
+search-pvs = ["haitaka_wasm/search-pvs"]
+search-lmr = ["search-pvs", "haitaka_wasm/search-lmr"]
+search-variant-experiments = ["haitaka_wasm/search-variant-experiments"]
 nnue-l1-256 = ["haitaka_wasm/nnue-l1-256"]
 donor-category = ["haitaka/donor-category", "haitaka_wasm/donor-category"]
 win-condition-category = ["haitaka/win-condition-category", "haitaka_wasm/win-condition-category"]

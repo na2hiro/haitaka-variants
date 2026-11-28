@@ -15,6 +15,7 @@ use haitaka::{
     Board, Color, GameStatus, HISTORY_RULES_VERSION, HistoryAdjudication, Move, Piece,
     PositionHistory, RuleSpec, SFEN_STARTPOS, SelectedRule,
 };
+use haitaka_cli::ENGINE_NAME;
 use haitaka_cli::usi::{
     self, EngineEvalKind, UsiArgs, default_ruleset, rule_profile as active_rule_profile,
 };
@@ -28,7 +29,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 const ENGINE_ID: &str = "haitaka-variants";
-const ENGINE_NAME: &str = "Haitaka Variants";
 const MANIFEST_FILE: &str = "shogitter-engine.json";
 const ENGINE_DIR: &str = "engine";
 const WASM_BINDGEN_MODULE: &str = "engine/haitaka_wasm.js";
@@ -854,8 +854,11 @@ struct SelfPlayReportOutput {
 fn main() -> Result<()> {
     let command = Cli::parse().command;
     #[cfg(feature = "extended-json")]
-    if !matches!(command, Command::Json(_) | Command::Package(_)) {
-        bail!("extended rules support only json and package; SFEN/USI commands are unavailable");
+    match &command {
+        Command::Json(_) | Command::Package(_) => {}
+        #[cfg(feature = "chushogi")]
+        Command::Usi(_) => {}
+        _ => bail!("this command is unavailable for the compiled ruleset"),
     }
     match command {
         #[cfg(feature = "extended-json")]

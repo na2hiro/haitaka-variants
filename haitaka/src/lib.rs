@@ -199,6 +199,8 @@ pub mod attacks;
 pub mod board;
 pub mod dfpn;
 pub mod history;
+#[doc(hidden)]
+pub mod search;
 #[cfg_attr(feature = "compact-board", path = "small_slider_moves.rs")]
 pub mod slider_moves;
 #[cfg(all(

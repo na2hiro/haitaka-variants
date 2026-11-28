@@ -1,0 +1,12 @@
+{
+  "positions": 242,
+  "checks": 731,
+  "pendingPositions": 1,
+  "nodeBudgets": [
+    1,
+    128,
+    1000
+  ],
+  "fallbackOrTerminalChecks": 370,
+  "fixedDepth2Checks": 5
+}

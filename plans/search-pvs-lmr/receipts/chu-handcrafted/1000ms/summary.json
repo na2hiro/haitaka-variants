@@ -1,0 +1,160 @@
+{
+  "pvs-vs-baseline": {
+    "games": 32,
+    "pairs": 16,
+    "wins": 3,
+    "losses": 6,
+    "draws": 23,
+    "score": 0.453125,
+    "pairedElo": -32.66801858052781,
+    "pairedElo95Ci": [
+      -79.37672615334351,
+      14.040688992287897
+    ],
+    "pairScores": [
+      0.5,
+      0.25,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.25,
+      0.25,
+      0.5,
+      0.75,
+      0.25,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "termination": {
+      "maximum-ply-capped": 22,
+      "rule-win": 9,
+      "rule-draw": 1
+    },
+    "avgPlies": 184.875,
+    "stats": {
+      "pvs": {
+        "totalSearches": 2958,
+        "totalNodes": 369398880,
+        "meanDepth": 3.059837728194726,
+        "depthHistogram": {
+          "1": 7,
+          "2": 365,
+          "3": 2045,
+          "4": 526,
+          "5": 15
+        },
+        "searchesWithLmr": 0,
+        "meanSearchMs": 994.8735632183908,
+        "medianRpcMs": 1001.9980613142252,
+        "maxRpcMs": 1005.7571213692427,
+        "pvsProbes": 2032273,
+        "pvsResearches": 14554,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "baseline": {
+        "totalSearches": 2958,
+        "totalNodes": 353329770,
+        "meanDepth": 2.938133874239351,
+        "depthHistogram": {
+          "1": 52,
+          "2": 435,
+          "3": 2122,
+          "4": 342,
+          "5": 7
+        },
+        "searchesWithLmr": 0,
+        "meanSearchMs": 994.921906693712,
+        "medianRpcMs": 1002.1057138219476,
+        "maxRpcMs": 1007.8109307214618,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  "lmr-vs-pvs": {
+    "games": 32,
+    "pairs": 16,
+    "wins": 6,
+    "losses": 3,
+    "draws": 23,
+    "score": 0.546875,
+    "pairedElo": 32.668018580527814,
+    "pairedElo95Ci": [
+      -38.96725300963165,
+      104.30329017068728
+    ],
+    "pairScores": [
+      1.0,
+      0.75,
+      0.75,
+      0.25,
+      0.5,
+      0.75,
+      0.25,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.75,
+      0.5,
+      0.25
+    ],
+    "termination": {
+      "rule-win": 9,
+      "maximum-ply-capped": 22,
+      "rule-draw": 1
+    },
+    "avgPlies": 180.875,
+    "stats": {
+      "lmr": {
+        "totalSearches": 2895,
+        "totalNodes": 338147826,
+        "meanDepth": 2.953022452504318,
+        "depthHistogram": {
+          "1": 20,
+          "2": 510,
+          "3": 1969,
+          "4": 378,
+          "5": 18
+        },
+        "searchesWithLmr": 817,
+        "meanSearchMs": 994.2659758203799,
+        "medianRpcMs": 1002.1764282137156,
+        "maxRpcMs": 1008.2576228305697,
+        "pvsProbes": 1946531,
+        "pvsResearches": 14221,
+        "lmrReductions": 99259,
+        "lmrResearches": 1804
+      },
+      "pvs": {
+        "totalSearches": 2893,
+        "totalNodes": 351457799,
+        "meanDepth": 2.97096439681991,
+        "depthHistogram": {
+          "1": 14,
+          "2": 453,
+          "3": 2047,
+          "4": 361,
+          "5": 18
+        },
+        "searchesWithLmr": 0,
+        "meanSearchMs": 994.8465260974766,
+        "medianRpcMs": 1002.1150084212422,
+        "maxRpcMs": 1007.6672127470374,
+        "pvsProbes": 1924237,
+        "pvsResearches": 13580,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  }
+}

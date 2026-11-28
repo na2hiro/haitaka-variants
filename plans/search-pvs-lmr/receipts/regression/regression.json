@@ -1,0 +1,120 @@
+{
+  "standard": {
+    "default-vs-main": {
+      "checks": 22,
+      "identical": 22,
+      "differences": []
+    },
+    "pvs-vs-measured": {
+      "checks": 22,
+      "identical": 22,
+      "differences": []
+    },
+    "lmr-vs-measured": {
+      "checks": 22,
+      "identical": 22,
+      "differences": []
+    }
+  },
+  "chuHandcraftedDefaultVsMain": {
+    "positions": 242,
+    "checks": 726,
+    "nodeBudgets": [
+      1,
+      128,
+      1000
+    ],
+    "depth": 8,
+    "fields": [
+      "bestMove",
+      "completedDepth",
+      "nodeLimitReached",
+      "outcome",
+      "schemaVersion",
+      "score",
+      "states",
+      "timedOut"
+    ]
+  },
+  "ordinaryDefaultVsMain": {
+    "dobutsu": {
+      "positions": 7,
+      "checks": 21,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    },
+    "toruichi": {
+      "positions": 11,
+      "checks": 33,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    },
+    "shishio": {
+      "positions": 11,
+      "checks": 33,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    },
+    "happokei": {
+      "positions": 11,
+      "checks": 33,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    },
+    "zarikani": {
+      "positions": 11,
+      "checks": 33,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    },
+    "narazu": {
+      "positions": 11,
+      "checks": 33,
+      "nodeBudgets": [
+        1,
+        128,
+        1000
+      ],
+      "depth": 8
+    }
+  },
+  "chuNnueVsMeasured": {
+    "checks": 120,
+    "positions": 10,
+    "depths": [
+      3,
+      4
+    ],
+    "models": [
+      "v3",
+      "v2.6"
+    ],
+    "fields": [
+      "score",
+      "bestMove",
+      "states",
+      "completedDepth",
+      "outcome"
+    ]
+  }
+}
