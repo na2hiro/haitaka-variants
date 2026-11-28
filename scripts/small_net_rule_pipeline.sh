@@ -2,6 +2,7 @@
 # Small king-free NNUE pipeline for one donor rule: generation and training only.
 # (mbp is reserved for ML; evaluation matches run on another host.)
 # usage: small_net_rule_pipeline.sh <rule> [jobs=8] [threads=8] [generations=4]
+# SRC (source tree, default ~/proj/hv-donors) and TGT (cargo target dir) can be overridden.
 # g1 is taught by the handcrafted eval, each later generation by the previous net. Every
 # net is trained from scratch on all data so far for ~25 epochs and exported from its
 # last checkpoint (~25 epochs, at least 1024 steps).
@@ -13,8 +14,8 @@
 # (200..1600 games) at the same nodes. GAMES1 / GAMESN / NODES / GAMESVAL override.
 set -u
 R=$1; J=${2:-8}; T=${3:-8}; GENS=${4:-4}
-SRC=~/proj/hv-donors
-TGT=$SRC/target-$R
+SRC=${SRC:-~/proj/hv-donors}
+TGT=${TGT:-$SRC/target-$R}
 LEARN=$TGT/release/haitaka_learn
 PY=~/smallnet/venv/bin/python
 TRAINER=$SRC/scripts/small_net_train.py
@@ -25,7 +26,8 @@ log() { echo "$(date '+%m-%d %H:%M') $*"; }
 
 if [ ! -x $LEARN ]; then
   log build
-  (cd $SRC && CARGO_TARGET_DIR=$TGT cargo build -q --release -p haitaka_learn --features $R,nnue-l1-256) > build.log 2>&1 \
+  # The CLI is built alongside: the evaluation matches run this rule's haitaka_cli.
+  (cd $SRC && CARGO_TARGET_DIR=$TGT cargo build -q --release -p haitaka_learn -p haitaka_cli --features $R,nnue-l1-256) > build.log 2>&1 \
      || { log "build failed"; tail -20 build.log; exit 1; }
 fi
 
