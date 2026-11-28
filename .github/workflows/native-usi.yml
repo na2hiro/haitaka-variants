@@ -38,16 +38,23 @@ jobs:
     env:
       RULE: ${{ matrix.rule }}
       TARGET: ${{ matrix.target }}
-      NDK_VERSION: "30.0.16248370"
 
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add "$TARGET"
       - name: Set up Android linker
         if: matrix.platform == 'Android'
+        env:
+          NDK_RELEASE: r30
+          NDK_SHA1: 5107f898313790e449e87eee2183d9a20602dee9
         run: |
-          sdkmanager --install "ndk;$NDK_VERSION"
-          ndk_bin="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          archive="$RUNNER_TEMP/android-ndk-$NDK_RELEASE-linux.zip"
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$archive" "https://dl.google.com/android/repository/android-ndk-$NDK_RELEASE-linux.zip"
+          printf '%s  %s\n' "$NDK_SHA1" "$archive" | sha1sum --check --strict
+          unzip -q "$archive" -d "$RUNNER_TEMP"
+          rm "$archive"
+          ndk_bin="$RUNNER_TEMP/android-ndk-$NDK_RELEASE/toolchains/llvm/prebuilt/linux-x86_64/bin"
           test -x "$ndk_bin/aarch64-linux-android23-clang"
           printf 'CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=%s\n' "$ndk_bin/aarch64-linux-android23-clang" >> "$GITHUB_ENV"
       - name: Use the static Visual C++ runtime
