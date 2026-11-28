@@ -20,6 +20,7 @@ engine of its own rule.
 | Taimen | v1.4 | `taimen-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,955 | `2f48a54cf6a224e5065f79d89c59d40cfa10488321604a856bae3bf4170359d8` | +454 |
 | Antouzai | v1.4 | `antouzai-v1.4` | kf4 | KingFreeA+DonorPairSlots | 2,896,237 | `b23ac1c5453833610eba54a27751957d040d5f0e70a69048c87a731129409966` | +283 |
 | Neko | v1.4 | `neko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,953 | `7e459348583b930016e6e86a6e9dc3ee774c666cce1813891d0c070317f2099e` | +270 |
+| Nekoneko | v1.4 | `nekoneko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,957 | `c17e812982268c81c3ee0d4f94fb9df0c6a05f7efc3056cec5d0a93a4da100f5` | +476 |
 | Yokoneko | v1.4 | `yokoneko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,957 | `590eff3ee18cd26923213890b1e04b1a387231ceab66e7ad3c52be4123915642` | +332 |
 | Yokonekoneko | v1.4 | `yokonekoneko-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,961 | `ed1bfba5ce64bf9c03e66d17797443b38a830a6cf344d16c1150fe1842cb7ddb` | +482 |
 | Tenkyo | v1.4 | `tenkyo-v1.4` | kf4 | KingFreeA+DonorSingleEff | 2,014,955 | `0a7e052aff8704b4529f1981e8e760f98c5471427317396244ec869fa5eaa931` | +502 |
