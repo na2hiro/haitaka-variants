@@ -1,10 +1,11 @@
 #![cfg(feature = "heian")]
+mod support;
+
 use haitaka::{RuleSpec, SelectedRule};
 use std::{
     fs,
-    io::Write,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -26,28 +27,21 @@ fn temp_dir() -> PathBuf {
 
 #[test]
 fn native_usi_returns_a_legal_move_on_the_compact_board() {
-    let mut child = cli()
-        .arg("usi")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(b"usi\nisready\nposition startpos\ngo depth 2\nquit\n")
-        .unwrap();
-    let result = child.wait_with_output().unwrap();
-    assert!(result.status.success());
-    let output = String::from_utf8(result.stdout).unwrap();
-    assert!(output.contains("usiok"));
-    assert!(output.contains("readyok"));
-    let best = output
-        .lines()
-        .find_map(|line| line.strip_prefix("bestmove "))
-        .unwrap();
-    assert!(haitaka::Board::startpos().is_legal(best.parse().unwrap()));
+    let mut command = cli();
+    command.arg("usi");
+    let mut engine = support::UsiProcess::spawn(command);
+    engine.send("usi");
+    engine.read_through("usiok");
+    engine.send("isready");
+    engine.read_through("readyok");
+    engine.send("position startpos");
+    engine.send("go depth 2");
+    support::assert_legal_bestmove(
+        &haitaka::Board::startpos(),
+        &engine.read_through("bestmove "),
+    );
+    engine.send("quit");
+    assert!(engine.wait_for_exit().is_empty());
 }
 
 #[test]

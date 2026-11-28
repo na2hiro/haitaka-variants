@@ -1,0 +1,90 @@
+name: Native USI
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/native-usi.yml"
+      - "Cargo.toml"
+      - "haitaka/**"
+      - "haitaka_cli/**"
+      - "haitaka_types/**"
+      - "haitaka_wasm/**"
+
+jobs:
+  build:
+    name: ${{ matrix.platform }} / ${{ matrix.rule }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rule: [standard, annan, anhoku, minishogi]
+        platform: [Linux, Windows, Android]
+        include:
+          - platform: Linux
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - platform: Windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: Android
+            runner: ubuntu-24.04
+            target: aarch64-linux-android
+    defaults:
+      run:
+        shell: bash
+    env:
+      RULE: ${{ matrix.rule }}
+      TARGET: ${{ matrix.target }}
+      NDK_VERSION: "30.0.16248370"
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add "$TARGET"
+      - name: Set up Android linker
+        if: matrix.platform == 'Android'
+        run: |
+          sdkmanager --install "ndk;$NDK_VERSION"
+          ndk_bin="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$ndk_bin/aarch64-linux-android23-clang"
+          printf 'CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=%s\n' "$ndk_bin/aarch64-linux-android23-clang" >> "$GITHUB_ENV"
+      - name: Use the static Visual C++ runtime
+        if: matrix.platform == 'Windows'
+        run: echo 'CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS=-C target-feature=+crt-static' >> "$GITHUB_ENV"
+      - name: Build the selected ruleset
+        run: |
+          features=()
+          if [[ "$RULE" != standard ]]; then features=(--features "$RULE"); fi
+          cargo build --release --target "$TARGET" -p haitaka_cli --bin haitaka-usi "${features[@]}"
+      - name: Exercise the USI executable over pipes
+        if: matrix.platform != 'Android'
+        run: |
+          features=()
+          if [[ "$RULE" != standard ]]; then features=(--features "$RULE"); fi
+          cargo test --release --target "$TARGET" -p haitaka_cli --test native_usi "${features[@]}"
+      - name: Package the Windows engine
+        if: matrix.platform == 'Windows'
+        shell: pwsh
+        run: |
+          $name = "haitaka-usi-$env:RULE"
+          New-Item -ItemType Directory -Path dist, package
+          Copy-Item "target/$env:TARGET/release/haitaka-usi.exe" "package/$name.exe"
+          Copy-Item docs/native-usi.md package/README.md
+          Copy-Item LICENSE package/
+          Compress-Archive -Path package/* -DestinationPath "dist/$name-$env:TARGET.zip"
+      - name: Package the Linux or Android engine
+        if: matrix.platform != 'Windows'
+        run: |
+          name="haitaka-usi-$RULE"
+          mkdir -p dist package
+          install -m 755 "target/$TARGET/release/haitaka-usi" "package/$name"
+          cp LICENSE package/
+          cp docs/native-usi.md package/README.md
+          tar -czf "dist/$name-$TARGET.tar.gz" -C package "$name" LICENSE README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: haitaka-usi-${{ matrix.rule }}-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
