@@ -1,0 +1,7 @@
+tenkyo kf1-vs-hc games 512 A score 0.8047 W-L-D 412 100 0 pairedElo 246.0 [207.8, 284.1] fallbacks A/B 0 0 nps A/B 96177/34151 depth A/B 255 255
+tenkyo kf2-vs-hc games 512 A score 0.9121 W-L-D 467 45 0 pairedElo 406.4 [355.8, 457.1] fallbacks A/B 0 0 nps A/B 105473/34389 depth A/B 6 255
+tenkyo kf2-vs-kf1 games 512 A score 0.7236 W-L-D 370 141 1 pairedElo 167.2 [134.6, 199.9] fallbacks A/B 0 0 nps A/B 106951/98686 depth A/B 255 255
+tenkyo kf3-vs-hc games 512 A score 0.9434 W-L-D 483 29 0 pairedElo 488.6 [425.4, 551.9] fallbacks A/B 0 0 nps A/B 118748/38338 depth A/B 6 255
+tenkyo kf3-vs-kf2 games 512 A score 0.6064 W-L-D 309 200 3 pairedElo 75.1 [44.9, 105.3] fallbacks A/B 0 0 nps A/B 109363/104845 depth A/B 6 255
+tenkyo kf4-vs-hc games 512 A score 0.9473 W-L-D 485 27 0 pairedElo 501.8 [436.2, 567.3] fallbacks A/B 0 1 nps A/B 117750/37837 depth A/B 255 255
+tenkyo kf4-vs-kf3 games 512 A score 0.5889 W-L-D 301 210 1 pairedElo 62.4 [31.7, 93.1] fallbacks A/B 0 0 nps A/B 108953/108726 depth A/B 255 255
