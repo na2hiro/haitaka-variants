@@ -1,0 +1,384 @@
+{
+  "pvs-vs-baseline": {
+    "caps": {
+      "200": {
+        "games": 32,
+        "wins": 3,
+        "losses": 6,
+        "draws": 1,
+        "capped": 22,
+        "usablePairs": 2,
+        "excludedPairs": 14,
+        "pairScores": [
+          0.5,
+          0.5
+        ],
+        "score": 0.5,
+        "pairedElo": 0.0,
+        "pairedElo95Ci": null
+      },
+      "400": {
+        "games": 32,
+        "wins": 9,
+        "losses": 14,
+        "draws": 1,
+        "capped": 8,
+        "usablePairs": 11,
+        "excludedPairs": 5,
+        "pairScores": [
+          0.5,
+          0.0,
+          0.25,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.4318181818181818,
+        "pairedElo": -47.67456308768343,
+        "pairedElo95Ci": [
+          -163.12932234233622,
+          67.78019616696935
+        ]
+      },
+      "600": {
+        "games": 32,
+        "wins": 11,
+        "losses": 17,
+        "draws": 1,
+        "capped": 3,
+        "usablePairs": 14,
+        "excludedPairs": 2,
+        "pairScores": [
+          0.5,
+          0.5,
+          0.0,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "score": 0.4107142857142857,
+        "pairedElo": -62.71444154411785,
+        "pairedElo95Ci": [
+          -164.40128134897935,
+          38.972398260743674
+        ]
+      },
+      "1000": {
+        "games": 32,
+        "wins": 11,
+        "losses": 18,
+        "draws": 1,
+        "capped": 2,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "pairScores": [
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "score": 0.38333333333333336,
+        "pairedElo": -82.58955521976084,
+        "pairedElo95Ci": [
+          -187.2298283959708,
+          22.05071795644912
+        ]
+      },
+      "4096": {
+        "games": 32,
+        "wins": 11,
+        "losses": 18,
+        "draws": 1,
+        "capped": 2,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "pairScores": [
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "score": 0.38333333333333336,
+        "pairedElo": -82.58955521976084,
+        "pairedElo95Ci": [
+          -187.2298283959708,
+          22.05071795644912
+        ]
+      }
+    },
+    "maxPlies": 4096,
+    "verifiedMoves": 16785,
+    "searchStats": {
+      "pvs": {
+        "all": {
+          "searches": 8391,
+          "meanDepth": 3.5314026933619354,
+          "depth4Plus": 4703,
+          "pvsProbes": 4180239,
+          "pvsResearches": 23916,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        },
+        "continuation": {
+          "searches": 5433,
+          "meanDepth": 3.7881465120559543,
+          "depth4Plus": 4162,
+          "pvsProbes": 2147966,
+          "pvsResearches": 9362,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        }
+      },
+      "baseline": {
+        "all": {
+          "searches": 8394,
+          "meanDepth": 3.3999285203716942,
+          "depth4Plus": 2925,
+          "pvsProbes": 0,
+          "pvsResearches": 0,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        },
+        "continuation": {
+          "searches": 5436,
+          "meanDepth": 3.65121412803532,
+          "depth4Plus": 2576,
+          "pvsProbes": 0,
+          "pvsResearches": 0,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        }
+      }
+    }
+  },
+  "lmr-vs-pvs": {
+    "caps": {
+      "200": {
+        "games": 32,
+        "wins": 6,
+        "losses": 3,
+        "draws": 1,
+        "capped": 22,
+        "usablePairs": 1,
+        "excludedPairs": 15,
+        "pairScores": [
+          1.0
+        ],
+        "score": 1.0,
+        "pairedElo": null,
+        "pairedElo95Ci": null
+      },
+      "400": {
+        "games": 32,
+        "wins": 14,
+        "losses": 9,
+        "draws": 1,
+        "capped": 8,
+        "usablePairs": 10,
+        "excludedPairs": 6,
+        "pairScores": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.25,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0
+        ],
+        "score": 0.575,
+        "pairedElo": 52.51156585572756,
+        "pairedElo95Ci": [
+          -94.81304113048586,
+          199.83617284194096
+        ]
+      },
+      "600": {
+        "games": 32,
+        "wins": 16,
+        "losses": 14,
+        "draws": 1,
+        "capped": 1,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "pairScores": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "score": 0.5166666666666667,
+        "pairedElo": 11.585478374126659,
+        "pairedElo95Ci": [
+          -114.93848260625293,
+          138.10943935450626
+        ]
+      },
+      "1000": {
+        "games": 32,
+        "wins": 16,
+        "losses": 14,
+        "draws": 1,
+        "capped": 1,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "pairScores": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "score": 0.5166666666666667,
+        "pairedElo": 11.585478374126659,
+        "pairedElo95Ci": [
+          -114.93848260625293,
+          138.10943935450626
+        ]
+      },
+      "4096": {
+        "games": 32,
+        "wins": 16,
+        "losses": 15,
+        "draws": 1,
+        "capped": 0,
+        "usablePairs": 16,
+        "excludedPairs": 0,
+        "pairScores": [
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          0.25,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0
+        ],
+        "score": 0.515625,
+        "pairedElo": 10.86089841744591,
+        "pairedElo95Ci": [
+          -107.48401063513523,
+          129.20580747002705
+        ]
+      }
+    },
+    "maxPlies": 1198,
+    "verifiedMoves": 9867,
+    "searchStats": {
+      "lmr": {
+        "all": {
+          "searches": 4934,
+          "meanDepth": 3.2705715443858936,
+          "depth4Plus": 1770,
+          "pvsProbes": 3266680,
+          "pvsResearches": 26421,
+          "lmrReductions": 369023,
+          "lmrResearches": 6839,
+          "searchesWithLmr": 1926
+        },
+        "continuation": {
+          "searches": 2039,
+          "meanDepth": 3.721432074546346,
+          "depth4Plus": 1374,
+          "pvsProbes": 1320149,
+          "pvsResearches": 12200,
+          "lmrReductions": 269764,
+          "lmrResearches": 5035,
+          "searchesWithLmr": 1109
+        }
+      },
+      "pvs": {
+        "all": {
+          "searches": 4933,
+          "meanDepth": 3.13744171903507,
+          "depth4Plus": 1100,
+          "pvsProbes": 3069536,
+          "pvsResearches": 22872,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        },
+        "continuation": {
+          "searches": 2040,
+          "meanDepth": 3.373529411764706,
+          "depth4Plus": 721,
+          "pvsProbes": 1145299,
+          "pvsResearches": 9292,
+          "lmrReductions": 0,
+          "lmrResearches": 0,
+          "searchesWithLmr": 0
+        }
+      }
+    }
+  }
+}

@@ -13,7 +13,8 @@ const initStarted=performance.now();
 const instance=engine.initSync({module:readFileSync(join(dir,'haitaka_wasm_bg.wasm'))});
 const initializationMs=performance.now()-initStarted;assert(initializationMs<5000);
 assert.equal(engine.search,undefined);assert.equal(engine.UsiEngine,undefined);
-assert.throws(()=>engine.load_nnue(new Uint8Array()),/NNUE_UNSUPPORTED_RULESET/);
+// Chu accepts Minase NNUE, so an empty file fails as malformed rather than as an unsupported ruleset.
+assert.throws(()=>engine.load_nnue(new Uint8Array()),e=>!/NNUE_UNSUPPORTED_RULESET/.test(String(e)));
 assert.throws(()=>engine.load_sfnn(new Uint8Array(),new Uint8Array(),'mini'),/SFNN_UNSUPPORTED_RULESET/);
 const inputs=readFileSync(join(root,'chushogi-reference-input.jsonl'),'utf8').trim().split('\n');
 const native=readFileSync(join(root,'chushogi-reference-output.jsonl'),'utf8').trim().split('\n').map(JSON.parse);

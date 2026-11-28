@@ -1,0 +1,12 @@
+{
+  "pvs-vs-baseline": {
+    "verifiedGames": 32,
+    "verifiedPairs": 16,
+    "verifiedMoves": 5916
+  },
+  "lmr-vs-pvs": {
+    "verifiedGames": 32,
+    "verifiedPairs": 16,
+    "verifiedMoves": 5788
+  }
+}

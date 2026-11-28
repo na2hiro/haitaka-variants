@@ -1554,6 +1554,8 @@ impl<R: ClassicalRule> ClassicalGame<R> {
 impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     type Move = ClassicalMove<R>;
     const SCHEMA: u8 = 3;
+    // A move to an empty square is not quiet under a try win or forced captures.
+    const REDUCE_QUIET_MOVES: bool = R::CHECK && !R::LION && !R::TRY && !R::FORCE_CAPTURE;
     fn moves(&self, limit: usize, stop: &mut dyn FnMut() -> bool) -> Option<Vec<Self::Move>> {
         self.paths(limit, stop)
     }
@@ -1595,6 +1597,14 @@ impl<R: ClassicalRule> SearchGame for ClassicalGame<R> {
     }
     fn promotion(mv: Self::Move) -> bool {
         mv.promotes()
+    }
+    fn quiet_for_reduction(&self, mv: Self::Move) -> bool {
+        matches!(mv, ClassicalMove::Move { path, promotion: false, .. }
+            if path.len() == 1 && self.pending().is_none()
+                && self.current().cells[Position::<R>::index(path[0]).unwrap()].is_none())
+    }
+    fn royal_threatened(&self, side: u8) -> bool {
+        self.current().classical_attacked(side)
     }
 }
 #[cfg(any(

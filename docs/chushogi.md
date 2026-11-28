@@ -28,7 +28,7 @@
 ## JSON v2
 
 形式名・能力宣言は **`haitaka-json-v2`**。小将棋のJSON v1は変更しない。
-SFEN/USIへ新しい文字を割り当てず、数値座標と将棋ったーの駒IDを使う。
+JSON v2 では数値座標と将棋ったーの駒IDを使う。
 
 ```json
 {
@@ -97,7 +97,14 @@ Rust入口は `haitaka::extended::chu`。`start_position_json`, `validate_positi
 `legal_moves_json`, `apply_move_json`, `inspect_json`, `perft_json`, `search_json` はNative/WASMで共通。
 WASMの関数名と引数は小将棋と同じで、v2のJSON文字列を入出力する。
 
-探索は小将棋と共用した反復深化・αβ探索・捕獲と成りの静止探索・履歴付き置換表。
+`chu::search_position` は検証済みの `ChuGame` を受け取り、完了経路を含む型付きの探索結果を返す。
+`search_json` はこの入口を呼んで既存の JSON v2 に変換する。
+ネイティブ CLI の `usi` も同じ型付き探索を呼ぶ。
+
+本将棋と JSON 系は `haitaka::search` の着手ループ、探索窓、αβカットオフ、置換表の上界・下界判定を共有する。
+静止探索の窓とカットオフ、予算中断後の指し手選択、PVS・LMR の試し読みと再探索も共有する。
+中将棋のアダプターは完了経路の適用と復元、履歴付き置換表、反復深化、静止探索の対象手、予算と終局を扱う。
+中断時は最後に完了した深さの手を優先する。
 途中の捕獲も手の並べ替えと静止探索へ反映する。深さ1～100、正のミリ秒、ノード予算0は無制限。
 予算は反復全体へ適用し、経路の列挙中も停止を確認する。中断時も完了した合法手だけを返す。
 完了前に中断すれば合法な代替手、終局なら `bestMove: null`。perftの深さは0～4。
@@ -120,6 +127,31 @@ HAITAKA_MINASE_V3_NNUE=path/to/minase-v3.nnue HAITAKA_MINASE_NNUE=path/to/minase
 ```
 
 WASM の読み込みが成功すると、v3 は `minase-layer-stack`、v2.6 は `minase-mnue-v5` を返す。
+
+## ネイティブ CLI の USI
+
+`cargo run --release -p haitaka_cli --features chushogi -- usi` で開始する。
+`position startpos` と `position sfen <盤> <手番> - <手数>` に続けて、`moves` で完了手の履歴を渡せる。
+二段手は `6f7e6f` のように始点・経由点・終点を連結する。
+`go` は `depth`、`nodes`、`movetime`、持ち時間・加算・秒読みに対応し、`go infinite` は `stop` まで待つ。
+評価は手作り評価だけを使う（`--eval nnue` と `--nnue` は未対応）。
+SFEN 単体は先獅子なしの解析開始点として扱う。先獅子と反復を復元する場合は、履歴を `moves` で渡す。
+
+駒・経路の表記は Lishogi に合わせ、合法手と終局判定は将棋ったー版の中将棋エンジンに従う。
+Lishogi 本番対局では、裸玉勝ちと反復時の連続攻撃の規則差がある。
+参照資料は [Lishogi の中将棋ルール](https://lishogi.org/variant/chushogi#game-end)、
+[拡張 SFEN](https://github.com/WandererXII/shogiops/blob/master/src/sfen.ts#L341-L423)、
+[拡張 USI 手表記](https://github.com/WandererXII/shogiops/blob/master/src/util.ts#L106-L137)。
+
+## JSON 系の探索実験
+
+PVS は `search-variant-experiments,search-pvs`、LMR の追加は
+`search-variant-experiments,search-lmr` をルールの feature に加えて有効にする。
+PVS は JSON v1〜v5 で使える。LMR の対象は小将棋、中将棋と、v3 のうち王手放置禁止で
+獅子の二段手、トライ、強制捕獲がないルール。中将棋では多段手、経路を持つ駒、捕獲、成り、王族の移動、
+先獅子局面、移動前後の王族への脅威を短縮対象から除く。
+大型ルールの v4/v5 は PVS のみを使う。跳び越し捕獲や焼却を含む手の短縮可否は検証が必要。
+中将棋の `usi` は試し読み・再探索件数を `info` に出力する。 [中将棋の探索実験結果](../plans/search-pvs-lmr/chu.md)
 
 ## 参照元の修正
 

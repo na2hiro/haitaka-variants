@@ -1,0 +1,298 @@
+[
+  {
+    "fixture": "start",
+    "position": "startpos",
+    "depth": 2,
+    "engines": {
+      "baseline": {
+        "move": "7j5h",
+        "score": 0,
+        "nodes": 356,
+        "time": 1,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "7j5h",
+        "score": 0,
+        "nodes": 356,
+        "time": 1,
+        "pvsProbes": 35,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "7j5h",
+        "score": 0,
+        "nodes": 356,
+        "time": 1,
+        "pvsProbes": 35,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "start",
+    "position": "startpos",
+    "depth": 3,
+    "engines": {
+      "baseline": {
+        "move": "3i3h",
+        "score": 4,
+        "nodes": 8731,
+        "time": 22,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "3i3h",
+        "score": 4,
+        "nodes": 8170,
+        "time": 21,
+        "pvsProbes": 140,
+        "pvsResearches": 2,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "3i3h",
+        "score": 4,
+        "nodes": 8170,
+        "time": 22,
+        "pvsProbes": 140,
+        "pvsResearches": 2,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "balanced",
+    "position": "sfen k11/12/12/3g5g2/12/12/12/3G5G2/12/12/12/11K b - 1",
+    "depth": 4,
+    "engines": {
+      "baseline": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 2136,
+        "time": 4,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 2136,
+        "time": 4,
+        "pvsProbes": 84,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 2136,
+        "time": 4,
+        "pvsProbes": 84,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "balanced",
+    "position": "sfen k11/12/12/3g5g2/12/12/12/3G5G2/12/12/12/11K b - 1",
+    "depth": 5,
+    "engines": {
+      "baseline": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 27175,
+        "time": 45,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 20965,
+        "time": 36,
+        "pvsProbes": 140,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "3h2g",
+        "score": 4,
+        "nodes": 7774,
+        "time": 15,
+        "pvsProbes": 140,
+        "pvsResearches": 0,
+        "lmrReductions": 157,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "lion",
+    "position": "sfen k11/12/12/12/5p6/6N5/12/12/12/12/12/K11 b - 1",
+    "depth": 3,
+    "engines": {
+      "baseline": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 7035,
+        "time": 8,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 7035,
+        "time": 8,
+        "pvsProbes": 182,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 7035,
+        "time": 8,
+        "pvsProbes": 182,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "lion",
+    "position": "sfen k11/12/12/12/5p6/6N5/12/12/12/12/12/K11 b - 1",
+    "depth": 4,
+    "engines": {
+      "baseline": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 16653,
+        "time": 48,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 16440,
+        "time": 53,
+        "pvsProbes": 364,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "6f7e6d",
+        "score": 2220,
+        "nodes": 16440,
+        "time": 48,
+        "pvsProbes": 364,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "promotion",
+    "position": "sfen k11/12/7S4/12/12/12/12/12/12/12/12/K11 b - 1",
+    "depth": 3,
+    "engines": {
+      "baseline": {
+        "move": "5c4b",
+        "score": 472,
+        "nodes": 215,
+        "time": 0,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "5c4b",
+        "score": 472,
+        "nodes": 215,
+        "time": 0,
+        "pvsProbes": 16,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "5c4b",
+        "score": 472,
+        "nodes": 215,
+        "time": 0,
+        "pvsProbes": 16,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  },
+  {
+    "fixture": "promotion",
+    "position": "sfen k11/12/7S4/12/12/12/12/12/12/12/12/K11 b - 1",
+    "depth": 4,
+    "engines": {
+      "baseline": {
+        "move": "5c4d",
+        "score": 666,
+        "nodes": 562,
+        "time": 1,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "pvs": {
+        "move": "5c4d",
+        "score": 666,
+        "nodes": 624,
+        "time": 1,
+        "pvsProbes": 41,
+        "pvsResearches": 1,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "lmr": {
+        "move": "5c4d",
+        "score": 666,
+        "nodes": 624,
+        "time": 1,
+        "pvsProbes": 41,
+        "pvsResearches": 1,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    }
+  }
+]

@@ -125,7 +125,7 @@ fn repetition_and_models_and_dfpn_are_rule_aware() {
     );
     let cycle = format!("{king}{up} 1a1b {up}{king} 1b1a ").repeat(3);
     let command = format!("position sfen {before} moves {}", cycle.trim());
-    let (b, h) = parse_usi_position_with_history(&command).unwrap();
+    let (b, h) = parse_usi_position_with_limit(&command, 49).unwrap();
     assert_eq!(h.adjudication(), HistoryAdjudication::RepetitionDraw);
     let result = search_board_impl_handcrafted_with_history(&b, &h, 2).unwrap();
     assert!(result.best_move.is_none());

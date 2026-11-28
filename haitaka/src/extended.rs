@@ -935,7 +935,7 @@ pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
 
 pub mod path;
 mod search;
-pub use search::SearchResult;
+pub use search::{SearchResult, SearchStats};
 pub fn search_json(
     json: &str,
     max_depth: u8,

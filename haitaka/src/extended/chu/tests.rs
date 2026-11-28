@@ -359,3 +359,24 @@ fn rays_and_hashes_cross_word_boundaries_without_padding_bits() {
         assert_eq!(rebuilt.occupied[0].words()[2] >> 16, 0);
     }
 }
+
+#[test]
+fn lmr_protects_chu_turns_with_tactical_or_rule_state() {
+    let quiet = one([5, 5], [5, 4], false);
+    let ordinary = game(&kings(&[([5, 5], "ae", 0)]), 0, false);
+    assert!(ordinary.moves().contains(&quiet));
+    assert!(ordinary.quiet_for_reduction(quiet));
+
+    let senjishi = game(&kings(&[([5, 5], "ae", 0)]), 0, true);
+    assert!(!senjishi.quiet_for_reduction(quiet));
+    let lion = game(&kings(&[([5, 5], "bl", 0)]), 0, false);
+    assert!(!lion.quiet_for_reduction(quiet));
+    assert!(!lion.quiet_for_reduction(two([5, 5], [5, 4], [5, 5])));
+
+    let capture = game(&kings(&[([5, 5], "ae", 0), ([5, 4], "aa", 1)]), 0, false);
+    assert!(!capture.quiet_for_reduction(quiet));
+
+    let threatened = game(&kings(&[([12, 3], "ag", 0)]), 1, false);
+    assert!(threatened.royal_threatened(1));
+    assert!(!ordinary.royal_threatened(1));
+}

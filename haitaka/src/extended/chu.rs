@@ -67,6 +67,9 @@ pub struct Request {
 fn lion(cell: Cell) -> bool {
     matches!(ChuPosition::def(cell).id, "bl" | "dh")
 }
+fn has_continuation(piece: &str) -> bool {
+    matches!(piece, "bl" | "dh" | "cz" | "db")
+}
 fn adjacent(a: usize, b: usize) -> bool {
     let (x, y) = Rect::<12, 12>::coordinates(a).unwrap();
     let (u, v) = Rect::<12, 12>::coordinates(b).unwrap();
@@ -245,6 +248,15 @@ pub struct ChuGame {
 }
 pub type CompiledGame = ChuGame;
 impl ChuGame {
+    pub fn from_position(position: ChuPosition) -> Self {
+        Self {
+            history: vec![position],
+            played: Vec::new(),
+            pending: None,
+            pending_ply: 0,
+        }
+    }
+
     pub fn parse(json: &str) -> Result<Self, String> {
         let req: Request = serde_json::from_str(json).map_err(|e| e.to_string())?;
         if req.schema_version != 2 || req.rule_id != 48 {
@@ -311,6 +323,9 @@ impl ChuGame {
     }
     pub fn current(&self) -> &ChuPosition {
         self.history.last().unwrap()
+    }
+    pub fn side_to_move(&self) -> u8 {
+        self.current().side
     }
     pub fn to_json(&self) -> String {
         serde_json::to_string(&Request {
@@ -442,6 +457,7 @@ impl ChuGame {
 impl SearchGame for ChuGame {
     type Move = PathMove;
     const SCHEMA: u8 = 2;
+    const REDUCE_QUIET_MOVES: bool = true;
     fn moves(&self, limit: usize, stop: &mut dyn FnMut() -> bool) -> Option<Vec<PathMove>> {
         self.paths_cancel(limit, stop)
     }
@@ -481,6 +497,36 @@ impl SearchGame for ChuGame {
     }
     fn promotion(mv: PathMove) -> bool {
         mv.promotion
+    }
+    fn quiet_for_reduction(&self, mv: PathMove) -> bool {
+        if mv.promotion || mv.path.len() != 1 || self.active_pending().is_some() {
+            return false;
+        }
+        let position = self.current();
+        let mover = position.cells[ChuPosition::index(mv.from).unwrap()].unwrap();
+        !position.state.senjishi
+            && !ChuPosition::def(mover).royal
+            && !has_continuation(ChuPosition::def(mover).id)
+            && position.cells[ChuPosition::index(mv.path[0]).unwrap()].is_none()
+    }
+    fn royal_threatened(&self, side: u8) -> bool {
+        let position = self.current();
+        if position.attacked(side) {
+            return true;
+        }
+        // A continuation can reach a royal within two squares, even if no
+        // direct attack was found. Conservatively include blocked paths here.
+        position.cells.iter().enumerate().any(|(from, mover)| {
+            mover.is_some_and(|cell| {
+                cell.color != side && has_continuation(ChuPosition::def(cell).id)
+            }) && position.cells.iter().enumerate().any(|(to, target)| {
+                target.is_some_and(|cell| cell.color == side && ChuPosition::def(cell).royal) && {
+                    let [a, b] = ChuPosition::at(from);
+                    let [c, d] = ChuPosition::at(to);
+                    a.abs_diff(c).max(b.abs_diff(d)) <= 2
+                }
+            })
+        })
     }
 }
 pub fn start_position_json() -> String {
@@ -525,6 +571,27 @@ pub fn perft_json(json: &str, depth: u8) -> Result<String, String> {
     let elapsed = start.elapsed().as_secs_f64() * 1000.;
     Ok(serde_json::json!({"nodes":nodes,"elapsedMs":elapsed,"nps":(nodes as f64*1000./elapsed.max(0.001))as u64}).to_string())
 }
+/// Search a validated position over complete turns.
+pub fn search_position(
+    game: &mut ChuGame,
+    max_depth: u8,
+    timeout_ms: u32,
+    node_budget: u32,
+) -> Result<SearchResult<PathMove>, String> {
+    search::search_position(game, max_depth, timeout_ms, node_budget, None)
+}
+
+/// Search the same completed-turn engine with a native caller's stop flag.
+pub fn search_position_cancellable(
+    game: &mut ChuGame,
+    max_depth: u8,
+    timeout_ms: u32,
+    node_budget: u32,
+    stop: &core::sync::atomic::AtomicBool,
+) -> Result<SearchResult<PathMove>, String> {
+    search::search_position(game, max_depth, timeout_ms, node_budget, Some(stop))
+}
+
 pub fn search_json(
     json: &str,
     max_depth: u8,
@@ -532,7 +599,7 @@ pub fn search_json(
     node_budget: u32,
 ) -> Result<String, String> {
     let mut game = ChuGame::parse(json)?;
-    search::search_json(&mut game, max_depth, timeout_ms, node_budget)
+    search_position(&mut game, max_depth, timeout_ms, node_budget)?.to_json()
 }
 pub fn search_json_with_nnue(
     json: &str,

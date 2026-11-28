@@ -1,7 +1,7 @@
 #![cfg(feature = "chushogi")]
 use std::{
     fs,
-    io::Write,
+    io::{BufRead, BufReader, Write},
     process::{Command, Stdio},
 };
 fn cli() -> Command {
@@ -21,7 +21,7 @@ fn json(action: &[&str], input: &str) -> serde_json::Value {
     serde_json::from_slice(&r.stdout).unwrap()
 }
 #[test]
-fn json_cli_shares_core_and_rejects_usi() {
+fn json_and_usi_share_the_chu_search() {
     let start = json(&["startpos"], "");
     let input = start.to_string();
     assert_eq!(json(&["validate"], &input), start);
@@ -45,9 +45,65 @@ fn json_cli_shares_core_and_rejects_usi() {
             .unwrap()
             .contains(&result["bestMove"])
     );
-    let usi = cli().arg("usi").output().unwrap();
-    assert!(!usi.status.success());
-    assert!(String::from_utf8_lossy(&usi.stderr).contains("SFEN/USI"));
+    let mut usi = cli()
+        .arg("usi")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = usi.stdin.take().unwrap();
+    let mut stdout = BufReader::new(usi.stdout.take().unwrap());
+    let mut await_line = |prefix: &str| -> String {
+        loop {
+            let mut line = String::new();
+            assert!(stdout.read_line(&mut line).unwrap() > 0, "missing {prefix}");
+            if line.starts_with(prefix) {
+                return line.trim().to_owned();
+            }
+        }
+    };
+    writeln!(
+        stdin,
+        "usi\nisready\nposition startpos\ngo depth 8 nodes 1000"
+    )
+    .unwrap();
+    await_line("usiok");
+    await_line("readyok");
+    let info = await_line("info depth ");
+    assert!(
+        info.starts_with(&format!("info depth {} ", result["completedDepth"])),
+        "{info}"
+    );
+    assert!(
+        info.contains(&format!(" nodes {} ", result["states"])),
+        "{info}"
+    );
+    assert!(
+        info.contains(&format!(" score cp {} ", result["score"])),
+        "{info}"
+    );
+    let best = await_line("bestmove ");
+    let mv = &result["bestMove"];
+    let format_square = |at: &serde_json::Value| {
+        let file = at[0].as_u64().unwrap();
+        let rank = at[1].as_u64().unwrap() as u8;
+        format!("{file}{}", char::from(b'a' + rank - 1))
+    };
+    let mut expected = format_square(&mv["from"]);
+    for at in mv["path"].as_array().unwrap() {
+        expected.push_str(&format_square(at));
+    }
+    if mv["promotion"].as_bool().unwrap() {
+        expected.push('+');
+    }
+    assert_eq!(best, format!("bestmove {expected}"));
+
+    writeln!(stdin, "go infinite\nstop").unwrap();
+    let best = await_line("bestmove ");
+    assert_ne!(best, "bestmove resign");
+    writeln!(stdin, "isready\nquit").unwrap();
+    await_line("readyok");
+    assert!(usi.wait().unwrap().success());
 }
 #[test]
 fn package_declares_json_only_and_rejects_models_and_wrong_ids() {

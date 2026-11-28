@@ -1,0 +1,310 @@
+{
+  "v3-pvs-vs-baseline": {
+    "caps": {
+      "200": {
+        "games": 32,
+        "wins": 2,
+        "losses": 2,
+        "draws": 1,
+        "capped": 27,
+        "usablePairs": 0,
+        "excludedPairs": 16,
+        "scores": [],
+        "score": null,
+        "elo": null,
+        "elo95": null
+      },
+      "400": {
+        "games": 32,
+        "wins": 9,
+        "losses": 10,
+        "draws": 1,
+        "capped": 12,
+        "usablePairs": 6,
+        "excludedPairs": 10,
+        "scores": [
+          0.75,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.5416666666666666,
+        "elo": 29.020266859444664,
+        "elo95": [
+          -157.02923470524857,
+          215.0697684241379
+        ]
+      },
+      "4096": {
+        "games": 32,
+        "wins": 15,
+        "losses": 14,
+        "draws": 2,
+        "capped": 1,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "scores": [
+          0.75,
+          0.0,
+          1.0,
+          0.75,
+          0.0,
+          0.5,
+          1.0,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.5333333333333333,
+        "elo": 23.196778791074692,
+        "elo95": [
+          -96.52502436013222,
+          142.9185819422816
+        ]
+      }
+    },
+    "byEngine": {
+      "v3-pvs": {
+        "searches": 8157,
+        "meanDepth": 3.5088880715949493,
+        "depth4Plus": 3565,
+        "fallback": 0,
+        "nodes": 899932710,
+        "meanNps": 111926.71582689714,
+        "meanRpcMs": 1001.9198360189993,
+        "searchesWithLmr": 0,
+        "pvsProbes": 5481870,
+        "pvsResearches": 104800,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "v3-baseline": {
+        "searches": 8158,
+        "meanDepth": 3.44030399607747,
+        "depth4Plus": 3630,
+        "fallback": 0,
+        "nodes": 931153891,
+        "meanNps": 115779.39164010787,
+        "meanRpcMs": 1001.7059874725503,
+        "searchesWithLmr": 0,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    },
+    "maxPlies": 4096,
+    "verifiedMoves": 16315
+  },
+  "v3-lmr-vs-pvs": {
+    "caps": {
+      "200": {
+        "games": 32,
+        "wins": 2,
+        "losses": 2,
+        "draws": 1,
+        "capped": 27,
+        "usablePairs": 1,
+        "excludedPairs": 15,
+        "scores": [
+          0.5
+        ],
+        "score": 0.5,
+        "elo": 0.0,
+        "elo95": null
+      },
+      "400": {
+        "games": 32,
+        "wins": 6,
+        "losses": 5,
+        "draws": 1,
+        "capped": 20,
+        "usablePairs": 2,
+        "excludedPairs": 14,
+        "scores": [
+          0.75,
+          0.5
+        ],
+        "score": 0.625,
+        "elo": 88.73949984654256,
+        "elo95": [
+          -92.85349951993713,
+          270.33249921302223
+        ]
+      },
+      "4096": {
+        "games": 32,
+        "wins": 16,
+        "losses": 15,
+        "draws": 1,
+        "capped": 0,
+        "usablePairs": 16,
+        "excludedPairs": 0,
+        "scores": [
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          0.5,
+          0.75,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.515625,
+        "elo": 10.860898417445911,
+        "elo95": [
+          -54.908989758922345,
+          76.63078659381416
+        ]
+      }
+    },
+    "byEngine": {
+      "v3-lmr": {
+        "searches": 6912,
+        "meanDepth": 3.338252314814815,
+        "depth4Plus": 2409,
+        "fallback": 0,
+        "nodes": 912205769,
+        "meanNps": 133891.45789930556,
+        "meanRpcMs": 995.0008498625522,
+        "searchesWithLmr": 4161,
+        "pvsProbes": 5536412,
+        "pvsResearches": 83580,
+        "lmrReductions": 835092,
+        "lmrResearches": 33028
+      },
+      "v3-pvs": {
+        "searches": 6911,
+        "meanDepth": 3.347417161047605,
+        "depth4Plus": 2495,
+        "fallback": 0,
+        "nodes": 927921641,
+        "meanNps": 136224.71234264216,
+        "meanRpcMs": 994.918636717833,
+        "searchesWithLmr": 0,
+        "pvsProbes": 5188167,
+        "pvsResearches": 79708,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    },
+    "maxPlies": 1621,
+    "verifiedMoves": 13823
+  },
+  "v3-vs-v26": {
+    "caps": {
+      "200": {
+        "games": 32,
+        "wins": 4,
+        "losses": 1,
+        "draws": 0,
+        "capped": 27,
+        "usablePairs": 0,
+        "excludedPairs": 16,
+        "scores": [],
+        "score": null,
+        "elo": null,
+        "elo95": null
+      },
+      "400": {
+        "games": 32,
+        "wins": 9,
+        "losses": 8,
+        "draws": 0,
+        "capped": 15,
+        "usablePairs": 3,
+        "excludedPairs": 13,
+        "scores": [
+          0.5,
+          1.0,
+          0.5
+        ],
+        "score": 0.6666666666666666,
+        "elo": 120.41199826559246,
+        "elo95": [
+          -134.95315709351956,
+          375.77715362470445
+        ]
+      },
+      "4096": {
+        "games": 32,
+        "wins": 15,
+        "losses": 16,
+        "draws": 0,
+        "capped": 1,
+        "usablePairs": 15,
+        "excludedPairs": 1,
+        "scores": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.4666666666666667,
+        "elo": -23.196778791074703,
+        "elo95": [
+          -164.27565505237246,
+          117.88209747022304
+        ]
+      }
+    },
+    "byEngine": {
+      "v3-baseline": {
+        "searches": 8673,
+        "meanDepth": 3.415081286751989,
+        "depth4Plus": 3390,
+        "fallback": 0,
+        "nodes": 1030796404,
+        "meanNps": 120342.55217341174,
+        "meanRpcMs": 1007.3385210796737,
+        "searchesWithLmr": 0,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      },
+      "v2.6-baseline": {
+        "searches": 8674,
+        "meanDepth": 3.3543924371685496,
+        "depth4Plus": 3054,
+        "fallback": 0,
+        "nodes": 1108859821,
+        "meanNps": 129409.54842056721,
+        "meanRpcMs": 1007.4392304340633,
+        "searchesWithLmr": 0,
+        "pvsProbes": 0,
+        "pvsResearches": 0,
+        "lmrReductions": 0,
+        "lmrResearches": 0
+      }
+    },
+    "maxPlies": 4096,
+    "verifiedMoves": 17347
+  }
+}
