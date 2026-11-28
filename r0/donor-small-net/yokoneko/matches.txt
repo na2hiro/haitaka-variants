@@ -1,0 +1,7 @@
+yokoneko kf1-vs-hc games 512 A score 0.7637 W-L-D 391 121 0 pairedElo 203.8 [168.8, 238.7] fallbacks A/B 11 14 nps A/B 46274/21370 depth A/B 5 5
+yokoneko kf2-vs-hc games 512 A score 0.8066 W-L-D 413 99 0 pairedElo 248.1 [211.7, 284.6] fallbacks A/B 3 7 nps A/B 48645/17872 depth A/B 5 5
+yokoneko kf2-vs-kf1 games 512 A score 0.6602 W-L-D 338 174 0 pairedElo 115.3 [84.5, 146.2] fallbacks A/B 0 0 nps A/B 45104/36479 depth A/B 5 5
+yokoneko kf3-vs-hc games 512 A score 0.8809 W-L-D 451 61 0 pairedElo 347.5 [301.6, 393.5] fallbacks A/B 0 2 nps A/B 50385/19786 depth A/B 5 5
+yokoneko kf3-vs-kf2 games 512 A score 0.5625 W-L-D 288 224 0 pairedElo 43.7 [15.0, 72.3] fallbacks A/B 18 18 nps A/B 45623/47503 depth A/B 6 5
+yokoneko kf4-vs-hc games 512 A score 0.8711 W-L-D 446 66 0 pairedElo 331.9 [287.9, 375.9] fallbacks A/B 0 1 nps A/B 48873/17630 depth A/B 5 5
+yokoneko kf4-vs-kf3 games 512 A score 0.5566 W-L-D 285 227 0 pairedElo 39.5 [11.8, 67.3] fallbacks A/B 0 0 nps A/B 45956/41240 depth A/B 6 6

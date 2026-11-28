@@ -1,0 +1,7 @@
+tenjiku kf1-vs-hc games 512 A score 0.8887 W-L-D 455 57 0 pairedElo 360.9 [316.0, 405.7] fallbacks A/B 0 0 nps A/B 75649/16401 depth A/B 5 7
+tenjiku kf2-vs-hc games 512 A score 0.8926 W-L-D 457 55 0 pairedElo 367.8 [322.2, 413.5] fallbacks A/B 0 0 nps A/B 86753/17094 depth A/B 5 255
+tenjiku kf2-vs-kf1 games 512 A score 0.6279 W-L-D 321 190 1 pairedElo 90.9 [62.3, 119.5] fallbacks A/B 0 0 nps A/B 72650/68151 depth A/B 6 5
+tenjiku kf3-vs-hc games 512 A score 0.8926 W-L-D 456 54 2 pairedElo 367.8 [321.4, 414.3] fallbacks A/B 0 0 nps A/B 90072/17313 depth A/B 5 5
+tenjiku kf3-vs-kf2 games 512 A score 0.5889 W-L-D 301 210 1 pairedElo 62.4 [35.6, 89.3] fallbacks A/B 0 0 nps A/B 71422/69904 depth A/B 5 5
+tenjiku kf4-vs-hc games 512 A score 0.9287 W-L-D 475 36 1 pairedElo 445.9 [389.9, 502.0] fallbacks A/B 0 0 nps A/B 89801/17313 depth A/B 5 5
+tenjiku kf4-vs-kf3 games 512 A score 0.5830 W-L-D 297 212 3 pairedElo 58.2 [32.0, 84.5] fallbacks A/B 0 0 nps A/B 74791/72259 depth A/B 5 5

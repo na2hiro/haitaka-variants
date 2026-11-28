@@ -18,6 +18,9 @@ mod r4;
 mod r4f;
 mod r4replacement;
 mod selection;
+mod small_net_audit;
+mod small_net_features;
+mod small_net_generate;
 mod step10_opening_gate;
 mod step11_opening_gate;
 mod step12_corpus_freeze;
@@ -56,6 +59,68 @@ enum Command {
         #[arg(long, default_value = "../engine/variant-nnue-pytorch")]
         external_trainer: PathBuf,
         #[arg(long, default_value = "out/anhoku-reboot-r1d3/source-identity.json")]
+        output: PathBuf,
+    },
+    /// Self-play teacher generation for the small-net plan (search score of every played position).
+    SmallNetGenerate {
+        #[arg(long)]
+        games: u64,
+        #[arg(long, default_value_t = 0)]
+        first_game: u64,
+        #[arg(long, default_value_t = 10_000)]
+        nodes: u64,
+        #[arg(long, default_value_t = 8)]
+        random_plies: u16,
+        #[arg(long, default_value_t = 0.0)]
+        random_move_rate: f64,
+        #[arg(long, default_value_t = 3000)]
+        adjudicate_score: i32,
+        #[arg(long, default_value_t = 4)]
+        adjudicate_plies: u16,
+        #[arg(long, default_value_t = 200)]
+        max_plies: u16,
+        #[arg(long, default_value_t = 0)]
+        record_from_ply: u16,
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+        #[arg(long)]
+        nnue: Option<PathBuf>,
+        #[arg(long)]
+        output: PathBuf,
+        /// Games per shard; finished shards are kept and reused when the command is rerun.
+        #[arg(long, default_value_t = 256)]
+        shard_games: u64,
+    },
+    /// Export KingFreeA+DonorSingleEff feature rows for the CPU small-net trainer.
+    SmallNetExportFeatures {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, value_enum, default_value = "king-free")]
+        family: small_net_features::ExportFamily,
+    },
+    /// Write production static evaluations (i32 LE) of packed records for parity checks.
+    SmallNetEval {
+        #[arg(long)]
+        nnue: PathBuf,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long, default_value_t = usize::MAX)]
+        limit: usize,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Phase 0 of the small-net plan: CPU-only HalfKA/king-free/donor row
+    /// coverage audit over packed 72-byte training records.
+    SmallNetCoverageAudit {
+        #[arg(long, required = true)]
+        train: Vec<PathBuf>,
+        #[arg(long)]
+        eval: Vec<PathBuf>,
+        #[arg(long)]
         output: PathBuf,
     },
     /// Expand an Anhoku DonorSingleEff network into the functionally identical
@@ -1285,6 +1350,66 @@ fn main() -> Result<()> {
                 if passed { "PASS" } else { "FAIL" }
             );
             ensure!(passed, "Phase 11-B tactical/latency gate failed");
+        }
+        Command::SmallNetGenerate {
+            games,
+            first_game,
+            nodes,
+            random_plies,
+            random_move_rate,
+            adjudicate_score,
+            adjudicate_plies,
+            max_plies,
+            record_from_ply,
+            seed,
+            jobs,
+            nnue,
+            output,
+            shard_games,
+        } => {
+            small_net_generate::run(small_net_generate::GenerateArgs {
+                games,
+                first_game,
+                nodes,
+                random_plies,
+                random_move_rate,
+                adjudicate_score,
+                adjudicate_plies,
+                max_plies,
+                record_from_ply,
+                seed,
+                jobs,
+                nnue,
+                output,
+                shard_games,
+            })?;
+        }
+        Command::SmallNetExportFeatures {
+            input,
+            output,
+            family,
+        } => {
+            small_net_features::export(&input, &output, family)?;
+        }
+        Command::SmallNetEval {
+            nnue,
+            input,
+            limit,
+            output,
+        } => {
+            small_net_features::evaluate(&nnue, &input, limit, &output)?;
+        }
+        Command::SmallNetCoverageAudit {
+            train,
+            eval,
+            output,
+        } => {
+            small_net_audit::run(small_net_audit::SmallNetAuditArgs {
+                train,
+                eval,
+                output: output.clone(),
+            })?;
+            println!("small-net coverage audit written to {}", output.display());
         }
         Command::Phase11cAudit {
             trainer_config,

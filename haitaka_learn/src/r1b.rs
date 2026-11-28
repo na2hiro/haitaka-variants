@@ -14,9 +14,9 @@ use sha2::{Digest, Sha256};
 
 const EXPECT_MAGIC: &[u8; 16] = b"HTK-R1B-EXP-V1\0\0";
 const CHECKPOINT_MAGIC: &[u8; 16] = b"HTK-R1B-FP-V1\0\0\0";
-const FT_DIMENSIONS: usize = 512;
+const FT_DIMENSIONS: usize = haitaka_wasm::NNUE_TRANSFORMER_WIDTH;
 const PSQT_BUCKETS: usize = 8;
-const TRANSFORMED_DIMENSIONS: usize = 1024;
+const TRANSFORMED_DIMENSIONS: usize = haitaka_wasm::NNUE_TRANSFORMER_OUTPUT_WIDTH;
 const HIDDEN1_DIMENSIONS: usize = 16;
 const HIDDEN2_DIMENSIONS: usize = 32;
 
@@ -765,7 +765,7 @@ fn serialized_layout(bytes: &[u8]) -> Result<SerializedLayout> {
     let mut affine_weights = Vec::new();
     for _ in 0..8 {
         cursor += 4;
-        for (outputs, padded_inputs) in [(16, 1024), (32, 32), (1, 32)] {
+        for (outputs, padded_inputs) in [(16, TRANSFORMED_DIMENSIONS), (32, 32), (1, 32)] {
             let biases = cursor..cursor + outputs * 4;
             cursor = biases.end;
             let weights = cursor..cursor + outputs * padded_inputs;

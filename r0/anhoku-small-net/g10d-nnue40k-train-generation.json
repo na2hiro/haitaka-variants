@@ -1,0 +1,23 @@
+{
+  "adjudicatePlies": 4,
+  "adjudicateScore": 3000,
+  "adjudicatedGames": 70054,
+  "cappedGames": 10,
+  "elapsedSec": 15637.659963708,
+  "evaluator": "models/kf-all8-last.nnue",
+  "firstGame": 0,
+  "games": 84000,
+  "jobs": 16,
+  "maxPlies": 200,
+  "nodesPerMove": 40000,
+  "positions": 3075979,
+  "positionsPerSec": 196.70327959162404,
+  "positionsPerWorkerSec": 12.293954974476502,
+  "randomMoveRate": 0.05,
+  "randomPlies": 8,
+  "recordFromPly": 0,
+  "schema": "haitaka-small-net-selfplay-generation-v1",
+  "searchedPlies": 3132228,
+  "seed": 1111,
+  "totalNodes": 128091280000
+}

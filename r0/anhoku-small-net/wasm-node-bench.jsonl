@@ -1,0 +1,26 @@
+{"pkg":"wasm-l256","model":"kf-all6-x2-last.nnue","modelBytes":2014968,"desc":"king-free L1=256 runs/kf-all6-x2/last.pt","initMs":36.9,"loadMs":6.3,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.8","meanNodes":61671,"meanNps":61670,"meanDepth":5.75,"rssMB":176.9,"arrayBuffersMB":2.1}
+{"pkg":"wasm-l256","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":36.5,"loadMs":0,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.8","meanNodes":75568,"meanNps":75568,"meanDepth":5.75,"rssMB":168.7,"arrayBuffersMB":0.1}
+
+/tmp/claude-1000/-home-na2hiro-proj-haitaka-variants/06bf6555-e731-4cdd-b621-a698f9edb2bc/scratchpad/wasm-l512/haitaka_wasm.js:733
+                throw takeFromExternrefTable0(ret[2]);
+                ^
+failed to load NNUE: unexpected NNUE hash: expected one of 0x3c103e72, 0x0d8f62a2, 0xd0bd8e2b, 0x93d7ef28, 0x5bf765a4, got 0x0d8f6262
+(Use `node --trace-uncaught ...` to show where the exception was thrown)
+
+Node.js v26.8.1
+{"pkg":"wasm-l512","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":36.3,"loadMs":0,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.4","meanNodes":75530,"meanNps":75530,"meanDepth":5.75,"rssMB":170.7,"arrayBuffersMB":0.1}
+{"pkg":"wasm-l256","model":"kf-all6-x2-last.nnue","modelBytes":2014968,"desc":"king-free L1=256 runs/kf-all6-x2/last.pt","initMs":36.4,"loadMs":6.3,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.6","meanNodes":61610,"meanNps":61610,"meanDepth":5.69,"rssMB":174.5,"arrayBuffersMB":2.1}
+{"pkg":"wasm-l256","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":36.2,"loadMs":0,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.4","meanNodes":76668,"meanNps":76667,"meanDepth":5.75,"rssMB":170.5,"arrayBuffersMB":0.1}
+
+/tmp/claude-1000/-home-na2hiro-proj-haitaka-variants/06bf6555-e731-4cdd-b621-a698f9edb2bc/scratchpad/wasm-l512/haitaka_wasm.js:733
+                throw takeFromExternrefTable0(ret[2]);
+                ^
+failed to load NNUE: unexpected NNUE hash: expected one of 0x3c103e72, 0x0d8f62a2, 0xd0bd8e2b, 0x93d7ef28, 0x5bf765a4, got 0x0d8f6262
+(Use `node --trace-uncaught ...` to show where the exception was thrown)
+
+Node.js v26.8.1
+{"pkg":"wasm-l512","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":36.9,"loadMs":0,"positions":16,"meanElapsedMs":1000.3,"maxElapsedMs":"1003.5","meanNodes":76330,"meanNps":76330,"meanDepth":5.75,"rssMB":170.3,"arrayBuffersMB":0.1}
+{"pkg":"wasm-step11-web","model":"step10-u768.nnue","modelBytes":83048703,"desc":"Haitaka Anhoku strength-first-step10-checkpoint-selection-20260914-v2 256x16x32","initMs":38.1,"loadMs":208.1,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.7","meanNodes":55554,"meanNps":55554,"meanDepth":5.44,"rssMB":498.4,"arrayBuffersMB":158.5}
+{"pkg":"wasm-step11-web","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":36.8,"loadMs":0,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.8","meanNodes":75910,"meanNps":75909,"meanDepth":5.75,"rssMB":180,"arrayBuffersMB":0.1}
+{"pkg":"wasm-step11-web","model":"step10-u768.nnue","modelBytes":83048703,"desc":"Haitaka Anhoku strength-first-step10-checkpoint-selection-20260914-v2 256x16x32","initMs":36.6,"loadMs":206.3,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.7","meanNodes":55783,"meanNps":55783,"meanDepth":5.31,"rssMB":497.8,"arrayBuffersMB":158.5}
+{"pkg":"wasm-step11-web","model":"handcrafted","modelBytes":0,"desc":"handcrafted","initMs":35.6,"loadMs":0,"positions":16,"meanElapsedMs":1000.2,"maxElapsedMs":"1002.8","meanNodes":78092,"meanNps":78092,"meanDepth":5.75,"rssMB":180.1,"arrayBuffersMB":0.1}

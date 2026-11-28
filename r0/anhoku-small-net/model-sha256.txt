@@ -1,0 +1,29 @@
+d54c50466f9745d16a1858385539cfc64997971969f27b77474e8db9fc04eb01  gen/g2-teacher-kf-ab-long.nnue
+f3408fdb6e6ecf7f85d7fc612e652f2861662731c6cf191c9049e5aa98682e89  gen/g3-teacher-kf-g2.nnue
+545575c3c1bdd690c6f0e5cbe3daacbb93df831ca7cde6288dc0d2aa4b4958f0  runs/kf-abg1g2/best.nnue
+979f354bfef0041e2574fedcb75a7a8a5bb7d5d3f9214103e9bdf298eea829ed  mbp:smallnet/models/kf-all6.nnue (best.pt, 4096 steps)
+0427373ad41bd53ab80f2c74d1d47de180d8b8602992dd40e355d08806ae7846  mbp:smallnet/models/kf-all6-long-last.nnue (last.pt, 12288 steps)
+519534e29d8389121deec06e05b35cee0d374f39764bb3d3f6662f9ec9c1c3ab  mbp:smallnet/models/kf-all6-x2-last.nnue (last.pt, 24576 steps)
+ddf42d5ca2e7a2a380bb13b8c4de8b3b7ee6807766d614cdb22757eead7f142b  step10-u768.nnue (incumbent, 83 MB)
+136463e170c1eb249b3b87c141dcb45531524836392e2303cda1edba1a2be959  mbp:smallnet/models/kf-all4.nnue
+ecebdc340832ec8a29c0ccebb3a89beb393a3d963528597169b0d4edd9c4942a  mbp:smallnet/models/kf-all5.nnue
+c20c466aa590ddc4278d64ab50ee7fa11b0c729621cc494f75d71b1bad60cd0f  mbp:smallnet/models/kf-all7-last.nnue
+1e817e615b70b59a0d794e0e35f906b687478d1e185b002ef10acaaf16072ef3  mbp:smallnet/models/all7-wdl-l10-last.nnue
+71237baf8ddf6dc872d87bec7293a8f29f9f5f1da80cf6aca054f747e20342cb  mbp:smallnet/models/all7-wdl-l07-last.nnue
+ebd17b20503d3e1288c1baa8693b753e857817142f764458ce660f03409a9627  mbp:smallnet/models/all7-l512-last.nnue
+f8fa6378557a208f28dfbcb2f11a7160f5ff5cf6e895a98706c6f5f510141c6a  mbp:smallnet/models/alone-g8d-last.nnue
+af9e80907a043026f2d5895030a8188838a76e62a7dda5423c3285628d6053da  mbp:smallnet/models/alone-g7sub-last.nnue
+c7fcbebc9d87336f0b30fba2777ca84884132e215c2430f1f0b4bab6597f7e27  mbp:smallnet/models/kf-all8-last.nnue
+7550f4e95d4ada24a6165dfa2134945ca3cca19bf1ed2783a4085c55889f4821  mbp:smallnet/models/kf-recent-last.nnue
+7df7fa086ec12b5ded5cc001fdbaf094b9064232faf41ef3ad51c8bcec73509a  mbp:smallnet/models/kz9-all8-last.nnue (KingZone9A, 10.5 MB)
+46ce07fde8c9e4e4d4bdd21d5900ee8a3ccf3e9832a1abd1a6cfacacfb0cff8f  mbp:smallnet/models/kf-all8-s2-last.nnue (seed 2)
+d32d76c9e6ba38ca6c38bbd607c424b4ab8ea0fdb4d634dc50641f85683e63a5  mbp:smallnet/models/kf-all8-s3-last.nnue (seed 3)
+26e0da47b6e3d4a9fb57293d99a775aeef86782214a36d40bed4a64baad4cd79  mbp:smallnet/models/kf-all9-s1-last.nnue (all9 seed 1)
+28d1edc804d9907692d7a57469632661211bda1569c0d7789ae7f1168af3709b  mbp:smallnet/models/kf-all9-s2-last.nnue (all9 seed 2)
+c602d422fbcdab0f24064447cedbbbafd5f479598f58580acb444fc96ca16e3d  mbp:smallnet/models/deep-s1-last.nnue (g8d+g10d only, seed 1)
+7cbad4288e5063c1c8844b458379b02272a54034a4cbc2b83409c21e1c625b3e  mbp:smallnet/models/deep-s2-last.nnue (g8d+g10d only, seed 2)
+635ff26a473e3d2de639e6476b99f3e5fc85c7e90e015e5a98b0124f6ba65b68  mbp:smallnet/models/kf-all10-s1-last.nnue (all10 seed 1)
+1a125a8c986bf633b3a7affc128c525827fcd158b6345040c34271e8625b268e  mbp:smallnet/models/kf-all10-s2-last.nnue (all10 seed 2)
+bc0c80fb9f9c92e9f50e7b81816fa9a4e7b5ebd8ba3ee58c138524d79f454700  mbp:smallnet/models/ft-all8-last.nnue (kf-all8 fine-tuned, lr 3e-4, 8192 steps)
+fc1f2d8bd2d06af76f7475a191bf2f881d27ce04297d5b54dfe6133316db3d7f  mbp:smallnet/models/ft-all8s2-last.nnue (kf-all8-s2 fine-tuned)
+39f46e83549d5ee0c5980da0dfcb2c0aefa7c43e620d6dd74fe05297cdbc6a14  mbp:smallnet/models/l512-all10-last.nnue (L1=512, all10 data, 3.9 MB)

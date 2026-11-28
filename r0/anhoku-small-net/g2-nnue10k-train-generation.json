@@ -1,0 +1,22 @@
+{
+  "adjudicatePlies": 4,
+  "adjudicateScore": 3000,
+  "adjudicatedGames": 16395,
+  "cappedGames": 1,
+  "elapsedSec": 11007.808737463,
+  "evaluator": "../gen/g2-teacher-kf-ab-long.nnue",
+  "games": 24000,
+  "jobs": 5,
+  "maxPlies": 200,
+  "nodesPerMove": 10000,
+  "positions": 899743,
+  "positionsPerSec": 81.7367944391961,
+  "positionsPerWorkerSec": 16.34735888783922,
+  "randomMoveRate": 0.05,
+  "randomPlies": 8,
+  "recordFromPly": 0,
+  "schema": "haitaka-small-net-selfplay-generation-v1",
+  "searchedPlies": 924823,
+  "seed": 303,
+  "totalNodes": 9412180000
+}

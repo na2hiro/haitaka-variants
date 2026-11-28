@@ -1,0 +1,4 @@
+b5559b03b1b6952726782ab8c37c1755478dbc587c7e10ac1748df046dfb4cba  models/kf1.nnue
+9943ab550db8cc87da40dd61edac2db4ab1d1cc14bed94f47f51944e613a0d00  models/kf2.nnue
+4a73dec54bb8b9c9b76d521efcfdcab7800b62ba3042ff81dccc1e051552d60a  models/kf3.nnue
+c17e812982268c81c3ee0d4f94fb9df0c6a05f7efc3056cec5d0a93a4da100f5  models/kf4.nnue

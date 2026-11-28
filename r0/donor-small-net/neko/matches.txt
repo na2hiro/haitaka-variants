@@ -1,0 +1,7 @@
+neko kf1-vs-hc games 512 A score 0.7246 W-L-D 371 141 0 pairedElo 168.1 [134.1, 202.0] fallbacks A/B 0 0 nps A/B 148487/52709 depth A/B 6 255
+neko kf2-vs-hc games 512 A score 0.8125 W-L-D 416 96 0 pairedElo 254.7 [217.1, 292.4] fallbacks A/B 0 0 nps A/B 153091/49006 depth A/B 6 6
+neko kf2-vs-kf1 games 512 A score 0.6104 W-L-D 312 199 1 pairedElo 78.0 [49.4, 106.5] fallbacks A/B 0 0 nps A/B 139937/127458 depth A/B 6 6
+neko kf3-vs-hc games 512 A score 0.7861 W-L-D 402 109 1 pairedElo 226.1 [189.1, 263.2] fallbacks A/B 0 0 nps A/B 156762/47419 depth A/B 6 6
+neko kf3-vs-kf2 games 512 A score 0.5449 W-L-D 278 232 2 pairedElo 31.3 [1.8, 60.8] fallbacks A/B 0 0 nps A/B 143905/134634 depth A/B 6 6
+neko kf4-vs-hc games 512 A score 0.8252 W-L-D 422 89 1 pairedElo 269.6 [231.0, 308.2] fallbacks A/B 0 0 nps A/B 152428/48407 depth A/B 6 6
+neko kf4-vs-kf3 games 512 A score 0.4961 W-L-D 253 257 2 pairedElo -2.7 [-31.6, 26.2] fallbacks A/B 0 0 nps A/B 136970/141589 depth A/B 6 6
