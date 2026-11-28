@@ -61,10 +61,14 @@ const SMALL_BOARD_BLOCK_HASH: u32 = 0x534d_4231
 /// NNUE files must be serialized for the same width as the runtime. The width
 /// participates in the network and section hashes, so profiles fail closed
 /// rather than interpreting weights with the wrong shape.
-#[cfg(feature = "nnue-l1-256")]
+#[cfg(all(feature = "nnue-l1-256", not(feature = "nnue-l1-128")))]
 pub const NNUE_TRANSFORMER_WIDTH: usize = 256;
+/// Narrow profile for the small boards, whose few input rows make the
+/// transformer-to-hidden affine layer the dominant evaluation cost.
+#[cfg(feature = "nnue-l1-128")]
+pub const NNUE_TRANSFORMER_WIDTH: usize = 128;
 /// Number of values in each perspective's feature-transformer accumulator.
-#[cfg(not(feature = "nnue-l1-256"))]
+#[cfg(not(any(feature = "nnue-l1-256", feature = "nnue-l1-128")))]
 pub const NNUE_TRANSFORMER_WIDTH: usize = 512;
 /// Input width of the first affine layer after both perspectives are joined.
 pub const NNUE_TRANSFORMER_OUTPUT_WIDTH: usize = NNUE_TRANSFORMER_WIDTH * 2;

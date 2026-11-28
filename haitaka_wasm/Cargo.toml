@@ -32,6 +32,7 @@ sfnn-diagnostics = []
 # Verification oracle: disable SFNN's detected/compiled optimized kernels.
 sfnn-force-scalar = []
 nnue-l1-256 = []
+nnue-l1-128 = []
 donor-category = ["haitaka/donor-category"]
 win-condition-category = ["haitaka/win-condition-category"]
 king-constraint-category = ["haitaka/king-constraint-category"]

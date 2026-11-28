@@ -17,6 +17,7 @@ sha2 = "0.10"
 
 [features]
 nnue-l1-256 = ["haitaka_wasm/nnue-l1-256"]
+nnue-l1-128 = ["haitaka_wasm/nnue-l1-128"]
 donor-category = ["haitaka/donor-category", "haitaka_wasm/donor-category"]
 win-condition-category = ["haitaka/win-condition-category", "haitaka_wasm/win-condition-category"]
 king-constraint-category = ["haitaka/king-constraint-category", "haitaka_wasm/king-constraint-category"]
