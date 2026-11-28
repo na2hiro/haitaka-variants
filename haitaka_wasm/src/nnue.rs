@@ -50,6 +50,12 @@ const DONOR_PAIR_BLOCK_HASH: u32 = 0x467cdf71;
 const DONOR_KNIGHT8_BLOCK_HASH: u32 = 0x3cc37189;
 #[cfg(feature = "anki")]
 const DONOR_KNIGHT8_ANKI_BLOCK_HASH: u32 = DONOR_KNIGHT8_BLOCK_HASH ^ 0x6a09_e667;
+/// Small-board KingFreeA tail: mixes the rule ID and the board size into the
+/// feature-set hash, so a net only loads into the engine of its own small rule.
+#[cfg(feature = "small-board")]
+const SMALL_BOARD_BLOCK_HASH: u32 = 0x534d_4231
+    ^ (haitaka::SelectedRule::RULE_ID).wrapping_mul(0x9e37_79b1)
+    ^ ((FILES as u32) << 8 | RANKS as u32);
 /// Number of values in each perspective's feature-transformer accumulator.
 ///
 /// NNUE files must be serialized for the same width as the runtime. The width
@@ -72,7 +78,10 @@ const HIDDEN_LAYER_2_DIMENSIONS: usize = 32;
 const OUTPUT_LAYER_DIMENSIONS: usize = 1;
 const OUTPUT_SCALE: i32 = 16;
 const WEIGHT_SCALE_BITS: i32 = 6;
-const SQUARES: usize = 81;
+/// Board size of the compiled rule (9x9 for standard and donor rules).
+const FILES: usize = haitaka::BOARD_WIDTH;
+const RANKS: usize = haitaka::BOARD_HEIGHT;
+const SQUARES: usize = FILES * RANKS;
 const POCKETS: usize = 18;
 const MAX_ACTIVE_FEATURES: usize = 512;
 const MAX_DELTA_FEATURES: usize = if cfg!(feature = "hand-category") {
@@ -80,7 +89,11 @@ const MAX_DELTA_FEATURES: usize = if cfg!(feature = "hand-category") {
 } else {
     4
 };
-const MAX_PIECES: usize = 40;
+/// Pieces on the board when nothing is in hand; the layer stack is chosen from
+/// the share of it still on the board. 40 for 9x9 shogi.
+const MAX_PIECES: usize = max_pieces();
+/// Public for the trainer exporter, which must pick the same layer stack.
+pub const NNUE_MAX_PIECES: usize = MAX_PIECES;
 const PIECE_TYPE_COUNT: usize = 10;
 const NON_DROP_PIECE_INDICES: usize = (2 * PIECE_TYPE_COUNT - 1) * SQUARES;
 const PIECE_INDICES: usize = NON_DROP_PIECE_INDICES + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS;
@@ -114,6 +127,21 @@ const HAND_PIECES: [Piece; Piece::HAND_NUM] = [
     Piece::Rook,
     Piece::Gold,
 ];
+
+const fn max_pieces() -> usize {
+    if cfg!(feature = "small-board") {
+        let inventory = <haitaka::SelectedRule as RuleSpec>::INVENTORY;
+        let mut total = 2;
+        let mut i = 0;
+        while i < inventory.len() {
+            total += inventory[i] as usize;
+            i += 1;
+        }
+        total
+    } else {
+        40
+    }
+}
 
 const fn input_slice_hash(output_dimensions: u32, offset: u32) -> u32 {
     0xEC42E90D ^ output_dimensions ^ (offset << 10)
@@ -221,18 +249,29 @@ const HALFKAV2_DONOR_KNIGHT8_FEATURE_SET_HASH: u32 =
     composite_feature_set_hash(HALFKAV2_FEATURE_SET_HASH, DONOR_KNIGHT8_MODE_BLOCK_HASH);
 const HALFKAV2_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(HALFKAV2_DONOR_SINGLE_FEATURE_SET_HASH);
-#[cfg_attr(not(any(
-    feature = "annan",
-    feature = "anhoku",
-    feature = "taimen",
-    feature = "haimen",
-    feature = "neko",
-    feature = "nekoneko",
-    feature = "yokoneko",
-    feature = "yokonekoneko",
-    feature = "tenkyo",
-    feature = "tenjiku"
-)), allow(dead_code))]
+#[cfg(feature = "small-board")]
+const KING_FREE_A_SMALL_FEATURE_SET_HASH: u32 =
+    composite_feature_set_hash(KING_FREE_A_FEATURE_SET_HASH, SMALL_BOARD_BLOCK_HASH);
+// Never matched outside small-board builds (the family is unsupported there).
+#[cfg(not(feature = "small-board"))]
+const KING_FREE_A_SMALL_FEATURE_SET_HASH: u32 = 0;
+#[cfg(feature = "small-board")]
+const KING_FREE_A_SMALL_NETWORK_HASH: u32 = network_hash(KING_FREE_A_SMALL_FEATURE_SET_HASH);
+#[cfg_attr(
+    not(any(
+        feature = "annan",
+        feature = "anhoku",
+        feature = "taimen",
+        feature = "haimen",
+        feature = "neko",
+        feature = "nekoneko",
+        feature = "yokoneko",
+        feature = "yokonekoneko",
+        feature = "tenkyo",
+        feature = "tenjiku"
+    )),
+    allow(dead_code)
+)]
 const KING_FREE_A_DONOR_SINGLE_NETWORK_HASH: u32 =
     network_hash(KING_FREE_A_DONOR_SINGLE_FEATURE_SET_HASH);
 #[cfg_attr(not(feature = "anhoku"), allow(dead_code))]
@@ -266,6 +305,8 @@ enum FeatureFamily {
     KingZone9ADonorSingle,
     KingFreeADonorPair,
     KingFreeADonorKnight8,
+    /// KingFreeA without a donor block, sized to a small board.
+    KingFreeA,
 }
 
 impl FeatureFamily {
@@ -280,6 +321,7 @@ impl FeatureFamily {
             FeatureFamily::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_NAME,
             FeatureFamily::KingFreeADonorPair => KING_FREE_A_DONOR_PAIR_FEATURE_NAME,
             FeatureFamily::KingFreeADonorKnight8 => KING_FREE_A_DONOR_KNIGHT8_FEATURE_NAME,
+            FeatureFamily::KingFreeA => KING_FREE_A_FEATURE_NAME,
         }
     }
 
@@ -323,6 +365,8 @@ impl FeatureFamily {
             KING_FREE_A_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::KingFreeADonorKnight8),
             #[cfg(feature = "anki")]
             HALFKAV2_DONOR_KNIGHT8_NETWORK_HASH => Some(Self::HalfKAv2DonorKnight8),
+            #[cfg(feature = "small-board")]
+            KING_FREE_A_SMALL_NETWORK_HASH => Some(Self::KingFreeA),
             _ => None,
         }
     }
@@ -338,6 +382,7 @@ impl FeatureFamily {
             Self::KingZone9ADonorSingle => KING_ZONE9_A_DONOR_SINGLE_FEATURE_SET_HASH,
             Self::KingFreeADonorPair => KING_FREE_A_DONOR_PAIR_FEATURE_SET_HASH,
             Self::KingFreeADonorKnight8 => KING_FREE_A_DONOR_KNIGHT8_FEATURE_SET_HASH,
+            Self::KingFreeA => KING_FREE_A_SMALL_FEATURE_SET_HASH,
         }
     }
 
@@ -358,15 +403,17 @@ impl FeatureFamily {
             Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES + DONOR_SINGLE_REAL_FEATURES,
             Self::KingFreeADonorPair => KING_FREE_BASE_FEATURES + DONOR_PAIR_REAL_FEATURES,
             Self::KingFreeADonorKnight8 => KING_FREE_BASE_FEATURES + DONOR_KNIGHT8_REAL_FEATURES,
+            Self::KingFreeA => KING_FREE_BASE_FEATURES,
         }
     }
 
     /// First row of the donor block (end of the base block).
     const fn base_features(self) -> usize {
         match self {
-            Self::KingFreeADonorSingle | Self::KingFreeADonorPair | Self::KingFreeADonorKnight8 => {
-                KING_FREE_BASE_FEATURES
-            }
+            Self::KingFreeADonorSingle
+            | Self::KingFreeADonorPair
+            | Self::KingFreeADonorKnight8
+            | Self::KingFreeA => KING_FREE_BASE_FEATURES,
             Self::KingZone9ADonorSingle => KING_ZONE_BASE_FEATURES,
             _ => HALFKAV2_REAL_FEATURES,
         }
@@ -381,6 +428,7 @@ impl FeatureFamily {
                 | Self::KingZone9ADonorSingle
                 | Self::KingFreeADonorPair
                 | Self::KingFreeADonorKnight8
+                | Self::KingFreeA
         )
     }
 
@@ -395,6 +443,7 @@ impl FeatureFamily {
             Self::KingZone9ADonorSingle => 192,
             Self::KingFreeADonorPair => 256,
             Self::KingFreeADonorKnight8 => 512,
+            Self::KingFreeA => 128,
         }
     }
 }
@@ -477,6 +526,8 @@ pub const KING_ZONE9_A_DONOR_SINGLE_FEATURES: usize =
 pub const KING_FREE_A_BASE_FEATURES: usize = KING_FREE_BASE_FEATURES;
 pub const KING_FREE_A_DONOR_PAIR_FEATURE_NAME: &str = "KingFreeA+DonorPairSlots";
 pub const KING_FREE_A_DONOR_KNIGHT8_FEATURE_NAME: &str = "KingFreeA+DonorKnight8Slots";
+/// Small-board KingFreeA (no donor block).
+pub const KING_FREE_A_FEATURE_NAME: &str = "KingFreeA";
 
 /// The KingFreeA family of this build's donor rule: the single-donor rules use
 /// DonorSingleEff, Antouzai the left/right DonorPair slots and Anki the eight
@@ -485,7 +536,9 @@ pub const KING_FREE_A_DONOR_KNIGHT8_FEATURE_NAME: &str = "KingFreeA+DonorKnight8
 const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorPair;
 #[cfg(feature = "anki")]
 const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorKnight8;
-#[cfg(not(any(feature = "antouzai", feature = "anki")))]
+#[cfg(feature = "small-board")]
+const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeA;
+#[cfg(not(any(feature = "antouzai", feature = "anki", feature = "small-board")))]
 const KING_FREE_BUILD_FAMILY: FeatureFamily = FeatureFamily::KingFreeADonorSingle;
 /// Transformer rows of this build's KingFreeA family.
 pub const KING_FREE_BUILD_FEATURES: usize = KING_FREE_BUILD_FAMILY.num_real_features();
@@ -498,10 +551,15 @@ pub fn king_free_active_feature_indices(board: &Board, perspective: Color) -> Ve
     if !KING_FREE_BUILD_SUPPORTED {
         return Vec::new();
     }
-    active_features(board, perspective, board.king(perspective), KING_FREE_BUILD_FAMILY)
-        .iter()
-        .copied()
-        .collect()
+    active_features(
+        board,
+        perspective,
+        board.king(perspective),
+        KING_FREE_BUILD_FAMILY,
+    )
+    .iter()
+    .copied()
+    .collect()
 }
 
 /// Number of real HalfKAv2 rows before the variant donor block.
@@ -795,7 +853,7 @@ fn read_feature_family(reader: &mut ByteReader<'_>) -> Result<FeatureFamily, Nnu
 
 impl NnueModel {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, NnueError> {
-        if cfg!(feature = "extended-json") || !haitaka::SelectedRule::ALLOW_STANDARD_MODELS {
+        if cfg!(feature = "extended-json") {
             return Err(NnueError::new(format!(
                 "NNUE_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
                 haitaka::SelectedRule::NAME
@@ -805,7 +863,18 @@ impl NnueModel {
             return Err(NnueError::new("zoshoku NNUE inference is not supported"));
         }
         let mut reader = ByteReader::new(bytes);
-        let family = read_feature_family(&mut reader)?;
+        // A small board loads only its own KingFreeA nets; every 9x9 family is rejected
+        // before its header hash is even interpreted.
+        let family = match read_feature_family(&mut reader) {
+            Ok(FeatureFamily::KingFreeA) => FeatureFamily::KingFreeA,
+            _ if !haitaka::SelectedRule::ALLOW_STANDARD_MODELS => {
+                return Err(NnueError::new(format!(
+                    "NNUE_UNSUPPORTED_RULESET: 9x9 models cannot be loaded by {}",
+                    haitaka::SelectedRule::NAME
+                )));
+            }
+            other => other?,
+        };
         if !family_supported_by_build(family) {
             return Err(NnueError::new(format!(
                 "NNUE family {:?} is not supported by this build configuration",
@@ -1938,7 +2007,7 @@ fn for_each_donor_feature(
     mut emit: impl FnMut(usize),
 ) {
     match family {
-        FeatureFamily::HalfKAv2 => {}
+        FeatureFamily::HalfKAv2 | FeatureFamily::KingFreeA => {}
         FeatureFamily::HalfKAv2DonorSingle
         | FeatureFamily::KingFreeADonorSingle
         | FeatureFamily::KingZone9ADonorSingle => {
@@ -2210,7 +2279,7 @@ fn donor_influence_neighborhood(
 ) -> [Option<Square>; DONOR_KNIGHT8_SLOT_COUNT] {
     let mut neighbors = [None; DONOR_KNIGHT8_SLOT_COUNT];
     match family {
-        FeatureFamily::HalfKAv2 => {}
+        FeatureFamily::HalfKAv2 | FeatureFamily::KingFreeA => {}
         FeatureFamily::HalfKAv2DonorSingle
         | FeatureFamily::HalfKAv2DonorReceiverPairV2
         | FeatureFamily::KingFreeADonorSingle
@@ -2233,7 +2302,8 @@ fn king_offset(family: FeatureFamily, king_square: Square, perspective: Color) -
     match family {
         FeatureFamily::KingFreeADonorSingle
         | FeatureFamily::KingFreeADonorPair
-        | FeatureFamily::KingFreeADonorKnight8 => 0,
+        | FeatureFamily::KingFreeADonorKnight8
+        | FeatureFamily::KingFreeA => 0,
         FeatureFamily::KingZone9ADonorSingle => {
             king_zone(orient_square(king_square, perspective)) * KING_FREE_BASE_FEATURES
         }
@@ -2353,16 +2423,16 @@ fn orient_square(square: Square, perspective: Color) -> usize {
     if perspective == Color::Black {
         compact
     } else {
-        let file = compact % 9;
-        let rank = compact / 9;
-        file + (8 - rank) * 9
+        let file = compact % FILES;
+        let rank = compact / FILES;
+        file + (RANKS - 1 - rank) * FILES
     }
 }
 
 fn variant_square(square: Square) -> usize {
-    let file = 8usize - square.file() as usize;
-    let rank = 8usize - square.rank() as usize;
-    file + rank * 9
+    let file = FILES - 1 - square.file() as usize;
+    let rank = RANKS - 1 - square.rank() as usize;
+    file + rank * FILES
 }
 
 fn piece_square_index(perspective: Color, color: Color, piece: Piece) -> usize {
@@ -2623,6 +2693,7 @@ const fn family_supported_by_build(family: FeatureFamily) -> bool {
         FeatureFamily::KingZone9ADonorSingle => cfg!(feature = "anhoku"),
         FeatureFamily::KingFreeADonorPair => cfg!(feature = "antouzai"),
         FeatureFamily::KingFreeADonorKnight8 => cfg!(feature = "anki"),
+        FeatureFamily::KingFreeA => cfg!(feature = "small-board"),
     }
 }
 
@@ -4068,5 +4139,110 @@ mod tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(all(test, feature = "small-board", not(target_arch = "wasm32")))]
+mod small_board_tests {
+    use super::*;
+    use rand::prelude::IndexedRandom;
+    use rand::{SeedableRng, rngs::StdRng};
+
+    /// Deterministic in-memory KingFreeA transformer (no output buckets).
+    fn sentinel() -> NnueModel {
+        let family = FeatureFamily::KingFreeA;
+        let rows = family.num_real_features();
+        let mut weights = vec![0i16; TRANSFORMED_FEATURE_DIMENSIONS * rows];
+        let mut psqt_weights = vec![0i32; PSQT_BUCKETS * rows];
+        for row in 0..rows {
+            for dimension in 0..8 {
+                let signature = r1_sentinel_mix((row as u64) ^ ((dimension as u64) << 48));
+                weights[row * TRANSFORMED_FEATURE_DIMENSIONS + dimension] =
+                    (signature % 63) as i16 - 31;
+                psqt_weights[row * PSQT_BUCKETS + dimension] =
+                    (signature % 131_071) as i32 - 65_535;
+            }
+        }
+        NnueModel {
+            evaluation_multiplier: 1,
+            description: "small-board sentinel".to_string(),
+            family,
+            transformer: FeatureTransformer {
+                biases: vec![0; TRANSFORMED_FEATURE_DIMENSIONS],
+                weights,
+                psqt_weights,
+            },
+            buckets: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn geometry_follows_the_compiled_board() {
+        assert_eq!(SQUARES, Square::NUM);
+        assert_eq!(
+            KING_FREE_A_BASE_FEATURES,
+            (2 * PIECE_TYPE_COUNT - 1) * SQUARES + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS + SQUARES
+        );
+        let inventory: usize = <haitaka::SelectedRule as RuleSpec>::INVENTORY
+            .iter()
+            .map(|&n| n as usize)
+            .sum();
+        assert_eq!(MAX_PIECES, inventory + 2);
+        assert_eq!(bucket_for_board(&Board::startpos()), {
+            let on_board = Board::startpos().occupied().len() as usize;
+            ((on_board - 1) * PSQT_BUCKETS / MAX_PIECES).min(PSQT_BUCKETS - 1)
+        });
+        // Every oriented square stays inside the board for both perspectives.
+        for &square in &Square::ALL {
+            for color in Color::ALL {
+                assert!(orient_square(square, color) < SQUARES);
+            }
+        }
+    }
+
+    #[test]
+    fn incremental_updates_match_full_refresh_over_random_games() {
+        let model = sentinel();
+        let mut rng = StdRng::seed_from_u64(0x5eed);
+        let mut checked = 0usize;
+        for _ in 0..300 {
+            let mut board = Board::startpos();
+            let mut state = model.build_position_state_full(&board);
+            for _ in 0..160 {
+                if board.status() != haitaka::GameStatus::Ongoing {
+                    break;
+                }
+                let mut moves = Vec::new();
+                board.generate_moves(|piece_moves| {
+                    moves.extend(piece_moves);
+                    false
+                });
+                let Some(&mv) = moves.choose(&mut rng) else {
+                    break;
+                };
+                let mut child = board.clone();
+                child.play_unchecked(mv);
+                state = model.apply_move(&board, &child, &state, mv);
+                assert_eq!(state, model.build_position_state_full(&child), "after {mv}");
+                board = child;
+                checked += 1;
+            }
+        }
+        assert!(checked > 5_000, "only {checked} moves checked");
+    }
+
+    #[test]
+    fn nine_by_nine_networks_are_rejected() {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&VERSION.to_le_bytes());
+        bytes.extend_from_slice(&HALFKAV2_NETWORK_HASH.to_le_bytes());
+        let error = NnueModel::from_bytes(&bytes).unwrap_err().to_string();
+        assert!(error.contains("NNUE_UNSUPPORTED_RULESET"), "{error}");
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&VERSION.to_le_bytes());
+        bytes.extend_from_slice(&KING_FREE_A_SMALL_NETWORK_HASH.to_le_bytes());
+        // A KingFreeA header of this rule is accepted up to the (missing) body.
+        let error = NnueModel::from_bytes(&bytes).unwrap_err().to_string();
+        assert!(!error.contains("NNUE_UNSUPPORTED_RULESET"), "{error}");
     }
 }

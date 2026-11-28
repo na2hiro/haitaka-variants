@@ -41,7 +41,8 @@ impl Board {
     /// structural, king-safety, checker, pin, and move-number checks remain.
     #[doc(hidden)]
     pub fn from_training_sfen(sfen: &str) -> Result<Self, SFENParseError> {
-        if !SelectedRule::ALLOW_STANDARD_MODELS {
+        // Small boards train their own KingFreeA nets, so they decode training records too.
+        if !SelectedRule::ALLOW_STANDARD_MODELS && !cfg!(feature = "small-board") {
             return Err(SFENParseError::InvalidBoard);
         }
         use SFENParseError::*;

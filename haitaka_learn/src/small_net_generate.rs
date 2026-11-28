@@ -223,7 +223,9 @@ fn build_rule() -> String {
         ("suika", cfg!(feature = "suika")),
     ];
     let on: Vec<&str> = rules.iter().filter(|(_, b)| *b).map(|(n, _)| *n).collect();
-    if on.is_empty() {
+    if cfg!(feature = "small-board") {
+        <haitaka::SelectedRule as haitaka::RuleSpec>::NAME.into()
+    } else if on.is_empty() {
         "standard".into()
     } else {
         on.join("+")

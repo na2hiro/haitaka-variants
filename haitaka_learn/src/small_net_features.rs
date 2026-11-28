@@ -18,7 +18,7 @@ use anyhow::{Context, Result, bail, ensure};
 use haitaka::Color;
 use haitaka_wasm::{
     KING_FREE_A_BASE_FEATURES, KING_FREE_A_DONOR_SINGLE_FEATURES, KING_FREE_BUILD_FEATURES,
-    KING_FREE_BUILD_SUPPORTED, KING_ZONE9_A_DONOR_SINGLE_FEATURES, NnueModel,
+    KING_FREE_BUILD_SUPPORTED, KING_ZONE9_A_DONOR_SINGLE_FEATURES, NNUE_MAX_PIECES, NnueModel,
     R1_HALFKAV2_BASE_FEATURES, king_free_active_feature_indices,
     king_zone9_donor_single_active_feature_indices, r1_donor_single_active_feature_indices,
 };
@@ -79,7 +79,7 @@ fn halfka_rows(board: &haitaka::Board, perspective: Color) -> Vec<usize> {
     rows
 }
 const PSQT_BUCKETS: usize = 8;
-const MAX_PIECES: usize = 40;
+const MAX_PIECES: usize = NNUE_MAX_PIECES;
 
 /// Must equal `haitaka_wasm::nnue::bucket_for_board`.
 fn bucket(board: &haitaka::Board) -> u8 {

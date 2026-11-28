@@ -55,14 +55,40 @@ MULTI_DONOR_RULES = {
     "antouzai": (2, 0x467CDF71, 128),  # left/right DonorPair slots
     "anki": (8, 0x3CC37189 ^ 0x6A09E667, 256),  # eight knight slots
 }
+# Ordinary small boards: (Shogitter rule id, files, ranks). Plain KingFreeA sized to
+# the board, no donor block; the tail hash mixes in the rule id and the board size.
+SMALL_BOARD_RULES = {
+    "minishogi": (51, 5, 5), "judkins": (52, 6, 6), "gorogoro": (96, 5, 6),
+    "gorogoro-plus": (97, 5, 6), "minishogi-kingin": (110, 5, 5),
+}
+SMALL_BOARD_BLOCK_HASH = 0x534D4231
+M32 = 0xFFFFFFFF
 RULE = "anhoku"
 
 
+def configure(rule):
+    """Select the rule; small boards resize the geometry globals above."""
+    global RULE, SQUARES, NON_DROP, PIECE_INDICES, BASE, DONOR, NUM_FEATURES
+    RULE = rule
+    files, ranks = SMALL_BOARD_RULES[rule][1:] if rule in SMALL_BOARD_RULES else (9, 9)
+    SQUARES = files * ranks
+    NON_DROP = (2 * PIECE_TYPE_COUNT - 1) * SQUARES
+    PIECE_INDICES = NON_DROP + 2 * (PIECE_TYPE_COUNT - 1) * POCKETS
+    BASE = PIECE_INDICES + SQUARES
+    DONOR = 0 if rule in SMALL_BOARD_RULES else SQUARES * PIECE_TYPE_COUNT * 2
+    NUM_FEATURES = BASE + DONOR
+
+
 def donor_slots():
+    if RULE in SMALL_BOARD_RULES:
+        return 0
     return MULTI_DONOR_RULES[RULE][0] if RULE in MULTI_DONOR_RULES else 1
 
 
 def donor_block_hash():
+    if RULE in SMALL_BOARD_RULES:
+        rule_id, files, ranks = SMALL_BOARD_RULES[RULE]
+        return SMALL_BOARD_BLOCK_HASH ^ ((rule_id * 0x9E3779B1) & M32) ^ ((files << 8) | ranks)
     if RULE in MULTI_DONOR_RULES:
         return MULTI_DONOR_RULES[RULE][1]
     return DONOR_SINGLE_BLOCK_HASH ^ RULE_BLOCK_MIXERS[RULE]
@@ -70,7 +96,6 @@ def donor_block_hash():
 
 def king_free_rows():
     return BASE + DONOR * donor_slots()
-M32 = 0xFFFFFFFF
 
 # piece_slot order: B R S +R P L N Gold-like +B K
 SLOT_VALUE = [700, 800, 400, 1000, 100, 300, 300, 520, 900, 0]
@@ -435,7 +460,7 @@ def integer_reference(path, data, l1, limit):
 # ---- commands ---------------------------------------------------------------
 def cmd_train(args):
     global LOSS, FAMILY, WDL_LAMBDA, RULE
-    RULE = args.rule
+    configure(args.rule)
     LOSS = args.loss
     WDL_LAMBDA = args.wdl_lambda
     FAMILY = args.family
@@ -528,7 +553,7 @@ def cmd_train(args):
 
 def cmd_export(args):
     global FAMILY, RULE
-    RULE = args.rule
+    configure(args.rule)
     FAMILY = args.family
     model = SmallNet(args.l1, 0)
     model.load_state_dict(torch.load(args.checkpoint))
@@ -538,7 +563,7 @@ def cmd_export(args):
 
 def cmd_intref(args):
     global FAMILY, RULE
-    RULE = args.rule
+    configure(args.rule)
     FAMILY = args.family
     data = FeatureSet(args.feat)
     ref = integer_reference(args.nnue, data, args.l1, args.limit)
@@ -577,7 +602,7 @@ def main():
     t.add_argument("--wdl-lambda", type=float, default=1.0, help="score weight in the wdl target (1 = score only)")
     t.add_argument("--result-ignore", default="", help="comma-separated path substrings whose game results are not trusted")
     t.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    t.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
+    t.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES) + sorted(SMALL_BOARD_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     t.add_argument("--init", choices=["small", "nnue"], default="small")
     t.add_argument("--init-checkpoint", help="start from this .pt checkpoint (fine-tuning)")
     t.add_argument("--optimizer", choices=["adam", "ranger"], default="adam")
@@ -600,7 +625,7 @@ def main():
     e.add_argument("--output", required=True)
     e.add_argument("--l1", type=int, default=256)
     e.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    e.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
+    e.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES) + sorted(SMALL_BOARD_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     e.add_argument("--description")
     e.set_defaults(fn=cmd_export)
     r = sub.add_parser("intref")
@@ -608,7 +633,7 @@ def main():
     r.add_argument("--feat", required=True)
     r.add_argument("--l1", type=int, default=256)
     r.add_argument("--family", choices=["king-free", "halfka", "king-zone9"], default="king-free")
-    r.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
+    r.add_argument("--rule", choices=sorted(RULE_BLOCK_MIXERS) + sorted(MULTI_DONOR_RULES) + sorted(SMALL_BOARD_RULES), default="anhoku", help="donor rule (selects the donor block geometry and hash)")
     r.add_argument("--limit", type=int, default=4096)
     r.add_argument("--rust")
     r.add_argument("--checkpoint")

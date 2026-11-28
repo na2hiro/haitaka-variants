@@ -45,6 +45,14 @@ tennouzan = ["win-condition-category", "haitaka/tennouzan", "haitaka_wasm/tennou
 igyoku = ["king-constraint-category", "haitaka/igyoku", "haitaka_wasm/igyoku"]
 hitomasuou = ["king-constraint-category", "haitaka/hitomasuou", "haitaka_wasm/hitomasuou"]
 
+# Ordinary-movement small boards (one compile-time rule each, KingFreeA without a donor block).
+small-board = []
+minishogi = ["small-board", "haitaka/minishogi", "haitaka_wasm/minishogi"]
+judkins = ["small-board", "haitaka/judkins", "haitaka_wasm/judkins"]
+gorogoro = ["small-board", "haitaka/gorogoro", "haitaka_wasm/gorogoro"]
+gorogoro-plus = ["small-board", "haitaka/gorogoro-plus", "haitaka_wasm/gorogoro-plus"]
+minishogi-kingin = ["small-board", "haitaka/minishogi-kingin", "haitaka_wasm/minishogi-kingin"]
+
 # Orthogonal capture, hand, and outcome rules.
 hand-category = ["haitaka/hand-category", "haitaka_wasm/hand-category"]
 nakamaware = ["hand-category", "haitaka/nakamaware", "haitaka_wasm/nakamaware"]

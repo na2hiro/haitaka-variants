@@ -6482,10 +6482,19 @@ pub(crate) fn unpack_board_from_training(packed: &[u8; PACKED_SFEN_BYTES]) -> Re
         let runtime_rank = 8 - trainer_rank;
         runtime_board[runtime_rank * 9 + runtime_file] = Some(piece);
     }
+    // Small boards are packed into the low files and ranks of the 9x9 grid
+    // (`trainer_square_index`); everything outside the compiled board is empty.
+    let (files, ranks) = (haitaka::BOARD_WIDTH, haitaka::BOARD_HEIGHT);
+    for (index, piece) in runtime_board.iter().enumerate() {
+        ensure!(
+            piece.is_none() || (index % 9 < files && index / 9 < ranks),
+            "packed piece outside the {files}x{ranks} board"
+        );
+    }
     let mut board_text = String::new();
-    for rank in 0..9 {
+    for rank in 0..ranks {
         let mut empty = 0;
-        for file in (0..9).rev() {
+        for file in (0..files).rev() {
             match runtime_board[rank * 9 + file] {
                 None => empty += 1,
                 Some(piece) => {
@@ -6500,7 +6509,7 @@ pub(crate) fn unpack_board_from_training(packed: &[u8; PACKED_SFEN_BYTES]) -> Re
         if empty != 0 {
             board_text.push_str(&empty.to_string());
         }
-        if rank != 8 {
+        if rank + 1 != ranks {
             board_text.push('/');
         }
     }
@@ -10118,5 +10127,57 @@ run_search_smoke = false
             assert_eq!(cycle_game_counts.len(), 64);
             assert!(cycle_game_counts.values().all(|games| *games == 2));
         }
+    }
+}
+
+#[cfg(all(test, feature = "small-board"))]
+mod small_board_pack_tests {
+    use super::*;
+    use rand::prelude::IndexedRandom;
+    use rand::{SeedableRng, rngs::StdRng};
+
+    /// Every position of random games survives the 64-byte training record:
+    /// same board (up to the gold coalescing of promoted minors), side and hands.
+    #[test]
+    fn small_board_records_round_trip() {
+        let coalesce = |board: &Board| {
+            let mut squares = Vec::new();
+            for &square in &Square::ALL {
+                squares.push(board.colored_piece_on(square).map(|p| {
+                    let piece = match p.piece {
+                        Piece::Tokin | Piece::PLance | Piece::PKnight | Piece::PSilver => {
+                            Piece::Gold
+                        }
+                        other => other,
+                    };
+                    (p.color, piece)
+                }));
+            }
+            (squares, board.side_to_move(), *board.hands())
+        };
+        let mut rng = StdRng::seed_from_u64(11);
+        let mut checked = 0;
+        for _ in 0..200 {
+            let mut board = Board::startpos();
+            for _ in 0..120 {
+                if board.status() != haitaka::GameStatus::Ongoing {
+                    break;
+                }
+                let packed = pack_board_for_training(&board).unwrap();
+                let decoded = unpack_board_from_training(&packed).unwrap();
+                assert_eq!(coalesce(&decoded), coalesce(&board), "{board}");
+                checked += 1;
+                let mut moves = Vec::new();
+                board.generate_moves(|m| {
+                    moves.extend(m);
+                    false
+                });
+                let Some(&mv) = moves.choose(&mut rng) else {
+                    break;
+                };
+                board.play_unchecked(mv);
+            }
+        }
+        assert!(checked > 5_000, "only {checked} positions");
     }
 }
